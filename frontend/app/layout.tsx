@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+import { CartProvider } from "@/context/CartContext";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -13,9 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ETKEN | Kurumsal Ofis Tedarik Platformu",
-  description:
-    "Kurumsal firmalar için ofis, kırtasiye, temizlik, teknoloji, ambalaj ve endüstriyel ürün tedarik platformu.",
+  title: "ETKEN B2B Platform",
+  description: "Kurumsal Tedarik Platformu",
 };
 
 export default function RootLayout({
@@ -26,10 +27,12 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="bg-slate-100 text-slate-800">
-        {children}
+      <body className="min-h-full flex flex-col">
+        <CartProvider>
+          {children}
+        </CartProvider>
       </body>
     </html>
   );
