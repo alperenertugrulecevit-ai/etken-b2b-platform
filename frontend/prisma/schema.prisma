@@ -9,19 +9,21 @@ datasource db {
 }
 
 model Product {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  barcode   String   @unique
-  name      String
-  brand     String
-  category  String
-  supplier  String
-  price     Float
-  stock     Int
-  vat       Int
-  ownStock  Boolean
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id            Int         @id @default(autoincrement())
+  code          String      @unique
+  barcode       String      @unique
+  name          String
+  brand         String
+  category      String
+  supplier      String
+  price         Float
+  stock         Int
+  reservedStock Int         @default(0)
+  vat           Int
+  ownStock      Boolean
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  orderItems    OrderItem[]
 }
 
 model Category {
@@ -55,4 +57,121 @@ model Brand {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id              Int               @id @default(autoincrement())
+  customerCode    String            @unique
+  companyName     String
+  taxOffice       String?
+  taxNumber       String?           @unique
+  contactName     String?
+  phone           String?
+  email           String?
+  address         String?
+  city            String?
+  district        String?
+  paymentTermDays Int               @default(0)
+  discountRate    Float             @default(0)
+  creditLimit     Float             @default(0)
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  addresses       CustomerAddress[]
+  orders          Order[]
+}
+
+model CustomerAddress {
+  id                Int      @id @default(autoincrement())
+  customerId        Int
+  title             String
+  addressType       String
+  contactName       String?
+  phone             String?
+  address           String
+  city              String
+  district          String
+  postalCode        String?
+  deliveryStartTime String?
+  deliveryEndTime   String?
+  hasForklift       Boolean  @default(false)
+  rampCount         Int      @default(0)
+  vehicleType       String?
+  description       String?
+  isDefault         Boolean  @default(false)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId])
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  PREPARING
+  PICKING
+  PACKING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id                Int         @id @default(autoincrement())
+  orderNumber       String      @unique
+  customerId        Int
+  shippingAddressId Int?
+  status            OrderStatus @default(PENDING)
+  orderDate         DateTime    @default(now())
+  requestedDate     DateTime?
+  paymentTermDays   Int         @default(0)
+  discountRate      Float       @default(0)
+  subtotal          Float       @default(0)
+  discountAmount    Float       @default(0)
+  vatAmount         Float       @default(0)
+  totalAmount       Float       @default(0)
+  customerNote      String?
+  internalNote      String?
+  stockReserved     Boolean     @default(false)
+  stockDeducted     Boolean     @default(false)
+  stockReservedAt   DateTime?
+  stockDeductedAt   DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  shippingAddress CustomerAddress? @relation(fields: [shippingAddressId], references: [id])
+  items           OrderItem[]
+
+  @@index([customerId])
+  @@index([shippingAddressId])
+  @@index([status])
+  @@index([orderDate])
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  productId   Int
+  productCode String
+  productName String
+  quantity    Int
+  unitPrice   Float
+  vatRate     Int
+  lineNet     Float
+  vatAmount   Float
+  lineTotal   Float
+  createdAt   DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
 }

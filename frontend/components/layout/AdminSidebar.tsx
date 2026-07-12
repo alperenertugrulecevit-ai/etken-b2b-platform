@@ -47,13 +47,19 @@ export default function AdminSidebar() {
           🏢 Tedarikçi Yönetimi
         </Link>
 
-        <span className="block rounded-xl p-3 text-slate-500">
-          👥 Müşteriler
-        </span>
+        <Link
+          href="/admin/customers"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          👥 Müşteri Yönetimi
+        </Link>
 
-        <span className="block rounded-xl p-3 text-slate-500">
-          🛒 Siparişler
-        </span>
+        <Link
+          href="/admin/orders"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🛒 Sipariş Yönetimi
+        </Link>
 
         <span className="block rounded-xl p-3 text-slate-500">
           🏬 Depo / WMS
