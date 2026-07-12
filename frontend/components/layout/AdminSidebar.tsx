@@ -2,35 +2,69 @@ import Link from "next/link";
 
 export default function AdminSidebar() {
   return (
-    <aside className="w-72 bg-slate-900 text-white min-h-screen p-6">
-      <h2 className="text-2xl font-bold mb-10">ETKEN Admin</h2>
+    <aside className="min-h-screen w-72 shrink-0 bg-slate-900 p-6 text-white">
+      <h2 className="mb-2 text-2xl font-bold">
+        ETKEN Admin
+      </h2>
+
+      <p className="mb-10 text-sm text-slate-400">
+        Yönetim Merkezi
+      </p>
 
       <nav className="space-y-3">
-        <Link href="/admin" className="block p-3 rounded-xl hover:bg-slate-800">
+        <Link
+          href="/admin"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
           📊 Dashboard
         </Link>
 
-        <Link href="/admin/products" className="block p-3 rounded-xl hover:bg-slate-800">
+        <Link
+          href="/admin/products"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
           📦 Ürün Yönetimi
         </Link>
 
-        <Link href="#" className="block p-3 rounded-xl hover:bg-slate-800">
-          🏢 Tedarikçiler
+        <Link
+          href="/admin/categories"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          📂 Kategori Yönetimi
         </Link>
 
-        <Link href="#" className="block p-3 rounded-xl hover:bg-slate-800">
+        <Link
+          href="/admin/brands"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🏷️ Marka Yönetimi
+        </Link>
+
+        <Link
+          href="/admin/suppliers"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🏢 Tedarikçi Yönetimi
+        </Link>
+
+        <span className="block rounded-xl p-3 text-slate-500">
           👥 Müşteriler
-        </Link>
+        </span>
 
-        <Link href="#" className="block p-3 rounded-xl hover:bg-slate-800">
+        <span className="block rounded-xl p-3 text-slate-500">
           🛒 Siparişler
-        </Link>
+        </span>
 
-        <Link href="#" className="block p-3 rounded-xl hover:bg-slate-800">
+        <span className="block rounded-xl p-3 text-slate-500">
           🏬 Depo / WMS
-        </Link>
+        </span>
 
-        <Link href="/" className="block p-3 rounded-xl hover:bg-slate-800">
+        <div className="my-5 border-t border-slate-700" />
+
+        <Link
+          href="/"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
           ← Siteye Dön
         </Link>
       </nav>

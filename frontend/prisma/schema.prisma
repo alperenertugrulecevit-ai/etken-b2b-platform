@@ -9,17 +9,50 @@ datasource db {
 }
 
 model Product {
-  id         Int      @id @default(autoincrement())
-  code       String   @unique
-  barcode    String   @unique
-  name       String
-  brand      String
-  category   String
-  supplier   String
-  price      Float
-  stock      Int
-  vat        Int
-  ownStock   Boolean
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  barcode   String   @unique
+  name      String
+  brand     String
+  category  String
+  supplier  String
+  price     Float
+  stock     Int
+  vat       Int
+  ownStock  Boolean
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique
+  taxNumber       String?  @unique
+  contactName     String?
+  phone           String?
+  email           String?
+  paymentTermDays Int      @default(0)
+  discountRate    Float    @default(0)
+  deliveryDays    Int      @default(1)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Brand {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

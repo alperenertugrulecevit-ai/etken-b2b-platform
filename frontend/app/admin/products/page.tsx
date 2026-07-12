@@ -31,13 +31,14 @@ export default async function AdminProductsPage() {
       </div>
 
       <div className="mt-10 overflow-x-auto rounded-2xl bg-white shadow">
-        <table className="w-full min-w-[1200px] text-left">
+        <table className="w-full min-w-[1350px] text-left">
           <thead className="bg-blue-900 text-white">
             <tr>
               <th className="p-4">Kod</th>
               <th className="p-4">Ürün</th>
               <th className="p-4">Marka</th>
               <th className="p-4">Kategori</th>
+              <th className="p-4">Tedarikçi</th>
               <th className="p-4">Stok</th>
               <th className="p-4">Fiyat</th>
               <th className="p-4">Stok Kaynağı</th>
@@ -76,6 +77,12 @@ export default async function AdminProductsPage() {
 
                   <td className="p-4">
                     {product.category}
+                  </td>
+
+                  <td className="p-4">
+                    <span className="inline-block rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+                      {product.supplier}
+                    </span>
                   </td>
 
                   <td className="p-4">
@@ -149,6 +156,17 @@ export default async function AdminProductsPage() {
                 </tr>
               );
             })}
+
+            {products.length === 0 && (
+              <tr>
+                <td
+                  colSpan={10}
+                  className="p-10 text-center text-gray-500"
+                >
+                  Henüz ürün bulunmuyor.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
