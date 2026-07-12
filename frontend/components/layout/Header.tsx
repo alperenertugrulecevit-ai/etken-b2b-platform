@@ -6,12 +6,14 @@ import { useCart } from "@/context/CartContext";
 export default function Header() {
   const { cart } = useCart();
 
-  const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+  const totalQty = cart.reduce(
+    (sum, item) => sum + item.qty,
+    0
+  );
 
   return (
     <header className="bg-blue-900 text-white shadow-lg">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-8 py-5">
-
         <div>
           <Link href="/">
             <h1 className="text-4xl font-bold tracking-wide cursor-pointer">
@@ -24,19 +26,29 @@ export default function Header() {
           </p>
         </div>
 
-        <nav className="flex items-center gap-8">
+        <nav className="flex items-center gap-5">
+          <Link href="/">
+            Ana Sayfa
+          </Link>
 
-          <Link href="/">Ana Sayfa</Link>
+          <Link href="/products">
+            Ürünler
+          </Link>
 
-          <Link href="/products">Ürünler</Link>
+          <a href="#">
+            Kampanyalar
+          </a>
 
-          <a href="#">Kampanyalar</a>
+          <a href="#">
+            İletişim
+          </a>
 
-          <a href="#">İletişim</a>
-
-          <button className="bg-white text-blue-900 px-5 py-3 rounded-xl font-bold">
-            B2B Giriş
-          </button>
+          <Link
+            href="/admin"
+            className="bg-slate-800 px-5 py-3 rounded-xl font-bold hover:bg-slate-700"
+          >
+            ⚙ Yönetim Paneli
+          </Link>
 
           <Link
             href="/cart"
@@ -44,9 +56,7 @@ export default function Header() {
           >
             🛒 Sepet ({totalQty})
           </Link>
-
         </nav>
-
       </div>
     </header>
   );

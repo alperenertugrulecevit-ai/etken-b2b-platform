@@ -1,22 +1,9 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
 import { CartProvider } from "@/context/CartContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "ETKEN B2B Platform",
-  description: "Kurumsal Tedarik Platformu",
+export const metadata = {
+  title: "ETKEN B2B",
+  description: "ETKEN B2B Platform",
 };
 
 export default function RootLayout({
@@ -25,11 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="tr">
+      <body>
         <CartProvider>
           {children}
         </CartProvider>

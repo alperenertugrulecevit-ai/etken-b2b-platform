@@ -4,10 +4,13 @@ import { prisma } from "@/lib/prisma";
 
 export default async function ProductsPage() {
   const products = await prisma.product.findMany({
-    orderBy: {
-      id: "asc",
-    },
-  });
+  where: {
+    isActive: true,
+  },
+  orderBy: {
+    id: "asc",
+  },
+});
 
   return (
     <>

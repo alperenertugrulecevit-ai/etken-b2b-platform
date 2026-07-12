@@ -1,4 +1,5 @@
-import { products } from "@/data/products";
+import Header from "@/components/layout/Header";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
 type Props = {
@@ -7,80 +8,120 @@ type Props = {
   }>;
 };
 
-export default async function ProductDetail({ params }: Props) {
+export default async function ProductDetailPage({ params }: Props) {
   const { code } = await params;
 
-  const product = products.find(
-    (p) => p.code === code
-  );
+  const product = await prisma.product.findUnique({
+    where: {
+      code,
+    },
+  });
 
   if (!product) {
     return (
-      <main className="max-w-7xl mx-auto p-10">
-        <h1 className="text-3xl font-bold">
-          Ürün Bulunamadı
-        </h1>
+      <>
+        <Header />
 
-        <p className="mt-4 text-gray-600">
-          Aranan ürün kodu: <strong>{code}</strong>
-        </p>
+        <main className="min-h-screen bg-slate-100">
+          <div className="mx-auto max-w-7xl px-8 py-16">
+            <div className="rounded-2xl bg-white p-10 shadow">
+              <h1 className="text-3xl font-bold">
+                Ürün bulunamadı
+              </h1>
 
-        <Link
-          href="/products"
-          className="text-blue-700 mt-5 inline-block"
-        >
-          ← Ürünlere Dön
-        </Link>
-      </main>
+              <p className="mt-4 text-gray-500">
+                Aranan ürün kodu:{" "}
+                <strong className="text-slate-800">
+                  {code}
+                </strong>
+              </p>
+
+              <Link
+                href="/products"
+                className="mt-6 inline-block rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
+              >
+                ← Ürünlere Dön
+              </Link>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
-    <main className="max-w-7xl mx-auto py-16 px-8">
+    <>
+      <Header />
 
-      <Link
-        href="/products"
-        className="text-blue-700"
-      >
-        ← Ürünlere Dön
-      </Link>
+      <main className="min-h-screen bg-slate-100">
+        <div className="mx-auto max-w-7xl px-8 py-16">
+          <Link
+            href="/products"
+            className="font-semibold text-blue-900 hover:underline"
+          >
+            ← Ürünlere Dön
+          </Link>
 
-      <div className="grid md:grid-cols-2 gap-16 mt-10">
+          <div className="mt-10 grid gap-16 rounded-2xl bg-white p-10 shadow md:grid-cols-2">
+            <div className="flex h-[450px] items-center justify-center rounded-2xl bg-slate-200 text-8xl">
+              📦
+            </div>
 
-        <div className="bg-slate-200 rounded-2xl h-[450px] flex items-center justify-center text-8xl">
-          📦
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-blue-900">
+                {product.category}
+              </p>
+
+              <h1 className="mt-3 text-5xl font-bold text-slate-800">
+                {product.name}
+              </h1>
+
+              <div className="mt-8 space-y-3 text-gray-600">
+                <p>
+                  <strong>Marka:</strong> {product.brand}
+                </p>
+
+                <p>
+                  <strong>Ürün kodu:</strong> {product.code}
+                </p>
+
+                <p>
+                  <strong>Barkod:</strong> {product.barcode}
+                </p>
+
+                <p>
+                  <strong>Tedarikçi:</strong> {product.supplier}
+                </p>
+
+                <p>
+                  <strong>KDV:</strong> %{product.vat}
+                </p>
+              </div>
+
+              <p className="mt-8 text-5xl font-bold text-blue-900">
+                {product.price.toFixed(2)} ₺
+              </p>
+
+              <div className="mt-6 rounded-xl bg-green-50 p-4 text-green-700">
+                <strong>Stok:</strong> {product.stock} adet
+              </div>
+
+              <div className="mt-4 rounded-xl bg-slate-100 p-4 text-slate-700">
+                {product.ownStock
+                  ? "ETKEN deposunda mevcut"
+                  : "Tedarikçi stoğundan sevk edilecek"}
+              </div>
+
+              <Link
+                href="/products"
+                className="mt-8 inline-block rounded-xl bg-blue-900 px-10 py-4 text-xl font-bold text-white hover:bg-blue-800"
+              >
+                Ürünlere Dön
+              </Link>
+            </div>
+          </div>
         </div>
-
-        <div>
-
-          <h1 className="text-5xl font-bold">
-            {product.name}
-          </h1>
-
-          <p className="mt-5 text-xl text-gray-500">
-            Marka: {product.brand}
-          </p>
-
-          <p className="mt-2 text-gray-500">
-            Ürün Kodu: {product.code}
-          </p>
-
-          <p className="mt-8 text-5xl text-blue-900 font-bold">
-            {product.price.toFixed(2)} ₺
-          </p>
-
-          <p className="mt-5 text-green-600 text-xl">
-            Stok: {product.stock}
-          </p>
-
-          <button className="mt-10 bg-blue-900 text-white px-10 py-4 rounded-xl text-xl">
-            Sepete Ekle
-          </button>
-
-        </div>
-
-      </div>
-
-    </main>
+      </main>
+    </>
   );
 }

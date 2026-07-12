@@ -3,22 +3,23 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model Product {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  barcode   String   @unique
-  name      String
-  brand     String
-  category  String
-  supplier  String
-  price     Float
-  stock     Int
-  vat       Int
-  ownStock  Boolean
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  code       String   @unique
+  barcode    String   @unique
+  name       String
+  brand      String
+  category   String
+  supplier   String
+  price      Float
+  stock      Int
+  vat        Int
+  ownStock   Boolean
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
 }
