@@ -5,7 +5,17 @@ import {
 } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import {
+  OrderStatus,
+  StockMovementType,
+} from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
+
+import {
+  createStockMovementWithTransaction,
+} from "@/lib/stock/stock-service";
+
 import OrderEditForm from "@/components/admin/OrderEditForm";
 
 type Props = {
@@ -19,6 +29,24 @@ type SubmittedOrderItem = {
   quantity: number;
 };
 
+const editableStatuses: OrderStatus[] = [
+  OrderStatus.DRAFT,
+  OrderStatus.PENDING,
+  OrderStatus.APPROVED,
+  OrderStatus.PREPARING,
+  OrderStatus.PICKING,
+  OrderStatus.PACKING,
+  OrderStatus.READY_TO_SHIP,
+];
+
+const reservationStatuses: OrderStatus[] = [
+  OrderStatus.APPROVED,
+  OrderStatus.PREPARING,
+  OrderStatus.PICKING,
+  OrderStatus.PACKING,
+  OrderStatus.READY_TO_SHIP,
+];
+
 function formatDateForInput(
   value: Date | null
 ) {
@@ -27,9 +55,11 @@ function formatDateForInput(
   }
 
   const year = value.getFullYear();
+
   const month = String(
     value.getMonth() + 1
   ).padStart(2, "0");
+
   const day = String(
     value.getDate()
   ).padStart(2, "0");
@@ -43,108 +73,114 @@ export default async function EditOrderPage({
   const { id } = await params;
   const orderId = Number(id);
 
-  if (!Number.isInteger(orderId)) {
+  if (
+    !Number.isInteger(orderId) ||
+    orderId <= 0
+  ) {
     notFound();
   }
 
-  const [order, customers, products] =
-    await Promise.all([
-      prisma.order.findUnique({
-        where: {
-          id: orderId,
-        },
+  const [
+    order,
+    customers,
+    products,
+  ] = await Promise.all([
+    prisma.order.findUnique({
+      where: {
+        id: orderId,
+      },
 
-        include: {
-          items: {
-            orderBy: {
-              id: "asc",
-            },
+      include: {
+        items: {
+          orderBy: {
+            id: "asc",
+          },
 
-            select: {
-              id: true,
-              productId: true,
-              quantity: true,
-            },
+          select: {
+            id: true,
+            productId: true,
+            quantity: true,
           },
         },
-      }),
+      },
+    }),
 
-      prisma.customer.findMany({
-        where: {
-          isActive: true,
-        },
+    prisma.customer.findMany({
+      where: {
+        isActive: true,
+      },
 
-        orderBy: {
-          companyName: "asc",
-        },
+      orderBy: {
+        companyName: "asc",
+      },
 
-        select: {
-          id: true,
-          customerCode: true,
-          companyName: true,
-          paymentTermDays: true,
-          discountRate: true,
+      select: {
+        id: true,
+        customerCode: true,
+        companyName: true,
+        paymentTermDays: true,
+        discountRate: true,
 
-          addresses: {
-            where: {
-              isActive: true,
+        addresses: {
+          where: {
+            isActive: true,
+          },
+
+          orderBy: [
+            {
+              isDefault: "desc",
             },
-
-            orderBy: [
-              {
-                isDefault: "desc",
-              },
-              {
-                title: "asc",
-              },
-            ],
-
-            select: {
-              id: true,
-              customerId: true,
-              title: true,
-              city: true,
-              district: true,
-              isDefault: true,
+            {
+              title: "asc",
             },
+          ],
+
+          select: {
+            id: true,
+            customerId: true,
+            title: true,
+            city: true,
+            district: true,
+            isDefault: true,
           },
         },
-      }),
+      },
+    }),
 
-      prisma.product.findMany({
-        where: {
-          isActive: true,
-        },
+    prisma.product.findMany({
+      where: {
+        isActive: true,
+      },
 
-        orderBy: {
-          name: "asc",
-        },
+      orderBy: {
+        name: "asc",
+      },
 
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          price: true,
-          vat: true,
-          stock: true,
-          reservedStock: true,
-        },
-      }),
-    ]);
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        price: true,
+        vat: true,
+        stock: true,
+        reservedStock: true,
+      },
+    }),
+  ]);
 
   if (!order) {
     notFound();
   }
 
-  const editableStatuses = [
-    "DRAFT",
-    "PENDING",
-  ];
-
   if (
-    !editableStatuses.includes(order.status)
+    !editableStatuses.includes(
+      order.status
+    ) ||
+    order.stockDeducted
   ) {
-    redirect(`/admin/orders/${orderId}`);
+    redirect(
+      `/admin/orders/${orderId}`
+    );
   }
 
   async function updateOrder(
@@ -152,67 +188,45 @@ export default async function EditOrderPage({
   ) {
     "use server";
 
-    const existingOrder =
-      await prisma.order.findUnique({
-        where: {
-          id: orderId,
-        },
-
-        select: {
-          id: true,
-          status: true,
-          stockReserved: true,
-          stockDeducted: true,
-        },
-      });
-
-    if (!existingOrder) {
-      throw new Error(
-        "Sipariş bulunamadı."
-      );
-    }
-
-    if (
-      !["DRAFT", "PENDING"].includes(
-        existingOrder.status
-      ) ||
-      existingOrder.stockReserved ||
-      existingOrder.stockDeducted
-    ) {
-      throw new Error(
-        "Bu sipariş artık düzenlenemez."
-      );
-    }
-
     const customerId = Number(
       formData.get("customerId")
     );
 
-    const shippingAddressIdValue = String(
-      formData.get("shippingAddressId") ??
-        ""
-    ).trim();
+    const shippingAddressValue =
+      String(
+        formData.get(
+          "shippingAddressId"
+        ) ?? ""
+      ).trim();
 
-    const requestedDateValue = String(
-      formData.get("requestedDate") ?? ""
-    ).trim();
+    const requestedDateValue =
+      String(
+        formData.get(
+          "requestedDate"
+        ) ?? ""
+      ).trim();
 
     const customerNote =
       String(
-        formData.get("customerNote") ?? ""
+        formData.get(
+          "customerNote"
+        ) ?? ""
       ).trim() || null;
 
     const internalNote =
       String(
-        formData.get("internalNote") ?? ""
+        formData.get(
+          "internalNote"
+        ) ?? ""
       ).trim() || null;
 
     const itemsJson = String(
-      formData.get("itemsJson") ?? "[]"
+      formData.get("itemsJson") ??
+        "[]"
     );
 
-    let submittedItems: SubmittedOrderItem[] =
-      [];
+    let submittedItems:
+      SubmittedOrderItem[] = [];
 
     try {
       submittedItems =
@@ -223,40 +237,30 @@ export default async function EditOrderPage({
       );
     }
 
-    if (!Number.isInteger(customerId)) {
+    if (
+      !Number.isInteger(customerId) ||
+      customerId <= 0
+    ) {
       throw new Error(
         "Geçerli bir müşteri seçilmelidir."
       );
     }
 
-    if (submittedItems.length === 0) {
+    if (
+      submittedItems.length === 0
+    ) {
       throw new Error(
         "Siparişte en az bir ürün bulunmalıdır."
       );
     }
 
-    const customer =
-      await prisma.customer.findFirst({
-        where: {
-          id: customerId,
-          isActive: true,
-        },
-      });
-
-    if (!customer) {
-      throw new Error(
-        "Müşteri bulunamadı veya müşteri pasif."
-      );
-    }
-
-    /*
-     * Aynı ürün birden fazla satırda seçildiyse
-     * miktarları tek ürün altında birleştiriyoruz.
-     */
     const quantityByProduct =
       new Map<number, number>();
 
-    for (const submittedItem of submittedItems) {
+    for (
+      const submittedItem of
+      submittedItems
+    ) {
       const productId = Number(
         submittedItem.productId
       );
@@ -267,6 +271,7 @@ export default async function EditOrderPage({
 
       if (
         !Number.isInteger(productId) ||
+        productId <= 0 ||
         !Number.isInteger(quantity) ||
         quantity <= 0
       ) {
@@ -277,116 +282,247 @@ export default async function EditOrderPage({
 
       quantityByProduct.set(
         productId,
-        (quantityByProduct.get(productId) ??
-          0) + quantity
+        (
+          quantityByProduct.get(
+            productId
+          ) ?? 0
+        ) + quantity
       );
     }
 
-    const productIds = Array.from(
-      quantityByProduct.keys()
-    );
-
-    const selectedProducts =
-      await prisma.product.findMany({
-        where: {
-          id: {
-            in: productIds,
-          },
-          isActive: true,
-        },
-      });
-
-    if (
-      selectedProducts.length !==
-      productIds.length
-    ) {
-      throw new Error(
-        "Siparişte pasif veya geçersiz ürün bulunuyor."
+    const productIds =
+      Array.from(
+        quantityByProduct.keys()
       );
-    }
-
-    const calculatedItems =
-      selectedProducts.map((product) => {
-        const quantity =
-          quantityByProduct.get(product.id) ??
-          0;
-
-        const availableStock =
-          product.stock -
-          product.reservedStock;
-
-        if (quantity > availableStock) {
-          throw new Error(
-            `${product.name} için yeterli kullanılabilir stok yok. ` +
-              `Kullanılabilir stok: ${availableStock}, ` +
-              `sipariş miktarı: ${quantity}.`
-          );
-        }
-
-        const lineNet =
-          product.price * quantity;
-
-        const vatAmount =
-          lineNet *
-          (product.vat / 100);
-
-        const lineTotal =
-          lineNet + vatAmount;
-
-        return {
-          productId: product.id,
-          productCode: product.code,
-          productName: product.name,
-          quantity,
-          unitPrice: product.price,
-          vatRate: product.vat,
-          lineNet,
-          vatAmount,
-          lineTotal,
-        };
-      });
-
-    const subtotal =
-      calculatedItems.reduce(
-        (sum, item) =>
-          sum + item.lineNet,
-        0
-      );
-
-    const vatAmount =
-      calculatedItems.reduce(
-        (sum, item) =>
-          sum + item.vatAmount,
-        0
-      );
-
-    const totalAmount =
-      subtotal + vatAmount;
-
-    const shippingAddressId =
-      shippingAddressIdValue
-        ? Number(shippingAddressIdValue)
-        : null;
-
-    if (shippingAddressId !== null) {
-      const address =
-        await prisma.customerAddress.findFirst({
-          where: {
-            id: shippingAddressId,
-            customerId,
-            isActive: true,
-          },
-        });
-
-      if (!address) {
-        throw new Error(
-          "Teslimat adresi müşteriye ait değil veya adres pasif."
-        );
-      }
-    }
 
     await prisma.$transaction(
       async (tx) => {
+        const existingOrder =
+          await tx.order.findUnique({
+            where: {
+              id: orderId,
+            },
+
+            include: {
+              items: {
+                select: {
+                  productId: true,
+                  productCode: true,
+                  productName: true,
+                  quantity: true,
+                },
+              },
+            },
+          });
+
+        if (!existingOrder) {
+          throw new Error(
+            "Sipariş bulunamadı."
+          );
+        }
+
+        if (
+          !editableStatuses.includes(
+            existingOrder.status
+          ) ||
+          existingOrder.stockDeducted
+        ) {
+          throw new Error(
+            "Bu sipariş artık güncellenemez."
+          );
+        }
+
+        const customer =
+          await tx.customer.findFirst({
+            where: {
+              id: customerId,
+              isActive: true,
+            },
+          });
+
+        if (!customer) {
+          throw new Error(
+            "Müşteri bulunamadı veya müşteri pasif."
+          );
+        }
+
+        const selectedProducts =
+          await tx.product.findMany({
+            where: {
+              id: {
+                in: productIds,
+              },
+
+              isActive: true,
+            },
+          });
+
+        if (
+          selectedProducts.length !==
+          productIds.length
+        ) {
+          throw new Error(
+            "Siparişte pasif veya geçersiz ürün bulunuyor."
+          );
+        }
+
+        /*
+         * Sipariş daha önce rezerve edilmişse
+         * eski rezervasyonu tamamen çözüyoruz.
+         */
+        if (
+          existingOrder.stockReserved
+        ) {
+          for (
+            const item of
+            existingOrder.items
+          ) {
+            await createStockMovementWithTransaction(
+              tx,
+              {
+                productId:
+                  item.productId,
+
+                orderId:
+                  existingOrder.id,
+
+                movementType:
+                  StockMovementType
+                    .RESERVATION_RELEASE,
+
+                physicalChange: 0,
+
+                reservedChange:
+                  -item.quantity,
+
+                documentNumber:
+                  existingOrder
+                    .orderNumber,
+
+                description:
+                  `${existingOrder.orderNumber} numaralı sipariş güncellendiği için eski rezervasyon kaldırıldı.`,
+              }
+            );
+          }
+        }
+
+        const calculatedItems =
+          selectedProducts.map(
+            (product) => {
+              const quantity =
+                quantityByProduct.get(
+                  product.id
+                ) ?? 0;
+
+              /*
+               * Eski rezervasyon çözüldüğü için
+               * kullanılabilir stok doğrudan
+               * güncel fiziksel eksi rezervasyondur.
+               */
+              const availableStock =
+                product.stock -
+                product.reservedStock;
+
+              if (
+                reservationStatuses.includes(
+                  existingOrder.status
+                ) &&
+                quantity >
+                  availableStock
+              ) {
+                throw new Error(
+                  `${product.name} için yeterli kullanılabilir stok yok. ` +
+                    `Kullanılabilir stok: ${availableStock}, ` +
+                    `sipariş miktarı: ${quantity}.`
+                );
+              }
+
+              const lineNet =
+                product.price *
+                quantity;
+
+              const vatAmount =
+                lineNet *
+                (product.vat / 100);
+
+              const lineTotal =
+                lineNet +
+                vatAmount;
+
+              return {
+                productId:
+                  product.id,
+
+                productCode:
+                  product.code,
+
+                productName:
+                  product.name,
+
+                quantity,
+
+                unitPrice:
+                  product.price,
+
+                vatRate:
+                  product.vat,
+
+                lineNet,
+
+                vatAmount,
+
+                lineTotal,
+              };
+            }
+          );
+
+        const subtotal =
+          calculatedItems.reduce(
+            (sum, item) =>
+              sum + item.lineNet,
+            0
+          );
+
+        const vatAmount =
+          calculatedItems.reduce(
+            (sum, item) =>
+              sum +
+              item.vatAmount,
+            0
+          );
+
+        const totalAmount =
+          subtotal + vatAmount;
+
+        const shippingAddressId =
+          shippingAddressValue
+            ? Number(
+                shippingAddressValue
+              )
+            : null;
+
+        if (
+          shippingAddressId !== null
+        ) {
+          const address =
+            await tx.customerAddress.findFirst({
+              where: {
+                id:
+                  shippingAddressId,
+
+                customerId,
+
+                isActive: true,
+              },
+            });
+
+          if (!address) {
+            throw new Error(
+              "Teslimat adresi müşteriye ait değil veya adres pasif."
+            );
+          }
+        }
+
         await tx.orderItem.deleteMany({
           where: {
             orderId,
@@ -400,6 +536,7 @@ export default async function EditOrderPage({
 
           data: {
             customerId,
+
             shippingAddressId,
 
             requestedDate:
@@ -410,36 +547,112 @@ export default async function EditOrderPage({
                 : null,
 
             paymentTermDays:
-              customer.paymentTermDays,
+              customer
+                .paymentTermDays,
 
             discountRate: 0,
+
             discountAmount: 0,
 
             subtotal,
+
             vatAmount,
+
             totalAmount,
 
             customerNote,
+
             internalNote,
 
+            stockReserved: false,
+
             items: {
-              create: calculatedItems,
+              create:
+                calculatedItems,
             },
           },
         });
+
+        /*
+         * Sipariş güncellendikten sonra
+         * mevcut durum rezervasyon gerektiriyorsa
+         * yeni ürün ve miktarlara göre
+         * rezervasyonu tekrar oluşturuyoruz.
+         */
+        if (
+          reservationStatuses.includes(
+            existingOrder.status
+          )
+        ) {
+          for (
+            const item of
+            calculatedItems
+          ) {
+            await createStockMovementWithTransaction(
+              tx,
+              {
+                productId:
+                  item.productId,
+
+                orderId:
+                  existingOrder.id,
+
+                movementType:
+                  StockMovementType
+                    .RESERVATION_CREATE,
+
+                physicalChange: 0,
+
+                reservedChange:
+                  item.quantity,
+
+                documentNumber:
+                  existingOrder
+                    .orderNumber,
+
+                description:
+                  `${existingOrder.orderNumber} numaralı sipariş güncellendiği için rezervasyon yeniden oluşturuldu.`,
+              }
+            );
+          }
+
+          await tx.order.update({
+            where: {
+              id: orderId,
+            },
+
+            data: {
+              stockReserved: true,
+
+              stockReservedAt:
+                new Date(),
+            },
+          });
+        }
+      },
+      {
+        maxWait: 10000,
+        timeout: 20000,
       }
     );
 
+    const detailPath =
+      `/admin/orders/${orderId}`;
+
+    revalidatePath("/");
+    revalidatePath("/products");
     revalidatePath("/admin");
+    revalidatePath("/admin/products");
     revalidatePath("/admin/orders");
     revalidatePath(
-      `/admin/orders/${orderId}`
+      "/admin/orders/new"
     );
+    revalidatePath(detailPath);
     revalidatePath(
-      `/admin/orders/${orderId}/edit`
+      `${detailPath}/edit`
     );
 
-    redirect(`/admin/orders/${orderId}`);
+    redirect(detailPath);
   }
 
   return (
@@ -452,7 +665,9 @@ export default async function EditOrderPage({
 
           <p className="mt-2 text-gray-500">
             {order.orderNumber} numaralı
-            siparişin bilgilerini güncelleyin.
+            siparişin müşteri, adres,
+            ürün ve miktar bilgilerini
+            güncelleyin.
           </p>
         </div>
 
@@ -465,28 +680,34 @@ export default async function EditOrderPage({
       </div>
 
       <div className="mt-8 rounded-xl bg-blue-50 p-5 text-blue-800">
-        Bu sipariş henüz onaylanmadığı için müşteri,
-        adres, ürün, miktar, tarih ve not bilgileri
-        güncellenebilir.
+        {order.stockReserved
+          ? "Bu sipariş rezerve edilmiş durumda. Kaydetme sırasında eski rezervasyon kaldırılacak ve yeni miktarlara göre yeniden oluşturulacaktır."
+          : "Bu sipariş henüz fiziksel stoktan düşülmediği için güvenli şekilde güncellenebilir."}
       </div>
 
       <OrderEditForm
         customers={customers}
         products={products}
-        initialCustomerId={order.customerId}
+        initialCustomerId={
+          order.customerId
+        }
         initialShippingAddressId={
           order.shippingAddressId
         }
-        initialRequestedDate={formatDateForInput(
-          order.requestedDate
-        )}
+        initialRequestedDate={
+          formatDateForInput(
+            order.requestedDate
+          )
+        }
         initialCustomerNote={
           order.customerNote ?? ""
         }
         initialInternalNote={
           order.internalNote ?? ""
         }
-        initialLines={order.items}
+        initialLines={
+          order.items
+        }
         action={updateOrder}
       />
     </section>

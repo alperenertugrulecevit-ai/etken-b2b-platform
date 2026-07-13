@@ -9,21 +9,23 @@ datasource db {
 }
 
 model Product {
-  id            Int         @id @default(autoincrement())
-  code          String      @unique
-  barcode       String      @unique
-  name          String
-  brand         String
-  category      String
-  supplier      String
-  price         Float
-  stock         Int
-  reservedStock Int         @default(0)
-  vat           Int
-  ownStock      Boolean
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  orderItems    OrderItem[]
+  id                 Int                 @id @default(autoincrement())
+  code               String              @unique
+  barcode            String              @unique
+  name               String
+  brand              String
+  category           String
+  supplier           String
+  price              Float
+  stock              Int
+  reservedStock      Int                 @default(0)
+  vat                Int
+  ownStock           Boolean
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  orderItems         OrderItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  stockMovements     StockMovement[]
 }
 
 model Category {
@@ -36,18 +38,19 @@ model Category {
 }
 
 model Supplier {
-  id              Int      @id @default(autoincrement())
-  name            String   @unique
-  taxNumber       String?  @unique
+  id              Int             @id @default(autoincrement())
+  name            String          @unique
+  taxNumber       String?         @unique
   contactName     String?
   phone           String?
   email           String?
-  paymentTermDays Int      @default(0)
-  discountRate    Float    @default(0)
-  deliveryDays    Int      @default(1)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  paymentTermDays Int             @default(0)
+  discountRate    Float           @default(0)
+  deliveryDays    Int             @default(1)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  purchaseOrders  PurchaseOrder[]
 }
 
 model Brand {
@@ -148,6 +151,7 @@ model Order {
   customer        Customer         @relation(fields: [customerId], references: [id])
   shippingAddress CustomerAddress? @relation(fields: [shippingAddressId], references: [id])
   items           OrderItem[]
+  stockMovements  StockMovement[]
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -174,4 +178,107 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id              Int                 @id @default(autoincrement())
+  purchaseNumber  String              @unique
+  supplierId      Int
+  status          PurchaseOrderStatus @default(DRAFT)
+  orderDate       DateTime            @default(now())
+  expectedDate    DateTime?
+  paymentTermDays Int                 @default(0)
+  discountRate    Float               @default(0)
+  subtotal        Float               @default(0)
+  discountAmount  Float               @default(0)
+  vatAmount       Float               @default(0)
+  totalAmount     Float               @default(0)
+  supplierNote    String?
+  internalNote    String?
+  approvedAt      DateTime?
+  receivedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  supplier       Supplier            @relation(fields: [supplierId], references: [id])
+  items          PurchaseOrderItem[]
+  stockMovements StockMovement[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([expectedDate])
+}
+
+model PurchaseOrderItem {
+  id               Int      @id @default(autoincrement())
+  purchaseOrderId  Int
+  productId        Int
+  productCode      String
+  productName      String
+  orderedQuantity  Int
+  receivedQuantity Int      @default(0)
+  unitPrice        Float
+  vatRate          Int
+  lineNet          Float
+  vatAmount        Float
+  lineTotal        Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+enum StockMovementType {
+  INITIAL_STOCK
+  PURCHASE_RECEIPT
+  MANUAL_IN
+  MANUAL_OUT
+  RESERVATION_CREATE
+  RESERVATION_RELEASE
+  SALE_SHIPMENT
+  SALE_RETURN
+  COUNT_INCREASE
+  COUNT_DECREASE
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+model StockMovement {
+  id                    Int               @id @default(autoincrement())
+  productId             Int
+  orderId               Int?
+  purchaseOrderId       Int?
+  movementType          StockMovementType
+  physicalChange        Int               @default(0)
+  reservedChange        Int               @default(0)
+  physicalBalanceAfter  Int
+  reservedBalanceAfter  Int
+  availableBalanceAfter Int
+  documentNumber        String?
+  description           String?
+  createdAt             DateTime          @default(now())
+
+  product       Product        @relation(fields: [productId], references: [id])
+  order         Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([orderId])
+  @@index([purchaseOrderId])
+  @@index([movementType])
+  @@index([createdAt])
 }

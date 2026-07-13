@@ -319,12 +319,12 @@ export default async function AdminProductsPage() {
 
                   <td className="p-4">
                     <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/products/${product.code}`}
-                        className="rounded-lg bg-slate-100 px-4 py-2 font-semibold hover:bg-slate-200"
-                      >
-                        Görüntüle
-                      </Link>
+<Link
+  href={`/admin/products/${product.id}`}
+  className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white hover:bg-slate-700"
+>
+  Detay
+</Link>
 
                       <Link
                         href={`/admin/products/${product.id}/edit`}

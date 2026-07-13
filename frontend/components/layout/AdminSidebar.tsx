@@ -61,6 +61,27 @@ export default function AdminSidebar() {
           🛒 Sipariş Yönetimi
         </Link>
 
+        <Link
+          href="/admin/purchase-orders"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🧾 Satın Alma
+        </Link>
+
+        <Link
+          href="/admin/stock/movements"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          📋 Stok Hareketleri
+        </Link>
+
+        <Link
+          href="/admin/stock/manual"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          📥 Manuel Stok İşlemi
+        </Link>
+
         <span className="block rounded-xl p-3 text-slate-500">
           🏬 Depo / WMS
         </span>

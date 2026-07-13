@@ -1,10 +1,16 @@
 "use server";
 
-import { OrderStatus } from "@prisma/client";
+import {
+  OrderStatus,
+  StockMovementType,
+} from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 
 const reservationStatuses: OrderStatus[] = [
   OrderStatus.APPROVED,
@@ -14,7 +20,7 @@ const reservationStatuses: OrderStatus[] = [
   OrderStatus.READY_TO_SHIP,
 ];
 
-const stockDeductionStatuses: OrderStatus[] = [
+const shipmentStatuses: OrderStatus[] = [
   OrderStatus.SHIPPED,
   OrderStatus.DELIVERED,
 ];
@@ -25,7 +31,7 @@ export async function updateOrderStatus(
 ) {
   const statusValue = String(
     formData.get("status") ?? ""
-  );
+  ).trim();
 
   const validStatuses = Object.values(OrderStatus);
 
@@ -39,7 +45,17 @@ export async function updateOrderStatus(
     );
   }
 
-  const newStatus = statusValue as OrderStatus;
+  if (
+    !Number.isInteger(orderId) ||
+    orderId <= 0
+  ) {
+    throw new Error(
+      "Geçerli bir sipariş kimliği gereklidir."
+    );
+  }
+
+  const newStatus =
+    statusValue as OrderStatus;
 
   await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
@@ -60,73 +76,68 @@ export async function updateOrderStatus(
     });
 
     if (!order) {
-      throw new Error("Sipariş bulunamadı.");
+      throw new Error(
+        "Sipariş bulunamadı."
+      );
     }
 
     /*
-     * 1. ONAYLANDI VE SONRAKİ HAZIRLIK STATÜLERİ
+     * Aynı durum yeniden seçildiyse
+     * stok hareketi üretmeden işlemi bitir.
+     */
+    if (order.status === newStatus) {
+      return;
+    }
+
+    /*
+     * 1. REZERVASYON OLUŞTURMA
      *
-     * Sipariş henüz rezerve edilmediyse ürünleri rezerve eder.
+     * Sipariş Onaylandı, Hazırlanıyor,
+     * Toplanıyor, Paketleniyor veya
+     * Sevke Hazır durumlarından birine alınırsa
+     * ve henüz rezervasyon yoksa stok rezerve edilir.
      */
     if (
-      reservationStatuses.includes(newStatus) &&
+      reservationStatuses.includes(
+        newStatus
+      ) &&
       !order.stockReserved &&
       !order.stockDeducted
     ) {
       for (const item of order.items) {
-        const product = await tx.product.findUnique({
-          where: {
-            id: item.productId,
-          },
+        await createStockMovementWithTransaction(
+          tx,
+          {
+            productId: item.productId,
+            orderId: order.id,
 
-          select: {
-            id: true,
-            name: true,
-            stock: true,
-            reservedStock: true,
-            isActive: true,
-          },
-        });
+            movementType:
+              StockMovementType.RESERVATION_CREATE,
 
-        if (!product || !product.isActive) {
-          throw new Error(
-            `${item.productName} ürünü bulunamadı veya ürün pasif.`
-          );
-        }
+            physicalChange: 0,
+            reservedChange:
+              item.quantity,
 
-        const availableStock =
-          product.stock - product.reservedStock;
+            documentNumber:
+              order.orderNumber,
 
-        if (availableStock < item.quantity) {
-          throw new Error(
-            `${item.productName} için yeterli kullanılabilir stok yok. ` +
-              `Kullanılabilir stok: ${availableStock}, ` +
-              `sipariş miktarı: ${item.quantity}.`
-          );
-        }
-
-        await tx.product.update({
-          where: {
-            id: item.productId,
-          },
-
-          data: {
-            reservedStock: {
-              increment: item.quantity,
-            },
-          },
-        });
+            description:
+              `${order.orderNumber} numaralı sipariş için stok rezervasyonu oluşturuldu.`,
+          }
+        );
       }
 
       await tx.order.update({
         where: {
-          id: orderId,
+          id: order.id,
         },
 
         data: {
           status: newStatus,
           stockReserved: true,
-          stockReservedAt: new Date(),
+          stockReservedAt:
+            order.stockReservedAt ??
+            new Date(),
         },
       });
 
@@ -134,79 +145,60 @@ export async function updateOrderStatus(
     }
 
     /*
-     * 2. SEVK EDİLDİ VEYA TESLİM EDİLDİ
+     * 2. SEVKİYAT
      *
-     * Sipariş rezerve edilmemişse önce stok yeterliliğini kontrol eder.
-     * Ardından fiziksel stoktan düşer.
-     * Rezerve edilen miktarı da kaldırır.
+     * Sipariş Sevk Edildi veya doğrudan
+     * Teslim Edildi durumuna alınırsa:
+     *
+     * - Fiziksel stok düşer.
+     * - Mevcut rezervasyon kaldırılır.
+     * - SALE_SHIPMENT hareketi oluşur.
      */
     if (
-      stockDeductionStatuses.includes(newStatus) &&
+      shipmentStatuses.includes(
+        newStatus
+      ) &&
       !order.stockDeducted
     ) {
       for (const item of order.items) {
-        const product = await tx.product.findUnique({
-          where: {
-            id: item.productId,
-          },
+        await createStockMovementWithTransaction(
+          tx,
+          {
+            productId: item.productId,
+            orderId: order.id,
 
-          select: {
-            id: true,
-            name: true,
-            stock: true,
-            reservedStock: true,
-          },
-        });
+            movementType:
+              StockMovementType.SALE_SHIPMENT,
 
-        if (!product) {
-          throw new Error(
-            `${item.productName} ürünü bulunamadı.`
-          );
-        }
+            physicalChange:
+              -item.quantity,
 
-        if (product.stock < item.quantity) {
-          throw new Error(
-            `${item.productName} için fiziksel stok yetersiz. ` +
-              `Fiziksel stok: ${product.stock}, ` +
-              `sipariş miktarı: ${item.quantity}.`
-          );
-        }
+            reservedChange:
+              order.stockReserved
+                ? -item.quantity
+                : 0,
 
-        const reservedQuantityToRelease =
-          order.stockReserved
-            ? Math.min(
-                product.reservedStock,
-                item.quantity
-              )
-            : 0;
+            documentNumber:
+              order.orderNumber,
 
-        await tx.product.update({
-          where: {
-            id: item.productId,
-          },
-
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-
-            reservedStock: {
-              decrement: reservedQuantityToRelease,
-            },
-          },
-        });
+            description:
+              `${order.orderNumber} numaralı sipariş için satış sevkiyatı yapıldı.`,
+          }
+        );
       }
 
       await tx.order.update({
         where: {
-          id: orderId,
+          id: order.id,
         },
 
         data: {
           status: newStatus,
           stockReserved: false,
           stockDeducted: true,
-          stockDeductedAt: new Date(),
+          stockDeductedAt:
+            order.stockDeductedAt ??
+            new Date(),
         },
       });
 
@@ -216,55 +208,54 @@ export async function updateOrderStatus(
     /*
      * 3. İPTAL
      *
-     * Henüz sevk edilmemiş siparişin rezervasyonunu kaldırır.
-     * Fiziksel stoktan düşülmüş siparişlerde otomatik stok iadesi yapmaz.
+     * Sipariş rezerve edilmiş fakat henüz
+     * fiziksel stoktan düşülmemişse rezervasyon çözülür.
+     *
+     * Sevk edilmiş siparişlerde bu işlem fiziksel
+     * stoğu otomatik geri eklemez. Daha sonra ayrı
+     * satış iadesi süreci oluşturacağız.
      */
-    if (newStatus === OrderStatus.CANCELLED) {
+    if (
+      newStatus ===
+      OrderStatus.CANCELLED
+    ) {
       if (
         order.stockReserved &&
         !order.stockDeducted
       ) {
         for (const item of order.items) {
-          const product = await tx.product.findUnique({
-            where: {
-              id: item.productId,
-            },
+          await createStockMovementWithTransaction(
+            tx,
+            {
+              productId: item.productId,
+              orderId: order.id,
 
-            select: {
-              reservedStock: true,
-            },
-          });
+              movementType:
+                StockMovementType.RESERVATION_RELEASE,
 
-          if (!product) {
-            continue;
-          }
+              physicalChange: 0,
+              reservedChange:
+                -item.quantity,
 
-          const quantityToRelease = Math.min(
-            product.reservedStock,
-            item.quantity
+              documentNumber:
+                order.orderNumber,
+
+              description:
+                `${order.orderNumber} numaralı sipariş iptal edildiği için rezervasyon kaldırıldı.`,
+            }
           );
-
-          await tx.product.update({
-            where: {
-              id: item.productId,
-            },
-
-            data: {
-              reservedStock: {
-                decrement: quantityToRelease,
-              },
-            },
-          });
         }
       }
 
       await tx.order.update({
         where: {
-          id: orderId,
+          id: order.id,
         },
 
         data: {
-          status: OrderStatus.CANCELLED,
+          status:
+            OrderStatus.CANCELLED,
+
           stockReserved: false,
         },
       });
@@ -273,14 +264,70 @@ export async function updateOrderStatus(
     }
 
     /*
-     * 4. DİĞER DURUMLAR
+     * 4. REZERVASYON DURUMUNDAN GERİYE DÖNÜŞ
      *
-     * Yalnızca sipariş durumunu günceller.
-     * Stok daha önce düşülmüşse yeniden düşmez.
+     * Rezerve edilmiş sipariş Taslak veya
+     * Bekliyor durumuna alınırsa rezervasyon kaldırılır.
+     *
+     * Fiziksel stok daha önce düşmüşse otomatik
+     * stok iadesi yapılmaz.
+     */
+    if (
+      (
+        newStatus ===
+          OrderStatus.DRAFT ||
+        newStatus ===
+          OrderStatus.PENDING
+      ) &&
+      order.stockReserved &&
+      !order.stockDeducted
+    ) {
+      for (const item of order.items) {
+        await createStockMovementWithTransaction(
+          tx,
+          {
+            productId: item.productId,
+            orderId: order.id,
+
+            movementType:
+              StockMovementType.RESERVATION_RELEASE,
+
+            physicalChange: 0,
+            reservedChange:
+              -item.quantity,
+
+            documentNumber:
+              order.orderNumber,
+
+            description:
+              `${order.orderNumber} numaralı sipariş başlangıç durumuna döndürüldüğü için rezervasyon kaldırıldı.`,
+          }
+        );
+      }
+
+      await tx.order.update({
+        where: {
+          id: order.id,
+        },
+
+        data: {
+          status: newStatus,
+          stockReserved: false,
+        },
+      });
+
+      return;
+    }
+
+    /*
+     * 5. DİĞER DURUMLAR
+     *
+     * Stok etkisi gerekmiyorsa yalnızca
+     * sipariş durumu güncellenir.
      */
     await tx.order.update({
       where: {
-        id: orderId,
+        id: order.id,
       },
 
       data: {
