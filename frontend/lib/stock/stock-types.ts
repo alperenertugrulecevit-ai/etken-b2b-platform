@@ -8,6 +8,8 @@ export type CreateStockMovementInput = {
 
   orderId?: number | null;
 
+  purchaseOrderId?: number | null;
+
   movementType: StockMovementType;
 
   physicalChange?: number;

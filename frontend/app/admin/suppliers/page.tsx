@@ -1,16 +1,46 @@
 import Link from "next/link";
+
+import {
+  getCities,
+  getDistrictsOfEachCity,
+} from "turkey-neighbourhoods";
+
 import { prisma } from "@/lib/prisma";
+
+import CityDistrictSelect from "@/components/admin/CityDistrictSelect";
+
 import {
   createSupplier,
   toggleSupplierStatus,
 } from "./actions";
 
-export default async function AdminSuppliersPage() {
-  const suppliers = await prisma.supplier.findMany({
-    orderBy: {
-      name: "asc",
-    },
+function formatRate(value: number) {
+  return value.toLocaleString("tr-TR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   });
+}
+
+export default async function AdminSuppliersPage() {
+  const suppliers =
+    await prisma.supplier.findMany({
+      orderBy: {
+        name: "asc",
+      },
+
+      include: {
+        _count: {
+          select: {
+            purchaseOrders: true,
+          },
+        },
+      },
+    });
+
+  const cities = getCities();
+
+  const districtsByCityCode =
+    getDistrictsOfEachCity();
 
   return (
     <section className="p-10">
@@ -20,18 +50,26 @@ export default async function AdminSuppliersPage() {
         </h1>
 
         <p className="mt-2 text-gray-500">
-          Tedarikçi firmaları ve ticari koşullarını yönetin.
+          Tedarikçi iletişim, adres, vergi ve
+          ticari koşullarını yönetin.
         </p>
       </div>
 
-      <div className="mt-10 grid gap-8 xl:grid-cols-[420px_1fr]">
+      <div className="mt-10 grid gap-8 2xl:grid-cols-[460px_1fr]">
+        {/* YENİ TEDARİKÇİ FORMU */}
+
         <form
           action={createSupplier}
           className="h-fit rounded-2xl bg-white p-6 shadow"
         >
-          <h2 className="text-xl font-bold">
+          <h2 className="text-2xl font-bold">
             Yeni Tedarikçi
           </h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Firma, vergi, adres ve ticari
+            koşul bilgilerini girin.
+          </p>
 
           <div className="mt-6 space-y-4">
             <label className="block">
@@ -41,23 +79,37 @@ export default async function AdminSuppliersPage() {
 
               <input
                 name="name"
-                placeholder="Tedarikçi firma adı"
+                placeholder="Tedarikçi firma unvanı"
                 className="w-full rounded-xl border p-4"
                 required
               />
             </label>
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold">
-                Vergi Numarası
-              </span>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-semibold">
+                  Vergi Dairesi
+                </span>
 
-              <input
-                name="taxNumber"
-                placeholder="Vergi numarası"
-                className="w-full rounded-xl border p-4"
-              />
-            </label>
+                <input
+                  name="taxOffice"
+                  placeholder="Vergi dairesi"
+                  className="w-full rounded-xl border p-4"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-semibold">
+                  Vergi Numarası
+                </span>
+
+                <input
+                  name="taxNumber"
+                  placeholder="Vergi numarası"
+                  className="w-full rounded-xl border p-4"
+                />
+              </label>
+            </div>
 
             <label className="block">
               <span className="mb-2 block text-sm font-semibold">
@@ -98,16 +150,51 @@ export default async function AdminSuppliersPage() {
               </label>
             </div>
 
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">
+                Açık Adres
+              </span>
+
+              <textarea
+                name="address"
+                rows={3}
+                placeholder="Cadde, sokak, bina ve diğer adres bilgileri"
+                className="w-full resize-none rounded-xl border p-4"
+              />
+            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <CityDistrictSelect
+                cities={cities}
+                districtsByCityCode={
+                  districtsByCityCode
+                }
+              />
+            </div>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">
+                Posta Kodu
+              </span>
+
+              <input
+                name="postalCode"
+                placeholder="Posta kodu"
+                className="w-full rounded-xl border p-4"
+              />
+            </label>
+
             <div className="grid gap-4 md:grid-cols-3">
               <label>
                 <span className="mb-2 block text-sm font-semibold">
-                  Vade
+                  Vade (Gün)
                 </span>
 
                 <input
                   name="paymentTermDays"
                   type="number"
                   min="0"
+                  step="1"
                   defaultValue="0"
                   className="w-full rounded-xl border p-4"
                 />
@@ -122,6 +209,7 @@ export default async function AdminSuppliersPage() {
                   name="discountRate"
                   type="number"
                   min="0"
+                  max="100"
                   step="0.01"
                   defaultValue="0"
                   className="w-full rounded-xl border p-4"
@@ -130,13 +218,14 @@ export default async function AdminSuppliersPage() {
 
               <label>
                 <span className="mb-2 block text-sm font-semibold">
-                  Termin
+                  Teslim Günü
                 </span>
 
                 <input
                   name="deliveryDays"
                   type="number"
                   min="0"
+                  step="1"
                   defaultValue="1"
                   className="w-full rounded-xl border p-4"
                 />
@@ -152,18 +241,55 @@ export default async function AdminSuppliersPage() {
           </button>
         </form>
 
+        {/* TEDARİKÇİ LİSTESİ */}
+
         <div className="overflow-x-auto rounded-2xl bg-white shadow">
-          <table className="w-full min-w-[1150px] text-left">
+          <table className="w-full min-w-[1750px] text-left">
             <thead className="bg-blue-900 text-white">
               <tr>
-                <th className="p-4">Firma</th>
-                <th className="p-4">Yetkili</th>
-                <th className="p-4">İletişim</th>
-                <th className="p-4">Vade</th>
-                <th className="p-4">İskonto</th>
-                <th className="p-4">Termin</th>
-                <th className="p-4">Durum</th>
-                <th className="p-4">İşlemler</th>
+                <th className="p-4">
+                  Firma
+                </th>
+
+                <th className="p-4">
+                  Vergi Bilgileri
+                </th>
+
+                <th className="p-4">
+                  Yetkili
+                </th>
+
+                <th className="p-4">
+                  İletişim
+                </th>
+
+                <th className="p-4">
+                  Adres
+                </th>
+
+                <th className="p-4">
+                  Vade
+                </th>
+
+                <th className="p-4">
+                  İskonto
+                </th>
+
+                <th className="p-4">
+                  Teslim
+                </th>
+
+                <th className="p-4">
+                  Satın Alma
+                </th>
+
+                <th className="p-4">
+                  Durum
+                </th>
+
+                <th className="p-4">
+                  İşlemler
+                </th>
               </tr>
             </thead>
 
@@ -172,16 +298,31 @@ export default async function AdminSuppliersPage() {
                 <tr
                   key={supplier.id}
                   className={`border-b hover:bg-slate-50 ${
-                    !supplier.isActive ? "opacity-60" : ""
+                    !supplier.isActive
+                      ? "opacity-60"
+                      : ""
                   }`}
                 >
                   <td className="p-4">
-                    <p className="font-semibold">
+                    <p className="font-bold text-blue-900">
                       {supplier.name}
                     </p>
 
                     <p className="mt-1 text-sm text-gray-500">
-                      {supplier.taxNumber || "Vergi no girilmedi"}
+                      Tedarikçi No:{" "}
+                      {supplier.id}
+                    </p>
+                  </td>
+
+                  <td className="p-4">
+                    <p className="font-semibold">
+                      {supplier.taxOffice ||
+                        "Vergi dairesi yok"}
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-500">
+                      {supplier.taxNumber ||
+                        "Vergi numarası yok"}
                     </p>
                   </td>
 
@@ -190,7 +331,9 @@ export default async function AdminSuppliersPage() {
                   </td>
 
                   <td className="p-4">
-                    <p>{supplier.phone || "-"}</p>
+                    <p>
+                      {supplier.phone || "-"}
+                    </p>
 
                     <p className="mt-1 text-sm text-gray-500">
                       {supplier.email || "-"}
@@ -198,15 +341,48 @@ export default async function AdminSuppliersPage() {
                   </td>
 
                   <td className="p-4">
+                    <p className="font-semibold">
+                      {supplier.city || "-"}
+
+                      {supplier.district
+                        ? ` / ${supplier.district}`
+                        : ""}
+                    </p>
+
+                    <p className="mt-1 max-w-72 truncate text-sm text-gray-500">
+                      {supplier.address ||
+                        "Adres girilmedi"}
+                    </p>
+
+                    {supplier.postalCode && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        Posta Kodu:{" "}
+                        {supplier.postalCode}
+                      </p>
+                    )}
+                  </td>
+
+                  <td className="p-4">
                     {supplier.paymentTermDays} gün
                   </td>
 
                   <td className="p-4">
-                    %{supplier.discountRate.toFixed(2)}
+                    %
+                    {formatRate(
+                      supplier.discountRate
+                    )}
                   </td>
 
                   <td className="p-4">
                     {supplier.deliveryDays} gün
+                  </td>
+
+                  <td className="p-4 font-semibold">
+                    {
+                      supplier._count
+                        .purchaseOrders
+                    }{" "}
+                    kayıt
                   </td>
 
                   <td className="p-4">
@@ -217,7 +393,9 @@ export default async function AdminSuppliersPage() {
                           : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {supplier.isActive ? "Aktif" : "Pasif"}
+                      {supplier.isActive
+                        ? "Aktif"
+                        : "Pasif"}
                     </span>
                   </td>
 
@@ -258,10 +436,11 @@ export default async function AdminSuppliersPage() {
               {suppliers.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
-                    className="p-10 text-center text-gray-500"
+                    colSpan={11}
+                    className="p-12 text-center text-gray-500"
                   >
-                    Henüz tedarikçi oluşturulmadı.
+                    Henüz tedarikçi
+                    oluşturulmadı.
                   </td>
                 </tr>
               )}

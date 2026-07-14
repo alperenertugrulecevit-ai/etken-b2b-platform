@@ -40,10 +40,15 @@ model Category {
 model Supplier {
   id              Int             @id @default(autoincrement())
   name            String          @unique
+  taxOffice       String?
   taxNumber       String?         @unique
   contactName     String?
   phone           String?
   email           String?
+  address         String?
+  city            String?
+  district        String?
+  postalCode      String?
   paymentTermDays Int             @default(0)
   discountRate    Float           @default(0)
   deliveryDays    Int             @default(1)

@@ -53,19 +53,40 @@ async function validateOrderReference({
 
   if (!order) {
     throw new Error(
-      "Stok hareketine bağlanmak istenen sipariş bulunamadı."
+      "Stok hareketine bağlanacak satış siparişi bulunamadı."
     );
   }
 }
 
-/**
- * Verilen Prisma transaction içerisinde stok hareketi oluşturur.
- *
- * Bu fonksiyon fiziksel ve rezerve stok bakiyelerini günceller,
- * ardından işlem sonrası bakiyeleri StockMovement tablosuna kaydeder.
- *
- * Başka bir transaction içerisinden çağrılacaksa bu fonksiyon kullanılır.
- */
+async function validatePurchaseOrderReference({
+  db,
+  purchaseOrderId,
+}: {
+  db: DatabaseClient;
+  purchaseOrderId: number | null;
+}) {
+  if (purchaseOrderId === null) {
+    return;
+  }
+
+  const purchaseOrder =
+    await db.purchaseOrder.findUnique({
+      where: {
+        id: purchaseOrderId,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (!purchaseOrder) {
+    throw new Error(
+      "Stok hareketine bağlanacak satın alma siparişi bulunamadı."
+    );
+  }
+}
+
 export async function createStockMovementWithTransaction(
   db: Prisma.TransactionClient,
   input: CreateStockMovementInput
@@ -78,6 +99,9 @@ export async function createStockMovementWithTransaction(
 
   const orderId =
     input.orderId ?? null;
+
+  const purchaseOrderId =
+    input.purchaseOrderId ?? null;
 
   const changesValidation =
     validateStockChanges({
@@ -102,11 +126,34 @@ export async function createStockMovementWithTransaction(
 
   if (
     orderId !== null &&
-    (!Number.isInteger(orderId) ||
-      orderId <= 0)
+    (
+      !Number.isInteger(orderId) ||
+      orderId <= 0
+    )
   ) {
     throw new Error(
-      "Geçerli bir sipariş kimliği gereklidir."
+      "Geçerli bir satış siparişi kimliği gereklidir."
+    );
+  }
+
+  if (
+    purchaseOrderId !== null &&
+    (
+      !Number.isInteger(purchaseOrderId) ||
+      purchaseOrderId <= 0
+    )
+  ) {
+    throw new Error(
+      "Geçerli bir satın alma siparişi kimliği gereklidir."
+    );
+  }
+
+  if (
+    orderId !== null &&
+    purchaseOrderId !== null
+  ) {
+    throw new Error(
+      "Bir stok hareketi aynı anda hem satış hem satın alma siparişine bağlanamaz."
     );
   }
 
@@ -134,6 +181,11 @@ export async function createStockMovementWithTransaction(
   await validateOrderReference({
     db,
     orderId,
+  });
+
+  await validatePurchaseOrderReference({
+    db,
+    purchaseOrderId,
   });
 
   const balances =
@@ -177,9 +229,12 @@ export async function createStockMovementWithTransaction(
   const movement =
     await db.stockMovement.create({
       data: {
-        productId: product.id,
+        productId:
+          product.id,
 
         orderId,
+
+        purchaseOrderId,
 
         movementType:
           input.movementType,
@@ -215,31 +270,18 @@ export async function createStockMovementWithTransaction(
   };
 }
 
-/**
- * Tek başına bir stok hareketi oluşturur.
- *
- * Ürün bakiyesinin güncellenmesi ve hareket kaydının oluşturulması
- * aynı transaction içerisinde çalışır.
- */
 export async function createStockMovement(
   input: CreateStockMovementInput
 ): Promise<StockMovementResult> {
   return prisma.$transaction(
-    async (tx) => {
-      return createStockMovementWithTransaction(
+    async (tx) =>
+      createStockMovementWithTransaction(
         tx,
         input
-      );
-    }
+      )
   );
 }
 
-/**
- * Birden fazla stok hareketini tek transaction içerisinde oluşturur.
- *
- * Örneğin bir siparişte birden fazla ürün rezervasyonu veya
- * sevkiyat işlemi yapılırken kullanılır.
- */
 export async function createManyStockMovements(
   inputs: CreateStockMovementInput[]
 ): Promise<StockMovementResult[]> {
@@ -251,17 +293,16 @@ export async function createManyStockMovements(
 
   return prisma.$transaction(
     async (tx) => {
-      const results: StockMovementResult[] =
-        [];
+      const results:
+        StockMovementResult[] = [];
 
       for (const input of inputs) {
-        const result =
+        results.push(
           await createStockMovementWithTransaction(
             tx,
             input
-          );
-
-        results.push(result);
+          )
+        );
       }
 
       return results;
