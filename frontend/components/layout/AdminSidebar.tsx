@@ -96,10 +96,59 @@ export default function AdminSidebar() {
         </Link>
 
         <Link
+          href="/admin/stock/location-map"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🗺️ Lokasyon Stok Haritası
+        </Link>
+
+        <Link
           href="/admin/handling-units"
           className="block rounded-xl p-3 hover:bg-slate-800"
         >
           🧱 Koli / Palet Yönetimi
+        </Link>
+
+        <Link
+          href="/admin/handling-units/transfers"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🔄 Koli / Palet Transferi
+        </Link>
+
+        <Link
+          href="/admin/handling-units/merge"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🔗 Toplu Birleştirme
+        </Link>
+
+        <Link
+          href="/admin/handling-units/pallet-link"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🧩 Koli–Palet Bağlama
+        </Link>
+
+        <Link
+          href="/admin/handling-units/addressing"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          📌 Tekli Adresleme
+        </Link>
+
+        <Link
+          href="/admin/handling-units/addressing/bulk"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          📌 Toplu Adresleme
+        </Link>
+
+        <Link
+          href="/admin/handling-units/unaddressing"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          📤 Adres Kaldırma
         </Link>
 
         <Link
