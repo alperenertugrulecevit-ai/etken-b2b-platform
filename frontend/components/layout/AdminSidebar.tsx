@@ -68,6 +68,12 @@ export default function AdminSidebar() {
           🧾 Satın Alma
         </Link>
 
+        <div className="my-5 border-t border-slate-700" />
+
+        <p className="px-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+          Stok ve WMS
+        </p>
+
         <Link
           href="/admin/stock/movements"
           className="block rounded-xl p-3 hover:bg-slate-800"
@@ -82,9 +88,26 @@ export default function AdminSidebar() {
           📥 Manuel Stok İşlemi
         </Link>
 
-        <span className="block rounded-xl p-3 text-slate-500">
-          🏬 Depo / WMS
-        </span>
+        <Link
+          href="/admin/stock/locations"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          📍 Lokasyon Bazlı Stok
+        </Link>
+
+        <Link
+          href="/admin/handling-units"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🧱 Koli / Palet Yönetimi
+        </Link>
+
+        <Link
+          href="/admin/warehouses"
+          className="block rounded-xl p-3 hover:bg-slate-800"
+        >
+          🏬 Depo Yönetimi
+        </Link>
 
         <div className="my-5 border-t border-slate-700" />
 

@@ -9,23 +9,25 @@ datasource db {
 }
 
 model Product {
-  id                 Int                 @id @default(autoincrement())
-  code               String              @unique
-  barcode            String              @unique
+  id                 Int                      @id @default(autoincrement())
+  code               String                   @unique
+  barcode            String                   @unique
   name               String
   brand              String
   category           String
   supplier           String
   price              Float
   stock              Int
-  reservedStock      Int                 @default(0)
+  reservedStock      Int                      @default(0)
   vat                Int
   ownStock           Boolean
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
+  isActive           Boolean                  @default(true)
+  createdAt          DateTime                 @default(now())
   orderItems         OrderItem[]
   purchaseOrderItems PurchaseOrderItem[]
   stockMovements     StockMovement[]
+  locationStocks     WarehouseLocationStock[]
+  handlingUnitItems  HandlingUnitItem[]
 }
 
 model Category {
@@ -286,4 +288,138 @@ model StockMovement {
   @@index([purchaseOrderId])
   @@index([movementType])
   @@index([createdAt])
+}
+
+enum WarehouseLocationType {
+  PALLET
+  BOX
+  HANGING
+  FLOOR
+  RETURN
+  QUALITY
+  RFID
+  SHIPPING
+  RECEIVING
+  QUARANTINE
+}
+
+model Warehouse {
+  id            Int                 @id @default(autoincrement())
+  code          String              @unique
+  name          String
+  address       String?
+  city          String?
+  district      String?
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  locations     WarehouseLocation[]
+  handlingUnits HandlingUnit[]
+}
+
+model WarehouseLocation {
+  id            Int                      @id @default(autoincrement())
+  warehouseId   Int
+  code          String
+  aisle         String                   @default("")
+  section       String                   @default("")
+  level         String                   @default("")
+  bin           String                   @default("")
+  locationType  WarehouseLocationType    @default(PALLET)
+  capacity      Int                      @default(1)
+  sortOrder     Int                      @default(0)
+  description   String?
+  isActive      Boolean                  @default(true)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  stocks        WarehouseLocationStock[]
+  handlingUnits HandlingUnit[]
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, code, aisle, section, level, bin], name: "warehouse_location_position_unique")
+  @@index([warehouseId])
+  @@index([code])
+  @@index([aisle])
+  @@index([locationType])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model WarehouseLocationStock {
+  id            Int      @id @default(autoincrement())
+  locationId    Int
+  productId     Int
+  quantity      Int      @default(0)
+  reservedStock Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  location WarehouseLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  product  Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, productId], name: "location_product_unique")
+  @@index([locationId])
+  @@index([productId])
+  @@index([quantity])
+}
+
+enum HandlingUnitType {
+  PALLET
+  BOX
+}
+
+enum HandlingUnitStatus {
+  OPEN
+  CLOSED
+  STORED
+  IN_TRANSIT
+  EMPTY
+  CANCELLED
+}
+
+model HandlingUnit {
+  id           Int                @id @default(autoincrement())
+  barcode      String             @unique
+  unitType     HandlingUnitType
+  status       HandlingUnitStatus @default(OPEN)
+  warehouseId  Int?
+  locationId   Int?
+  parentUnitId Int?
+  description  String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  warehouse Warehouse?         @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  location  WarehouseLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  parentUnit HandlingUnit?  @relation("HandlingUnitHierarchy", fields: [parentUnitId], references: [id], onDelete: SetNull)
+  childUnits HandlingUnit[] @relation("HandlingUnitHierarchy")
+
+  items HandlingUnitItem[]
+
+  @@index([barcode])
+  @@index([unitType])
+  @@index([status])
+  @@index([warehouseId])
+  @@index([locationId])
+  @@index([parentUnitId])
+}
+
+model HandlingUnitItem {
+  id             Int      @id @default(autoincrement())
+  handlingUnitId Int
+  productId      Int
+  quantity       Int      @default(0)
+  reservedStock  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  handlingUnit HandlingUnit @relation(fields: [handlingUnitId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([handlingUnitId, productId], name: "handling_unit_product_unique")
+  @@index([handlingUnitId])
+  @@index([productId])
+  @@index([quantity])
 }
