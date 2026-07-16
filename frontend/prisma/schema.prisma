@@ -28,6 +28,7 @@ model Product {
   stockMovements     StockMovement[]
   locationStocks     WarehouseLocationStock[]
   handlingUnitItems  HandlingUnitItem[]
+  pickingRecords     PickingRecord[]
 }
 
 model Category {
@@ -155,10 +156,12 @@ model Order {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  customer        Customer         @relation(fields: [customerId], references: [id])
-  shippingAddress CustomerAddress? @relation(fields: [shippingAddressId], references: [id])
-  items           OrderItem[]
-  stockMovements  StockMovement[]
+  customer              Customer         @relation(fields: [customerId], references: [id])
+  shippingAddress       CustomerAddress? @relation(fields: [shippingAddressId], references: [id])
+  items                 OrderItem[]
+  stockMovements        StockMovement[]
+  pickingRecords        PickingRecord[]
+  assignedHandlingUnits HandlingUnit[]   @relation("AssignedHandlingUnits")
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -167,24 +170,27 @@ model Order {
 }
 
 model OrderItem {
-  id          Int      @id @default(autoincrement())
-  orderId     Int
-  productId   Int
-  productCode String
-  productName String
-  quantity    Int
-  unitPrice   Float
-  vatRate     Int
-  lineNet     Float
-  vatAmount   Float
-  lineTotal   Float
-  createdAt   DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  orderId        Int
+  productId      Int
+  productCode    String
+  productName    String
+  quantity       Int
+  pickedQuantity Int      @default(0)
+  unitPrice      Float
+  vatRate        Int
+  lineNet        Float
+  vatAmount      Float
+  lineTotal      Float
+  createdAt      DateTime @default(now())
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id])
+  pickingRecords PickingRecord[]
 
   @@index([orderId])
   @@index([productId])
+  @@index([pickedQuantity])
 }
 
 enum PurchaseOrderStatus {
@@ -364,6 +370,14 @@ model WarehouseLocationStock {
   @@index([quantity])
 }
 
+enum HandlingUnitPurpose {
+  STOCK
+  PICKING
+  PACKING
+  SHIPPING
+  RECEIVING
+}
+
 enum HandlingUnitType {
   PALLET
   BOX
@@ -379,16 +393,18 @@ enum HandlingUnitStatus {
 }
 
 model HandlingUnit {
-  id           Int                @id @default(autoincrement())
-  barcode      String             @unique
-  unitType     HandlingUnitType
-  status       HandlingUnitStatus @default(OPEN)
-  warehouseId  Int?
-  locationId   Int?
-  parentUnitId Int?
-  description  String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  id              Int                 @id @default(autoincrement())
+  barcode         String              @unique
+  unitType        HandlingUnitType
+  purpose         HandlingUnitPurpose @default(STOCK)
+  status          HandlingUnitStatus  @default(OPEN)
+  warehouseId     Int?
+  locationId      Int?
+  parentUnitId    Int?
+  assignedOrderId Int?
+  description     String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   warehouse Warehouse?         @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
   location  WarehouseLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
@@ -396,14 +412,21 @@ model HandlingUnit {
   parentUnit HandlingUnit?  @relation("HandlingUnitHierarchy", fields: [parentUnitId], references: [id], onDelete: SetNull)
   childUnits HandlingUnit[] @relation("HandlingUnitHierarchy")
 
+  assignedOrder Order? @relation("AssignedHandlingUnits", fields: [assignedOrderId], references: [id], onDelete: SetNull)
+
   items HandlingUnitItem[]
+
+  sourcePickingRecords PickingRecord[] @relation("PickingSourceHandlingUnit")
+  targetPickingRecords PickingRecord[] @relation("PickingTargetHandlingUnit")
 
   @@index([barcode])
   @@index([unitType])
+  @@index([purpose])
   @@index([status])
   @@index([warehouseId])
   @@index([locationId])
   @@index([parentUnitId])
+  @@index([assignedOrderId])
 }
 
 model HandlingUnitItem {
@@ -422,4 +445,30 @@ model HandlingUnitItem {
   @@index([handlingUnitId])
   @@index([productId])
   @@index([quantity])
+}
+
+model PickingRecord {
+  id                   Int      @id @default(autoincrement())
+  orderId              Int
+  orderItemId          Int
+  productId            Int
+  sourceHandlingUnitId Int
+  targetHandlingUnitId Int
+  quantity             Int
+  sourceQuantityAfter  Int
+  targetQuantityAfter  Int
+  createdAt            DateTime @default(now())
+
+  order              Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem          OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product            Product      @relation(fields: [productId], references: [id])
+  sourceHandlingUnit HandlingUnit @relation("PickingSourceHandlingUnit", fields: [sourceHandlingUnitId], references: [id])
+  targetHandlingUnit HandlingUnit @relation("PickingTargetHandlingUnit", fields: [targetHandlingUnitId], references: [id])
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([sourceHandlingUnitId])
+  @@index([targetHandlingUnitId])
+  @@index([createdAt])
 }

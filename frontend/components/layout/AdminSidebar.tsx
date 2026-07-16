@@ -160,10 +160,21 @@ export default function AdminSidebar() {
 
         <div className="my-5 border-t border-slate-700" />
 
-        <Link
-          href="/"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
+        <div className="my-5 border-t border-slate-700" />
+
+<Link
+  href="/"
+  className="block rounded-xl p-3 hover:bg-slate-800"
+>
+  🏠 Ana Sayfa
+</Link>
+
+<Link
+  href="/rf"
+  className="block rounded-xl bg-blue-700 p-3 font-bold hover:bg-blue-600"
+>
+  📱 RF Operasyon Merkezi
+  
           ← Siteye Dön
         </Link>
       </nav>

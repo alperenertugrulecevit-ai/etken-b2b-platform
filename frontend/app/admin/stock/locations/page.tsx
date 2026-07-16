@@ -1,8 +1,16 @@
 import Link from "next/link";
 
+import {
+  HandlingUnitPurpose,
+  HandlingUnitStatus,
+  HandlingUnitType,
+} from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 
-import LocationStockPlacementForm from "@/components/admin/LocationStockPlacementForm";
+import StockAvailabilityTable, {
+  type StockAvailabilityRow,
+} from "@/components/admin/StockAvailabilityTable";
 
 function createFullLocationCode({
   code,
@@ -25,126 +33,106 @@ function createFullLocationCode({
     .join("-");
 }
 
-function getLocationTypeLabel(
-  locationType: string
+function getUnitTypeLabel(
+  unitType: HandlingUnitType
 ) {
-  const labels: Record<string, string> = {
-    PALLET: "Palet",
-    BOX: "Koli",
-    HANGING: "Askılı",
-    FLOOR: "Zemin",
-    RETURN: "İade",
-    QUALITY: "Kalite",
-    RFID: "RFID",
-    SHIPPING: "Mal Çıkış",
-    RECEIVING: "Mal Kabul",
-    QUARANTINE: "Karantina",
-  };
-
-  return (
-    labels[locationType] ??
-    locationType
-  );
+  return unitType ===
+    HandlingUnitType.PALLET
+    ? "Palet"
+    : "Koli";
 }
 
-export default async function LocationStocksPage() {
-  const [
-    products,
-    warehouses,
-    locations,
-    locationStocks,
-  ] = await Promise.all([
-    prisma.product.findMany({
-      where: {
-        isActive: true,
-        stock: {
-          gt: 0,
-        },
-      },
+function getBlockReason({
+  purpose,
+  status,
+  warehouseId,
+  locationId,
+  warehouseActive,
+  locationActive,
+  assignedOrderId,
+}: {
+  purpose: HandlingUnitPurpose;
+  status: HandlingUnitStatus;
+  warehouseId: number | null;
+  locationId: number | null;
+  warehouseActive: boolean;
+  locationActive: boolean;
+  assignedOrderId: number | null;
+}) {
+  const reasons: string[] = [];
 
-      orderBy: [
-        {
-          code: "asc",
-        },
-        {
-          name: "asc",
-        },
-      ],
+  if (!warehouseId) {
+    reasons.push(
+      "Depo bilgisi bulunmuyor"
+    );
+  }
 
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        stock: true,
+  if (!locationId) {
+    reasons.push(
+      "THM bir lokasyona adreslenmemiş"
+    );
+  }
 
-        locationStocks: {
-          select: {
-            quantity: true,
-          },
-        },
-      },
-    }),
+  if (!warehouseActive) {
+    reasons.push(
+      "Depo pasif durumda"
+    );
+  }
 
-    prisma.warehouse.findMany({
-      where: {
-        isActive: true,
-      },
+  if (!locationActive) {
+    reasons.push(
+      "Lokasyon pasif durumda"
+    );
+  }
 
-      orderBy: {
-        code: "asc",
-      },
+  if (
+    purpose !==
+    HandlingUnitPurpose.STOCK
+  ) {
+    reasons.push(
+      "THM normal stok amacıyla kullanılmıyor"
+    );
+  }
 
-      select: {
-        id: true,
-        code: true,
-        name: true,
-      },
-    }),
+  if (assignedOrderId) {
+    reasons.push(
+      "THM bir satış siparişine bağlı"
+    );
+  }
 
-    prisma.warehouseLocation.findMany({
-      where: {
-        isActive: true,
+  if (
+    status ===
+    HandlingUnitStatus.IN_TRANSIT
+  ) {
+    reasons.push(
+      "THM transfer sürecinde"
+    );
+  }
 
-        warehouse: {
-          isActive: true,
-        },
-      },
+  if (
+    status ===
+    HandlingUnitStatus.CANCELLED
+  ) {
+    reasons.push(
+      "THM iptal durumda"
+    );
+  }
 
-      orderBy: [
-        {
-          warehouse: {
-            code: "asc",
-          },
-        },
-        {
-          sortOrder: "asc",
-        },
-        {
-          code: "asc",
-        },
-        {
-          section: "asc",
-        },
-        {
-          level: "asc",
-        },
-        {
-          bin: "asc",
-        },
-      ],
+  if (
+    status ===
+    HandlingUnitStatus.EMPTY
+  ) {
+    reasons.push(
+      "THM boş durumda"
+    );
+  }
 
-      select: {
-        id: true,
-        warehouseId: true,
-        code: true,
-        section: true,
-        level: true,
-        bin: true,
-        locationType: true,
-      },
-    }),
+  return reasons.join(", ");
+}
 
-    prisma.warehouseLocationStock.findMany({
+export default async function LocationStockPage() {
+  const items =
+    await prisma.handlingUnitItem.findMany({
       where: {
         quantity: {
           gt: 0,
@@ -153,15 +141,22 @@ export default async function LocationStocksPage() {
 
       orderBy: [
         {
-          location: {
+          handlingUnit: {
             warehouse: {
               code: "asc",
             },
           },
         },
         {
-          location: {
-            sortOrder: "asc",
+          handlingUnit: {
+            location: {
+              sortOrder: "asc",
+            },
+          },
+        },
+        {
+          handlingUnit: {
+            barcode: "asc",
           },
         },
         {
@@ -171,103 +166,267 @@ export default async function LocationStocksPage() {
         },
       ],
 
-      include: {
+      select: {
+        id: true,
+        quantity: true,
+        reservedStock: true,
+
         product: {
           select: {
             id: true,
             code: true,
+            barcode: true,
             name: true,
-            stock: true,
           },
         },
 
-        location: {
+        handlingUnit: {
           select: {
             id: true,
-            code: true,
-            section: true,
-            level: true,
-            bin: true,
-            locationType: true,
+            barcode: true,
+            unitType: true,
+            purpose: true,
+            status: true,
+            warehouseId: true,
+            locationId: true,
+            assignedOrderId: true,
 
             warehouse: {
               select: {
                 id: true,
                 code: true,
                 name: true,
+                isActive: true,
+              },
+            },
+
+            location: {
+              select: {
+                id: true,
+                code: true,
+                section: true,
+                level: true,
+                bin: true,
+                isActive: true,
+              },
+            },
+
+            assignedOrder: {
+              select: {
+                orderNumber: true,
+
+                customer: {
+                  select: {
+                    companyName: true,
+                  },
+                },
               },
             },
           },
         },
       },
-    }),
-  ]);
+    });
 
-  const productOptions =
-    products.map((product) => {
-      const allocatedStock =
-        product.locationStocks.reduce(
-          (total, locationStock) =>
-            total +
-            locationStock.quantity,
-          0
-        );
+  const rows: StockAvailabilityRow[] =
+    items.map((item) => {
+      const unit =
+        item.handlingUnit;
+
+      const warehouseActive =
+        unit.warehouse?.isActive ??
+        false;
+
+      const locationActive =
+        unit.location?.isActive ??
+        false;
+
+      const statusIsPlannable =
+        unit.status ===
+          HandlingUnitStatus.STORED ||
+        unit.status ===
+          HandlingUnitStatus.OPEN ||
+        unit.status ===
+          HandlingUnitStatus.CLOSED;
+
+      const isPlannable =
+        unit.purpose ===
+          HandlingUnitPurpose.STOCK &&
+        unit.assignedOrderId === null &&
+        unit.warehouseId !== null &&
+        unit.locationId !== null &&
+        warehouseActive &&
+        locationActive &&
+        statusIsPlannable;
+
+      const plannableStock =
+        isPlannable
+          ? item.quantity
+          : 0;
+
+      const blockedStock =
+        isPlannable
+          ? 0
+          : item.quantity;
+
+      /*
+       * Rezerve stok sadece planlanabilir
+       * stoktan kullanılabilir düşülür.
+       *
+       * Bloke THM üzerindeki rezerve miktar
+       * raporda ayrıca gösterilir fakat
+       * kullanılabilir stok oluşturmaz.
+       */
+      const availableStock =
+        isPlannable
+          ? Math.max(
+              0,
+              plannableStock -
+                item.reservedStock
+            )
+          : 0;
+
+      const blockReason =
+        isPlannable
+          ? ""
+          : getBlockReason({
+              purpose:
+                unit.purpose,
+
+              status:
+                unit.status,
+
+              warehouseId:
+                unit.warehouseId,
+
+              locationId:
+                unit.locationId,
+
+              warehouseActive,
+
+              locationActive,
+
+              assignedOrderId:
+                unit.assignedOrderId,
+            });
 
       return {
-        id: product.id,
-        code: product.code,
-        name: product.name,
+        itemId: item.id,
 
-        physicalStock:
-          product.stock,
+        warehouseId:
+          unit.warehouse?.id ??
+          null,
 
-        allocatedStock,
+        warehouseCode:
+          unit.warehouse?.code ??
+          "",
 
-        unallocatedStock:
-          product.stock -
-          allocatedStock,
+        warehouseName:
+          unit.warehouse?.name ??
+          "",
+
+        locationId:
+          unit.location?.id ??
+          null,
+
+        locationCode:
+          unit.location
+            ? createFullLocationCode({
+                code:
+                  unit.location.code,
+
+                section:
+                  unit.location.section,
+
+                level:
+                  unit.location.level,
+
+                bin:
+                  unit.location.bin,
+              })
+            : "",
+
+        handlingUnitId:
+          unit.id,
+
+        handlingUnitBarcode:
+          unit.barcode,
+
+        handlingUnitType:
+          getUnitTypeLabel(
+            unit.unitType
+          ),
+
+        handlingUnitPurpose:
+          unit.purpose,
+
+        handlingUnitStatus:
+          unit.status,
+
+        assignedOrderNumber:
+          unit.assignedOrder
+            ?.orderNumber ?? "",
+
+        assignedCustomerName:
+          unit.assignedOrder
+            ?.customer
+            .companyName ?? "",
+
+        productId:
+          item.product.id,
+
+        productCode:
+          item.product.code,
+
+        productBarcode:
+          item.product.barcode,
+
+        productName:
+          item.product.name,
+
+        locationStock:
+          item.quantity,
+
+        plannableStock,
+
+        blockedStock,
+
+        reservedStock:
+          item.reservedStock,
+
+        availableStock,
+
+        stockClass:
+          isPlannable
+            ? "PLANNABLE"
+            : "BLOCKED",
+
+        blockReason,
       };
     });
 
-  const locationOptions =
-    locations.map((location) => ({
-      id: location.id,
-
-      warehouseId:
-        location.warehouseId,
-
-      fullCode:
-        createFullLocationCode({
-          code: location.code,
-          section: location.section,
-          level: location.level,
-          bin: location.bin,
-        }),
-
-      locationType:
-        getLocationTypeLabel(
-          location.locationType
-        ),
-    }));
-
   const totalPhysicalStock =
-    products.reduce(
-      (total, product) =>
-        total + product.stock,
-      0
-    );
-
-  const totalAllocatedStock =
-    locationStocks.reduce(
-      (total, locationStock) =>
+    rows.reduce(
+      (total, row) =>
         total +
-        locationStock.quantity,
+        row.locationStock,
       0
     );
 
-  const totalUnallocatedStock =
-    totalPhysicalStock -
-    totalAllocatedStock;
+  const totalPlannableStock =
+    rows.reduce(
+      (total, row) =>
+        total +
+        row.plannableStock,
+      0
+    );
+
+  const totalBlockedStock =
+    rows.reduce(
+      (total, row) =>
+        total +
+        row.blockedStock,
+      0
+    );
 
   return (
     <section className="p-10">
@@ -277,229 +436,110 @@ export default async function LocationStocksPage() {
             Lokasyon Bazlı Stok
           </h1>
 
-          <p className="mt-2 text-gray-500">
-            Ürünlerin fiziksel stoklarını
-            depo lokasyonlarına dağıtın ve
-            lokasyon bakiyelerini inceleyin.
+          <p className="mt-2 max-w-3xl text-gray-500">
+            Stokları depo, lokasyon, THM ve
+            ürün bazında inceleyin.
+            Adreslenmiş normal stoklar
+            planlanabilir; adreslenmemiş veya
+            operasyon sürecindeki stoklar
+            bloke olarak gösterilir.
           </p>
         </div>
 
-        <Link
-          href="/admin/warehouses"
-          className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold hover:bg-slate-50"
-        >
-          Depo Yönetimine Git
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/admin/handling-units"
+            className="rounded-xl bg-blue-900 px-5 py-3 font-semibold text-white hover:bg-blue-800"
+          >
+            Koli / Palet Yönetimi
+          </Link>
+
+          <Link
+            href="/admin"
+            className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold hover:bg-slate-50"
+          >
+            ← Yönetim Paneli
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-3">
-        <article className="rounded-2xl bg-white p-6 shadow">
-          <p className="text-sm font-semibold uppercase text-gray-500">
-            Fiziksel Stok
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <article className="rounded-2xl bg-slate-900 p-6 text-white shadow">
+          <p className="text-sm font-bold uppercase text-slate-300">
+            Toplam Fiziksel Stok
           </p>
 
-          <p className="mt-3 text-4xl font-bold text-blue-900">
+          <p className="mt-3 text-4xl font-black">
             {totalPhysicalStock.toLocaleString(
               "tr-TR"
             )}
           </p>
         </article>
 
-        <article className="rounded-2xl bg-white p-6 shadow">
-          <p className="text-sm font-semibold uppercase text-gray-500">
-            Lokasyona Yerleştirilen
+        <article className="rounded-2xl bg-green-700 p-6 text-white shadow">
+          <p className="text-sm font-bold uppercase text-green-100">
+            Planlanabilir Stok
           </p>
 
-          <p className="mt-3 text-4xl font-bold text-violet-700">
-            {totalAllocatedStock.toLocaleString(
+          <p className="mt-3 text-4xl font-black">
+            {totalPlannableStock.toLocaleString(
               "tr-TR"
             )}
           </p>
         </article>
 
-        <article className="rounded-2xl bg-white p-6 shadow">
-          <p className="text-sm font-semibold uppercase text-gray-500">
-            Yerleştirilmemiş Stok
+        <article className="rounded-2xl bg-red-700 p-6 text-white shadow">
+          <p className="text-sm font-bold uppercase text-red-100">
+            Bloke Stok
           </p>
 
-          <p
-            className={`mt-3 text-4xl font-bold ${
-              totalUnallocatedStock > 0
-                ? "text-orange-700"
-                : "text-green-700"
-            }`}
-          >
-            {totalUnallocatedStock.toLocaleString(
+          <p className="mt-3 text-4xl font-black">
+            {totalBlockedStock.toLocaleString(
               "tr-TR"
             )}
           </p>
         </article>
       </div>
 
-      <div className="mt-8 grid gap-8 2xl:grid-cols-[460px_1fr]">
-        <LocationStockPlacementForm
-          products={productOptions}
-          warehouses={warehouses}
-          locations={locationOptions}
+      <div className="mt-8">
+        <StockAvailabilityTable
+          rows={rows}
         />
+      </div>
 
-        <div className="overflow-x-auto rounded-2xl bg-white shadow">
-          <table className="w-full min-w-[1300px] text-left">
-            <thead className="bg-blue-900 text-white">
-              <tr>
-                <th className="p-4">
-                  Depo
-                </th>
+      <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-6 text-blue-900">
+        <h2 className="text-xl font-bold">
+          Stok Sınıflandırma Kuralı
+        </h2>
 
-                <th className="p-4">
-                  Lokasyon
-                </th>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl bg-white/70 p-4">
+            <p className="font-bold text-green-800">
+              Planlanabilir Stok
+            </p>
 
-                <th className="p-4">
-                  Lokasyon Tipi
-                </th>
+            <p className="mt-2 text-sm leading-6">
+              Aktif depo ve aktif lokasyona
+              adreslenmiş, normal stok amacı
+              taşıyan ve herhangi bir satış
+              siparişine bağlı olmayan
+              THM’lerdeki stoktur.
+            </p>
+          </div>
 
-                <th className="p-4">
-                  Ürün Kodu
-                </th>
+          <div className="rounded-xl bg-white/70 p-4">
+            <p className="font-bold text-red-800">
+              Bloke Stok
+            </p>
 
-                <th className="p-4">
-                  Ürün
-                </th>
-
-                <th className="p-4">
-                  Lokasyon Stoğu
-                </th>
-
-                <th className="p-4">
-                  Rezerve
-                </th>
-
-                <th className="p-4">
-                  Kullanılabilir
-                </th>
-
-                <th className="p-4">
-                  Toplam Fiziksel
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {locationStocks.map(
-                (locationStock) => {
-                  const availableStock =
-                    locationStock.quantity -
-                    locationStock.reservedStock;
-
-                  const fullLocationCode =
-                    createFullLocationCode({
-                      code:
-                        locationStock.location
-                          .code,
-
-                      section:
-                        locationStock.location
-                          .section,
-
-                      level:
-                        locationStock.location
-                          .level,
-
-                      bin:
-                        locationStock.location
-                          .bin,
-                    });
-
-                  return (
-                    <tr
-                      key={locationStock.id}
-                      className="border-b hover:bg-slate-50"
-                    >
-                      <td className="p-4">
-                        <p className="font-bold text-blue-900">
-                          {
-                            locationStock.location
-                              .warehouse.code
-                          }
-                        </p>
-
-                        <p className="mt-1 text-sm text-gray-500">
-                          {
-                            locationStock.location
-                              .warehouse.name
-                          }
-                        </p>
-                      </td>
-
-                      <td className="p-4">
-                        <span className="whitespace-nowrap rounded-lg bg-slate-900 px-3 py-2 font-mono font-bold text-white">
-                          {fullLocationCode}
-                        </span>
-                      </td>
-
-                      <td className="p-4">
-                        {getLocationTypeLabel(
-                          locationStock.location
-                            .locationType
-                        )}
-                      </td>
-
-                      <td className="p-4 font-bold text-blue-900">
-                        {
-                          locationStock.product
-                            .code
-                        }
-                      </td>
-
-                      <td className="p-4 font-semibold">
-                        {
-                          locationStock.product
-                            .name
-                        }
-                      </td>
-
-                      <td className="p-4 text-xl font-bold">
-                        {
-                          locationStock.quantity
-                        }
-                      </td>
-
-                      <td className="p-4 font-semibold text-orange-700">
-                        {
-                          locationStock.reservedStock
-                        }
-                      </td>
-
-                      <td className="p-4 font-bold text-green-700">
-                        {availableStock}
-                      </td>
-
-                      <td className="p-4 font-semibold">
-                        {
-                          locationStock.product
-                            .stock
-                        }
-                      </td>
-                    </tr>
-                  );
-                }
-              )}
-
-              {locationStocks.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="p-12 text-center text-gray-500"
-                  >
-                    Henüz lokasyona
-                    yerleştirilmiş ürün stoğu
-                    bulunmuyor.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            <p className="mt-2 text-sm leading-6">
+              Adreslenmemiş, pasif lokasyonda
+              bulunan, toplama/paketleme
+              amacı taşıyan, transferde olan
+              veya bir siparişe bağlı
+              THM’lerdeki stoktur.
+            </p>
+          </div>
         </div>
       </div>
     </section>
