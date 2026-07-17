@@ -9,6 +9,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import HandlingUnitProductLoadForm from "@/components/admin/HandlingUnitProductLoadForm";
+import OperationTimeline from "@/components/admin/OperationTimeline";
 
 import {
   removeProductFromHandlingUnit,
@@ -580,6 +581,15 @@ export default async function HandlingUnitDetailPage({
           )}
         </div>
       </div>
+
+      <OperationTimeline
+        handlingUnitId={
+          handlingUnit.id
+        }
+        handlingUnitBarcode={
+          handlingUnit.barcode
+        }
+      />
     </section>
   );
 }

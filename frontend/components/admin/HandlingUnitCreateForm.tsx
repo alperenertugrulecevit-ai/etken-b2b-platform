@@ -12,8 +12,7 @@ import {
   type HandlingUnitActionState,
 } from "@/app/admin/handling-units/actions";
 
-const initialState:
-  HandlingUnitActionState = {
+const initialState: HandlingUnitActionState = {
   success: false,
   message: "",
 };
@@ -28,6 +27,11 @@ export default function HandlingUnitCreateForm() {
   ] = useState(true);
 
   const [
+    selectedType,
+    setSelectedType,
+  ] = useState("BOX");
+
+  const [
     state,
     formAction,
     isPending,
@@ -40,8 +44,41 @@ export default function HandlingUnitCreateForm() {
     if (state.success) {
       formRef.current?.reset();
       setUseAutomaticBarcode(true);
+      setSelectedType("BOX");
     }
-  }, [state.success, state.message]);
+  }, [state.success]);
+
+  function getBarcodeExample() {
+    switch (selectedType) {
+      case "PALLET":
+        return "PLT00000001";
+
+      case "PICKING_BOX":
+        return "PKOL00000001";
+
+      case "PICKING_PALLET":
+        return "PPAL00000001";
+
+      default:
+        return "KOL00000001";
+    }
+  }
+
+  function getButtonText() {
+    switch (selectedType) {
+      case "PALLET":
+        return "Palet Oluştur";
+
+      case "PICKING_BOX":
+        return "Toplama Kolisi Oluştur";
+
+      case "PICKING_PALLET":
+        return "Toplama Paleti Oluştur";
+
+      default:
+        return "Koli Oluştur";
+    }
+  }
 
   return (
     <form
@@ -50,12 +87,12 @@ export default function HandlingUnitCreateForm() {
       className="h-fit rounded-2xl bg-white p-6 shadow"
     >
       <h2 className="text-2xl font-bold">
-        Yeni Koli / Palet
+        Yeni Taşıma Birimi
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-gray-500">
-        Ürün yüklemek için kullanılacak
-        taşıma birimi barkodunu oluşturun.
+        Stok veya RF toplama işlemlerinde
+        kullanılacak taşıma birimini oluşturun.
       </p>
 
       {state.message && (
@@ -87,16 +124,29 @@ export default function HandlingUnitCreateForm() {
 
           <select
             name="unitType"
-            defaultValue="BOX"
+            value={selectedType}
+            onChange={(e) =>
+              setSelectedType(
+                e.target.value
+              )
+            }
             className="w-full rounded-xl border bg-white p-4"
             required
           >
             <option value="BOX">
-              Koli
+              📦 Koli
             </option>
 
             <option value="PALLET">
-              Palet
+              🟦 Palet
+            </option>
+
+            <option value="PICKING_BOX">
+              🟨 Toplama Kolisi
+            </option>
+
+            <option value="PICKING_PALLET">
+              🟧 Toplama Paleti
             </option>
           </select>
         </label>
@@ -116,13 +166,14 @@ export default function HandlingUnitCreateForm() {
 
           <span>
             <span className="block font-semibold">
-              Otomatik barkod oluştur
+              Otomatik Barkod Oluştur
             </span>
 
             <span className="mt-1 block text-sm text-gray-500">
-              Koli için `KOL00000001`,
-              palet için `PLT00000001`
-              biçiminde barkod oluşturulur.
+              Oluşturulacak barkod:
+              <strong className="ml-1">
+                {getBarcodeExample()}
+              </strong>
             </span>
           </span>
         </label>
@@ -144,7 +195,7 @@ export default function HandlingUnitCreateForm() {
 
           <p className="mt-2 text-xs text-gray-500">
             Otomatik barkod kapatılırsa bu
-            alan zorunlu hale gelir.
+            alan zorunlu olur.
           </p>
         </label>
 
@@ -156,7 +207,7 @@ export default function HandlingUnitCreateForm() {
           <textarea
             name="description"
             rows={4}
-            placeholder="Örneğin: Satın alma mal kabul paleti"
+            placeholder="İsteğe bağlı açıklama"
             className="w-full resize-none rounded-xl border p-4"
           />
         </label>
@@ -172,8 +223,8 @@ export default function HandlingUnitCreateForm() {
         }`}
       >
         {isPending
-          ? "Barkod Oluşturuluyor..."
-          : "Koli / Palet Oluştur"}
+          ? "Oluşturuluyor..."
+          : getButtonText()}
       </button>
     </form>
   );

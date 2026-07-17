@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  HandlingUnitPurpose,
   HandlingUnitStatus,
   HandlingUnitType,
   Prisma,
@@ -39,10 +40,58 @@ function isHandlingUnitType(
 function getDefaultPrefix(
   unitType: HandlingUnitType
 ) {
-  return unitType ===
-    HandlingUnitType.PALLET
-    ? "PLT"
-    : "KOL";
+  switch (unitType) {
+    case HandlingUnitType.PALLET:
+      return "PLT";
+
+    case HandlingUnitType.BOX:
+      return "KOL";
+
+    case HandlingUnitType.PICKING_PALLET:
+      return "PPAL";
+
+    case HandlingUnitType.PICKING_BOX:
+      return "PKOL";
+
+    default:
+      return "KOL";
+  }
+}
+
+function getHandlingUnitPurpose(
+  unitType: HandlingUnitType
+) {
+  switch (unitType) {
+    case HandlingUnitType.PICKING_BOX:
+    case HandlingUnitType.PICKING_PALLET:
+      return HandlingUnitPurpose.PICKING;
+
+    case HandlingUnitType.BOX:
+    case HandlingUnitType.PALLET:
+    default:
+      return HandlingUnitPurpose.STOCK;
+  }
+}
+
+function getHandlingUnitLabel(
+  unitType: HandlingUnitType
+) {
+  switch (unitType) {
+    case HandlingUnitType.PALLET:
+      return "palet";
+
+    case HandlingUnitType.BOX:
+      return "koli";
+
+    case HandlingUnitType.PICKING_BOX:
+      return "toplama kolisi";
+
+    case HandlingUnitType.PICKING_PALLET:
+      return "toplama paleti";
+
+    default:
+      return "taşıma birimi";
+  }
 }
 
 function getBarcodeNumber(
@@ -123,6 +172,11 @@ export async function createBulkHandlingUnits(
   const prefix =
     customPrefix ||
     getDefaultPrefix(unitTypeValue);
+
+  const purpose =
+    getHandlingUnitPurpose(
+      unitTypeValue
+    );
 
   if (
     !Number.isInteger(count) ||
@@ -211,7 +265,8 @@ export async function createBulkHandlingUnits(
 
           /*
            * Başlangıç numarası 0 ise
-           * mevcut en büyük numaradan devam et.
+           * seçilen ön eke ait mevcut en
+           * büyük numaradan devam edilir.
            */
           if (startNumber === 0) {
             const existingUnits =
@@ -295,10 +350,6 @@ export async function createBulkHandlingUnits(
             );
           }
 
-          /*
-           * PostgreSQL üzerinde oluşturulan
-           * kayıtları kimlikleriyle geri döndürür.
-           */
           const createdUnits =
             await tx.handlingUnit.createManyAndReturn({
               data: barcodes.map(
@@ -306,6 +357,7 @@ export async function createBulkHandlingUnits(
                   barcode,
                   unitType:
                     unitTypeValue,
+                  purpose,
                   status:
                     HandlingUnitStatus.OPEN,
                   warehouseId: null,
@@ -335,8 +387,8 @@ export async function createBulkHandlingUnits(
               ),
 
             firstBarcode:
-              createdUnits[0]?.barcode ??
-              "",
+              createdUnits[0]
+                ?.barcode ?? "",
 
             lastBarcode:
               createdUnits[
@@ -348,7 +400,9 @@ export async function createBulkHandlingUnits(
           maxWait: 10000,
           timeout: 30000,
           isolationLevel:
-            Prisma.TransactionIsolationLevel.Serializable,
+            Prisma
+              .TransactionIsolationLevel
+              .Serializable,
         }
       );
 
@@ -356,16 +410,15 @@ export async function createBulkHandlingUnits(
     revalidatePath(
       "/admin/handling-units"
     );
+    revalidatePath(
+      "/admin/handling-units/bulk"
+    );
 
     return {
       success: true,
-      message:
-        `${count} adet ${
-          unitTypeValue ===
-          HandlingUnitType.PALLET
-            ? "palet"
-            : "koli"
-        } barkodu başarıyla oluşturuldu.`,
+      message: `${count} adet ${getHandlingUnitLabel(
+        unitTypeValue
+      )} barkodu başarıyla oluşturuldu.`,
       createdIds: result.createdIds,
       firstBarcode:
         result.firstBarcode,

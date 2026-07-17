@@ -13,14 +13,51 @@ import {
   type BulkHandlingUnitState,
 } from "@/app/admin/handling-units/bulk/actions";
 
-const initialState:
-  BulkHandlingUnitState = {
+const initialState: BulkHandlingUnitState = {
   success: false,
   message: "",
   createdIds: [],
   firstBarcode: "",
   lastBarcode: "",
 };
+
+function getDefaultPrefix(
+  unitType: string
+) {
+  switch (unitType) {
+    case "PALLET":
+      return "PLT";
+
+    case "PICKING_BOX":
+      return "PKOL";
+
+    case "PICKING_PALLET":
+      return "PPAL";
+
+    case "BOX":
+    default:
+      return "KOL";
+  }
+}
+
+function getUnitTypeLabel(
+  unitType: string
+) {
+  switch (unitType) {
+    case "PALLET":
+      return "Palet";
+
+    case "PICKING_BOX":
+      return "Toplama Kolisi";
+
+    case "PICKING_PALLET":
+      return "Toplama Paleti";
+
+    case "BOX":
+    default:
+      return "Koli";
+  }
+}
 
 export default function HandlingUnitBulkCreateForm() {
   const [unitType, setUnitType] =
@@ -50,9 +87,7 @@ export default function HandlingUnitBulkCreateForm() {
   );
 
   const defaultPrefix =
-    unitType === "PALLET"
-      ? "PLT"
-      : "KOL";
+    getDefaultPrefix(unitType);
 
   const previewPrefix =
     prefix.trim().toUpperCase() ||
@@ -108,6 +143,9 @@ export default function HandlingUnitBulkCreateForm() {
   const createdIdsQuery =
     state.createdIds.join(",");
 
+  const unitTypeLabel =
+    getUnitTypeLabel(unitType);
+
   return (
     <form
       action={formAction}
@@ -118,10 +156,11 @@ export default function HandlingUnitBulkCreateForm() {
           Toplu Barkod Oluştur
         </h2>
 
-        <p className="mt-2 text-gray-500">
-          Fiziksel koli veya paletlerin
-          üzerine yapıştırılacak barkodları
-          toplu olarak oluşturun.
+        <p className="mt-2 leading-6 text-gray-500">
+          Stok kolisi, stok paleti,
+          toplama kolisi veya toplama
+          paleti için seri barkod
+          oluşturun.
         </p>
       </div>
 
@@ -193,21 +232,38 @@ export default function HandlingUnitBulkCreateForm() {
           <select
             name="unitType"
             value={unitType}
-            onChange={(event) =>
+            onChange={(event) => {
               setUnitType(
                 event.target.value
-              )
-            }
+              );
+
+              setPrefix("");
+            }}
             className="w-full rounded-xl border bg-white p-4"
+            required
           >
             <option value="BOX">
-              Koli
+              📦 Koli
             </option>
 
             <option value="PALLET">
-              Palet
+              🟦 Palet
+            </option>
+
+            <option value="PICKING_BOX">
+              🟨 Toplama Kolisi
+            </option>
+
+            <option value="PICKING_PALLET">
+              🟧 Toplama Paleti
             </option>
           </select>
+
+          <p className="mt-2 text-xs leading-5 text-gray-500">
+            Toplama tipleri RF toplama
+            operasyonlarında hedef THM
+            olarak kullanılacaktır.
+          </p>
         </label>
 
         <label>
@@ -232,7 +288,8 @@ export default function HandlingUnitBulkCreateForm() {
           />
 
           <p className="mt-2 text-xs text-gray-500">
-            Tek işlemde en fazla 200 etiket.
+            Tek işlemde en fazla 200
+            etiket oluşturabilirsiniz.
           </p>
         </label>
 
@@ -259,7 +316,7 @@ export default function HandlingUnitBulkCreateForm() {
             <strong>
               {defaultPrefix}
             </strong>{" "}
-            kullanılır.
+            ön eki otomatik kullanılır.
           </p>
         </label>
 
@@ -283,6 +340,11 @@ export default function HandlingUnitBulkCreateForm() {
             className="w-full rounded-xl border p-4"
             required
           />
+
+          <p className="mt-2 text-xs text-gray-500">
+            Önerilen standart değer 8
+            basamaktır.
+          </p>
         </label>
 
         <label>
@@ -305,8 +367,9 @@ export default function HandlingUnitBulkCreateForm() {
           />
 
           <p className="mt-2 text-xs leading-5 text-gray-500">
-            0 girilirse sistem mevcut son
-            barkoddan otomatik devam eder.
+            0 girilirse sistem seçilen
+            barkod ön ekine ait mevcut son
+            numaradan otomatik devam eder.
           </p>
         </label>
 
@@ -317,9 +380,13 @@ export default function HandlingUnitBulkCreateForm() {
 
           <input
             name="description"
-            placeholder="Örneğin: Mal kabul boş kolileri"
+            placeholder={`Örneğin: ${unitTypeLabel} etiketleri`}
             className="w-full rounded-xl border p-4"
           />
+
+          <p className="mt-2 text-xs text-gray-500">
+            Açıklama isteğe bağlıdır.
+          </p>
         </label>
       </div>
 
@@ -328,7 +395,11 @@ export default function HandlingUnitBulkCreateForm() {
           Barkod Önizlemesi
         </p>
 
-        <p className="mt-3 break-all font-mono text-xl font-bold text-blue-900">
+        <p className="mt-3 text-sm font-semibold text-blue-800">
+          {unitTypeLabel}
+        </p>
+
+        <p className="mt-2 break-all font-mono text-xl font-bold text-blue-900">
           {firstPreview}
           {" → "}
           {lastPreview}
@@ -336,9 +407,10 @@ export default function HandlingUnitBulkCreateForm() {
 
         {startNumber === "0" && (
           <p className="mt-3 text-sm text-blue-700">
-            Gerçek başlangıç numarası
-            veritabanındaki son barkoda göre
-            belirlenecek.
+            Gerçek başlangıç numarası,
+            veritabanındaki aynı ön eke
+            sahip son barkoda göre
+            belirlenecektir.
           </p>
         )}
       </div>
@@ -360,7 +432,7 @@ export default function HandlingUnitBulkCreateForm() {
       >
         {isPending
           ? "Barkodlar Oluşturuluyor..."
-          : `${Number(count) || 0} Barkod Oluştur`}
+          : `${Number(count) || 0} Adet ${unitTypeLabel} Barkodu Oluştur`}
       </button>
     </form>
   );

@@ -25,12 +25,45 @@ type Props = {
 };
 
 function getUnitTypeLabel(
-  unitType: string
+  unitType: HandlingUnitType
 ) {
-  return unitType ===
-    HandlingUnitType.PALLET
-    ? "Palet"
-    : "Koli";
+  const labels: Record<
+    HandlingUnitType,
+    string
+  > = {
+    [HandlingUnitType.BOX]: "Koli",
+    [HandlingUnitType.PALLET]:
+      "Palet",
+    [HandlingUnitType.PICKING_BOX]:
+      "Toplama Kolisi",
+    [HandlingUnitType.PICKING_PALLET]:
+      "Toplama Paleti",
+  };
+
+  return labels[unitType];
+}
+
+function getUnitTypeClass(
+  unitType: HandlingUnitType
+) {
+  const classes: Record<
+    HandlingUnitType,
+    string
+  > = {
+    [HandlingUnitType.BOX]:
+      "bg-cyan-100 text-cyan-700",
+
+    [HandlingUnitType.PALLET]:
+      "bg-blue-100 text-blue-700",
+
+    [HandlingUnitType.PICKING_BOX]:
+      "bg-amber-100 text-amber-800",
+
+    [HandlingUnitType.PICKING_PALLET]:
+      "bg-orange-100 text-orange-800",
+  };
+
+  return classes[unitType];
 }
 
 function getStatusLabel(
@@ -271,6 +304,20 @@ export default async function HandlingUnitsPage({
         HandlingUnitType.BOX
     ).length;
 
+  const pickingPalletCount =
+    handlingUnits.filter(
+      (unit) =>
+        unit.unitType ===
+        HandlingUnitType.PICKING_PALLET
+    ).length;
+
+  const pickingBoxCount =
+    handlingUnits.filter(
+      (unit) =>
+        unit.unitType ===
+        HandlingUnitType.PICKING_BOX
+    ).length;
+
   const openCount =
     handlingUnits.filter(
       (unit) =>
@@ -291,7 +338,8 @@ export default async function HandlingUnitsPage({
         unitTotal +
         handlingUnit.items.reduce(
           (itemTotal, item) =>
-            itemTotal + item.quantity,
+            itemTotal +
+            item.quantity,
           0
         ),
       0
@@ -306,7 +354,8 @@ export default async function HandlingUnitsPage({
           </h1>
 
           <p className="mt-2 text-gray-500">
-            Koli ve palet barkodlarını,
+            Stok ve toplama taşıma
+            birimlerinin barkodlarını,
             içeriklerini, üst birimlerini ve
             adres durumlarını yönetin.
           </p>
@@ -329,10 +378,10 @@ export default async function HandlingUnitsPage({
         </div>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
         <article className="rounded-2xl bg-white p-6 shadow">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Gösterilen Palet
+            Stok Paleti
           </p>
 
           <p className="mt-3 text-4xl font-bold text-blue-900">
@@ -344,11 +393,35 @@ export default async function HandlingUnitsPage({
 
         <article className="rounded-2xl bg-white p-6 shadow">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Gösterilen Koli
+            Stok Kolisi
           </p>
 
           <p className="mt-3 text-4xl font-bold text-cyan-700">
             {boxCount.toLocaleString(
+              "tr-TR"
+            )}
+          </p>
+        </article>
+
+        <article className="rounded-2xl bg-white p-6 shadow">
+          <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Toplama Paleti
+          </p>
+
+          <p className="mt-3 text-4xl font-bold text-orange-700">
+            {pickingPalletCount.toLocaleString(
+              "tr-TR"
+            )}
+          </p>
+        </article>
+
+        <article className="rounded-2xl bg-white p-6 shadow">
+          <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Toplama Kolisi
+          </p>
+
+          <p className="mt-3 text-4xl font-bold text-amber-700">
+            {pickingBoxCount.toLocaleString(
               "tr-TR"
             )}
           </p>
@@ -430,6 +503,14 @@ export default async function HandlingUnitsPage({
 
                   <option value="PALLET">
                     Palet
+                  </option>
+
+                  <option value="PICKING_BOX">
+                    Toplama Kolisi
+                  </option>
+
+                  <option value="PICKING_PALLET">
+                    Toplama Paleti
                   </option>
                 </select>
               </label>
@@ -528,7 +609,7 @@ export default async function HandlingUnitsPage({
                   </th>
 
                   <th className="p-4">
-                    Bağlı Koli
+                    Bağlı Birim
                   </th>
 
                   <th className="p-4">
@@ -609,12 +690,9 @@ export default async function HandlingUnitsPage({
 
                         <td className="p-4">
                           <span
-                            className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold ${
-                              handlingUnit.unitType ===
-                              HandlingUnitType.PALLET
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-cyan-100 text-cyan-700"
-                            }`}
+                            className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold ${getUnitTypeClass(
+                              handlingUnit.unitType
+                            )}`}
                           >
                             {getUnitTypeLabel(
                               handlingUnit.unitType
@@ -780,8 +858,7 @@ export default async function HandlingUnitsPage({
                       className="p-12 text-center text-gray-500"
                     >
                       Seçilen filtrelere uygun
-                      koli veya palet
-                      bulunamadı.
+                      taşıma birimi bulunamadı.
                     </td>
                   </tr>
                 )}

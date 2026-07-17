@@ -5,6 +5,7 @@ import {
   HandlingUnitStatus,
   OrderStatus,
   Prisma,
+  WmsOperationType,
 } from "@prisma/client";
 
 import { revalidatePath } from "next/cache";
@@ -914,27 +915,162 @@ export async function rfPickOrderItem(
             },
           });
 
-          await tx.pickingRecord.create({
+          const pickingRecord =
+            await tx.pickingRecord.create({
+              data: {
+                orderId: order.id,
+                orderItemId:
+                  orderItem.id,
+
+                productId:
+                  orderItem.productId,
+
+                sourceHandlingUnitId:
+                  sourceUnit.id,
+
+                targetHandlingUnitId:
+                  targetUnit.id,
+
+                quantity,
+
+                sourceQuantityAfter,
+
+                targetQuantityAfter:
+                  targetProductItem.quantity,
+              },
+
+              select: {
+                id: true,
+                createdAt: true,
+              },
+            });
+
+          await tx.wmsOperationLog.create({
             data: {
-              orderId: order.id,
-              orderItemId:
-                orderItem.id,
+              operationType:
+                WmsOperationType.PICKING,
+
+              module: "RF_PICKING",
+
+              entityType:
+                "PICKING_RECORD",
+
+              entityId:
+                pickingRecord.id,
+
+              barcode:
+                orderItem.product.barcode,
+
+              sourceBarcode:
+                sourceUnit.barcode,
+
+              targetBarcode:
+                targetUnit.barcode,
+
+              orderId:
+                order.id,
+
+              orderNumber:
+                order.orderNumber,
 
               productId:
                 orderItem.productId,
 
-              sourceHandlingUnitId:
-                sourceUnit.id,
+              productCode:
+                orderItem.productCode,
 
-              targetHandlingUnitId:
-                targetUnit.id,
+              productName:
+                orderItem.productName,
 
               quantity,
 
-              sourceQuantityAfter,
+              warehouseId:
+                sourceUnit.warehouseId,
 
-              targetQuantityAfter:
-                targetProductItem.quantity,
+              warehouseCode:
+                sourceUnit.warehouse?.code ??
+                null,
+
+              sourceLocationId:
+                sourceUnit.locationId,
+
+              sourceLocationCode:
+                expectedLocationCode,
+
+              targetLocationId:
+                targetUnit.locationId,
+
+              previousStatus:
+                order.status,
+
+              newStatus:
+                nextOrderStatus,
+
+              description:
+                `${orderItem.productCode} - ${orderItem.productName} ürününden ` +
+                `${quantity} adet, ${sourceUnit.barcode} kaynak THM'sinden ` +
+                `${targetUnit.barcode} toplama THM'sine aktarıldı.`,
+
+              metadata: {
+                pickingRecordId:
+                  pickingRecord.id,
+
+                orderItemId:
+                  orderItem.id,
+
+                customerName:
+                  order.customer.companyName,
+
+                sourceHandlingUnitId:
+                  sourceUnit.id,
+
+                targetHandlingUnitId:
+                  targetUnit.id,
+
+                sourceProductQuantityBefore:
+                  sourceItem.quantity,
+
+                sourceProductQuantityAfter:
+                  sourceQuantityAfter,
+
+                sourceTotalQuantityAfter:
+                  sourceTotalQuantity,
+
+                targetProductQuantityAfter:
+                  targetProductItem.quantity,
+
+                targetTotalQuantityAfter:
+                  targetTotalQuantity,
+
+                lineOrderedQuantity:
+                  updatedOrderItem.quantity,
+
+                linePickedQuantityAfter:
+                  updatedOrderItem.pickedQuantity,
+
+                lineRemainingQuantityAfter:
+                  Math.max(
+                    0,
+                    updatedOrderItem.quantity -
+                      updatedOrderItem
+                        .pickedQuantity
+                  ),
+
+                orderTotalQuantity,
+
+                orderPickedQuantityAfter:
+                  orderPickedQuantity,
+
+                orderRemainingQuantityAfter:
+                  orderRemainingQuantity,
+
+                pickingCompleted,
+
+                recordedAt:
+                  pickingRecord.createdAt.toISOString(),
+              },
+
+              isSuccessful: true,
             },
           });
 

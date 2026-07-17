@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  HandlingUnitPurpose,
   HandlingUnitStatus,
   HandlingUnitType,
   Prisma,
@@ -15,7 +16,9 @@ export type HandlingUnitActionState = {
   message: string;
 };
 
-function normalizeBarcode(value: FormDataEntryValue | null) {
+function normalizeBarcode(
+  value: FormDataEntryValue | null
+) {
   return String(value ?? "")
     .trim()
     .toUpperCase();
@@ -45,10 +48,52 @@ function isHandlingUnitType(
 function getBarcodePrefix(
   unitType: HandlingUnitType
 ) {
-  return unitType ===
-    HandlingUnitType.PALLET
-    ? "PLT"
-    : "KOL";
+  const prefixes: Record<
+    HandlingUnitType,
+    string
+  > = {
+    [HandlingUnitType.BOX]: "KOL",
+    [HandlingUnitType.PALLET]: "PLT",
+    [HandlingUnitType.PICKING_BOX]:
+      "PKOL",
+    [HandlingUnitType.PICKING_PALLET]:
+      "PPAL",
+  };
+
+  return prefixes[unitType];
+}
+
+function getHandlingUnitPurpose(
+  unitType: HandlingUnitType
+) {
+  if (
+    unitType ===
+      HandlingUnitType.PICKING_BOX ||
+    unitType ===
+      HandlingUnitType.PICKING_PALLET
+  ) {
+    return HandlingUnitPurpose.PICKING;
+  }
+
+  return HandlingUnitPurpose.STOCK;
+}
+
+function getHandlingUnitLabel(
+  unitType: HandlingUnitType
+) {
+  const labels: Record<
+    HandlingUnitType,
+    string
+  > = {
+    [HandlingUnitType.BOX]: "Koli",
+    [HandlingUnitType.PALLET]: "Palet",
+    [HandlingUnitType.PICKING_BOX]:
+      "Toplama Kolisi",
+    [HandlingUnitType.PICKING_PALLET]:
+      "Toplama Paleti",
+  };
+
+  return labels[unitType];
 }
 
 async function createAutomaticBarcode(
@@ -61,6 +106,7 @@ async function createAutomaticBarcode(
     await prisma.handlingUnit.findFirst({
       where: {
         unitType,
+
         barcode: {
           startsWith: prefix,
         },
@@ -76,30 +122,52 @@ async function createAutomaticBarcode(
       },
     });
 
-  let nextNumber =
-    (lastUnit?.id ?? 0) + 1;
+  let nextNumber = 1;
 
   if (lastUnit) {
-    const barcodeNumber =
-      Number(
-        lastUnit.barcode.replace(
-          prefix,
-          ""
-        )
+    const numberPart =
+      lastUnit.barcode.slice(
+        prefix.length
       );
+
+    const barcodeNumber =
+      Number(numberPart);
 
     if (
       Number.isInteger(barcodeNumber) &&
-      barcodeNumber >= nextNumber
+      barcodeNumber > 0
     ) {
       nextNumber =
         barcodeNumber + 1;
+    } else {
+      nextNumber =
+        lastUnit.id + 1;
     }
   }
 
-  return `${prefix}${String(
+  let barcode = `${prefix}${String(
     nextNumber
   ).padStart(8, "0")}`;
+
+  while (
+    await prisma.handlingUnit.findUnique({
+      where: {
+        barcode,
+      },
+
+      select: {
+        id: true,
+      },
+    })
+  ) {
+    nextNumber += 1;
+
+    barcode = `${prefix}${String(
+      nextNumber
+    ).padStart(8, "0")}`;
+  }
+
+  return barcode;
 }
 
 export async function createHandlingUnit(
@@ -165,6 +233,11 @@ export async function createHandlingUnit(
     };
   }
 
+  const purpose =
+    getHandlingUnitPurpose(
+      unitTypeValue
+    );
+
   try {
     const handlingUnit =
       await prisma.handlingUnit.create({
@@ -172,6 +245,7 @@ export async function createHandlingUnit(
           barcode,
           unitType:
             unitTypeValue,
+          purpose,
 
           status:
             HandlingUnitStatus.OPEN,
@@ -179,6 +253,7 @@ export async function createHandlingUnit(
           warehouseId: null,
           locationId: null,
           parentUnitId: null,
+          assignedOrderId: null,
           description,
         },
 
@@ -196,13 +271,9 @@ export async function createHandlingUnit(
 
     return {
       success: true,
-      message:
-        `${handlingUnit.barcode} ${
-          handlingUnit.unitType ===
-          HandlingUnitType.PALLET
-            ? "paleti"
-            : "kolisi"
-        } başarıyla oluşturuldu.`,
+      message: `${handlingUnit.barcode} numaralı ${getHandlingUnitLabel(
+        handlingUnit.unitType
+      )} başarıyla oluşturuldu.`,
     };
   } catch (error) {
     console.error(
@@ -218,7 +289,7 @@ export async function createHandlingUnit(
       return {
         success: false,
         message:
-          "Bu barkodla kayıtlı başka bir koli veya palet bulunuyor.",
+          "Bu barkodla kayıtlı başka bir taşıma birimi bulunuyor.",
       };
     }
 
@@ -227,7 +298,7 @@ export async function createHandlingUnit(
       message:
         error instanceof Error
           ? error.message
-          : "Koli veya palet oluşturulurken beklenmeyen bir hata oluştu.",
+          : "Taşıma birimi oluşturulurken beklenmeyen bir hata oluştu.",
     };
   }
 }

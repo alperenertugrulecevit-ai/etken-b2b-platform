@@ -381,6 +381,8 @@ enum HandlingUnitPurpose {
 enum HandlingUnitType {
   PALLET
   BOX
+  PICKING_PALLET
+  PICKING_BOX
 }
 
 enum HandlingUnitStatus {
@@ -470,5 +472,156 @@ model PickingRecord {
   @@index([productId])
   @@index([sourceHandlingUnitId])
   @@index([targetHandlingUnitId])
+  @@index([createdAt])
+}
+
+/**
+ * WMS İŞLEM VE HAREKET KAYITLARI
+ * RF ve yönetim ekranlarında gerçekleştirilen depo işlemlerinin
+ * ortak hareket geçmişini tutar.
+ * Mevcut sistemde kullanıcı modeli bulunmadığı için operatorId,
+ * operatorName ve terminalCode alanları metin olarak tutulur.
+ */
+
+enum WmsOperationType {
+  RECEIVING
+  HANDLING_UNIT_CREATE
+  HANDLING_UNIT_UPDATE
+  HANDLING_UNIT_CANCEL
+  ADDRESSING
+  UNADDRESSING
+  ITEM_TRANSFER
+  FULL_TRANSFER
+  PALLET_LINK
+  PALLET_UNLINK
+  PICKING
+  PACKING
+  SHIPPING
+  COUNT
+  STOCK_IN
+  STOCK_OUT
+  OTHER
+}
+
+model WmsOperationLog {
+  id Int @id @default(autoincrement())
+
+  operationType WmsOperationType
+
+  /**
+   * İşlemin yapıldığı modül.
+   * Örnekler:
+   * RF_RECEIVING
+   * RF_PICKING
+   * RF_TRANSFER
+   * ADMIN_HANDLING_UNIT
+   */
+  module String
+
+  /**
+   * İşlemin ana kayıt tipi ve kimliği.
+   * Örnek:
+   * entityType = HANDLING_UNIT
+   * entityId   = 125
+   */
+  entityType String?
+  entityId   Int?
+
+  /**
+   * Kullanıcı ve RF terminal bilgileri.
+   * Kullanıcı altyapısı eklendiğinde operatorId alanı
+   * kullanıcı kaydıyla ilişkilendirilebilir.
+   */
+  operatorId   String?
+  operatorName String?
+  terminalCode String?
+  ipAddress    String?
+
+  /**
+   * İşlemle ilgili barkodlar.
+   * barcode       = ana THM veya belge barkodu
+   * sourceBarcode = kaynak THM
+   * targetBarcode = hedef THM
+   */
+  barcode       String?
+  sourceBarcode String?
+  targetBarcode String?
+
+  /**
+   * Sipariş ve satın alma belgesi bilgileri.
+   */
+  orderId         Int?
+  orderNumber     String?
+  purchaseOrderId Int?
+  purchaseNumber  String?
+
+  /**
+   * Ürün bilgileri.
+   */
+  productId   Int?
+  productCode String?
+  productName String?
+  quantity    Int?
+
+  /**
+   * Depo ve lokasyon bilgileri.
+   */
+  warehouseId   Int?
+  warehouseCode String?
+
+  sourceLocationId   Int?
+  sourceLocationCode String?
+
+  targetLocationId   Int?
+  targetLocationCode String?
+
+  /**
+   * İşlem öncesi ve sonrası durumlar.
+   */
+  previousStatus String?
+  newStatus      String?
+
+  /**
+   * Serbest açıklama ve ilave teknik bilgi.
+   * metadata örneği:
+   * {
+   * "sourceQuantityBefore": 10,
+   * "sourceQuantityAfter": 6,
+   * "targetQuantityBefore": 2,
+   * "targetQuantityAfter": 6
+   * }
+   */
+  description String?
+  metadata    Json?
+
+  /**
+   * İşlem başarılı mı?
+   * Başarısız RF girişimleri veya kullanıcı hataları da
+   * ileride bu tabloya kaydedilebilir.
+   */
+  isSuccessful Boolean @default(true)
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([operationType])
+  @@index([module])
+  @@index([entityType, entityId])
+  @@index([operatorId])
+  @@index([operatorName])
+  @@index([terminalCode])
+  @@index([barcode])
+  @@index([sourceBarcode])
+  @@index([targetBarcode])
+  @@index([orderId])
+  @@index([orderNumber])
+  @@index([purchaseOrderId])
+  @@index([purchaseNumber])
+  @@index([productId])
+  @@index([productCode])
+  @@index([warehouseId])
+  @@index([sourceLocationId])
+  @@index([targetLocationId])
+  @@index([isSuccessful])
   @@index([createdAt])
 }
