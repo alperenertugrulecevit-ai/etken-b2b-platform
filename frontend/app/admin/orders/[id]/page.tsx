@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import OperationTimeline from "@/components/admin/OperationTimeline";
 import { prisma } from "@/lib/prisma";
 import { updateOrderStatus } from "./actions";
 
@@ -574,6 +575,14 @@ export default async function OrderDetailPage({
           </tbody>
         </table>
       </section>
+
+      <OperationTimeline
+        orderId={order.id}
+        orderNumber={
+          order.orderNumber
+        }
+        title="Sipariş Operasyon Geçmişi"
+      />
 
       <div className="mt-8 grid gap-8 xl:grid-cols-[1fr_420px]">
         <section className="rounded-2xl bg-white p-6 shadow">

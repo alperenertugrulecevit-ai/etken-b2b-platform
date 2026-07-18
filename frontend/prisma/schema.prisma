@@ -162,6 +162,7 @@ model Order {
   stockMovements        StockMovement[]
   pickingRecords        PickingRecord[]
   assignedHandlingUnits HandlingUnit[]   @relation("AssignedHandlingUnits")
+  waveOrders            WaveOrder[]
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -624,4 +625,332 @@ model WmsOperationLog {
   @@index([targetLocationId])
   @@index([isSuccessful])
   @@index([createdAt])
+}
+
+// Bu blok mevcut prisma/schema.prisma dosyasının SONUNA eklenmelidir.
+// Mevcut generator, datasource ve modeller silinmemelidir.
+
+enum WaveStatus {
+  DRAFT
+  READY
+  RELEASED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum WavePriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum WaveType {
+  STORE_REPLENISHMENT
+  CUSTOMER_ORDER
+  ECOMMERCE
+  TRANSFER
+  MIXED
+}
+
+enum WaveAssignmentStatus {
+  ASSIGNED
+  ACTIVE
+  WAITING
+  COMPLETED
+  CANCELLED
+}
+
+model Wave {
+  id       String       @id @default(cuid())
+  waveNo   String       @unique
+  name     String?
+  type     WaveType     @default(MIXED)
+  status   WaveStatus   @default(DRAFT)
+  priority WavePriority @default(NORMAL)
+
+  plannedStartAt  DateTime?
+  plannedFinishAt DateTime?
+  releasedAt      DateTime?
+  startedAt       DateTime?
+  pausedAt        DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+
+  plannedOrderCount Int @default(0)
+  plannedLineCount  Int @default(0)
+  plannedQuantity   Int @default(0)
+
+  completedOrderCount Int @default(0)
+  completedLineCount  Int @default(0)
+  completedQuantity   Int @default(0)
+
+  pickingProgress       Int @default(0)
+  transferProgress      Int @default(0)
+  consolidationProgress Int @default(0)
+  packingProgress       Int @default(0)
+  shippingProgress      Int @default(0)
+
+  notes     String?
+  createdBy String?
+  updatedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders      WaveOrder[]
+  assignments WaveAssignment[]
+
+  @@index([status, priority])
+  @@index([plannedStartAt])
+  @@index([createdAt])
+}
+
+model WaveOrder {
+  id      String @id @default(cuid())
+  waveId  String
+  orderId Int
+
+  /**
+   * Sipariş numarası ve müşteri bilgileri operasyon anındaki
+   * tarihsel görüntüyü korumak için snapshot olarak tutulur.
+   */
+  orderNumber  String
+  customerCode String?
+  customerName String?
+  storeCode    String?
+  storeName    String?
+
+  lineCount         Int @default(0)
+  plannedQuantity   Int @default(0)
+  completedQuantity Int @default(0)
+
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wave  Wave  @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  /**
+   * Bir sipariş aynı Wave'e ikinci kez eklenemez.
+   */
+  @@unique([waveId, orderId], name: "wave_order_unique")
+  @@index([orderId])
+  @@index([orderNumber])
+  @@index([waveId, isCompleted])
+}
+
+enum UserStatus {
+  ACTIVE
+  PASSIVE
+  LOCKED
+  SUSPENDED
+}
+
+enum UserType {
+  ADMIN
+  OFFICE
+  WAREHOUSE
+  RF_OPERATOR
+  SYSTEM
+  API
+}
+
+model Employee {
+  id String @id @default(cuid())
+
+  employeeCode String @unique
+
+  firstName String
+  lastName  String
+
+  email String? @unique
+  phone String?
+
+  department String?
+  title      String?
+  shiftCode  String?
+
+  hireDate        DateTime?
+  terminationDate DateTime?
+
+  isActive Boolean @default(true)
+  canUseRf Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User?
+
+  @@index([isActive])
+  @@index([canUseRf])
+  @@index([department])
+  @@index([firstName, lastName])
+}
+
+model User {
+  id String @id @default(cuid())
+
+  employeeId String? @unique
+
+  username String  @unique
+  email    String? @unique
+
+  passwordHash String
+
+  userType UserType   @default(WAREHOUSE)
+  status   UserStatus @default(ACTIVE)
+
+  mustChangePassword Boolean @default(true)
+  failedLoginCount   Int     @default(0)
+
+  lastLoginAt          DateTime?
+  passwordChangedAt    DateTime?
+  lockedAt             DateTime?
+  lastFailedLoginAt    DateTime?
+  sessionInvalidatedAt DateTime?
+
+  isRfUser    Boolean @default(false)
+  isAdminUser Boolean @default(false)
+
+  createdById String?
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  createdBy    User?  @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers User[] @relation("UserCreatedBy")
+
+  updatedBy    User?  @relation("UserUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedUsers User[] @relation("UserUpdatedBy")
+
+  userRoles         UserRole[]
+  assignedUserRoles UserRole[] @relation("UserRoleAssignedBy")
+
+  waveAssignments   WaveAssignment[]
+  assignedWaveTasks WaveAssignment[] @relation("WaveAssignmentAssignedBy")
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([userType])
+  @@index([isRfUser])
+  @@index([isAdminUser])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model Role {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String @unique
+
+  description String?
+
+  isSystemRole Boolean @default(false)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@index([isActive])
+  @@index([isSystemRole])
+}
+
+model Permission {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String
+
+  module      String
+  description String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@index([isActive])
+}
+
+model UserRole {
+  id String @id @default(cuid())
+
+  userId String
+  roleId String
+
+  assignedById String?
+  assignedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedBy User? @relation("UserRoleAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleId], name: "user_role_unique")
+  @@index([userId])
+  @@index([roleId])
+  @@index([assignedById])
+}
+
+model RolePermission {
+  id String @id @default(cuid())
+
+  roleId       String
+  permissionId String
+
+  grantedAt DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId], name: "role_permission_unique")
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model WaveAssignment {
+  id String @id @default(cuid())
+
+  waveId String
+  userId String
+
+  operationType WmsOperationType?
+  status        WaveAssignmentStatus @default(ASSIGNED)
+
+  assignedAt     DateTime  @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  lastActivityAt DateTime?
+
+  assignedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wave Wave @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  assignedBy User? @relation("WaveAssignmentAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([waveId, userId, operationType], name: "wave_user_operation_unique")
+  @@index([waveId, status])
+  @@index([userId, status])
+  @@index([assignedById])
+  @@index([operationType])
 }

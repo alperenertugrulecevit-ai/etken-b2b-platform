@@ -1,12 +1,18 @@
 import {
+  Prisma,
   WmsOperationType,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 type Props = {
-  handlingUnitId: number;
-  handlingUnitBarcode: string;
+  handlingUnitId?: number;
+  handlingUnitBarcode?: string;
+  orderId?: number;
+  orderNumber?: string;
+  title?: string;
+  description?: string;
+  limit?: number;
 };
 
 function getOperationLabel(
@@ -86,9 +92,7 @@ function getOperationBadgeClass(
   );
 }
 
-function formatDate(
-  value: Date
-) {
+function formatDate(value: Date) {
   return new Intl.DateTimeFormat(
     "tr-TR",
     {
@@ -105,11 +109,15 @@ function getBarcodeRole({
   sourceBarcode,
   targetBarcode,
 }: {
-  handlingUnitBarcode: string;
+  handlingUnitBarcode?: string;
   barcode: string | null;
   sourceBarcode: string | null;
   targetBarcode: string | null;
 }) {
+  if (!handlingUnitBarcode) {
+    return null;
+  }
+
   if (
     sourceBarcode ===
     handlingUnitBarcode
@@ -133,79 +141,134 @@ function getBarcodeRole({
   return null;
 }
 
+function getDefaultDescription({
+  handlingUnitBarcode,
+  orderNumber,
+}: {
+  handlingUnitBarcode?: string;
+  orderNumber?: string;
+}) {
+  if (handlingUnitBarcode) {
+    return "Bu taşıma biriminin kayıt altına alınmış operasyon hareketleri gösterilir.";
+  }
+
+  if (orderNumber) {
+    return "Bu siparişe ait toplama, paketleme, sevkiyat ve diğer WMS operasyon hareketleri gösterilir.";
+  }
+
+  return "Kayıt altına alınmış WMS operasyon hareketleri gösterilir.";
+}
+
 export default async function OperationTimeline({
   handlingUnitId,
   handlingUnitBarcode,
+  orderId,
+  orderNumber,
+  title = "Operasyon Geçmişi",
+  description,
+  limit = 200,
 }: Props) {
-  const operationLogs =
-    await prisma.wmsOperationLog.findMany({
-      where: {
-        OR: [
-          {
-            entityType:
-              "HANDLING_UNIT",
-            entityId:
-              handlingUnitId,
-          },
-          {
-            barcode:
-              handlingUnitBarcode,
-          },
-          {
-            sourceBarcode:
-              handlingUnitBarcode,
-          },
-          {
-            targetBarcode:
-              handlingUnitBarcode,
-          },
-        ],
-      },
+  const filters: Prisma.WmsOperationLogWhereInput[] =
+    [];
 
-      orderBy: {
-        createdAt: "desc",
-      },
-
-      take: 200,
-
-      select: {
-        id: true,
-        operationType: true,
-        module: true,
-        operatorName: true,
-        terminalCode: true,
-        barcode: true,
-        sourceBarcode: true,
-        targetBarcode: true,
-        orderNumber: true,
-        purchaseNumber: true,
-        productCode: true,
-        productName: true,
-        quantity: true,
-        warehouseCode: true,
-        sourceLocationCode: true,
-        targetLocationCode: true,
-        previousStatus: true,
-        newStatus: true,
-        description: true,
-        isSuccessful: true,
-        errorMessage: true,
-        createdAt: true,
-      },
+  if (
+    handlingUnitId !== undefined
+  ) {
+    filters.push({
+      entityType: "HANDLING_UNIT",
+      entityId: handlingUnitId,
     });
+  }
+
+  if (handlingUnitBarcode) {
+    filters.push(
+      {
+        barcode:
+          handlingUnitBarcode,
+      },
+      {
+        sourceBarcode:
+          handlingUnitBarcode,
+      },
+      {
+        targetBarcode:
+          handlingUnitBarcode,
+      }
+    );
+  }
+
+  if (orderId !== undefined) {
+    filters.push({
+      entityType: "ORDER",
+      entityId: orderId,
+    });
+  }
+
+  if (orderNumber) {
+    filters.push({
+      orderNumber,
+    });
+  }
+
+  const operationLogs =
+    filters.length > 0
+      ? await prisma.wmsOperationLog.findMany(
+          {
+            where: {
+              OR: filters,
+            },
+
+            orderBy: {
+              createdAt: "desc",
+            },
+
+            take: Math.min(
+              Math.max(limit, 1),
+              500
+            ),
+
+            select: {
+              id: true,
+              operationType: true,
+              module: true,
+              operatorName: true,
+              terminalCode: true,
+              barcode: true,
+              sourceBarcode: true,
+              targetBarcode: true,
+              orderNumber: true,
+              purchaseNumber: true,
+              productCode: true,
+              productName: true,
+              quantity: true,
+              warehouseCode: true,
+              sourceLocationCode: true,
+              targetLocationCode: true,
+              previousStatus: true,
+              newStatus: true,
+              description: true,
+              isSuccessful: true,
+              errorMessage: true,
+              createdAt: true,
+            },
+          }
+        )
+      : [];
 
   return (
     <section className="mt-8 rounded-2xl bg-white p-6 shadow">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold">
-            Hareket Geçmişi
+            {title}
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            Bu taşıma biriminin kayıt altına
-            alınmış operasyon hareketleri
-            gösterilir.
+            {description ??
+              getDefaultDescription({
+                handlingUnitBarcode,
+                orderNumber,
+              })}
           </p>
         </div>
 
@@ -219,8 +282,8 @@ export default async function OperationTimeline({
 
       {operationLogs.length === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
-          Bu taşıma birimi için henüz
-          operasyon hareketi bulunmuyor.
+          Bu kayıt için henüz operasyon
+          hareketi bulunmuyor.
         </div>
       ) : (
         <div className="relative mt-8 space-y-6">
@@ -351,6 +414,18 @@ export default async function OperationTimeline({
                           {log.quantity.toLocaleString(
                             "tr-TR"
                           )}
+                        </p>
+                      </div>
+                    )}
+
+                    {log.barcode && (
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase text-slate-500">
+                          İşlem Barkodu
+                        </p>
+
+                        <p className="mt-1 break-all font-mono font-bold">
+                          {log.barcode}
                         </p>
                       </div>
                     )}

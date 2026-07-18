@@ -10,15 +10,21 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "bwip-js": "^4.11.2",
+    "jose": "^6.2.3",
     "next": "16.2.10",
     "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "turkey-neighbourhoods": "^4.0.3"
+    "react-is": "^19.2.7",
+    "recharts": "^3.9.2",
+    "turkey-neighbourhoods": "^4.0.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

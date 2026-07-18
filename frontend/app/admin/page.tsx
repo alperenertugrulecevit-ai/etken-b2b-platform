@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WmsOperationType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 function formatCurrency(value: number) {
@@ -71,6 +72,57 @@ function getStatusClass(status: string) {
   );
 }
 
+
+function getWmsOperationLabel(operationType: string) {
+  const labels: Record<string, string> = {
+    RECEIVING: "Mal Kabul",
+    HANDLING_UNIT_CREATE: "THM Oluşturma",
+    HANDLING_UNIT_UPDATE: "THM Güncelleme",
+    HANDLING_UNIT_CANCEL: "THM İptali",
+    ADDRESSING: "Adresleme",
+    UNADDRESSING: "Adresten Çıkarma",
+    ITEM_TRANSFER: "Ürün Transferi",
+    FULL_TRANSFER: "Komple THM Transferi",
+    PALLET_LINK: "Koli-Palet Bağlama",
+    PALLET_UNLINK: "Paletten Koli Ayırma",
+    PICKING: "Toplama",
+    PACKING: "Paketleme",
+    SHIPPING: "Sevkiyat",
+    COUNT: "Sayım",
+    STOCK_IN: "Stok Girişi",
+    STOCK_OUT: "Stok Çıkışı",
+    OTHER: "Diğer",
+  };
+
+  return labels[operationType] ?? operationType;
+}
+
+function getWmsOperationClass(operationType: string) {
+  const classes: Record<string, string> = {
+    RECEIVING: "bg-emerald-100 text-emerald-800",
+    ADDRESSING: "bg-blue-100 text-blue-800",
+    UNADDRESSING: "bg-orange-100 text-orange-800",
+    ITEM_TRANSFER: "bg-violet-100 text-violet-800",
+    FULL_TRANSFER: "bg-purple-100 text-purple-800",
+    PICKING: "bg-indigo-100 text-indigo-800",
+    PACKING: "bg-cyan-100 text-cyan-800",
+    SHIPPING: "bg-sky-100 text-sky-800",
+    COUNT: "bg-amber-100 text-amber-800",
+    PALLET_LINK: "bg-teal-100 text-teal-800",
+    PALLET_UNLINK: "bg-rose-100 text-rose-800",
+  };
+
+  return classes[operationType] ?? "bg-slate-100 text-slate-700";
+}
+
+function formatTime(value: Date) {
+  return new Intl.DateTimeFormat("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(value);
+}
+
 export default async function AdminDashboardPage() {
   const now = new Date();
 
@@ -114,6 +166,8 @@ export default async function AdminDashboardPage() {
     todayRequestedOrders,
     todayRevenueSummary,
     customerOrderGroups,
+    todayWmsOperationGroups,
+    recentWmsOperations,
   ] = await Promise.all([
     prisma.product.count({
       where: {
@@ -334,6 +388,54 @@ export default async function AdminDashboardPage() {
 
       take: 5,
     }),
+
+    prisma.wmsOperationLog.groupBy({
+      by: ["operationType"],
+
+      where: {
+        createdAt: {
+          gte: startOfToday,
+          lt: endOfToday,
+        },
+
+        isSuccessful: true,
+      },
+
+      _count: {
+        _all: true,
+      },
+
+      _sum: {
+        quantity: true,
+      },
+    }),
+
+    prisma.wmsOperationLog.findMany({
+      take: 12,
+
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      select: {
+        id: true,
+        operationType: true,
+        module: true,
+        operatorName: true,
+        terminalCode: true,
+        barcode: true,
+        sourceBarcode: true,
+        targetBarcode: true,
+        orderNumber: true,
+        productCode: true,
+        productName: true,
+        quantity: true,
+        description: true,
+        isSuccessful: true,
+        errorMessage: true,
+        createdAt: true,
+      },
+    }),
   ]);
 
   const totalPhysicalStock =
@@ -408,6 +510,103 @@ export default async function AdminDashboardPage() {
     packingOrderCount +
     readyToShipOrderCount;
 
+  const todayWmsMap = new Map(
+    todayWmsOperationGroups.map((group) => [
+      group.operationType,
+      {
+        operationCount: group._count._all,
+        quantity: group._sum.quantity ?? 0,
+      },
+    ])
+  );
+
+  const getTodayWmsMetric = (
+    operationTypes: WmsOperationType[]
+  ) => {
+    return operationTypes.reduce(
+      (summary, operationType) => {
+        const value = todayWmsMap.get(operationType);
+
+        return {
+          operationCount:
+            summary.operationCount +
+            (value?.operationCount ?? 0),
+          quantity:
+            summary.quantity +
+            (value?.quantity ?? 0),
+        };
+      },
+      {
+        operationCount: 0,
+        quantity: 0,
+      }
+    );
+  };
+
+  const wmsKpis = [
+    {
+      label: "Mal Kabul",
+      icon: "📥",
+      metric: getTodayWmsMetric([
+        WmsOperationType.RECEIVING,
+      ]),
+      className:
+        "border-emerald-200 bg-emerald-50 text-emerald-800",
+    },
+    {
+      label: "Adresleme",
+      icon: "📍",
+      metric: getTodayWmsMetric([
+        WmsOperationType.ADDRESSING,
+      ]),
+      className:
+        "border-blue-200 bg-blue-50 text-blue-800",
+    },
+    {
+      label: "Transfer",
+      icon: "🔄",
+      metric: getTodayWmsMetric([
+        WmsOperationType.ITEM_TRANSFER,
+        WmsOperationType.FULL_TRANSFER,
+      ]),
+      className:
+        "border-violet-200 bg-violet-50 text-violet-800",
+    },
+    {
+      label: "Toplama",
+      icon: "🧺",
+      metric: getTodayWmsMetric([
+        WmsOperationType.PICKING,
+      ]),
+      className:
+        "border-indigo-200 bg-indigo-50 text-indigo-800",
+    },
+    {
+      label: "Paketleme",
+      icon: "📦",
+      metric: getTodayWmsMetric([
+        WmsOperationType.PACKING,
+      ]),
+      className:
+        "border-cyan-200 bg-cyan-50 text-cyan-800",
+    },
+    {
+      label: "Sevkiyat",
+      icon: "🚚",
+      metric: getTodayWmsMetric([
+        WmsOperationType.SHIPPING,
+      ]),
+      className:
+        "border-sky-200 bg-sky-50 text-sky-800",
+    },
+  ];
+
+  const todaySuccessfulWmsOperationCount =
+    todayWmsOperationGroups.reduce(
+      (total, group) => total + group._count._all,
+      0
+    );
+
   return (
     <section className="p-10">
       {/* BAŞLIK */}
@@ -441,9 +640,240 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* WMS OPERASYON MERKEZİ */}
+
+      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">
+              Bugünkü WMS Operasyonları
+            </h2>
+
+            <p className="mt-1 text-gray-500">
+              Başarılı depo hareketlerinin bugünkü canlı özeti.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-900 px-4 py-3 text-white">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+              Toplam İşlem
+            </p>
+
+            <p className="mt-1 text-2xl font-bold">
+              {formatNumber(
+                todaySuccessfulWmsOperationCount
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          {wmsKpis.map((item) => (
+            <article
+              key={item.label}
+              className={`rounded-2xl border p-5 ${item.className}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold">
+                    {item.label}
+                  </p>
+
+                  <p className="mt-3 text-3xl font-bold">
+                    {formatNumber(
+                      item.metric.quantity
+                    )}
+                  </p>
+                </div>
+
+                <span className="text-3xl">
+                  {item.icon}
+                </span>
+              </div>
+
+              <p className="mt-3 text-xs font-semibold opacity-80">
+                {formatNumber(
+                  item.metric.operationCount
+                )} işlem kaydı
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-8 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+          <section className="overflow-hidden rounded-2xl border">
+            <div className="border-b bg-slate-50 px-5 py-4">
+              <h3 className="text-lg font-bold">
+                Son WMS Operasyonları
+              </h3>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Sisteme en son yazılan 12 depo hareketi.
+              </p>
+            </div>
+
+            <div className="divide-y">
+              {recentWmsOperations.map((operation) => (
+                <div
+                  key={operation.id}
+                  className="flex flex-wrap items-start justify-between gap-4 px-5 py-4 hover:bg-slate-50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${getWmsOperationClass(
+                          operation.operationType
+                        )}`}
+                      >
+                        {getWmsOperationLabel(
+                          operation.operationType
+                        )}
+                      </span>
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          operation.isSuccessful
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {operation.isSuccessful
+                          ? "Başarılı"
+                          : "Başarısız"}
+                      </span>
+                    </div>
+
+                    <p className="mt-2 font-semibold">
+                      {operation.description ||
+                        operation.productName ||
+                        operation.orderNumber ||
+                        operation.barcode ||
+                        operation.sourceBarcode ||
+                        operation.targetBarcode ||
+                        operation.module}
+                    </p>
+
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                      <span>
+                        Modül: {operation.module}
+                      </span>
+
+                      <span>
+                        Operatör:{" "}
+                        {operation.operatorName ||
+                          "Belirtilmedi"}
+                      </span>
+
+                      <span>
+                        Terminal:{" "}
+                        {operation.terminalCode ||
+                          "Belirtilmedi"}
+                      </span>
+
+                      {operation.quantity !== null && (
+                        <span>
+                          Miktar:{" "}
+                          {formatNumber(
+                            operation.quantity
+                          )}
+                        </span>
+                      )}
+                    </div>
+
+                    {!operation.isSuccessful &&
+                      operation.errorMessage && (
+                        <p className="mt-2 text-sm font-semibold text-red-600">
+                          {operation.errorMessage}
+                        </p>
+                      )}
+                  </div>
+
+                  <div className="whitespace-nowrap text-right">
+                    <p className="font-bold text-slate-700">
+                      {formatTime(operation.createdAt)}
+                    </p>
+
+                    <p className="mt-1 text-xs text-gray-400">
+                      {formatSimpleDate(
+                        operation.createdAt
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
+              {recentWmsOperations.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  Henüz WMS operasyon kaydı bulunmuyor.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border p-5">
+            <h3 className="text-lg font-bold">
+              Operasyon Dağılımı
+            </h3>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Bugünkü işlem adetlerinin modüllere göre dağılımı.
+            </p>
+
+            <div className="mt-6 space-y-5">
+              {wmsKpis.map((item) => {
+                const highestOperationCount = Math.max(
+                  1,
+                  ...wmsKpis.map(
+                    (kpi) =>
+                      kpi.metric.operationCount
+                  )
+                );
+
+                const widthPercentage =
+                  (item.metric.operationCount /
+                    highestOperationCount) *
+                  100;
+
+                return (
+                  <div key={item.label}>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold">
+                        {item.label}
+                      </span>
+
+                      <strong>
+                        {formatNumber(
+                          item.metric.operationCount
+                        )}
+                      </strong>
+                    </div>
+
+                    <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-slate-800"
+                        style={{
+                          width: `${widthPercentage}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {todaySuccessfulWmsOperationCount ===
+              0 && (
+              <div className="mt-6 rounded-xl bg-slate-50 p-4 text-center text-sm text-gray-500">
+                Bugün için başarılı operasyon kaydı bulunmuyor.
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
+
       {/* ANA ÖZET KARTLARI */}
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl bg-white p-6 shadow">
           <div className="flex items-start justify-between gap-4">
             <div>

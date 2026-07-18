@@ -1,183 +1,266 @@
 import Link from "next/link";
 
+const mainMenuItems = [
+  {
+    href: "/admin",
+    icon: "📊",
+    label: "Dashboard",
+  },
+  {
+    href: "/admin/products",
+    icon: "📦",
+    label: "Ürün Yönetimi",
+  },
+  {
+    href: "/admin/categories",
+    icon: "📂",
+    label: "Kategori Yönetimi",
+  },
+  {
+    href: "/admin/brands",
+    icon: "🏷️",
+    label: "Marka Yönetimi",
+  },
+  {
+    href: "/admin/suppliers",
+    icon: "🏢",
+    label: "Tedarikçi Yönetimi",
+  },
+  {
+    href: "/admin/customers",
+    icon: "👥",
+    label: "Müşteri Yönetimi",
+  },
+  {
+    href: "/admin/orders",
+    icon: "🛒",
+    label: "Sipariş Yönetimi",
+  },
+  {
+    href: "/admin/purchase-orders",
+    icon: "🧾",
+    label: "Satın Alma",
+  },
+];
+
+const stockMenuItems = [
+  {
+    href: "/admin/stock/movements",
+    icon: "📋",
+    label: "Stok Hareketleri",
+  },
+  {
+    href: "/admin/stock/manual",
+    icon: "📥",
+    label: "Manuel Stok İşlemi",
+  },
+  {
+    href: "/admin/stock/locations",
+    icon: "📍",
+    label: "Lokasyon Bazlı Stok",
+  },
+  {
+    href: "/admin/stock/location-map",
+    icon: "🗺️",
+    label: "Lokasyon Stok Haritası",
+  },
+];
+
+const handlingUnitMenuItems = [
+  {
+    href: "/admin/handling-units",
+    icon: "🧱",
+    label: "Koli / Palet Yönetimi",
+  },
+  {
+    href: "/admin/handling-units/transfers",
+    icon: "🔄",
+    label: "Koli / Palet Transferi",
+  },
+  {
+    href: "/admin/handling-units/merge",
+    icon: "🔗",
+    label: "Toplu Birleştirme",
+  },
+  {
+    href: "/admin/handling-units/pallet-link",
+    icon: "🧩",
+    label: "Koli–Palet Bağlama",
+  },
+  {
+    href: "/admin/handling-units/addressing",
+    icon: "📌",
+    label: "Tekli Adresleme",
+  },
+  {
+    href: "/admin/handling-units/addressing/bulk",
+    icon: "📌",
+    label: "Toplu Adresleme",
+  },
+  {
+    href: "/admin/handling-units/unaddressing",
+    icon: "📤",
+    label: "Adres Kaldırma",
+  },
+];
+
+const waveMenuItems = [
+  {
+    href: "/admin/waves",
+    icon: "🌊",
+    label: "Wave Yönetimi",
+  },
+  {
+    href: "/admin/waves/new",
+    icon: "➕",
+    label: "Yeni Wave Oluştur",
+  },
+];
+
+function MenuLink({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white"
+    >
+      <span className="text-lg">{icon}</span>
+
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function MenuTitle({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <p className="mb-2 mt-6 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+      {children}
+    </p>
+  );
+}
+
 export default function AdminSidebar() {
   return (
     <aside className="min-h-screen w-72 shrink-0 bg-slate-900 p-6 text-white">
-      <h2 className="mb-2 text-2xl font-bold">
-        ETKEN Admin
-      </h2>
+      <div className="sticky top-6">
+        <h2 className="text-2xl font-bold">
+          ETKEN Admin
+        </h2>
 
-      <p className="mb-10 text-sm text-slate-400">
-        Yönetim Merkezi
-      </p>
-
-      <nav className="space-y-3">
-        <Link
-          href="/admin"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📊 Dashboard
-        </Link>
-
-        <Link
-          href="/admin/products"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📦 Ürün Yönetimi
-        </Link>
-
-        <Link
-          href="/admin/categories"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📂 Kategori Yönetimi
-        </Link>
-
-        <Link
-          href="/admin/brands"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🏷️ Marka Yönetimi
-        </Link>
-
-        <Link
-          href="/admin/suppliers"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🏢 Tedarikçi Yönetimi
-        </Link>
-
-        <Link
-          href="/admin/customers"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          👥 Müşteri Yönetimi
-        </Link>
-
-        <Link
-          href="/admin/orders"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🛒 Sipariş Yönetimi
-        </Link>
-
-        <Link
-          href="/admin/purchase-orders"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🧾 Satın Alma
-        </Link>
-
-        <div className="my-5 border-t border-slate-700" />
-
-        <p className="px-3 text-xs font-bold uppercase tracking-wider text-slate-500">
-          Stok ve WMS
+        <p className="mt-2 text-sm text-slate-400">
+          Yönetim ve WMS Merkezi
         </p>
 
-        <Link
-          href="/admin/stock/movements"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📋 Stok Hareketleri
-        </Link>
+        <nav className="mt-8">
+          <MenuTitle>Genel Yönetim</MenuTitle>
 
-        <Link
-          href="/admin/stock/manual"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📥 Manuel Stok İşlemi
-        </Link>
+          <div className="space-y-1">
+            {mainMenuItems.map((item) => (
+              <MenuLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+              />
+            ))}
+          </div>
 
-        <Link
-          href="/admin/stock/locations"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📍 Lokasyon Bazlı Stok
-        </Link>
+          <div className="my-5 border-t border-slate-700" />
 
-        <Link
-          href="/admin/stock/location-map"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🗺️ Lokasyon Stok Haritası
-        </Link>
+          <MenuTitle>Stok Yönetimi</MenuTitle>
 
-        <Link
-          href="/admin/handling-units"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🧱 Koli / Palet Yönetimi
-        </Link>
+          <div className="space-y-1">
+            {stockMenuItems.map((item) => (
+              <MenuLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+              />
+            ))}
+          </div>
 
-        <Link
-          href="/admin/handling-units/transfers"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🔄 Koli / Palet Transferi
-        </Link>
+          <MenuTitle>Handling Unit</MenuTitle>
 
-        <Link
-          href="/admin/handling-units/merge"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🔗 Toplu Birleştirme
-        </Link>
+          <div className="space-y-1">
+            {handlingUnitMenuItems.map((item) => (
+              <MenuLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+              />
+            ))}
+          </div>
 
-        <Link
-          href="/admin/handling-units/pallet-link"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🧩 Koli–Palet Bağlama
-        </Link>
+          <MenuTitle>WMS Operasyonları</MenuTitle>
 
-        <Link
-          href="/admin/handling-units/addressing"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📌 Tekli Adresleme
-        </Link>
+<div className="space-y-1 rounded-2xl border border-blue-800 bg-blue-950/40 p-2">
 
-        <Link
-          href="/admin/handling-units/addressing/bulk"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📌 Toplu Adresleme
-        </Link>
+  <MenuLink
+    href="/admin/wms-dashboard"
+    icon="📊"
+    label="WMS Dashboard"
+  />
 
-        <Link
-          href="/admin/handling-units/unaddressing"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          📤 Adres Kaldırma
-        </Link>
+  <MenuLink
+    href="/admin/waves"
+    icon="🌊"
+    label="Wave Yönetimi"
+  />
 
-        <Link
-          href="/admin/warehouses"
-          className="block rounded-xl p-3 hover:bg-slate-800"
-        >
-          🏬 Depo Yönetimi
-        </Link>
+  <MenuLink
+    href="/admin/waves/new"
+    icon="➕"
+    label="Yeni Wave Oluştur"
+  />
 
-        <div className="my-5 border-t border-slate-700" />
+</div>
 
-        <div className="my-5 border-t border-slate-700" />
+          <MenuTitle>Depo Yönetimi</MenuTitle>
 
-<Link
-  href="/"
-  className="block rounded-xl p-3 hover:bg-slate-800"
->
-  🏠 Ana Sayfa
-</Link>
+          <div className="space-y-1">
+            <MenuLink
+              href="/admin/warehouses"
+              icon="🏬"
+              label="Depo Yönetimi"
+            />
+          </div>
 
-<Link
-  href="/rf"
-  className="block rounded-xl bg-blue-700 p-3 font-bold hover:bg-blue-600"
->
-  📱 RF Operasyon Merkezi
-  
-          ← Siteye Dön
-        </Link>
-      </nav>
+          <div className="my-5 border-t border-slate-700" />
+
+          <div className="space-y-2">
+            <Link
+              href="/rf"
+              className="flex items-center gap-3 rounded-xl bg-blue-700 px-4 py-3 font-bold text-white transition hover:bg-blue-600"
+            >
+              <span className="text-xl">📱</span>
+
+              <span>RF Operasyon Merkezi</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+            >
+              <span className="text-xl">🏠</span>
+
+              <span>Siteye Dön</span>
+            </Link>
+          </div>
+        </nav>
+      </div>
     </aside>
   );
 }
