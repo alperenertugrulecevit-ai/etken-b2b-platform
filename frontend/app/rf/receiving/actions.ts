@@ -6,10 +6,10 @@ import {
   Prisma,
   StockMovementType,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type RFReceivingState = {
   success: boolean;
@@ -17,7 +17,6 @@ export type RFReceivingState = {
 
   purchaseOrderId: number | null;
   purchaseNumber: string;
-
   purchaseOrderItemId: number | null;
 
   handlingUnitId: number | null;
@@ -45,7 +44,6 @@ const emptyState: RFReceivingState = {
 
   purchaseOrderId: null,
   purchaseNumber: "",
-
   purchaseOrderItemId: null,
 
   handlingUnitId: null,
@@ -128,10 +126,13 @@ export async function rfReceivePurchaseItem(
   _previousState: RFReceivingState,
   formData: FormData
 ): Promise<RFReceivingState> {
-  const purchaseNumber =
-    normalizeValue(
-      formData.get("purchaseNumber")
-    );
+  await AuthorizationService.requireRfAccess(
+    "RECEIVING_EXECUTE"
+  );
+
+  const purchaseNumber = normalizeValue(
+    formData.get("purchaseNumber")
+  );
 
   const handlingUnitBarcode =
     normalizeValue(
@@ -140,10 +141,9 @@ export async function rfReceivePurchaseItem(
       )
     );
 
-  const productBarcode =
-    normalizeValue(
-      formData.get("productBarcode")
-    );
+  const productBarcode = normalizeValue(
+    formData.get("productBarcode")
+  );
 
   const quantity = Number(
     formData.get("quantity")
@@ -185,18 +185,15 @@ export async function rfReceivePurchaseItem(
               where: {
                 purchaseNumber,
               },
-
               select: {
                 id: true,
                 purchaseNumber: true,
                 status: true,
-
                 supplier: {
                   select: {
                     name: true,
                   },
                 },
-
                 items: {
                   select: {
                     id: true,
@@ -205,7 +202,6 @@ export async function rfReceivePurchaseItem(
                     productName: true,
                     orderedQuantity: true,
                     receivedQuantity: true,
-
                     product: {
                       select: {
                         id: true,
@@ -245,7 +241,6 @@ export async function rfReceivePurchaseItem(
                 barcode:
                   handlingUnitBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -324,13 +319,11 @@ export async function rfReceivePurchaseItem(
               where: {
                 id: purchaseOrderItem.id,
               },
-
               data: {
                 receivedQuantity: {
                   increment: quantity,
                 },
               },
-
               select: {
                 id: true,
                 orderedQuantity: true,
@@ -345,13 +338,11 @@ export async function rfReceivePurchaseItem(
                   purchaseOrderItem
                     .productId,
               },
-
               data: {
                 stock: {
                   increment: quantity,
                 },
               },
-
               select: {
                 id: true,
                 code: true,
@@ -369,31 +360,25 @@ export async function rfReceivePurchaseItem(
                   {
                     handlingUnitId:
                       handlingUnit.id,
-
                     productId:
                       purchaseOrderItem
                         .productId,
                   },
               },
-
               update: {
                 quantity: {
                   increment: quantity,
                 },
               },
-
               create: {
                 handlingUnitId:
                   handlingUnit.id,
-
                 productId:
                   purchaseOrderItem
                     .productId,
-
                 quantity,
                 reservedStock: 0,
               },
-
               select: {
                 id: true,
                 quantity: true,
@@ -414,7 +399,6 @@ export async function rfReceivePurchaseItem(
               where: {
                 id: handlingUnit.id,
               },
-
               data: {
                 status: nextStatus,
               },
@@ -426,29 +410,21 @@ export async function rfReceivePurchaseItem(
               productId:
                 purchaseOrderItem
                   .productId,
-
               purchaseOrderId:
                 purchaseOrder.id,
-
               movementType:
                 StockMovementType.PURCHASE_RECEIPT,
-
               physicalChange: quantity,
               reservedChange: 0,
-
               physicalBalanceAfter:
                 updatedProduct.stock,
-
               reservedBalanceAfter:
                 updatedProduct.reservedStock,
-
               availableBalanceAfter:
                 updatedProduct.stock -
                 updatedProduct.reservedStock,
-
               documentNumber:
                 purchaseOrder.purchaseNumber,
-
               description:
                 `${handlingUnit.barcode} taşıma birimine RF mal kabulü. ` +
                 `Tedarikçi: ${purchaseOrder.supplier.name}.`,
@@ -461,7 +437,6 @@ export async function rfReceivePurchaseItem(
                 purchaseOrderId:
                   purchaseOrder.id,
               },
-
               select: {
                 orderedQuantity: true,
                 receivedQuantity: true,
@@ -499,11 +474,9 @@ export async function rfReceivePurchaseItem(
             where: {
               id: purchaseOrder.id,
             },
-
             data: {
               status:
                 nextPurchaseOrderStatus,
-
               receivedAt:
                 allItemsReceived
                   ? new Date()
@@ -517,7 +490,6 @@ export async function rfReceivePurchaseItem(
                 handlingUnitId:
                   handlingUnit.id,
               },
-
               _sum: {
                 quantity: true,
               },
@@ -535,50 +507,35 @@ export async function rfReceivePurchaseItem(
           return {
             purchaseOrderId:
               purchaseOrder.id,
-
             purchaseNumber:
               purchaseOrder.purchaseNumber,
-
             purchaseOrderItemId:
               updatedPurchaseOrderItem.id,
-
             handlingUnitId:
               handlingUnit.id,
-
             handlingUnitBarcode:
               handlingUnit.barcode,
-
             productId:
               updatedProduct.id,
-
             productCode:
               updatedProduct.code,
-
             productBarcode:
               updatedProduct.barcode,
-
             productName:
               updatedProduct.name,
-
             receivedQuantity:
               quantity,
-
             lineReceivedQuantity:
               updatedPurchaseOrderItem
                 .receivedQuantity,
-
             lineRemainingQuantity,
-
             handlingUnitProductQuantity:
               updatedHandlingUnitItem.quantity,
-
             handlingUnitTotalQuantity:
               handlingUnitStockSummary._sum
                 .quantity ?? 0,
-
             productPhysicalStock:
               updatedProduct.stock,
-
             purchaseOrderStatus:
               nextPurchaseOrderStatus,
           };
@@ -586,7 +543,6 @@ export async function rfReceivePurchaseItem(
         {
           maxWait: 10000,
           timeout: 30000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
@@ -605,9 +561,7 @@ export async function rfReceivePurchaseItem(
       `/admin/purchase-orders/${result.purchaseOrderId}`
     );
 
-    revalidatePath(
-      "/admin/products"
-    );
+    revalidatePath("/admin/products");
 
     revalidatePath(
       `/admin/products/${result.productId}`
@@ -635,7 +589,6 @@ export async function rfReceivePurchaseItem(
 
     return {
       success: true,
-
       message:
         `${result.productCode} - ${result.productName} ürününden ` +
         `${result.receivedQuantity} adet, ` +
@@ -643,43 +596,34 @@ export async function rfReceivePurchaseItem(
 
       purchaseOrderId:
         result.purchaseOrderId,
-
       purchaseNumber:
         result.purchaseNumber,
-
       purchaseOrderItemId:
         result.purchaseOrderItemId,
 
       handlingUnitId:
         result.handlingUnitId,
-
       handlingUnitBarcode:
         result.handlingUnitBarcode,
 
       productId:
         result.productId,
-
       productCode:
         result.productCode,
-
       productBarcode:
         result.productBarcode,
-
       productName:
         result.productName,
 
       receivedQuantity:
         result.receivedQuantity,
-
       lineReceivedQuantity:
         result.lineReceivedQuantity,
-
       lineRemainingQuantity:
         result.lineRemainingQuantity,
 
       handlingUnitProductQuantity:
         result.handlingUnitProductQuantity,
-
       handlingUnitTotalQuantity:
         result.handlingUnitTotalQuantity,
 

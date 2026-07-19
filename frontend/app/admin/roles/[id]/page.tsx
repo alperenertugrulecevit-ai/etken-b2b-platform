@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import RoleForm from "@/components/admin/RoleForm";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { RoleService } from "@/modules/roles/services/role.service";
 
 type Props = {
@@ -18,16 +18,9 @@ export default async function RoleDetailPage({
   params,
   searchParams,
 }: Props) {
-  const currentUser =
-    await SessionService.getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
+  await AuthorizationService.requirePermission(
+    "ROLE_MANAGE"
+  );
 
   const [{ id }, query] = await Promise.all([
     params,
@@ -111,6 +104,7 @@ export default async function RoleDetailPage({
                 <p className="text-sm font-semibold text-slate-500">
                   Bağlı kullanıcı
                 </p>
+
                 <p className="mt-2 text-3xl font-bold text-slate-950">
                   {role.userCount}
                 </p>
@@ -120,6 +114,7 @@ export default async function RoleDetailPage({
                 <p className="text-sm font-semibold text-slate-500">
                   Bağlı yetki
                 </p>
+
                 <p className="mt-2 text-3xl font-bold text-slate-950">
                   {role.permissionIds.length}
                 </p>

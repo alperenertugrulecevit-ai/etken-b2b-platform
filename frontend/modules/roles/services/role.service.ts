@@ -131,14 +131,16 @@ export class RoleService {
             update: {
               name: permission.name,
               module: permission.module,
-              description: permission.description,
+              description:
+                permission.description,
               isActive: true,
             },
             create: {
               code: permission.code,
               name: permission.name,
               module: permission.module,
-              description: permission.description,
+              description:
+                permission.description,
               isActive: true,
             },
           });
@@ -149,7 +151,8 @@ export class RoleService {
             where: {
               code: {
                 in: PERMISSION_CATALOG.map(
-                  (permission) => permission.code
+                  (permission) =>
+                    permission.code
                 ),
               },
             },
@@ -198,7 +201,9 @@ export class RoleService {
 
         let createdRoleCount = 0;
 
-        for (const defaultRole of DEFAULT_ROLE_CATALOG) {
+        for (
+          const defaultRole of DEFAULT_ROLE_CATALOG
+        ) {
           const existingRole =
             await transaction.role.findFirst({
               where: {
@@ -216,27 +221,34 @@ export class RoleService {
               },
             });
 
-          if (existingRole) {
-            continue;
-          }
+          let roleId = existingRole?.id;
 
-          const role = await transaction.role.create({
-            data: {
-              code: defaultRole.code,
-              name: defaultRole.name,
-              description: defaultRole.description,
-              isSystemRole: false,
-              isActive: true,
-            },
-            select: {
-              id: true,
-            },
-          });
+          if (!roleId) {
+            const role =
+              await transaction.role.create({
+                data: {
+                  code: defaultRole.code,
+                  name: defaultRole.name,
+                  description:
+                    defaultRole.description,
+                  isSystemRole: false,
+                  isActive: true,
+                },
+                select: {
+                  id: true,
+                },
+              });
+
+            roleId = role.id;
+            createdRoleCount += 1;
+          }
 
           const permissionIds =
             defaultRole.permissionCodes
               .map((permissionCode) =>
-                permissionIdByCode.get(permissionCode)
+                permissionIdByCode.get(
+                  permissionCode
+                )
               )
               .filter(
                 (
@@ -249,14 +261,13 @@ export class RoleService {
             await transaction.rolePermission.createMany({
               data: permissionIds.map(
                 (permissionId) => ({
-                  roleId: role.id,
+                  roleId,
                   permissionId,
                 })
               ),
+              skipDuplicates: true,
             });
           }
-
-          createdRoleCount += 1;
         }
 
         return {
@@ -351,6 +362,7 @@ export class RoleService {
     const description = normalizeDescription(
       values.description
     );
+
     const permissionIds = Array.from(
       new Set(
         values.permissionIds
@@ -375,7 +387,10 @@ export class RoleService {
       );
     }
 
-    if (description && description.length > 300) {
+    if (
+      description &&
+      description.length > 300
+    ) {
       throw new RoleManagementError(
         "Açıklama en fazla 300 karakter olabilir.",
         "description"

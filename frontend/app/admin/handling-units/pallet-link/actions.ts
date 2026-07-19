@@ -5,10 +5,10 @@ import {
   HandlingUnitType,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type PalletLinkActionState = {
   success: boolean;
@@ -117,6 +117,10 @@ export async function linkBoxToPallet(
   _previousState: PalletLinkActionState,
   formData: FormData
 ): Promise<PalletLinkActionState> {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   const palletBarcode =
     normalizeBarcode(
       formData.get("palletBarcode")
@@ -158,7 +162,6 @@ export async function linkBoxToPallet(
                   barcode:
                     palletBarcode,
                 },
-
                 select: {
                   id: true,
                   barcode: true,
@@ -169,13 +172,11 @@ export async function linkBoxToPallet(
                   parentUnitId: true,
                 },
               }),
-
               tx.handlingUnit.findUnique({
                 where: {
                   barcode:
                     boxBarcode,
                 },
-
                 select: {
                   id: true,
                   barcode: true,
@@ -184,20 +185,17 @@ export async function linkBoxToPallet(
                   warehouseId: true,
                   locationId: true,
                   parentUnitId: true,
-
                   parentUnit: {
                     select: {
                       id: true,
                       barcode: true,
                     },
                   },
-
                   items: {
                     select: {
                       quantity: true,
                     },
                   },
-
                   childUnits: {
                     select: {
                       id: true,
@@ -297,12 +295,10 @@ export async function linkBoxToPallet(
             getLinkedBoxNextStatus({
               palletStatus:
                 pallet.status,
-
-              boxStatus: box.status,
-
+              boxStatus:
+                box.status,
               palletWarehouseId:
                 pallet.warehouseId,
-
               palletLocationId:
                 pallet.locationId,
             });
@@ -316,26 +312,20 @@ export async function linkBoxToPallet(
             where: {
               id: box.id,
             },
-
             data: {
               parentUnitId:
                 pallet.id,
-
               warehouseId:
                 pallet.warehouseId,
-
               locationId:
                 pallet.locationId,
-
               status:
                 boxNextStatus,
             },
           });
 
           /*
-           * Boş palete ilk koli
-           * bağlandığında palet:
-           *
+           * Boş palete ilk koli bağlandığında:
            * Adresliyse STORED,
            * adresli değilse OPEN olur.
            */
@@ -353,7 +343,6 @@ export async function linkBoxToPallet(
               where: {
                 id: pallet.id,
               },
-
               data: {
                 status:
                   palletNextStatus,
@@ -366,38 +355,45 @@ export async function linkBoxToPallet(
               where: {
                 parentUnitId:
                   pallet.id,
-
                 unitType:
                   HandlingUnitType.BOX,
               },
             });
 
           return {
-            palletId: pallet.id,
-
+            palletId:
+              pallet.id,
             palletBarcode:
               pallet.barcode,
 
-            boxId: box.id,
-
+            boxId:
+              box.id,
             boxBarcode:
               box.barcode,
 
             linkedBoxCount,
-
             boxStockQuantity,
           };
         },
         {
           maxWait: 10000,
           timeout: 20000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
               .Serializable,
         }
       );
+
+    revalidatePath("/rf");
+
+    revalidatePath(
+      "/rf/pallet-link"
+    );
+
+    revalidatePath(
+      "/rf/pallet-unlink"
+    );
 
     revalidatePath(
       "/admin/handling-units"
@@ -424,14 +420,6 @@ export async function linkBoxToPallet(
     );
 
     revalidatePath(
-      "/rf"
-    );
-
-    revalidatePath(
-      "/rf/pallet-link"
-    );
-
-    revalidatePath(
       `/admin/handling-units/${result.palletId}`
     );
 
@@ -441,26 +429,22 @@ export async function linkBoxToPallet(
 
     return {
       success: true,
-
       message:
         `${result.boxBarcode} kolisi ` +
         `${result.palletBarcode} paletine başarıyla bağlandı.`,
 
       palletId:
         result.palletId,
-
       palletBarcode:
         result.palletBarcode,
 
       boxId:
         result.boxId,
-
       boxBarcode:
         result.boxBarcode,
 
       linkedBoxCount:
         result.linkedBoxCount,
-
       boxStockQuantity:
         result.boxStockQuantity,
     };
@@ -491,6 +475,10 @@ export async function linkBoxToPallet(
 export async function unlinkBoxFromPallet(
   boxId: number
 ) {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   if (
     !Number.isInteger(boxId) ||
     boxId <= 0
@@ -508,7 +496,6 @@ export async function unlinkBoxFromPallet(
             where: {
               id: boxId,
             },
-
             select: {
               id: true,
               barcode: true,
@@ -517,13 +504,11 @@ export async function unlinkBoxFromPallet(
               parentUnitId: true,
               warehouseId: true,
               locationId: true,
-
               items: {
                 select: {
                   quantity: true,
                 },
               },
-
               parentUnit: {
                 select: {
                   id: true,
@@ -599,10 +584,10 @@ export async function unlinkBoxFromPallet(
           where: {
             id: box.id,
           },
-
           data: {
             parentUnitId: null,
-            status: boxNextStatus,
+            status:
+              boxNextStatus,
           },
         });
 
@@ -616,12 +601,10 @@ export async function unlinkBoxFromPallet(
                 palletId,
             },
           }),
-
           tx.handlingUnitItem.count({
             where: {
               handlingUnitId:
                 palletId,
-
               quantity: {
                 gt: 0,
               },
@@ -633,38 +616,20 @@ export async function unlinkBoxFromPallet(
           remainingBoxCount === 0 &&
           palletItemCount === 0
         ) {
-          const pallet =
-            await tx.handlingUnit.findUnique({
-              where: {
-                id: palletId,
-              },
-
-              select: {
-                warehouseId: true,
-                locationId: true,
-              },
-            });
-
-          const palletNextStatus =
-            pallet?.warehouseId &&
-            pallet.locationId
-              ? HandlingUnitStatus.EMPTY
-              : HandlingUnitStatus.EMPTY;
-
           await tx.handlingUnit.update({
             where: {
               id: palletId,
             },
-
             data: {
               status:
-                palletNextStatus,
+                HandlingUnitStatus.EMPTY,
             },
           });
         }
 
         return {
-          boxId: box.id,
+          boxId:
+            box.id,
           boxBarcode:
             box.barcode,
 
@@ -675,13 +640,22 @@ export async function unlinkBoxFromPallet(
       {
         maxWait: 10000,
         timeout: 20000,
-
         isolationLevel:
           Prisma
             .TransactionIsolationLevel
             .Serializable,
       }
     );
+
+  revalidatePath("/rf");
+
+  revalidatePath(
+    "/rf/pallet-link"
+  );
+
+  revalidatePath(
+    "/rf/pallet-unlink"
+  );
 
   revalidatePath(
     "/admin/handling-units"
@@ -693,14 +667,6 @@ export async function unlinkBoxFromPallet(
 
   revalidatePath(
     "/admin/stock/location-map"
-  );
-
-  revalidatePath(
-    "/rf"
-  );
-
-  revalidatePath(
-    "/rf/pallet-link"
   );
 
   revalidatePath(

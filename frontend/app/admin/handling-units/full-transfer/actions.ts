@@ -5,10 +5,10 @@ import {
   Prisma,
   StockMovementType,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type FullHandlingUnitTransferState = {
   success: boolean;
@@ -26,21 +26,22 @@ export type FullHandlingUnitTransferState = {
   transferredQuantity: number;
 };
 
-const emptyState: FullHandlingUnitTransferState = {
-  success: false,
-  message: "",
+const emptyState: FullHandlingUnitTransferState =
+  {
+    success: false,
+    message: "",
 
-  sourceUnitId: null,
-  sourceBarcode: "",
-  sourceRemainingQuantity: 0,
+    sourceUnitId: null,
+    sourceBarcode: "",
+    sourceRemainingQuantity: 0,
 
-  targetUnitId: null,
-  targetBarcode: "",
-  targetTotalQuantity: 0,
+    targetUnitId: null,
+    targetBarcode: "",
+    targetTotalQuantity: 0,
 
-  transferredProductCount: 0,
-  transferredQuantity: 0,
-};
+    transferredProductCount: 0,
+    transferredQuantity: 0,
+  };
 
 function createErrorState(
   message: string
@@ -83,6 +84,10 @@ export async function fullTransferHandlingUnit(
   _previousState: FullHandlingUnitTransferState,
   formData: FormData
 ): Promise<FullHandlingUnitTransferState> {
+  await AuthorizationService.requirePermission(
+    "TRANSFER_EXECUTE"
+  );
+
   const sourceBarcode =
     normalizeBarcode(
       formData.get("sourceBarcode")
@@ -126,7 +131,6 @@ export async function fullTransferHandlingUnit(
                 barcode:
                   sourceBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -135,27 +139,23 @@ export async function fullTransferHandlingUnit(
                 warehouseId: true,
                 locationId: true,
                 parentUnitId: true,
-
                 childUnits: {
                   select: {
                     id: true,
                     barcode: true,
                   },
                 },
-
                 items: {
                   orderBy: {
                     product: {
                       code: "asc",
                     },
                   },
-
                   select: {
                     id: true,
                     productId: true,
                     quantity: true,
                     reservedStock: true,
-
                     product: {
                       select: {
                         id: true,
@@ -170,13 +170,11 @@ export async function fullTransferHandlingUnit(
                 },
               },
             }),
-
             tx.handlingUnit.findUnique({
               where: {
                 barcode:
                   targetBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -293,29 +291,23 @@ export async function fullTransferHandlingUnit(
                   {
                     handlingUnitId:
                       targetUnit.id,
-
                     productId:
                       item.productId,
                   },
               },
-
               update: {
                 quantity: {
                   increment:
                     item.quantity,
                 },
               },
-
               create: {
                 handlingUnitId:
                   targetUnit.id,
-
                 productId:
                   item.productId,
-
                 quantity:
                   item.quantity,
-
                 reservedStock: 0,
               },
             });
@@ -326,64 +318,49 @@ export async function fullTransferHandlingUnit(
              *
              * TRANSFER_OUT ve TRANSFER_IN
              * kayıtlarında fiziksel değişim
-             * sıfırdır; hareketin hangi THM'ler
-             * arasında yapıldığı açıklamaya
-             * yazılır.
+             * sıfırdır.
              */
             await tx.stockMovement.createMany({
               data: [
                 {
                   productId:
                     item.productId,
-
                   movementType:
                     StockMovementType.TRANSFER_OUT,
-
                   physicalChange: 0,
                   reservedChange: 0,
-
                   physicalBalanceAfter:
                     item.product.stock,
-
                   reservedBalanceAfter:
                     item.product.reservedStock,
-
                   availableBalanceAfter:
                     item.product.stock -
                     item.product.reservedStock,
-
                   documentNumber:
                     `THM-${sourceUnit.barcode}-${targetUnit.barcode}`,
-
                   description:
-                    `${item.quantity} adet ürün ${sourceUnit.barcode} THM kaynağından çıkarılarak ${targetUnit.barcode} hedefine aktarıldı.`,
+                    `${item.quantity} adet ürün ${sourceUnit.barcode} THM kaynağından çıkarılarak ` +
+                    `${targetUnit.barcode} hedefine aktarıldı.`,
                 },
-
                 {
                   productId:
                     item.productId,
-
                   movementType:
                     StockMovementType.TRANSFER_IN,
-
                   physicalChange: 0,
                   reservedChange: 0,
-
                   physicalBalanceAfter:
                     item.product.stock,
-
                   reservedBalanceAfter:
                     item.product.reservedStock,
-
                   availableBalanceAfter:
                     item.product.stock -
                     item.product.reservedStock,
-
                   documentNumber:
                     `THM-${sourceUnit.barcode}-${targetUnit.barcode}`,
-
                   description:
-                    `${item.quantity} adet ürün ${sourceUnit.barcode} kaynağından ${targetUnit.barcode} THM hedefine alındı.`,
+                    `${item.quantity} adet ürün ${sourceUnit.barcode} kaynağından ` +
+                    `${targetUnit.barcode} THM hedefine alındı.`,
                 },
               ],
             });
@@ -405,7 +382,6 @@ export async function fullTransferHandlingUnit(
             where: {
               id: sourceUnit.id,
             },
-
             data: {
               status:
                 HandlingUnitStatus.EMPTY,
@@ -426,7 +402,6 @@ export async function fullTransferHandlingUnit(
             where: {
               id: targetUnit.id,
             },
-
             data: {
               status:
                 targetNextStatus,
@@ -439,7 +414,6 @@ export async function fullTransferHandlingUnit(
                 handlingUnitId:
                   targetUnit.id,
               },
-
               _sum: {
                 quantity: true,
               },
@@ -448,19 +422,16 @@ export async function fullTransferHandlingUnit(
           return {
             sourceUnitId:
               sourceUnit.id,
-
             sourceBarcode:
               sourceUnit.barcode,
 
             targetUnitId:
               targetUnit.id,
-
             targetBarcode:
               targetUnit.barcode,
 
             transferredProductCount:
               transferableItems.length,
-
             transferredQuantity,
 
             targetTotalQuantity:
@@ -471,13 +442,18 @@ export async function fullTransferHandlingUnit(
         {
           maxWait: 10000,
           timeout: 30000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
               .Serializable,
         }
       );
+
+    revalidatePath("/rf");
+
+    revalidatePath(
+      "/rf/full-transfer"
+    );
 
     revalidatePath(
       "/admin/handling-units"
@@ -507,12 +483,6 @@ export async function fullTransferHandlingUnit(
       "/admin/stock/movements"
     );
 
-    revalidatePath("/rf");
-
-    revalidatePath(
-      "/rf/full-transfer"
-    );
-
     revalidatePath(
       `/admin/handling-units/${result.sourceUnitId}`
     );
@@ -523,7 +493,6 @@ export async function fullTransferHandlingUnit(
 
     return {
       success: true,
-
       message:
         `${result.sourceBarcode} içindeki ${result.transferredProductCount} farklı ürün ve ` +
         `toplam ${result.transferredQuantity} adet stok, ` +
@@ -531,24 +500,19 @@ export async function fullTransferHandlingUnit(
 
       sourceUnitId:
         result.sourceUnitId,
-
       sourceBarcode:
         result.sourceBarcode,
-
       sourceRemainingQuantity: 0,
 
       targetUnitId:
         result.targetUnitId,
-
       targetBarcode:
         result.targetBarcode,
-
       targetTotalQuantity:
         result.targetTotalQuantity,
 
       transferredProductCount:
         result.transferredProductCount,
-
       transferredQuantity:
         result.transferredQuantity,
     };

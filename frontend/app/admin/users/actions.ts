@@ -1,29 +1,18 @@
 "use server";
 
-import {
-  UserStatus,
-} from "@prisma/client";
+import { UserStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 const USERS_PATH = "/admin/users";
 
-async function requireAdminUser() {
-  const currentUser =
-    await SessionService.getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
-
-  return currentUser;
+async function requireUserManager() {
+  return AuthorizationService.requirePermission(
+    "USER_MANAGE"
+  );
 }
 
 function readRequiredText(
@@ -63,7 +52,9 @@ function createResultUrl(
 export async function setUserStatusAction(
   formData: FormData
 ): Promise<void> {
-  const currentUser = await requireAdminUser();
+  const currentUser =
+    await requireUserManager();
+
   let successMessage = "";
 
   try {
@@ -174,6 +165,7 @@ export async function setUserStatusAction(
   }
 
   revalidatePath(USERS_PATH);
+
   redirect(
     createResultUrl(
       "success",
@@ -185,7 +177,8 @@ export async function setUserStatusAction(
 export async function setRfAccessAction(
   formData: FormData
 ): Promise<void> {
-  await requireAdminUser();
+  await requireUserManager();
+
   let successMessage = "";
 
   try {
@@ -236,6 +229,7 @@ export async function setRfAccessAction(
   }
 
   revalidatePath(USERS_PATH);
+
   redirect(
     createResultUrl(
       "success",
@@ -247,7 +241,9 @@ export async function setRfAccessAction(
 export async function revokeUserSessionsAction(
   formData: FormData
 ): Promise<void> {
-  const currentUser = await requireAdminUser();
+  const currentUser =
+    await requireUserManager();
+
   let successMessage = "";
 
   try {
@@ -327,6 +323,7 @@ export async function revokeUserSessionsAction(
   }
 
   revalidatePath(USERS_PATH);
+
   redirect(
     createResultUrl(
       "success",

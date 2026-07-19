@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import {
   RoleManagementError,
   RoleService,
@@ -16,19 +16,10 @@ import type {
 
 const ROLES_PATH = "/admin/roles";
 
-async function requireAdminUser() {
-  const currentUser =
-    await SessionService.getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
-
-  return currentUser;
+async function requireRoleManager() {
+  return AuthorizationService.requirePermission(
+    "ROLE_MANAGE"
+  );
 }
 
 function readText(
@@ -44,7 +35,10 @@ function readRoleValues(
   formData: FormData
 ): RoleFormValues {
   return {
-    code: readText(formData, "code").toUpperCase(),
+    code: readText(
+      formData,
+      "code"
+    ).toUpperCase(),
     name: readText(formData, "name"),
     description: readText(
       formData,
@@ -89,7 +83,10 @@ function createErrorState(
     };
   }
 
-  console.error("Rol işlemi tamamlanamadı:", error);
+  console.error(
+    "Rol işlemi tamamlanamadı:",
+    error
+  );
 
   return {
     success: false,
@@ -104,19 +101,22 @@ export async function createRoleAction(
   _previousState: RoleFormActionState,
   formData: FormData
 ): Promise<RoleFormActionState> {
-  await requireAdminUser();
+  await requireRoleManager();
 
   const values = readRoleValues(formData);
   let roleId = "";
 
   try {
-    const role = await RoleService.createRole(values);
+    const role =
+      await RoleService.createRole(values);
+
     roleId = role.id;
   } catch (error) {
     return createErrorState(error, values);
   }
 
   revalidatePath(ROLES_PATH);
+
   redirect(
     `${ROLES_PATH}/${roleId}?success=${encodeURIComponent(
       "Rol başarıyla oluşturuldu."
@@ -128,19 +128,27 @@ export async function updateRoleAction(
   _previousState: RoleFormActionState,
   formData: FormData
 ): Promise<RoleFormActionState> {
-  await requireAdminUser();
+  await requireRoleManager();
 
-  const roleId = readText(formData, "roleId");
+  const roleId = readText(
+    formData,
+    "roleId"
+  );
+
   const values = readRoleValues(formData);
 
   try {
-    await RoleService.updateRole(roleId, values);
+    await RoleService.updateRole(
+      roleId,
+      values
+    );
   } catch (error) {
     return createErrorState(error, values);
   }
 
   revalidatePath(ROLES_PATH);
   revalidatePath(`${ROLES_PATH}/${roleId}`);
+
   redirect(
     `${ROLES_PATH}/${roleId}?success=${encodeURIComponent(
       "Rol ve yetkileri güncellendi."
@@ -149,7 +157,8 @@ export async function updateRoleAction(
 }
 
 export async function synchronizeAuthorizationCatalogAction(): Promise<void> {
-  await requireAdminUser();
+  await requireRoleManager();
+
   let message = "";
 
   try {
@@ -170,17 +179,25 @@ export async function synchronizeAuthorizationCatalogAction(): Promise<void> {
 
   revalidatePath(ROLES_PATH);
   revalidatePath("/admin/users/new");
-  redirect(createResultUrl("success", message));
+
+  redirect(
+    createResultUrl("success", message)
+  );
 }
 
 export async function setRoleStatusAction(
   formData: FormData
 ): Promise<void> {
-  await requireAdminUser();
+  await requireRoleManager();
+
   let message = "";
 
   try {
-    const roleId = readText(formData, "roleId");
+    const roleId = readText(
+      formData,
+      "roleId"
+    );
+
     const activeValue = readText(
       formData,
       "isActive"
@@ -190,18 +207,23 @@ export async function setRoleStatusAction(
       activeValue !== "true" &&
       activeValue !== "false"
     ) {
-      throw new Error("Geçersiz rol durumu.");
+      throw new Error(
+        "Geçersiz rol durumu."
+      );
     }
 
-    const isActive = activeValue === "true";
-    const role = await RoleService.setRoleStatus(
-      roleId,
-      isActive
-    );
+    const isActive =
+      activeValue === "true";
 
-    message = `${role.name} rolü ${
-      isActive ? "aktif" : "pasif"
-    } yapıldı.`;
+    const role =
+      await RoleService.setRoleStatus(
+        roleId,
+        isActive
+      );
+
+    message =
+      `${role.name} rolü ` +
+      `${isActive ? "aktif" : "pasif"} yapıldı.`;
   } catch (error) {
     redirect(
       createResultUrl(
@@ -213,5 +235,8 @@ export async function setRoleStatusAction(
 
   revalidatePath(ROLES_PATH);
   revalidatePath("/admin/users/new");
-  redirect(createResultUrl("success", message));
+
+  redirect(
+    createResultUrl("success", message)
+  );
 }

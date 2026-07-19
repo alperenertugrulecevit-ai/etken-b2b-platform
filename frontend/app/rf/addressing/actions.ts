@@ -5,10 +5,10 @@ import {
   HandlingUnitType,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type RFAddressingState = {
   success: boolean;
@@ -78,6 +78,10 @@ export async function rfAddressHandlingUnit(
   _previousState: RFAddressingState,
   formData: FormData
 ): Promise<RFAddressingState> {
+  await AuthorizationService.requireRfAccess(
+    "PUTAWAY_EXECUTE"
+  );
+
   const warehouseCode =
     normalizeValue(
       formData.get("warehouseCode")
@@ -125,7 +129,6 @@ export async function rfAddressHandlingUnit(
                   mode: "insensitive",
                 },
               },
-
               select: {
                 id: true,
                 code: true,
@@ -160,10 +163,8 @@ export async function rfAddressHandlingUnit(
               where: {
                 warehouseId:
                   warehouse.id,
-
                 isActive: true,
               },
-
               select: {
                 id: true,
                 code: true,
@@ -214,7 +215,6 @@ export async function rfAddressHandlingUnit(
                 barcode:
                   handlingUnitBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -223,25 +223,21 @@ export async function rfAddressHandlingUnit(
                 warehouseId: true,
                 locationId: true,
                 parentUnitId: true,
-
                 parentUnit: {
                   select: {
                     id: true,
                     barcode: true,
                   },
                 },
-
                 items: {
                   select: {
                     quantity: true,
                   },
                 },
-
                 childUnits: {
                   select: {
                     id: true,
                     barcode: true,
-
                     items: {
                       select: {
                         quantity: true,
@@ -331,14 +327,11 @@ export async function rfAddressHandlingUnit(
             where: {
               id: handlingUnit.id,
             },
-
             data: {
               warehouseId:
                 warehouse.id,
-
               locationId:
                 location.id,
-
               status:
                 HandlingUnitStatus.STORED,
             },
@@ -366,14 +359,11 @@ export async function rfAddressHandlingUnit(
                   in: childUnitIds,
                 },
               },
-
               data: {
                 warehouseId:
                   warehouse.id,
-
                 locationId:
                   location.id,
-
                 status:
                   HandlingUnitStatus.STORED,
               },
@@ -387,31 +377,23 @@ export async function rfAddressHandlingUnit(
           return {
             handlingUnitId:
               handlingUnit.id,
-
             handlingUnitBarcode:
               handlingUnit.barcode,
-
             warehouseCode:
               warehouse.code,
-
             warehouseName:
               warehouse.name,
-
             locationCode:
               locationBarcode,
-
             affectedUnitCount:
               affectedUnitIds.length,
-
             totalStockQuantity,
-
             affectedUnitIds,
           };
         },
         {
           maxWait: 10000,
           timeout: 20000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
@@ -457,7 +439,6 @@ export async function rfAddressHandlingUnit(
 
     return {
       success: true,
-
       message:
         `${result.handlingUnitBarcode} barkodlu taşıma birimi ` +
         `${result.warehouseCode} / ${result.locationCode} lokasyonuna adreslendi. ` +
@@ -465,22 +446,18 @@ export async function rfAddressHandlingUnit(
 
       handlingUnitId:
         result.handlingUnitId,
-
       handlingUnitBarcode:
         result.handlingUnitBarcode,
 
       warehouseCode:
         result.warehouseCode,
-
       warehouseName:
         result.warehouseName,
-
       locationCode:
         result.locationCode,
 
       affectedUnitCount:
         result.affectedUnitCount,
-
       totalStockQuantity:
         result.totalStockQuantity,
     };

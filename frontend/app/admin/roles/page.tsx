@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import {
   setRoleStatusAction,
   synchronizeAuthorizationCatalogAction,
 } from "@/app/admin/roles/actions";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { RoleService } from "@/modules/roles/services/role.service";
 
 type Props = {
@@ -29,15 +28,16 @@ export default async function AdminRolesPage({
   searchParams,
 }: Props) {
   const currentUser =
-    await SessionService.getCurrentUser();
+    await AuthorizationService.requireAnyPermission([
+      "ROLE_VIEW",
+      "ROLE_MANAGE",
+    ]);
 
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
+  const canManageRoles =
+    AuthorizationService.hasPermission(
+      currentUser,
+      "ROLE_MANAGE"
+    );
 
   const [query, pageData] = await Promise.all([
     searchParams,
@@ -58,32 +58,34 @@ export default async function AdminRolesPage({
             </h1>
 
             <p className="mt-2 max-w-3xl text-slate-600">
-              WMS görev rollerini oluşturun, yetkileri
-              bağlayın ve kullanıcı atamalarını kontrol edin.
+              WMS görev rollerini, bağlı yetkileri ve
+              kullanıcı atamalarını kontrol edin.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <form
-              action={
-                synchronizeAuthorizationCatalogAction
-              }
-            >
-              <button
-                type="submit"
-                className="rounded-xl border border-blue-300 bg-white px-5 py-3 font-bold text-blue-700 hover:bg-blue-50"
+          {canManageRoles && (
+            <div className="flex flex-wrap gap-3">
+              <form
+                action={
+                  synchronizeAuthorizationCatalogAction
+                }
               >
-                Yetki Kataloğunu Eşitle
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  className="rounded-xl border border-blue-300 bg-white px-5 py-3 font-bold text-blue-700 hover:bg-blue-50"
+                >
+                  Yetki Kataloğunu Eşitle
+                </button>
+              </form>
 
-            <Link
-              href="/admin/roles/new"
-              className="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
-            >
-              + Yeni Rol
-            </Link>
-          </div>
+              <Link
+                href="/admin/roles/new"
+                className="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
+              >
+                + Yeni Rol
+              </Link>
+            </div>
+          )}
         </div>
 
         {query.success && (
@@ -103,10 +105,11 @@ export default async function AdminRolesPage({
             <p className="font-bold">
               Yetki kataloğu henüz tamamlanmadı.
             </p>
+
             <p className="mt-1 text-sm">
-              Üstteki “Yetki Kataloğunu Eşitle” düğmesine
-              bir kez basın. Sistem izinleri ve hazır WMS
-              operasyon rolleri güvenli biçimde oluşturulur.
+              {canManageRoles
+                ? "Üstteki “Yetki Kataloğunu Eşitle” düğmesine bir kez basın. Sistem izinleri ve hazır WMS operasyon rolleri güvenli biçimde oluşturulur."
+                : "Yetki kataloğunun tamamlanması için rol yönetme yetkisine sahip sistem yöneticinizle iletişime geçin."}
             </p>
           </div>
         )}
@@ -116,6 +119,7 @@ export default async function AdminRolesPage({
             <p className="text-sm font-semibold text-slate-500">
               Toplam rol
             </p>
+
             <p className="mt-2 text-3xl font-bold text-slate-950">
               {pageData.roles.length}
             </p>
@@ -125,6 +129,7 @@ export default async function AdminRolesPage({
             <p className="text-sm font-semibold text-emerald-700">
               Aktif rol
             </p>
+
             <p className="mt-2 text-3xl font-bold text-emerald-950">
               {pageData.activeRoleCount}
             </p>
@@ -134,6 +139,7 @@ export default async function AdminRolesPage({
             <p className="text-sm font-semibold text-blue-700">
               Aktif yetki
             </p>
+
             <p className="mt-2 text-3xl font-bold text-blue-950">
               {pageData.permissionCount}
             </p>
@@ -143,6 +149,7 @@ export default async function AdminRolesPage({
             <p className="text-sm font-semibold text-violet-700">
               Rol ataması
             </p>
+
             <p className="mt-2 text-3xl font-bold text-violet-950">
               {pageData.assignedUserCount}
             </p>
@@ -153,12 +160,24 @@ export default async function AdminRolesPage({
           <table className="w-full min-w-[1050px] text-left">
             <thead className="bg-slate-100 text-sm uppercase tracking-wide text-slate-600">
               <tr>
-                <th className="px-5 py-4">Rol</th>
-                <th className="px-4 py-4">Açıklama</th>
-                <th className="px-4 py-4">Durum</th>
-                <th className="px-4 py-4">Kullanıcı</th>
-                <th className="px-4 py-4">Yetki</th>
-                <th className="px-4 py-4">Güncelleme</th>
+                <th className="px-5 py-4">
+                  Rol
+                </th>
+                <th className="px-4 py-4">
+                  Açıklama
+                </th>
+                <th className="px-4 py-4">
+                  Durum
+                </th>
+                <th className="px-4 py-4">
+                  Kullanıcı
+                </th>
+                <th className="px-4 py-4">
+                  Yetki
+                </th>
+                <th className="px-4 py-4">
+                  Güncelleme
+                </th>
                 <th className="px-5 py-4 text-right">
                   İşlemler
                 </th>
@@ -202,7 +221,9 @@ export default async function AdminRolesPage({
                           : "bg-slate-200 text-slate-700"
                       }`}
                     >
-                      {role.isActive ? "Aktif" : "Pasif"}
+                      {role.isActive
+                        ? "Aktif"
+                        : "Pasif"}
                     </span>
                   </td>
 
@@ -210,6 +231,7 @@ export default async function AdminRolesPage({
                     <p className="text-2xl font-bold text-slate-900">
                       {role.userCount}
                     </p>
+
                     <p className="text-xs text-slate-500">
                       atama
                     </p>
@@ -219,6 +241,7 @@ export default async function AdminRolesPage({
                     <p className="text-2xl font-bold text-slate-900">
                       {role.permissionCount}
                     </p>
+
                     <p className="text-xs text-slate-500">
                       yetki
                     </p>
@@ -229,47 +252,57 @@ export default async function AdminRolesPage({
                   </td>
 
                   <td className="px-5 py-5">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Link
-                        href={`/admin/roles/${role.id}`}
-                        className="rounded-lg bg-blue-100 px-3 py-2 text-sm font-bold text-blue-800 hover:bg-blue-200"
-                      >
-                        {role.isSystemRole
-                          ? "Görüntüle"
-                          : "Düzenle"}
-                      </Link>
-
-                      {!role.isSystemRole && (
-                        <form
-                          action={setRoleStatusAction}
+                    {canManageRoles ? (
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Link
+                          href={`/admin/roles/${role.id}`}
+                          className="rounded-lg bg-blue-100 px-3 py-2 text-sm font-bold text-blue-800 hover:bg-blue-200"
                         >
-                          <input
-                            type="hidden"
-                            name="roleId"
-                            value={role.id}
-                          />
-                          <input
-                            type="hidden"
-                            name="isActive"
-                            value={String(
-                              !role.isActive
-                            )}
-                          />
-                          <button
-                            type="submit"
-                            className={`rounded-lg px-3 py-2 text-sm font-bold ${
-                              role.isActive
-                                ? "bg-red-100 text-red-800 hover:bg-red-200"
-                                : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                            }`}
+                          {role.isSystemRole
+                            ? "Görüntüle"
+                            : "Düzenle"}
+                        </Link>
+
+                        {!role.isSystemRole && (
+                          <form
+                            action={
+                              setRoleStatusAction
+                            }
                           >
-                            {role.isActive
-                              ? "Pasif Yap"
-                              : "Aktifleştir"}
-                          </button>
-                        </form>
-                      )}
-                    </div>
+                            <input
+                              type="hidden"
+                              name="roleId"
+                              value={role.id}
+                            />
+
+                            <input
+                              type="hidden"
+                              name="isActive"
+                              value={String(
+                                !role.isActive
+                              )}
+                            />
+
+                            <button
+                              type="submit"
+                              className={`rounded-lg px-3 py-2 text-sm font-bold ${
+                                role.isActive
+                                  ? "bg-red-100 text-red-800 hover:bg-red-200"
+                                  : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                              }`}
+                            >
+                              {role.isActive
+                                ? "Pasif Yap"
+                                : "Aktifleştir"}
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="block text-right text-sm font-semibold text-slate-400">
+                        Salt okunur
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -1,21 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import RoleForm from "@/components/admin/RoleForm";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { RoleService } from "@/modules/roles/services/role.service";
 
 export default async function NewRolePage() {
-  const currentUser =
-    await SessionService.getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
+  await AuthorizationService.requirePermission(
+    "ROLE_MANAGE"
+  );
 
   const { permissionGroups } =
     await RoleService.getRoleEditorData();

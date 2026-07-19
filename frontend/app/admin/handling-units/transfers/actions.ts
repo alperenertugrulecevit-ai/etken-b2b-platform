@@ -4,10 +4,10 @@ import {
   HandlingUnitStatus,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitTransferState = {
   success: boolean;
@@ -24,20 +24,21 @@ export type HandlingUnitTransferState = {
   transferredQuantity: number;
 };
 
-const emptyTransferState: HandlingUnitTransferState = {
-  success: false,
-  message: "",
+const emptyTransferState: HandlingUnitTransferState =
+  {
+    success: false,
+    message: "",
 
-  sourceUnitId: null,
-  sourceBarcode: "",
-  sourceStockQuantity: 0,
+    sourceUnitId: null,
+    sourceBarcode: "",
+    sourceStockQuantity: 0,
 
-  targetUnitId: null,
-  targetBarcode: "",
-  targetStockQuantity: 0,
+    targetUnitId: null,
+    targetBarcode: "",
+    targetStockQuantity: 0,
 
-  transferredQuantity: 0,
-};
+    transferredQuantity: 0,
+  };
 
 function normalizeBarcode(
   value: FormDataEntryValue | null
@@ -79,6 +80,10 @@ export async function transferProductBetweenHandlingUnits(
   _previousState: HandlingUnitTransferState,
   formData: FormData
 ): Promise<HandlingUnitTransferState> {
+  await AuthorizationService.requirePermission(
+    "TRANSFER_EXECUTE"
+  );
+
   const sourceBarcode =
     normalizeBarcode(
       formData.get("sourceBarcode")
@@ -146,7 +151,6 @@ export async function transferProductBetweenHandlingUnits(
                 barcode:
                   sourceBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -155,13 +159,11 @@ export async function transferProductBetweenHandlingUnits(
                 locationId: true,
               },
             }),
-
             tx.handlingUnit.findUnique({
               where: {
                 barcode:
                   targetBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -223,14 +225,12 @@ export async function transferProductBetweenHandlingUnits(
                     barcode:
                       productBarcode,
                   },
-
                   {
                     code:
                       productBarcode,
                   },
                 ],
               },
-
               select: {
                 id: true,
                 code: true,
@@ -258,12 +258,10 @@ export async function transferProductBetweenHandlingUnits(
                   {
                     handlingUnitId:
                       sourceUnit.id,
-
                     productId:
                       product.id,
                   },
               },
-
               select: {
                 id: true,
                 quantity: true,
@@ -321,7 +319,6 @@ export async function transferProductBetweenHandlingUnits(
               where: {
                 id: sourceItem.id,
               },
-
               data: {
                 quantity:
                   sourceRemainingQuantity,
@@ -335,25 +332,20 @@ export async function transferProductBetweenHandlingUnits(
                 {
                   handlingUnitId:
                     targetUnit.id,
-
                   productId:
                     product.id,
                 },
             },
-
             update: {
               quantity: {
                 increment: quantity,
               },
             },
-
             create: {
               handlingUnitId:
                 targetUnit.id,
-
               productId:
                 product.id,
-
               quantity,
               reservedStock: 0,
             },
@@ -379,7 +371,6 @@ export async function transferProductBetweenHandlingUnits(
               where: {
                 id: targetUnit.id,
               },
-
               data: {
                 status:
                   targetNextStatus,
@@ -398,34 +389,28 @@ export async function transferProductBetweenHandlingUnits(
                 handlingUnitId:
                   sourceUnit.id,
               },
-
               _sum: {
                 quantity: true,
               },
             }),
-
             tx.handlingUnitItem.aggregate({
               where: {
                 handlingUnitId:
                   targetUnit.id,
               },
-
               _sum: {
                 quantity: true,
               },
             }),
-
             tx.handlingUnitItem.count({
               where: {
                 handlingUnitId:
                   sourceUnit.id,
-
                 quantity: {
                   gt: 0,
                 },
               },
             }),
-
             tx.handlingUnit.count({
               where: {
                 parentUnitId:
@@ -451,17 +436,9 @@ export async function transferProductBetweenHandlingUnits(
               where: {
                 id: sourceUnit.id,
               },
-
               data: {
                 status:
                   HandlingUnitStatus.EMPTY,
-
-                /*
-                 * Kaynak fiziksel olarak
-                 * mevcut lokasyonunda kaldığı
-                 * için warehouseId ve
-                 * locationId korunur.
-                 */
               },
             });
           }
@@ -469,23 +446,18 @@ export async function transferProductBetweenHandlingUnits(
           return {
             sourceUnitId:
               sourceUnit.id,
-
             sourceBarcode:
               sourceUnit.barcode,
-
             sourceStockQuantity,
 
             targetUnitId:
               targetUnit.id,
-
             targetBarcode:
               targetUnit.barcode,
-
             targetStockQuantity,
 
             productCode:
               product.code,
-
             productName:
               product.name,
 
@@ -496,13 +468,16 @@ export async function transferProductBetweenHandlingUnits(
         {
           maxWait: 10000,
           timeout: 20000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
               .Serializable,
         }
       );
+
+    revalidatePath("/rf");
+    revalidatePath("/rf/transfers");
+    revalidatePath("/rf/full-transfer");
 
     revalidatePath(
       "/admin/handling-units"
@@ -534,7 +509,6 @@ export async function transferProductBetweenHandlingUnits(
 
     return {
       success: true,
-
       message:
         `${result.productCode} - ${result.productName} ürününden ` +
         `${result.transferredQuantity} adet ` +
@@ -543,19 +517,15 @@ export async function transferProductBetweenHandlingUnits(
 
       sourceUnitId:
         result.sourceUnitId,
-
       sourceBarcode:
         result.sourceBarcode,
-
       sourceStockQuantity:
         result.sourceStockQuantity,
 
       targetUnitId:
         result.targetUnitId,
-
       targetBarcode:
         result.targetBarcode,
-
       targetStockQuantity:
         result.targetStockQuantity,
 

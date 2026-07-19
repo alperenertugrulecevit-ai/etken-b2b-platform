@@ -1,15 +1,18 @@
 import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await AuthorizationService.requireAdminPortalAccess();
+
   return (
-    <div className="min-h-screen bg-slate-100 flex">
+    <div className="flex min-h-screen bg-slate-100">
       <AdminSidebar />
 
-      <main className="flex-1 min-w-0">
+      <main className="min-w-0 flex-1">
         {children}
       </main>
     </div>

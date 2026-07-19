@@ -3,14 +3,13 @@ import {
   UserType,
 } from "@prisma/client";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import {
   revokeUserSessionsAction,
   setRfAccessAction,
   setUserStatusAction,
 } from "@/app/admin/users/actions";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { UserService } from "@/modules/users/services/user.service";
 import {
   USER_STATUS_LABELS,
@@ -118,15 +117,16 @@ export default async function AdminUsersPage({
   searchParams,
 }: Props) {
   const currentUser =
-    await SessionService.getCurrentUser();
+    await AuthorizationService.requireAnyPermission([
+      "USER_VIEW",
+      "USER_MANAGE",
+    ]);
 
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
+  const canManageUsers =
+    AuthorizationService.hasPermission(
+      currentUser,
+      "USER_MANAGE"
+    );
 
   const query = await searchParams;
 
@@ -135,11 +135,13 @@ export default async function AdminUsersPage({
     query.status?.trim() ?? "";
   const userTypeValue =
     query.userType?.trim() ?? "";
+
   const rfAccess = normalizeRfAccess(
     query.rfAccess?.trim() ?? ""
   );
 
   const requestedPage = Number(query.page ?? "1");
+
   const page =
     Number.isInteger(requestedPage) &&
     requestedPage > 0
@@ -186,17 +188,20 @@ export default async function AdminUsersPage({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/admin/users/new"
-              className="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
-            >
-              + Yeni Kullanıcı
-            </Link>
+            {canManageUsers && (
+              <Link
+                href="/admin/users/new"
+                className="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
+              >
+                + Yeni Kullanıcı
+              </Link>
+            )}
 
             <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-blue-900">
               <p className="text-sm font-semibold">
                 Toplam kullanıcı
               </p>
+
               <p className="mt-1 text-3xl font-bold">
                 {result.total.toLocaleString("tr-TR")}
               </p>
@@ -233,6 +238,7 @@ export default async function AdminUsersPage({
             className="min-h-12 rounded-xl border border-slate-300 bg-white px-4"
           >
             <option value="">Tüm durumlar</option>
+
             {Object.values(UserStatus).map(
               (status) => (
                 <option
@@ -250,7 +256,10 @@ export default async function AdminUsersPage({
             defaultValue={userTypeValue}
             className="min-h-12 rounded-xl border border-slate-300 bg-white px-4"
           >
-            <option value="">Tüm kullanıcı tipleri</option>
+            <option value="">
+              Tüm kullanıcı tipleri
+            </option>
+
             {Object.values(UserType).map(
               (userType) => (
                 <option
@@ -268,9 +277,15 @@ export default async function AdminUsersPage({
             defaultValue={rfAccess}
             className="min-h-12 rounded-xl border border-slate-300 bg-white px-4"
           >
-            <option value="all">Tüm RF durumları</option>
-            <option value="yes">RF erişimi açık</option>
-            <option value="no">RF erişimi kapalı</option>
+            <option value="all">
+              Tüm RF durumları
+            </option>
+            <option value="yes">
+              RF erişimi açık
+            </option>
+            <option value="no">
+              RF erişimi kapalı
+            </option>
           </select>
 
           <div className="flex gap-2">
@@ -294,13 +309,27 @@ export default async function AdminUsersPage({
           <table className="w-full min-w-[1500px] text-left">
             <thead className="bg-slate-100 text-sm uppercase tracking-wide text-slate-600">
               <tr>
-                <th className="px-5 py-4">Kullanıcı</th>
-                <th className="px-4 py-4">Personel</th>
-                <th className="px-4 py-4">Tip / Rol</th>
-                <th className="px-4 py-4">Durum</th>
-                <th className="px-4 py-4">RF</th>
-                <th className="px-4 py-4">Oturum</th>
-                <th className="px-4 py-4">Son Giriş</th>
+                <th className="px-5 py-4">
+                  Kullanıcı
+                </th>
+                <th className="px-4 py-4">
+                  Personel
+                </th>
+                <th className="px-4 py-4">
+                  Tip / Rol
+                </th>
+                <th className="px-4 py-4">
+                  Durum
+                </th>
+                <th className="px-4 py-4">
+                  RF
+                </th>
+                <th className="px-4 py-4">
+                  Oturum
+                </th>
+                <th className="px-4 py-4">
+                  Son Giriş
+                </th>
                 <th className="px-5 py-4 text-right">
                   İşlemler
                 </th>
@@ -365,9 +394,11 @@ export default async function AdminUsersPage({
                             {user.employee.firstName}{" "}
                             {user.employee.lastName}
                           </p>
+
                           <p className="mt-1 font-mono text-sm text-slate-500">
                             {user.employee.employeeCode}
                           </p>
+
                           <p className="mt-1 text-sm text-slate-500">
                             {[
                               user.employee.department,
@@ -444,6 +475,7 @@ export default async function AdminUsersPage({
                       <p className="text-2xl font-bold text-slate-900">
                         {user.activeSessionCount}
                       </p>
+
                       <p className="text-xs text-slate-500">
                         aktif oturum
                       </p>
@@ -456,95 +488,117 @@ export default async function AdminUsersPage({
                     </td>
 
                     <td className="px-5 py-5">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <form
-                          action={setUserStatusAction}
-                        >
-                          <input
-                            type="hidden"
-                            name="userId"
-                            value={user.id}
-                          />
-                          <input
-                            type="hidden"
-                            name="status"
-                            value={
-                              user.status ===
-                              UserStatus.ACTIVE
-                                ? UserStatus.PASSIVE
-                                : UserStatus.ACTIVE
+                      {canManageUsers ? (
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Link
+                            href={`/admin/users/${user.id}`}
+                            className="rounded-lg bg-blue-100 px-3 py-2 text-sm font-bold text-blue-800 hover:bg-blue-200"
+                          >
+                            Düzenle
+                          </Link>
+
+                          <form
+                            action={
+                              setUserStatusAction
                             }
-                          />
-                          <button
-                            type="submit"
-                            disabled={
-                              isCurrentUser &&
-                              user.status ===
+                          >
+                            <input
+                              type="hidden"
+                              name="userId"
+                              value={user.id}
+                            />
+
+                            <input
+                              type="hidden"
+                              name="status"
+                              value={
+                                user.status ===
                                 UserStatus.ACTIVE
-                            }
-                            className={`rounded-lg px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300 ${
-                              user.status ===
+                                  ? UserStatus.PASSIVE
+                                  : UserStatus.ACTIVE
+                              }
+                            />
+
+                            <button
+                              type="submit"
+                              disabled={
+                                isCurrentUser &&
+                                user.status ===
+                                  UserStatus.ACTIVE
+                              }
+                              className={`rounded-lg px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300 ${
+                                user.status ===
+                                UserStatus.ACTIVE
+                                  ? "bg-red-600 hover:bg-red-700"
+                                  : "bg-emerald-600 hover:bg-emerald-700"
+                              }`}
+                            >
+                              {user.status ===
                               UserStatus.ACTIVE
-                                ? "bg-red-600 hover:bg-red-700"
-                                : "bg-emerald-600 hover:bg-emerald-700"
-                            }`}
-                          >
-                            {user.status ===
-                            UserStatus.ACTIVE
-                              ? "Pasif Yap"
-                              : "Aktifleştir"}
-                          </button>
-                        </form>
+                                ? "Pasif Yap"
+                                : "Aktifleştir"}
+                            </button>
+                          </form>
 
-                        <form
-                          action={setRfAccessAction}
-                        >
-                          <input
-                            type="hidden"
-                            name="userId"
-                            value={user.id}
-                          />
-                          <input
-                            type="hidden"
-                            name="enabled"
-                            value={String(
-                              !user.isRfUser
-                            )}
-                          />
-                          <button
-                            type="submit"
-                            className="rounded-lg bg-cyan-100 px-3 py-2 text-sm font-bold text-cyan-800 hover:bg-cyan-200"
-                          >
-                            RF{" "}
-                            {user.isRfUser
-                              ? "Kapat"
-                              : "Aç"}
-                          </button>
-                        </form>
-
-                        <form
-                          action={
-                            revokeUserSessionsAction
-                          }
-                        >
-                          <input
-                            type="hidden"
-                            name="userId"
-                            value={user.id}
-                          />
-                          <button
-                            type="submit"
-                            disabled={
-                              isCurrentUser ||
-                              user.activeSessionCount ===
-                                0
+                          <form
+                            action={
+                              setRfAccessAction
                             }
-                            className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-bold text-amber-800 hover:bg-amber-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                           >
-                            Oturumları Kapat
-                          </button>
-                        </form>
-                      </div>
+                            <input
+                              type="hidden"
+                              name="userId"
+                              value={user.id}
+                            />
+
+                            <input
+                              type="hidden"
+                              name="enabled"
+                              value={String(
+                                !user.isRfUser
+                              )}
+                            />
+
+                            <button
+                              type="submit"
+                              className="rounded-lg bg-cyan-100 px-3 py-2 text-sm font-bold text-cyan-800 hover:bg-cyan-200"
+                            >
+                              RF{" "}
+                              {user.isRfUser
+                                ? "Kapat"
+                                : "Aç"}
+                            </button>
+                          </form>
+
+                          <form
+                            action={
+                              revokeUserSessionsAction
+                            }
+                          >
+                            <input
+                              type="hidden"
+                              name="userId"
+                              value={user.id}
+                            />
+
+                            <button
+                              type="submit"
+                              disabled={
+                                isCurrentUser ||
+                                user.activeSessionCount ===
+                                  0
+                              }
+                              className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-bold text-amber-800 hover:bg-amber-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                            >
+                              Oturumları Kapat
+                            </button>
+                          </form>
+                        </div>
+                      ) : (
+                        <span className="block text-right text-sm font-semibold text-slate-400">
+                          Salt okunur
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -569,7 +623,8 @@ export default async function AdminUsersPage({
           <p className="text-sm text-slate-600">
             Sayfa {result.page} /{" "}
             {result.totalPages} —{" "}
-            {result.total.toLocaleString("tr-TR")} kayıt
+            {result.total.toLocaleString("tr-TR")}{" "}
+            kayıt
           </p>
 
           <div className="flex gap-2">

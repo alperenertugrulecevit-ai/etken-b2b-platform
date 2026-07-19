@@ -5,10 +5,10 @@ import {
   HandlingUnitType,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type RFPalletUnlinkState = {
   success: boolean;
@@ -77,6 +77,10 @@ export async function rfUnlinkBoxFromPallet(
   _previousState: RFPalletUnlinkState,
   formData: FormData
 ): Promise<RFPalletUnlinkState> {
+  await AuthorizationService.requireRfAccess(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   const boxBarcode =
     normalizeBarcode(
       formData.get("boxBarcode")
@@ -97,7 +101,6 @@ export async function rfUnlinkBoxFromPallet(
               where: {
                 barcode: boxBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -106,7 +109,6 @@ export async function rfUnlinkBoxFromPallet(
                 parentUnitId: true,
                 warehouseId: true,
                 locationId: true,
-
                 parentUnit: {
                   select: {
                     id: true,
@@ -117,7 +119,6 @@ export async function rfUnlinkBoxFromPallet(
                     locationId: true,
                   },
                 },
-
                 items: {
                   select: {
                     quantity: true,
@@ -217,7 +218,6 @@ export async function rfUnlinkBoxFromPallet(
             where: {
               id: box.id,
             },
-
             data: {
               parentUnitId: null,
               status: boxNextStatus,
@@ -232,17 +232,14 @@ export async function rfUnlinkBoxFromPallet(
               where: {
                 parentUnitId:
                   pallet.id,
-
                 unitType:
                   HandlingUnitType.BOX,
               },
             }),
-
             tx.handlingUnitItem.count({
               where: {
                 handlingUnitId:
                   pallet.id,
-
                 quantity: {
                   gt: 0,
                 },
@@ -258,7 +255,6 @@ export async function rfUnlinkBoxFromPallet(
               where: {
                 id: pallet.id,
               },
-
               data: {
                 status:
                   HandlingUnitStatus.EMPTY,
@@ -282,7 +278,6 @@ export async function rfUnlinkBoxFromPallet(
         {
           maxWait: 10000,
           timeout: 20000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
@@ -291,6 +286,7 @@ export async function rfUnlinkBoxFromPallet(
       );
 
     revalidatePath("/rf");
+
     revalidatePath(
       "/rf/pallet-unlink"
     );
@@ -325,7 +321,6 @@ export async function rfUnlinkBoxFromPallet(
 
     return {
       success: true,
-
       message:
         `${result.boxBarcode} kolisi ` +
         `${result.palletBarcode} paletinden ayrıldı.`,

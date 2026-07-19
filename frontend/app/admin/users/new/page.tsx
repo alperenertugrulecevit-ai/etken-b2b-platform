@@ -1,21 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import UserCreateForm from "@/components/admin/UserCreateForm";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { UserCreationService } from "@/modules/users/services/user-creation.service";
 
 export default async function NewUserPage() {
-  const currentUser =
-    await SessionService.getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
+  await AuthorizationService.requirePermission(
+    "USER_MANAGE"
+  );
 
   const roles =
     await UserCreationService.listAssignableRoles();

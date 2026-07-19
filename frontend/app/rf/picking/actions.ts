@@ -11,6 +11,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type RFPickingState = {
   success: boolean;
@@ -177,6 +178,9 @@ export async function rfPickOrderItem(
   _previousState: RFPickingState,
   formData: FormData
 ): Promise<RFPickingState> {
+    await AuthorizationService.requireRfAccess(
+    "PICKING_EXECUTE"
+  );
   const orderNumber =
     normalizeValue(
       formData.get("orderNumber")

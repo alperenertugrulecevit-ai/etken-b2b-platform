@@ -1,12 +1,9 @@
 "use server";
 
-import {
-  UserType,
-} from "@prisma/client";
+import { UserType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import {
   UserCreationError,
   UserCreationService,
@@ -50,15 +47,9 @@ export async function createUserAction(
   formData: FormData
 ): Promise<CreateUserActionState> {
   const currentUser =
-    await SessionService.getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/login");
-  }
-
-  if (!currentUser.isAdminUser) {
-    redirect("/admin");
-  }
+    await AuthorizationService.requirePermission(
+      "USER_MANAGE"
+    );
 
   const roleIds = formData
     .getAll("roleIds")

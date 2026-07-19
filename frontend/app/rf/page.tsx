@@ -1,11 +1,14 @@
 import Link from "next/link";
 
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+
 type RFMenuItem = {
   title: string;
   description: string;
   icon: string;
   href: string;
   status: "active" | "planned";
+  permissionCodes: string[];
 };
 
 const menuItems: RFMenuItem[] = [
@@ -16,6 +19,7 @@ const menuItems: RFMenuItem[] = [
     icon: "📥",
     href: "/rf/receiving",
     status: "active",
+    permissionCodes: ["RECEIVING_EXECUTE"],
   },
   {
     title: "Sipariş Toplama",
@@ -24,6 +28,7 @@ const menuItems: RFMenuItem[] = [
     icon: "🛒",
     href: "/rf/picking",
     status: "active",
+    permissionCodes: ["PICKING_EXECUTE"],
   },
   {
     title: "THM Ürün Transferi",
@@ -32,6 +37,7 @@ const menuItems: RFMenuItem[] = [
     icon: "🔄",
     href: "/rf/transfers",
     status: "active",
+    permissionCodes: ["TRANSFER_EXECUTE"],
   },
   {
     title: "Komple THM Transferi",
@@ -40,6 +46,7 @@ const menuItems: RFMenuItem[] = [
     icon: "📦",
     href: "/rf/full-transfer",
     status: "active",
+    permissionCodes: ["TRANSFER_EXECUTE"],
   },
   {
     title: "THM Adresleme",
@@ -48,14 +55,16 @@ const menuItems: RFMenuItem[] = [
     icon: "📍",
     href: "/rf/addressing",
     status: "active",
+    permissionCodes: ["PUTAWAY_EXECUTE"],
   },
   {
-    title: "Koli–Palet Bağlama",
+    title: "Koli-Palet Bağlama",
     description:
       "Kolileri palete seri şekilde bağlayın.",
-    icon: "🧩",
+    icon: "🔗",
     href: "/rf/pallet-link",
     status: "active",
+    permissionCodes: ["HANDLING_UNIT_MANAGE"],
   },
   {
     title: "Paletten Koli Ayırma",
@@ -64,6 +73,7 @@ const menuItems: RFMenuItem[] = [
     icon: "📤",
     href: "/rf/pallet-unlink",
     status: "active",
+    permissionCodes: ["HANDLING_UNIT_MANAGE"],
   },
   {
     title: "Sayım",
@@ -72,6 +82,10 @@ const menuItems: RFMenuItem[] = [
     icon: "🔢",
     href: "/rf/counting",
     status: "planned",
+    permissionCodes: [
+      "INVENTORY_VIEW",
+      "INVENTORY_ADJUST",
+    ],
   },
   {
     title: "Paketleme",
@@ -80,6 +94,7 @@ const menuItems: RFMenuItem[] = [
     icon: "🎁",
     href: "/rf/packing",
     status: "planned",
+    permissionCodes: ["PICKING_EXECUTE"],
   },
   {
     title: "Sevkiyat",
@@ -88,14 +103,25 @@ const menuItems: RFMenuItem[] = [
     icon: "🚚",
     href: "/rf/shipping",
     status: "planned",
+    permissionCodes: ["WAVE_VIEW"],
   },
 ];
 
-export default function RFHomePage() {
+export default async function RFHomePage() {
+  const profile =
+    await AuthorizationService.requireRfAccess();
+
+  const visibleMenuItems = menuItems.filter(
+    (item) =>
+      AuthorizationService.hasAnyPermission(
+        profile,
+        item.permissionCodes
+      )
+  );
+
   const activeModuleCount =
-    menuItems.filter(
-      (item) =>
-        item.status === "active"
+    visibleMenuItems.filter(
+      (item) => item.status === "active"
     ).length;
 
   return (
@@ -110,9 +136,8 @@ export default function RFHomePage() {
         </h1>
 
         <p className="mt-3 max-w-2xl leading-7 text-slate-300">
-          El terminali veya Android cihaz
-          üzerinden barkod odaklı depo
-          işlemlerini gerçekleştirin.
+          El terminali veya Android cihaz üzerinden barkod
+          odaklı depo işlemlerini gerçekleştirin.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
@@ -128,85 +153,99 @@ export default function RFHomePage() {
 
           <div className="rounded-xl bg-white/10 p-4">
             <p className="text-xs font-bold uppercase text-slate-400">
-              Toplam Modül
+              Yetkili Modül
             </p>
 
             <p className="mt-2 text-3xl font-black">
-              {menuItems.length}
+              {visibleMenuItems.length}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {menuItems.map((item) => {
-          const isActive =
-            item.status === "active";
+      {visibleMenuItems.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+          <h2 className="text-xl font-black">
+            Atanmış RF operasyonu bulunmuyor
+          </h2>
 
-          if (!isActive) {
+          <p className="mt-2 leading-6">
+            RF erişiminiz açık ancak hesabınıza herhangi bir
+            operasyon yetkisi atanmamış. Sistem yöneticinizle
+            iletişime geçin.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          {visibleMenuItems.map((item) => {
+            const isActive =
+              item.status === "active";
+
+            if (!isActive) {
+              return (
+                <article
+                  key={item.title}
+                  className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 opacity-70 shadow-sm"
+                >
+                  <div className="absolute right-3 top-3 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                    Yakında
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-3xl">
+                      {item.icon}
+                    </div>
+
+                    <div className="min-w-0 pr-12">
+                      <h2 className="text-xl font-black text-slate-700">
+                        {item.title}
+                      </h2>
+
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              );
+            }
+
             return (
-              <article
+              <Link
                 key={item.title}
-                className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 opacity-70 shadow-sm"
+                href={item.href}
+                className="group rounded-2xl border border-blue-200 bg-white p-5 shadow-sm transition hover:border-blue-500 hover:shadow-md active:scale-[0.99]"
               >
-                <div className="absolute right-3 top-3 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-                  Yakında
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-3xl">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-blue-900 text-3xl text-white">
                     {item.icon}
                   </div>
 
-                  <div className="min-w-0 pr-12">
-                    <h2 className="text-xl font-black text-slate-700">
-                      {item.title}
-                    </h2>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-xl font-black text-slate-900">
+                        {item.title}
+                      </h2>
+
+                      <span className="text-2xl font-bold text-blue-900">
+                        →
+                      </span>
+                    </div>
 
                     <p className="mt-2 text-sm leading-6 text-slate-500">
                       {item.description}
                     </p>
-                  </div>
-                </div>
-              </article>
-            );
-          }
 
-          return (
-            <Link
-              key={item.title}
-              href={item.href}
-              className="group rounded-2xl border border-blue-200 bg-white p-5 shadow-sm transition hover:border-blue-500 hover:shadow-md active:scale-[0.99]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-blue-900 text-3xl text-white">
-                  {item.icon}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-xl font-black text-slate-900">
-                      {item.title}
-                    </h2>
-
-                    <span className="text-2xl font-bold text-blue-900">
-                      →
+                    <span className="mt-3 inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                      Kullanıma Hazır
                     </span>
                   </div>
-
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    {item.description}
-                  </p>
-
-                  <span className="mt-3 inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                    Kullanıma Hazır
-                  </span>
                 </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <div className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-5 text-orange-900">
         <h2 className="font-black">
@@ -214,11 +253,9 @@ export default function RFHomePage() {
         </h2>
 
         <p className="mt-2 text-sm leading-6">
-          Barkod okuyucunun Enter tuşu
-          gönderecek şekilde ayarlanması
-          önerilir. Her işlemden sonra imleç
-          otomatik olarak sıradaki barkod
-          alanına taşınır.
+          Barkod okuyucunun Enter tuşu gönderecek şekilde
+          ayarlanması önerilir. Her işlemden sonra imleç
+          otomatik olarak sıradaki barkod alanına taşınır.
         </p>
       </div>
     </section>
