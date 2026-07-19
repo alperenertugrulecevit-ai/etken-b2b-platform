@@ -36,9 +36,15 @@ type Props = {
 const initialState: PalletLinkActionState = {
   success: false,
   message: "",
+
+  palletId: null,
   palletBarcode: "",
+
+  boxId: null,
   boxBarcode: "",
+
   linkedBoxCount: 0,
+  boxStockQuantity: 0,
 };
 
 export default function PalletBoxLinkForm({

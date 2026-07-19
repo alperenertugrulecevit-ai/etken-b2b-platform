@@ -761,6 +761,12 @@ enum UserType {
   API
 }
 
+enum AuthSessionType {
+  WEB
+  RF
+  API
+}
+
 model Employee {
   id String @id @default(cuid())
 
@@ -838,6 +844,8 @@ model User {
   waveAssignments   WaveAssignment[]
   assignedWaveTasks WaveAssignment[] @relation("WaveAssignmentAssignedBy")
 
+  authSessions AuthSession[]
+
   @@index([employeeId])
   @@index([status])
   @@index([userType])
@@ -845,6 +853,61 @@ model User {
   @@index([isAdminUser])
   @@index([createdById])
   @@index([updatedById])
+}
+
+model AuthSession {
+  id String @id @default(cuid())
+
+  userId String
+
+  /**
+   * Gerçek oturum anahtarı veritabanında tutulmaz.
+   * Yalnızca SHA-256 özeti saklanır.
+   */
+  tokenHash String @unique
+
+  sessionType AuthSessionType @default(WEB)
+
+  /**
+   * RF oturumlarında cihaz veya terminal kodu.
+   */
+  terminalCode String?
+
+  /**
+   * İstek kaynağına ait teknik bilgiler.
+   */
+  ipAddress String?
+  userAgent String?
+
+  /**
+   * Oturumun son geçerlilik zamanı.
+   */
+  expiresAt DateTime
+
+  /**
+   * Kullanıcının en son aktif olduğu zaman.
+   */
+  lastActivityAt DateTime @default(now())
+
+  /**
+   * Oturum kullanıcı çıkışı veya yönetici işlemiyle
+   * geçersiz kılındığında doldurulur.
+   */
+  revokedAt    DateTime?
+  revokeReason String?
+  revokedById  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionType])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([lastActivityAt])
+  @@index([terminalCode])
 }
 
 model Role {

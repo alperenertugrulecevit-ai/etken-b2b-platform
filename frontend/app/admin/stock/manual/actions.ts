@@ -268,12 +268,19 @@ export async function createManualStockMovement(
       "/admin/stock/manual"
     );
 
-    return {
-      success: true,
-      productId,
-      message:
-        `${result.product.code} - ${result.product.name} için stok hareketi başarıyla kaydedildi.`,
-    };
+if (!result.product) {
+  return {
+    success: false,
+    productId,
+    message: "Ürün bilgisi bulunamadı.",
+  };
+}
+
+return {
+  success: true,
+  productId,
+  message: `${result.product.code} - ${result.product.name} için stok hareketi başarıyla kaydedildi.`,
+};
   } catch (error) {
     console.error(
       "Manuel stok işlemi hatası:",

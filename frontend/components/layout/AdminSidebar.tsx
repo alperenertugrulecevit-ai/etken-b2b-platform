@@ -1,6 +1,12 @@
 import Link from "next/link";
 
-const mainMenuItems = [
+type MenuItem = {
+  href: string;
+  icon: string;
+  label: string;
+};
+
+const mainMenuItems: MenuItem[] = [
   {
     href: "/admin",
     icon: "📊",
@@ -43,7 +49,7 @@ const mainMenuItems = [
   },
 ];
 
-const stockMenuItems = [
+const stockMenuItems: MenuItem[] = [
   {
     href: "/admin/stock/movements",
     icon: "📋",
@@ -66,7 +72,7 @@ const stockMenuItems = [
   },
 ];
 
-const handlingUnitMenuItems = [
+const handlingUnitMenuItems: MenuItem[] = [
   {
     href: "/admin/handling-units",
     icon: "🧱",
@@ -104,16 +110,11 @@ const handlingUnitMenuItems = [
   },
 ];
 
-const waveMenuItems = [
+const systemMenuItems: MenuItem[] = [
   {
-    href: "/admin/waves",
-    icon: "🌊",
-    label: "Wave Yönetimi",
-  },
-  {
-    href: "/admin/waves/new",
-    icon: "➕",
-    label: "Yeni Wave Oluştur",
+    href: "/admin/users",
+    icon: "👤",
+    label: "Kullanıcı Yönetimi",
   },
 ];
 
@@ -121,17 +122,15 @@ function MenuLink({
   href,
   icon,
   label,
-}: {
-  href: string;
-  icon: string;
-  label: string;
-}) {
+}: MenuItem) {
   return (
     <Link
       href={href}
       className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white"
     >
-      <span className="text-lg">{icon}</span>
+      <span className="text-lg">
+        {icon}
+      </span>
 
       <span>{label}</span>
     </Link>
@@ -163,72 +162,80 @@ export default function AdminSidebar() {
         </p>
 
         <nav className="mt-8">
-          <MenuTitle>Genel Yönetim</MenuTitle>
+          <MenuTitle>
+            Genel Yönetim
+          </MenuTitle>
 
           <div className="space-y-1">
-            {mainMenuItems.map((item) => (
-              <MenuLink
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                label={item.label}
-              />
-            ))}
+            {mainMenuItems.map(
+              (item) => (
+                <MenuLink
+                  key={item.href}
+                  {...item}
+                />
+              )
+            )}
           </div>
 
           <div className="my-5 border-t border-slate-700" />
 
-          <MenuTitle>Stok Yönetimi</MenuTitle>
+          <MenuTitle>
+            Stok Yönetimi
+          </MenuTitle>
 
           <div className="space-y-1">
-            {stockMenuItems.map((item) => (
-              <MenuLink
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                label={item.label}
-              />
-            ))}
+            {stockMenuItems.map(
+              (item) => (
+                <MenuLink
+                  key={item.href}
+                  {...item}
+                />
+              )
+            )}
           </div>
 
-          <MenuTitle>Handling Unit</MenuTitle>
+          <MenuTitle>
+            Handling Unit
+          </MenuTitle>
 
           <div className="space-y-1">
-            {handlingUnitMenuItems.map((item) => (
-              <MenuLink
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                label={item.label}
-              />
-            ))}
+            {handlingUnitMenuItems.map(
+              (item) => (
+                <MenuLink
+                  key={item.href}
+                  {...item}
+                />
+              )
+            )}
           </div>
 
-          <MenuTitle>WMS Operasyonları</MenuTitle>
+          <MenuTitle>
+            WMS Operasyonları
+          </MenuTitle>
 
-<div className="space-y-1 rounded-2xl border border-blue-800 bg-blue-950/40 p-2">
+          <div className="space-y-1 rounded-2xl border border-blue-800 bg-blue-950/40 p-2">
+            <MenuLink
+              href="/admin/wms-dashboard"
+              icon="📊"
+              label="WMS Dashboard"
+            />
 
-  <MenuLink
-    href="/admin/wms-dashboard"
-    icon="📊"
-    label="WMS Dashboard"
-  />
+            <MenuLink
+              href="/admin/waves"
+              icon="🌊"
+              label="Wave Yönetimi"
+            />
 
-  <MenuLink
-    href="/admin/waves"
-    icon="🌊"
-    label="Wave Yönetimi"
-  />
+            <MenuLink
+              href="/admin/waves/new"
+              icon="➕"
+              label="Yeni Wave Oluştur"
+            />
+          </div>
 
-  <MenuLink
-    href="/admin/waves/new"
-    icon="➕"
-    label="Yeni Wave Oluştur"
-  />
-
-</div>
-
-          <MenuTitle>Depo Yönetimi</MenuTitle>
+          <MenuTitle>
+            Depo Yönetimi
+          </MenuTitle>
 
           <div className="space-y-1">
             <MenuLink
@@ -238,6 +245,21 @@ export default function AdminSidebar() {
             />
           </div>
 
+          <MenuTitle>
+            Sistem Yönetimi
+          </MenuTitle>
+
+          <div className="space-y-1 rounded-2xl border border-violet-800 bg-violet-950/30 p-2">
+            {systemMenuItems.map(
+              (item) => (
+                <MenuLink
+                  key={item.href}
+                  {...item}
+                />
+              )
+            )}
+          </div>
+
           <div className="my-5 border-t border-slate-700" />
 
           <div className="space-y-2">
@@ -245,16 +267,22 @@ export default function AdminSidebar() {
               href="/rf"
               className="flex items-center gap-3 rounded-xl bg-blue-700 px-4 py-3 font-bold text-white transition hover:bg-blue-600"
             >
-              <span className="text-xl">📱</span>
+              <span className="text-xl">
+                📱
+              </span>
 
-              <span>RF Operasyon Merkezi</span>
+              <span>
+                RF Operasyon Merkezi
+              </span>
             </Link>
 
             <Link
               href="/"
               className="flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 transition hover:bg-slate-800 hover:text-white"
             >
-              <span className="text-xl">🏠</span>
+              <span className="text-xl">
+                🏠
+              </span>
 
               <span>Siteye Dön</span>
             </Link>

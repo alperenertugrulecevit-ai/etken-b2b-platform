@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import bwipjs from "bwip-js";
+import bwipjs from "bwip-js/node";
 
 import { prisma } from "@/lib/prisma";
 import PrintButton from "@/components/admin/PrintButton";

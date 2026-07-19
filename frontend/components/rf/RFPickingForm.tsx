@@ -662,7 +662,7 @@ export default function RFPickingForm({
       state.pickedQuantity,
       state.sourceQuantityAfter,
       state.targetQuantityAfter,
-      state.totalPickedQuantity,
+      state.pickedQuantity,
       state.message,
     ].join("|");
 
@@ -832,7 +832,7 @@ export default function RFPickingForm({
     state.pickedQuantity,
     state.linePickedQuantity,
     state.lineRemainingQuantity,
-    state.totalPickedQuantity,
+    state.pickedQuantity,
   ]);
 
   /*

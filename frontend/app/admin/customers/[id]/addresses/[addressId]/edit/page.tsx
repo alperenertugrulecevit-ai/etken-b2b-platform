@@ -55,6 +55,8 @@ export default async function EditCustomerAddressPage({
   }
 
   const cities = getCities();
+  const currentIsActive =
+  customerAddress.isActive;
   const districtsByCityCode =
     getDistrictsOfEachCity();
 
@@ -177,7 +179,7 @@ export default async function EditCustomerAddressPage({
           // Varsayılan yapılan adres pasif kalmasın.
           isActive: isDefault
             ? true
-            : customerAddress.isActive,
+            : currentIsActive,
         },
       });
     });

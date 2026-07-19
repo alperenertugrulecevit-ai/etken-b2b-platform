@@ -13,23 +13,18 @@ import {
   type WarehouseActionState,
 } from "@/app/admin/warehouses/actions";
 
-type City = {
-  id?: string | number;
-  code?: string | number;
-  name?: string;
-  city?: string;
-  [key: string]: unknown;
-};
-
-type DistrictsByCityCode = Record<
-  string,
-  unknown
->;
-
 type Props = {
-  cities: City[];
-  districtsByCityCode: DistrictsByCityCode;
+  cities: {
+    code: string;
+    name: string;
+  }[];
+
+  districtsByCityCode: Record<
+    string,
+    string[]
+  >;
 };
+
 
 const initialState: WarehouseActionState = {
   success: false,

@@ -1,0 +1,11 @@
+export const SESSION_CONSTANTS = {
+  COOKIE_NAME: "etken_session",
+
+  WEB_SESSION_DURATION_DAYS: 7,
+  RF_SESSION_DURATION_HOURS: 12,
+
+  TOKEN_BYTE_LENGTH: 48,
+
+  COOKIE_PATH: "/",
+  COOKIE_SAME_SITE: "lax" as const,
+} as const;
