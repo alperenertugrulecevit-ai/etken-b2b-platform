@@ -8,6 +8,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type PurchaseItemActionState = {
   success: boolean;
@@ -113,6 +114,10 @@ export async function addPurchaseOrderItem(
   _previousState: PurchaseItemActionState,
   formData: FormData
 ): Promise<PurchaseItemActionState> {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   const productId = Number(
     formData.get("productId")
   );
@@ -293,7 +298,8 @@ export async function addPurchaseOrderItem(
 
           return {
             error: null,
-            productName: product.name,
+            productName:
+              product.name,
           };
         },
         {
@@ -344,6 +350,10 @@ export async function updatePurchaseOrderItem(
   _previousState: PurchaseItemActionState,
   formData: FormData
 ): Promise<PurchaseItemActionState> {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   const orderedQuantity = Number(
     formData.get("orderedQuantity")
   );
@@ -554,6 +564,10 @@ export async function deletePurchaseOrderItem(
   purchaseOrderId: number,
   purchaseOrderItemId: number
 ) {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   if (
     !Number.isInteger(purchaseOrderId) ||
     purchaseOrderId <= 0 ||

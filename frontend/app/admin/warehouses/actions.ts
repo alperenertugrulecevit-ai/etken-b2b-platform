@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type WarehouseActionState = {
   success: boolean;
@@ -25,6 +26,10 @@ export async function createWarehouse(
   _previousState: WarehouseActionState,
   formData: FormData
 ): Promise<WarehouseActionState> {
+  await AuthorizationService.requirePermission(
+    "WAREHOUSE_MANAGE"
+  );
+
   const code = String(
     formData.get("code") ?? ""
   )
@@ -79,7 +84,6 @@ export async function createWarehouse(
             "district"
           ),
         },
-
         select: {
           id: true,
           code: true,
@@ -127,6 +131,10 @@ export async function toggleWarehouseStatus(
   warehouseId: number,
   currentStatus: boolean
 ) {
+  await AuthorizationService.requirePermission(
+    "WAREHOUSE_MANAGE"
+  );
+
   if (
     !Number.isInteger(warehouseId) ||
     warehouseId <= 0
@@ -140,7 +148,6 @@ export async function toggleWarehouseStatus(
     where: {
       id: warehouseId,
     },
-
     data: {
       isActive: !currentStatus,
     },

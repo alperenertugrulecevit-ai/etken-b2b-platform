@@ -5,22 +5,31 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type PurchaseOrderActionState = {
   success: boolean;
   message: string;
 };
 
-function createPurchaseNumber(lastId: number) {
+function createPurchaseNumber(
+  lastId: number
+) {
   const nextNumber = lastId + 1;
 
-  return `PO${String(nextNumber).padStart(6, "0")}`;
+  return `PO${String(
+    nextNumber
+  ).padStart(6, "0")}`;
 }
 
 export async function createPurchaseOrder(
   _previousState: PurchaseOrderActionState,
   formData: FormData
 ): Promise<PurchaseOrderActionState> {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   const supplierId = Number(
     formData.get("supplierId")
   );
@@ -45,7 +54,8 @@ export async function createPurchaseOrder(
   ) {
     return {
       success: false,
-      message: "Lütfen geçerli bir tedarikçi seçin.",
+      message:
+        "Lütfen geçerli bir tedarikçi seçin.",
     };
   }
 
@@ -56,10 +66,15 @@ export async function createPurchaseOrder(
       `${expectedDateValue}T12:00:00`
     );
 
-    if (Number.isNaN(expectedDate.getTime())) {
+    if (
+      Number.isNaN(
+        expectedDate.getTime()
+      )
+    ) {
       return {
         success: false,
-        message: "Beklenen teslim tarihi geçerli değil.",
+        message:
+          "Beklenen teslim tarihi geçerli değil.",
       };
     }
   }
@@ -109,7 +124,8 @@ export async function createPurchaseOrder(
           return tx.purchaseOrder.create({
             data: {
               purchaseNumber,
-              supplierId: supplier.id,
+              supplierId:
+                supplier.id,
               status: "DRAFT",
               expectedDate,
 
@@ -169,7 +185,10 @@ export async function createPurchaseOrder(
   }
 
   revalidatePath("/admin");
-  revalidatePath("/admin/purchase-orders");
+
+  revalidatePath(
+    "/admin/purchase-orders"
+  );
 
   redirect(
     `/admin/purchase-orders/${createdPurchaseOrderId}`

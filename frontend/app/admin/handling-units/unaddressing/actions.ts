@@ -5,10 +5,10 @@ import {
   HandlingUnitType,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitUnaddressState = {
   success: boolean;
@@ -21,16 +21,17 @@ export type HandlingUnitUnaddressState = {
   totalStockQuantity: number;
 };
 
-const emptyState: HandlingUnitUnaddressState = {
-  success: false,
-  message: "",
+const emptyState: HandlingUnitUnaddressState =
+  {
+    success: false,
+    message: "",
 
-  selectedMainUnitCount: 0,
-  affectedUnitCount: 0,
-  openedUnitCount: 0,
-  emptiedUnitCount: 0,
-  totalStockQuantity: 0,
-};
+    selectedMainUnitCount: 0,
+    affectedUnitCount: 0,
+    openedUnitCount: 0,
+    emptiedUnitCount: 0,
+    totalStockQuantity: 0,
+  };
 
 function createErrorState(
   message: string
@@ -77,6 +78,11 @@ export async function unaddressHandlingUnits(
   _previousState: HandlingUnitUnaddressState,
   formData: FormData
 ): Promise<HandlingUnitUnaddressState> {
+  await AuthorizationService.requireAnyPermission([
+    "LOCATION_MANAGE",
+    "HANDLING_UNIT_MANAGE",
+  ]);
+
   const barcodes = parseBarcodes(
     formData.get("handlingUnitBarcodes")
   );
@@ -104,11 +110,9 @@ export async function unaddressHandlingUnits(
                   in: barcodes,
                 },
               },
-
               orderBy: {
                 barcode: "asc",
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -117,24 +121,20 @@ export async function unaddressHandlingUnits(
                 warehouseId: true,
                 locationId: true,
                 parentUnitId: true,
-
                 parentUnit: {
                   select: {
                     barcode: true,
                   },
                 },
-
                 items: {
                   select: {
                     quantity: true,
                   },
                 },
-
                 childUnits: {
                   select: {
                     id: true,
                     barcode: true,
-
                     items: {
                       select: {
                         quantity: true,
@@ -149,11 +149,13 @@ export async function unaddressHandlingUnits(
             handlingUnits.length !==
             barcodes.length
           ) {
-            const foundBarcodes = new Set(
-              handlingUnits.map(
-                (unit) => unit.barcode
-              )
-            );
+            const foundBarcodes =
+              new Set(
+                handlingUnits.map(
+                  (unit) =>
+                    unit.barcode
+                )
+              );
 
             const missingBarcodes =
               barcodes.filter(
@@ -170,7 +172,9 @@ export async function unaddressHandlingUnits(
             );
           }
 
-          for (const unit of handlingUnits) {
+          for (
+            const unit of handlingUnits
+          ) {
             if (unit.parentUnitId) {
               throw new Error(
                 `${unit.barcode} kolisi ${unit.parentUnit?.barcode ?? "bir palete"} bağlıdır. ` +
@@ -214,7 +218,9 @@ export async function unaddressHandlingUnits(
           const affectedUnitIds:
             number[] = [];
 
-          for (const unit of handlingUnits) {
+          for (
+            const unit of handlingUnits
+          ) {
             const directStockQuantity =
               unit.items.reduce(
                 (total, item) =>
@@ -258,11 +264,11 @@ export async function unaddressHandlingUnits(
               where: {
                 id: unit.id,
               },
-
               data: {
                 warehouseId: null,
                 locationId: null,
-                status: mainNextStatus,
+                status:
+                  mainNextStatus,
               },
             });
 
@@ -304,7 +310,6 @@ export async function unaddressHandlingUnits(
                   where: {
                     id: childUnit.id,
                   },
-
                   data: {
                     warehouseId: null,
                     locationId: null,
@@ -334,7 +339,6 @@ export async function unaddressHandlingUnits(
           return {
             selectedMainUnitCount:
               handlingUnits.length,
-
             affectedUnitCount,
             openedUnitCount,
             emptiedUnitCount,
@@ -345,7 +349,6 @@ export async function unaddressHandlingUnits(
         {
           maxWait: 10000,
           timeout: 30000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
@@ -378,6 +381,10 @@ export async function unaddressHandlingUnits(
     );
 
     revalidatePath(
+      "/admin/stock/location-map"
+    );
+
+    revalidatePath(
       "/admin/warehouses"
     );
 
@@ -392,23 +399,18 @@ export async function unaddressHandlingUnits(
 
     return {
       success: true,
-
       message:
         `${result.selectedMainUnitCount} ana taşıma birimi lokasyondan çıkarıldı. ` +
         `Bağlı kolilerle birlikte toplam ${result.affectedUnitCount} taşıma birimi güncellendi.`,
 
       selectedMainUnitCount:
         result.selectedMainUnitCount,
-
       affectedUnitCount:
         result.affectedUnitCount,
-
       openedUnitCount:
         result.openedUnitCount,
-
       emptiedUnitCount:
         result.emptiedUnitCount,
-
       totalStockQuantity:
         result.totalStockQuantity,
     };

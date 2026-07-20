@@ -6,10 +6,10 @@ import {
   HandlingUnitType,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type BulkHandlingUnitState = {
   success: boolean;
@@ -131,6 +131,10 @@ export async function createBulkHandlingUnits(
   _previousState: BulkHandlingUnitState,
   formData: FormData
 ): Promise<BulkHandlingUnitState> {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   const unitTypeValue = normalizeText(
     formData.get("unitType")
   );
@@ -276,7 +280,6 @@ export async function createBulkHandlingUnits(
                     startsWith: prefix,
                   },
                 },
-
                 select: {
                   barcode: true,
                 },
@@ -338,7 +341,6 @@ export async function createBulkHandlingUnits(
                   in: barcodes,
                 },
               },
-
               select: {
                 barcode: true,
               },
@@ -346,7 +348,8 @@ export async function createBulkHandlingUnits(
 
           if (existingBarcode) {
             throw new Error(
-              `${existingBarcode.barcode} barkodu daha önce oluşturulmuş. Başlangıç numarasını değiştirin veya otomatik numaralandırma kullanın.`
+              `${existingBarcode.barcode} barkodu daha önce oluşturulmuş. ` +
+                "Başlangıç numarasını değiştirin veya otomatik numaralandırma kullanın."
             );
           }
 
@@ -366,7 +369,6 @@ export async function createBulkHandlingUnits(
                   description,
                 })
               ),
-
               select: {
                 id: true,
                 barcode: true,
@@ -385,11 +387,9 @@ export async function createBulkHandlingUnits(
               createdUnits.map(
                 (unit) => unit.id
               ),
-
             firstBarcode:
               createdUnits[0]
                 ?.barcode ?? "",
-
             lastBarcode:
               createdUnits[
                 createdUnits.length - 1
@@ -407,19 +407,23 @@ export async function createBulkHandlingUnits(
       );
 
     revalidatePath("/admin");
+
     revalidatePath(
       "/admin/handling-units"
     );
+
     revalidatePath(
       "/admin/handling-units/bulk"
     );
 
     return {
       success: true,
-      message: `${count} adet ${getHandlingUnitLabel(
-        unitTypeValue
-      )} barkodu başarıyla oluşturuldu.`,
-      createdIds: result.createdIds,
+      message:
+        `${count} adet ${getHandlingUnitLabel(
+          unitTypeValue
+        )} barkodu başarıyla oluşturuldu.`,
+      createdIds:
+        result.createdIds,
       firstBarcode:
         result.firstBarcode,
       lastBarcode:

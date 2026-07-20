@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 function optionalText(
   formData: FormData,
@@ -20,6 +21,10 @@ function optionalText(
 export async function createSupplier(
   formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   const name = String(
     formData.get("name") ?? ""
   ).trim();
@@ -141,6 +146,11 @@ export async function createSupplier(
 
   revalidatePath("/admin");
   revalidatePath("/admin/suppliers");
+
+  revalidatePath(
+    "/admin/purchase-orders"
+  );
+
   revalidatePath(
     "/admin/purchase-orders/new"
   );
@@ -152,6 +162,10 @@ export async function toggleSupplierStatus(
   supplierId: number,
   currentStatus: boolean
 ) {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   if (
     !Number.isInteger(supplierId) ||
     supplierId <= 0
@@ -173,6 +187,11 @@ export async function toggleSupplierStatus(
 
   revalidatePath("/admin");
   revalidatePath("/admin/suppliers");
+
+  revalidatePath(
+    "/admin/purchase-orders"
+  );
+
   revalidatePath(
     "/admin/purchase-orders/new"
   );

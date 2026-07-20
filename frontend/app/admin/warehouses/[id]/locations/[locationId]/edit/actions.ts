@@ -4,10 +4,10 @@ import {
   Prisma,
   WarehouseLocationType,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type UpdateWarehouseLocationState = {
   success: boolean;
@@ -69,6 +69,10 @@ export async function updateWarehouseLocation(
   _previousState: UpdateWarehouseLocationState,
   formData: FormData
 ): Promise<UpdateWarehouseLocationState> {
+  await AuthorizationService.requirePermission(
+    "LOCATION_MANAGE"
+  );
+
   if (
     !Number.isInteger(warehouseId) ||
     warehouseId <= 0 ||
@@ -187,7 +191,6 @@ export async function updateWarehouseLocation(
           id: locationId,
           warehouseId,
         },
-
         include: {
           warehouse: {
             select: {
@@ -212,7 +215,6 @@ export async function updateWarehouseLocation(
         where: {
           id: locationId,
         },
-
         data: {
           code,
           aisle,
@@ -225,7 +227,6 @@ export async function updateWarehouseLocation(
           sortOrder,
           description,
         },
-
         select: {
           id: true,
           code: true,

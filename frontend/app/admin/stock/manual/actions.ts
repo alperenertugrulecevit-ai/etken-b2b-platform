@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type ManualStockActionState = {
   success: boolean;
@@ -86,6 +87,10 @@ export async function createManualStockMovement(
   _previousState: ManualStockActionState,
   formData: FormData
 ): Promise<ManualStockActionState> {
+  await AuthorizationService.requirePermission(
+    "INVENTORY_ADJUST"
+  );
+
   const productId = Number(
     formData.get("productId")
   );
@@ -162,7 +167,6 @@ export async function createManualStockMovement(
               where: {
                 id: productId,
               },
-
               select: {
                 id: true,
                 code: true,
@@ -175,6 +179,7 @@ export async function createManualStockMovement(
 
           if (!product) {
             return {
+              product: null,
               error:
                 "Stok işlemi yapılacak ürün bulunamadı.",
             };
@@ -182,6 +187,7 @@ export async function createManualStockMovement(
 
           if (!product.isActive) {
             return {
+              product: null,
               error:
                 `${product.code} - ${product.name} ürünü pasif durumda.`,
             };
@@ -196,6 +202,7 @@ export async function createManualStockMovement(
             product.stock < quantity
           ) {
             return {
+              product: null,
               error:
                 `${product.code} - ${product.name} için fiziksel stok yetersiz. ` +
                 `Mevcut fiziksel stok: ${product.stock}, ` +
@@ -208,6 +215,7 @@ export async function createManualStockMovement(
             availableStock < quantity
           ) {
             return {
+              product: null,
               error:
                 `${product.code} - ${product.name} için kullanılabilir stok yetersiz. ` +
                 `Fiziksel stok: ${product.stock}, ` +
@@ -221,15 +229,10 @@ export async function createManualStockMovement(
             tx,
             {
               productId,
-
               movementType,
-
               physicalChange,
-
               reservedChange: 0,
-
               documentNumber,
-
               description:
                 enteredDescription ||
                 getDefaultDescription(
@@ -257,30 +260,43 @@ export async function createManualStockMovement(
       };
     }
 
+    if (!result.product) {
+      return {
+        success: false,
+        productId,
+        message:
+          "Ürün bilgisi bulunamadı.",
+      };
+    }
+
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath("/admin");
     revalidatePath("/admin/products");
+
     revalidatePath(
       `/admin/products/${productId}`
     );
+
     revalidatePath(
       "/admin/stock/manual"
     );
 
-if (!result.product) {
-  return {
-    success: false,
-    productId,
-    message: "Ürün bilgisi bulunamadı.",
-  };
-}
+    revalidatePath(
+      "/admin/stock/movements"
+    );
 
-return {
-  success: true,
-  productId,
-  message: `${result.product.code} - ${result.product.name} için stok hareketi başarıyla kaydedildi.`,
-};
+    revalidatePath(
+      "/admin/stock/locations"
+    );
+
+    return {
+      success: true,
+      productId,
+      message:
+        `${result.product.code} - ${result.product.name} için ` +
+        "stok hareketi başarıyla kaydedildi.",
+    };
   } catch (error) {
     console.error(
       "Manuel stok işlemi hatası:",

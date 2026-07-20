@@ -8,12 +8,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 function refreshPurchaseOrderPages(
   purchaseOrderId: number
 ) {
   revalidatePath("/admin");
-  revalidatePath("/admin/purchase-orders");
+
+  revalidatePath(
+    "/admin/purchase-orders"
+  );
 
   revalidatePath(
     `/admin/purchase-orders/${purchaseOrderId}`
@@ -24,6 +28,10 @@ export async function approvePurchaseOrder(
   purchaseOrderId: number,
   _formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   if (
     !Number.isInteger(purchaseOrderId) ||
     purchaseOrderId <= 0
@@ -128,6 +136,10 @@ export async function cancelPurchaseOrder(
   purchaseOrderId: number,
   _formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   if (
     !Number.isInteger(purchaseOrderId) ||
     purchaseOrderId <= 0

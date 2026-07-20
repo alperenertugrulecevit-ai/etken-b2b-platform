@@ -4,10 +4,10 @@ import {
   Prisma,
   WarehouseLocationType,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type BulkUpdateLocationState = {
   success: boolean;
@@ -69,6 +69,10 @@ export async function bulkUpdateWarehouseLocations(
   _previousState: BulkUpdateLocationState,
   formData: FormData
 ): Promise<BulkUpdateLocationState> {
+  await AuthorizationService.requirePermission(
+    "LOCATION_MANAGE"
+  );
+
   if (
     !Number.isInteger(warehouseId) ||
     warehouseId <= 0
@@ -283,7 +287,6 @@ export async function bulkUpdateWarehouseLocations(
             in: selectedIds,
           },
         },
-
         select: {
           id: true,
         },
@@ -308,7 +311,6 @@ export async function bulkUpdateWarehouseLocations(
             in: selectedIds,
           },
         },
-
         data: updateData,
       });
 
@@ -318,6 +320,10 @@ export async function bulkUpdateWarehouseLocations(
 
     revalidatePath(
       `/admin/warehouses/${warehouseId}/locations`
+    );
+
+    revalidatePath(
+      `/admin/warehouses/${warehouseId}/locations/bulk-update`
     );
 
     return {

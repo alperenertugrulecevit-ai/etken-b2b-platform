@@ -3,10 +3,10 @@
 import {
   WarehouseLocationType,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type BulkLocationActionState = {
   success: boolean;
@@ -18,7 +18,9 @@ type LocationRange = {
   end: number;
 };
 
-function normalizeText(value: FormDataEntryValue | null) {
+function normalizeText(
+  value: FormDataEntryValue | null
+) {
   return String(value ?? "")
     .trim()
     .toUpperCase();
@@ -64,6 +66,10 @@ export async function createBulkWarehouseLocations(
   _previousState: BulkLocationActionState,
   formData: FormData
 ): Promise<BulkLocationActionState> {
+  await AuthorizationService.requirePermission(
+    "LOCATION_MANAGE"
+  );
+
   if (
     !Number.isInteger(warehouseId) ||
     warehouseId <= 0
@@ -265,7 +271,6 @@ export async function createBulkWarehouseLocations(
         where: {
           id: warehouseId,
         },
-
         select: {
           id: true,
           code: true,
@@ -358,6 +363,7 @@ export async function createBulkWarehouseLocations(
       result.count;
 
     revalidatePath("/admin");
+
     revalidatePath(
       "/admin/warehouses"
     );

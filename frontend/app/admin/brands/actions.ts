@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 function createSlug(name: string) {
   return name
@@ -17,14 +19,28 @@ function createSlug(name: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export async function createBrand(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
+export async function createBrand(
+  formData: FormData
+) {
+  await AuthorizationService.requirePermission(
+    "INVENTORY_ADJUST"
+  );
+
+  const name = String(
+    formData.get("name") ?? ""
+  ).trim();
 
   if (!name) {
     return;
   }
 
   const slug = createSlug(name);
+
+  if (!slug) {
+    throw new Error(
+      "Marka adı geçerli bir bağlantı adresi oluşturmak için uygun değil."
+    );
+  }
 
   await prisma.brand.create({
     data: {
@@ -33,25 +49,45 @@ export async function createBrand(formData: FormData) {
     },
   });
 
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/admin");
   revalidatePath("/admin/brands");
-  revalidatePath("/admin/products/new");
   revalidatePath("/admin/products");
+  revalidatePath("/admin/products/new");
 }
 
 export async function toggleBrandStatus(
   brandId: number,
   currentStatus: boolean
 ) {
+  await AuthorizationService.requirePermission(
+    "INVENTORY_ADJUST"
+  );
+
+  if (
+    !Number.isInteger(brandId) ||
+    brandId <= 0
+  ) {
+    throw new Error(
+      "Geçerli bir marka kimliği bulunamadı."
+    );
+  }
+
   await prisma.brand.update({
     where: {
       id: brandId,
     },
+
     data: {
       isActive: !currentStatus,
     },
   });
 
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/admin");
   revalidatePath("/admin/brands");
-  revalidatePath("/admin/products/new");
   revalidatePath("/admin/products");
+  revalidatePath("/admin/products/new");
 }

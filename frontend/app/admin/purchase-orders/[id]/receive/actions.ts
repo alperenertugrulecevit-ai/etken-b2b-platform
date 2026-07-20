@@ -14,6 +14,8 @@ import {
   createStockMovementWithTransaction,
 } from "@/lib/stock/stock-service";
 
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+
 export type PurchaseReceiptActionState = {
   success: boolean;
   message: string;
@@ -29,6 +31,21 @@ export async function receivePurchaseOrder(
   _previousState: PurchaseReceiptActionState,
   formData: FormData
 ): Promise<PurchaseReceiptActionState> {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
+  if (
+    !Number.isInteger(purchaseOrderId) ||
+    purchaseOrderId <= 0
+  ) {
+    return {
+      success: false,
+      message:
+        "Geçerli bir satın alma siparişi bulunamadı.",
+    };
+  }
+
   const itemsJson = String(
     formData.get("itemsJson") ?? "[]"
   );
@@ -47,8 +64,19 @@ export async function receivePurchaseOrder(
     SubmittedReceiptItem[] = [];
 
   try {
-    submittedItems =
+    const parsedItems =
       JSON.parse(itemsJson);
+
+    if (!Array.isArray(parsedItems)) {
+      return {
+        success: false,
+        message:
+          "Mal kabul miktarları geçerli bir liste değil.",
+      };
+    }
+
+    submittedItems =
+      parsedItems as SubmittedReceiptItem[];
   } catch {
     return {
       success: false,
@@ -61,10 +89,13 @@ export async function receivePurchaseOrder(
     submittedItems.filter(
       (item) =>
         Number.isInteger(
-          Number(item.purchaseOrderItemId)
+          Number(
+            item.purchaseOrderItemId
+          )
         ) &&
-        Number(item.purchaseOrderItemId) >
-          0 &&
+        Number(
+          item.purchaseOrderItemId
+        ) > 0 &&
         Number.isInteger(
           Number(item.quantity)
         ) &&
@@ -126,7 +157,10 @@ export async function receivePurchaseOrder(
         const quantityByItem =
           new Map<number, number>();
 
-        for (const submittedItem of receiptItems) {
+        for (
+          const submittedItem of
+          receiptItems
+        ) {
           const itemId = Number(
             submittedItem.purchaseOrderItemId
           );
@@ -138,8 +172,9 @@ export async function receivePurchaseOrder(
           quantityByItem.set(
             itemId,
             (
-              quantityByItem.get(itemId) ??
-              0
+              quantityByItem.get(
+                itemId
+              ) ?? 0
             ) + quantity
           );
         }
@@ -287,8 +322,14 @@ export async function receivePurchaseOrder(
   revalidatePath("/products");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
-  revalidatePath("/admin/stock/movements");
-  revalidatePath("/admin/purchase-orders");
+
+  revalidatePath(
+    "/admin/stock/movements"
+  );
+
+  revalidatePath(
+    "/admin/purchase-orders"
+  );
 
   revalidatePath(
     `/admin/purchase-orders/${purchaseOrderId}`

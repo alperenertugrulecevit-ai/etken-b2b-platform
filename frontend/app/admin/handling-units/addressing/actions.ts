@@ -9,6 +9,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitAddressState = {
   success: boolean;
@@ -82,6 +83,11 @@ export async function addressHandlingUnit(
   _previousState: HandlingUnitAddressState,
   formData: FormData
 ): Promise<HandlingUnitAddressState> {
+  await AuthorizationService.requireAnyPermission([
+    "PUTAWAY_EXECUTE",
+    "HANDLING_UNIT_MANAGE",
+  ]);
+
   const handlingUnitBarcode =
     normalizeBarcode(
       formData.get(

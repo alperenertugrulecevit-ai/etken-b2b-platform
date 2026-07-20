@@ -9,6 +9,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitBulkAddressState = {
   success: boolean;
@@ -106,6 +107,11 @@ export async function bulkAddressHandlingUnits(
   _previousState: HandlingUnitBulkAddressState,
   formData: FormData
 ): Promise<HandlingUnitBulkAddressState> {
+  await AuthorizationService.requireAnyPermission([
+    "PUTAWAY_EXECUTE",
+    "HANDLING_UNIT_MANAGE",
+  ]);
+
   const handlingUnitBarcodes =
     parseHandlingUnitBarcodes(
       formData.get(

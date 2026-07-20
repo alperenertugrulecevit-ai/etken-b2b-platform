@@ -8,6 +8,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitProductActionState = {
   success: boolean;
@@ -27,6 +28,10 @@ export async function addProductToHandlingUnit(
   _previousState: HandlingUnitProductActionState,
   formData: FormData
 ): Promise<HandlingUnitProductActionState> {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   if (
     !Number.isInteger(handlingUnitId) ||
     handlingUnitId <= 0
@@ -330,6 +335,10 @@ export async function removeProductFromHandlingUnit(
   handlingUnitItemId: number,
   formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   const quantity = Number(
     formData.get("quantity")
   );

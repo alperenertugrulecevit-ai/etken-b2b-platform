@@ -4,10 +4,10 @@ import {
   HandlingUnitStatus,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitBulkMergeState = {
   success: boolean;
@@ -21,17 +21,18 @@ export type HandlingUnitBulkMergeState = {
   transferredQuantity: number;
 };
 
-const emptyState: HandlingUnitBulkMergeState = {
-  success: false,
-  message: "",
+const emptyState: HandlingUnitBulkMergeState =
+  {
+    success: false,
+    message: "",
 
-  targetBarcode: "",
-  targetStockQuantity: 0,
+    targetBarcode: "",
+    targetStockQuantity: 0,
 
-  mergedSourceCount: 0,
-  transferredProductCount: 0,
-  transferredQuantity: 0,
-};
+    mergedSourceCount: 0,
+    transferredProductCount: 0,
+    transferredQuantity: 0,
+  };
 
 function normalizeBarcode(
   value: FormDataEntryValue | null
@@ -105,6 +106,10 @@ export async function mergeHandlingUnits(
   _previousState: HandlingUnitBulkMergeState,
   formData: FormData
 ): Promise<HandlingUnitBulkMergeState> {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   const targetBarcode =
     normalizeBarcode(
       formData.get("targetBarcode")
@@ -153,7 +158,6 @@ export async function mergeHandlingUnits(
                 barcode:
                   targetBarcode,
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -188,11 +192,9 @@ export async function mergeHandlingUnits(
                   in: sourceBarcodes,
                 },
               },
-
               orderBy: {
                 barcode: "asc",
               },
-
               select: {
                 id: true,
                 barcode: true,
@@ -200,14 +202,12 @@ export async function mergeHandlingUnits(
                 warehouseId: true,
                 locationId: true,
                 parentUnitId: true,
-
                 items: {
                   select: {
                     id: true,
                     productId: true,
                     quantity: true,
                     reservedStock: true,
-
                     product: {
                       select: {
                         code: true,
@@ -216,7 +216,6 @@ export async function mergeHandlingUnits(
                     },
                   },
                 },
-
                 childUnits: {
                   select: {
                     id: true,
@@ -352,21 +351,17 @@ export async function mergeHandlingUnits(
                   {
                     handlingUnitId:
                       targetUnit.id,
-
                     productId,
                   },
               },
-
               update: {
                 quantity: {
                   increment: quantity,
                 },
               },
-
               create: {
                 handlingUnitId:
                   targetUnit.id,
-
                 productId,
                 quantity,
                 reservedStock: 0,
@@ -397,7 +392,6 @@ export async function mergeHandlingUnits(
                 ),
               },
             },
-
             data: {
               status:
                 HandlingUnitStatus.EMPTY,
@@ -418,7 +412,6 @@ export async function mergeHandlingUnits(
               where: {
                 id: targetUnit.id,
               },
-
               data: {
                 status:
                   targetNextStatus,
@@ -432,7 +425,6 @@ export async function mergeHandlingUnits(
                 handlingUnitId:
                   targetUnit.id,
               },
-
               _sum: {
                 quantity: true,
               },
@@ -441,10 +433,8 @@ export async function mergeHandlingUnits(
           return {
             targetUnitId:
               targetUnit.id,
-
             targetBarcode:
               targetUnit.barcode,
-
             targetStockQuantity:
               targetStockSummary._sum
                 .quantity ?? 0,
@@ -456,17 +446,14 @@ export async function mergeHandlingUnits(
 
             mergedSourceCount:
               sourceUnits.length,
-
             transferredProductCount:
               productTotals.size,
-
             transferredQuantity,
           };
         },
         {
           maxWait: 10000,
           timeout: 30000,
-
           isolationLevel:
             Prisma
               .TransactionIsolationLevel
@@ -507,9 +494,12 @@ export async function mergeHandlingUnits(
       "/admin/stock/locations"
     );
 
+    revalidatePath(
+      "/admin/stock/location-map"
+    );
+
     return {
       success: true,
-
       message:
         `${result.mergedSourceCount} kaynak taşıma biriminin içeriği ` +
         `${result.targetBarcode} hedefine başarıyla birleştirildi. ` +
@@ -518,16 +508,13 @@ export async function mergeHandlingUnits(
 
       targetBarcode:
         result.targetBarcode,
-
       targetStockQuantity:
         result.targetStockQuantity,
 
       mergedSourceCount:
         result.mergedSourceCount,
-
       transferredProductCount:
         result.transferredProductCount,
-
       transferredQuantity:
         result.transferredQuantity,
     };

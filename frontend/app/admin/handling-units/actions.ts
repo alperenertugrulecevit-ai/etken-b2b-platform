@@ -6,10 +6,10 @@ import {
   HandlingUnitType,
   Prisma,
 } from "@prisma/client";
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitActionState = {
   success: boolean;
@@ -106,16 +106,13 @@ async function createAutomaticBarcode(
     await prisma.handlingUnit.findFirst({
       where: {
         unitType,
-
         barcode: {
           startsWith: prefix,
         },
       },
-
       orderBy: {
         id: "desc",
       },
-
       select: {
         id: true,
         barcode: true,
@@ -154,7 +151,6 @@ async function createAutomaticBarcode(
       where: {
         barcode,
       },
-
       select: {
         id: true,
       },
@@ -174,6 +170,10 @@ export async function createHandlingUnit(
   _previousState: HandlingUnitActionState,
   formData: FormData
 ): Promise<HandlingUnitActionState> {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   const unitTypeValue = String(
     formData.get("unitType") ?? ""
   )
@@ -246,17 +246,14 @@ export async function createHandlingUnit(
           unitType:
             unitTypeValue,
           purpose,
-
           status:
             HandlingUnitStatus.OPEN,
-
           warehouseId: null,
           locationId: null,
           parentUnitId: null,
           assignedOrderId: null,
           description,
         },
-
         select: {
           id: true,
           barcode: true,
@@ -265,15 +262,18 @@ export async function createHandlingUnit(
       });
 
     revalidatePath("/admin");
+
     revalidatePath(
       "/admin/handling-units"
     );
 
     return {
       success: true,
-      message: `${handlingUnit.barcode} numaralı ${getHandlingUnitLabel(
-        handlingUnit.unitType
-      )} başarıyla oluşturuldu.`,
+      message:
+        `${handlingUnit.barcode} numaralı ` +
+        `${getHandlingUnitLabel(
+          handlingUnit.unitType
+        )} başarıyla oluşturuldu.`,
     };
   } catch (error) {
     console.error(
@@ -307,6 +307,10 @@ export async function toggleHandlingUnitStatus(
   handlingUnitId: number,
   currentStatus: HandlingUnitStatus
 ) {
+  await AuthorizationService.requirePermission(
+    "HANDLING_UNIT_MANAGE"
+  );
+
   if (
     !Number.isInteger(handlingUnitId) ||
     handlingUnitId <= 0
@@ -319,17 +323,14 @@ export async function toggleHandlingUnitStatus(
       where: {
         id: handlingUnitId,
       },
-
       select: {
         id: true,
         status: true,
-
         items: {
           select: {
             quantity: true,
           },
         },
-
         childUnits: {
           select: {
             id: true,
@@ -381,7 +382,6 @@ export async function toggleHandlingUnitStatus(
     where: {
       id: handlingUnitId,
     },
-
     data: {
       status: nextStatus,
     },
@@ -389,5 +389,9 @@ export async function toggleHandlingUnitStatus(
 
   revalidatePath(
     "/admin/handling-units"
+  );
+
+  revalidatePath(
+    `/admin/handling-units/${handlingUnitId}`
   );
 }
