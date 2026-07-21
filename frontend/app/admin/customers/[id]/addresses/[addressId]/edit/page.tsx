@@ -1,9 +1,8 @@
 import Link from "next/link";
+
 import {
   notFound,
-  redirect,
 } from "next/navigation";
-import { revalidatePath } from "next/cache";
 
 import {
   getCities,
@@ -11,7 +10,14 @@ import {
 } from "turkey-neighbourhoods";
 
 import { prisma } from "@/lib/prisma";
+
 import CityDistrictSelect from "@/components/admin/CityDistrictSelect";
+
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+
+import {
+  updateCustomerAddress,
+} from "./actions";
 
 type Props = {
   params: Promise<{
@@ -23,19 +29,35 @@ type Props = {
 export default async function EditCustomerAddressPage({
   params,
 }: Props) {
-  const { id, addressId } = await params;
+  await AuthorizationService.requirePermission(
+    "CUSTOMER_MANAGE"
+  );
+
+  const {
+    id,
+    addressId,
+  } = await params;
 
   const customerId = Number(id);
-  const customerAddressId = Number(addressId);
+
+  const customerAddressId =
+    Number(addressId);
 
   if (
     !Number.isInteger(customerId) ||
-    !Number.isInteger(customerAddressId)
+    customerId <= 0 ||
+    !Number.isInteger(
+      customerAddressId
+    ) ||
+    customerAddressId <= 0
   ) {
     notFound();
   }
 
-  const [customer, customerAddress] = await Promise.all([
+  const [
+    customer,
+    customerAddress,
+  ] = await Promise.all([
     prisma.customer.findUnique({
       where: {
         id: customerId,
@@ -50,148 +72,25 @@ export default async function EditCustomerAddressPage({
     }),
   ]);
 
-  if (!customer || !customerAddress) {
+  if (
+    !customer ||
+    !customerAddress
+  ) {
     notFound();
   }
 
-  const cities = getCities();
-  const currentIsActive =
-  customerAddress.isActive;
+  const cities =
+    getCities();
+
   const districtsByCityCode =
     getDistrictsOfEachCity();
 
-  async function updateCustomerAddress(
-    formData: FormData
-  ) {
-    "use server";
-
-    const title = String(
-      formData.get("title") ?? ""
-    ).trim();
-
-    const addressType = String(
-      formData.get("addressType") ?? ""
-    ).trim();
-
-    const address = String(
-      formData.get("address") ?? ""
-    ).trim();
-
-    const city = String(
-      formData.get("city") ?? ""
-    ).trim();
-
-    const district = String(
-      formData.get("district") ?? ""
-    ).trim();
-
-    if (
-      !title ||
-      !addressType ||
-      !address ||
-      !city ||
-      !district
-    ) {
-      return;
-    }
-
-    const isDefault =
-      formData.get("isDefault") === "on";
-
-    await prisma.$transaction(async (tx) => {
-      if (isDefault) {
-        await tx.customerAddress.updateMany({
-          where: {
-            customerId,
-            id: {
-              not: customerAddressId,
-            },
-          },
-
-          data: {
-            isDefault: false,
-          },
-        });
-      }
-
-      await tx.customerAddress.update({
-        where: {
-          id: customerAddressId,
-        },
-
-        data: {
-          title,
-          addressType,
-
-          contactName:
-            String(
-              formData.get("contactName") ?? ""
-            ).trim() || null,
-
-          phone:
-            String(
-              formData.get("phone") ?? ""
-            ).trim() || null,
-
-          address,
-          city,
-          district,
-
-          postalCode:
-            String(
-              formData.get("postalCode") ?? ""
-            ).trim() || null,
-
-          deliveryStartTime:
-            String(
-              formData.get(
-                "deliveryStartTime"
-              ) ?? ""
-            ).trim() || null,
-
-          deliveryEndTime:
-            String(
-              formData.get(
-                "deliveryEndTime"
-              ) ?? ""
-            ).trim() || null,
-
-          hasForklift:
-            formData.get("hasForklift") ===
-            "on",
-
-          rampCount: Number(
-            formData.get("rampCount") ?? 0
-          ),
-
-          vehicleType:
-            String(
-              formData.get("vehicleType") ?? ""
-            ).trim() || null,
-
-          description:
-            String(
-              formData.get("description") ?? ""
-            ).trim() || null,
-
-          isDefault,
-
-          // Varsayılan yapılan adres pasif kalmasın.
-          isActive: isDefault
-            ? true
-            : currentIsActive,
-        },
-      });
-    });
-
-    const path =
-      `/admin/customers/${customerId}/addresses`;
-
-    revalidatePath(path);
-    revalidatePath("/admin/customers");
-
-    redirect(path);
-  }
+  const updateCustomerAddressAction =
+    updateCustomerAddress.bind(
+      null,
+      customerId,
+      customerAddressId
+    );
 
   return (
     <section className="p-10">
@@ -217,7 +116,9 @@ export default async function EditCustomerAddressPage({
         </div>
 
         <form
-          action={updateCustomerAddress}
+          action={
+            updateCustomerAddressAction
+          }
           className="mt-10 grid grid-cols-1 gap-5 rounded-2xl bg-white p-8 shadow md:grid-cols-2"
         >
           <label>
@@ -227,7 +128,9 @@ export default async function EditCustomerAddressPage({
 
             <input
               name="title"
-              defaultValue={customerAddress.title}
+              defaultValue={
+                customerAddress.title
+              }
               className="w-full rounded-xl border p-4"
               required
             />
@@ -280,7 +183,8 @@ export default async function EditCustomerAddressPage({
             <input
               name="contactName"
               defaultValue={
-                customerAddress.contactName ?? ""
+                customerAddress.contactName ??
+                ""
               }
               className="w-full rounded-xl border p-4"
             />
@@ -294,7 +198,8 @@ export default async function EditCustomerAddressPage({
             <input
               name="phone"
               defaultValue={
-                customerAddress.phone ?? ""
+                customerAddress.phone ??
+                ""
               }
               className="w-full rounded-xl border p-4"
             />
@@ -337,7 +242,8 @@ export default async function EditCustomerAddressPage({
             <input
               name="postalCode"
               defaultValue={
-                customerAddress.postalCode ?? ""
+                customerAddress.postalCode ??
+                ""
               }
               className="w-full rounded-xl border p-4"
             />
@@ -386,6 +292,7 @@ export default async function EditCustomerAddressPage({
               name="rampCount"
               type="number"
               min="0"
+              step="1"
               defaultValue={
                 customerAddress.rampCount
               }
@@ -401,7 +308,8 @@ export default async function EditCustomerAddressPage({
             <select
               name="vehicleType"
               defaultValue={
-                customerAddress.vehicleType ?? ""
+                customerAddress.vehicleType ??
+                ""
               }
               className="w-full rounded-xl border bg-white p-4"
             >
@@ -463,7 +371,8 @@ export default async function EditCustomerAddressPage({
             <textarea
               name="description"
               defaultValue={
-                customerAddress.description ?? ""
+                customerAddress.description ??
+                ""
               }
               rows={4}
               className="w-full resize-none rounded-xl border p-4"

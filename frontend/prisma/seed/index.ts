@@ -1,6 +1,18 @@
-import { PrismaClient } from "@prisma/client";
+import type {
+  PrismaClient,
+} from "@prisma/client";
 
-import { seedProducts } from "./products.seed";
+import {
+  seedPermissions,
+} from "./permissions.seed";
+
+import {
+  seedRoles,
+} from "./roles.seed";
+
+import {
+  seedProducts,
+} from "./products.seed";
 
 export async function runSeeds(
   prisma: PrismaClient
@@ -9,6 +21,8 @@ export async function runSeeds(
   console.log("Seed başladı...");
   console.log("---------------");
 
+  await seedPermissions(prisma);
+  await seedRoles(prisma);
   await seedProducts(prisma);
 
   console.log("---------------");

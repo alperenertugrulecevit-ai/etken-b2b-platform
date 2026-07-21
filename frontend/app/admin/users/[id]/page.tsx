@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+
+import {
+  notFound,
+} from "next/navigation";
 
 import UserEditForm from "@/components/admin/UserEditForm";
+
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+
 import { UserUpdateService } from "@/modules/users/services/user-update.service";
+
 import {
   USER_STATUS_LABELS,
   USER_TYPE_LABELS,
@@ -13,6 +19,7 @@ type Props = {
   params: Promise<{
     id: string;
   }>;
+
   searchParams: Promise<{
     success?: string;
   }>;
@@ -26,13 +33,23 @@ export default async function EditUserPage({
     "USER_MANAGE"
   );
 
-  const [{ id }, query] = await Promise.all([
+  const [
+    {
+      id,
+    },
+    query,
+  ] = await Promise.all([
     params,
     searchParams,
   ]);
 
-  const { user, roles } =
-    await UserUpdateService.getEditPageData(id);
+  const {
+    user,
+    roles,
+  } =
+    await UserUpdateService.getEditPageData(
+      id
+    );
 
   if (!user) {
     notFound();
@@ -57,17 +74,26 @@ export default async function EditUserPage({
               </code>
 
               <span className="rounded-full bg-slate-200 px-3 py-1 text-sm font-bold text-slate-700">
-                {USER_TYPE_LABELS[user.userType]}
+                {
+                  USER_TYPE_LABELS[
+                    user.userType
+                  ]
+                }
               </span>
 
               <span
                 className={`rounded-full px-3 py-1 text-sm font-bold ${
-                  user.status === "ACTIVE"
+                  user.status ===
+                  "ACTIVE"
                     ? "bg-emerald-100 text-emerald-800"
                     : "bg-amber-100 text-amber-800"
                 }`}
               >
-                {USER_STATUS_LABELS[user.status]}
+                {
+                  USER_STATUS_LABELS[
+                    user.status
+                  ]
+                }
               </span>
 
               {user.isAdminUser && (
@@ -84,17 +110,27 @@ export default async function EditUserPage({
             </div>
 
             <p className="mt-3 max-w-3xl text-slate-600">
-              Hesap, personel ve rol bilgilerini tek
-              ekrandan güncelleyin.
+              Hesap, personel ve rol
+              bilgilerini tek ekrandan
+              güncelleyin.
             </p>
           </div>
 
-          <Link
-            href="/admin/users"
-            className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 hover:bg-slate-50"
-          >
-            Kullanıcı Listesine Dön
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/admin/users/${user.id}/password`}
+              className="rounded-xl border border-red-300 bg-red-50 px-5 py-3 font-bold text-red-700 transition hover:bg-red-100"
+            >
+              Şifreyi Sıfırla
+            </Link>
+
+            <Link
+              href="/admin/users"
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Kullanıcı Listesine Dön
+            </Link>
+          </div>
         </div>
 
         {query.success && (

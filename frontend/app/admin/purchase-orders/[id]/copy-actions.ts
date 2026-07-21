@@ -1,21 +1,33 @@
 "use server";
 
-import { Prisma, PurchaseOrderStatus } from "@prisma/client";
+import {
+  Prisma,
+  PurchaseOrderStatus,
+} from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
-function createPurchaseNumber(lastId: number) {
+function createPurchaseNumber(
+  lastId: number
+) {
   const nextNumber = lastId + 1;
 
-  return `PO${String(nextNumber).padStart(6, "0")}`;
+  return `PO${String(
+    nextNumber
+  ).padStart(6, "0")}`;
 }
 
-function calculateExpectedDate(deliveryDays: number) {
+function calculateExpectedDate(
+  deliveryDays: number
+) {
   const expectedDate = new Date();
 
   expectedDate.setHours(12, 0, 0, 0);
+
   expectedDate.setDate(
     expectedDate.getDate() +
       Math.max(0, deliveryDays)
@@ -28,8 +40,14 @@ export async function copyPurchaseOrder(
   sourcePurchaseOrderId: number,
   _formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   if (
-    !Number.isInteger(sourcePurchaseOrderId) ||
+    !Number.isInteger(
+      sourcePurchaseOrderId
+    ) ||
     sourcePurchaseOrderId <= 0
   ) {
     throw new Error(
@@ -46,7 +64,8 @@ export async function copyPurchaseOrder(
           const sourcePurchaseOrder =
             await tx.purchaseOrder.findUnique({
               where: {
-                id: sourcePurchaseOrderId,
+                id:
+                  sourcePurchaseOrderId,
               },
 
               include: {
@@ -73,14 +92,18 @@ export async function copyPurchaseOrder(
             );
           }
 
-          if (!sourcePurchaseOrder.supplier.isActive) {
+          if (
+            !sourcePurchaseOrder
+              .supplier.isActive
+          ) {
             throw new Error(
               `${sourcePurchaseOrder.supplier.name} tedarikçisi pasif olduğu için satın alma kopyalanamaz.`
             );
           }
 
           if (
-            sourcePurchaseOrder.items.length === 0
+            sourcePurchaseOrder.items
+              .length === 0
           ) {
             throw new Error(
               "Ürün satırı bulunmayan satın alma siparişi kopyalanamaz."
@@ -114,7 +137,8 @@ export async function copyPurchaseOrder(
               purchaseNumber,
 
               supplierId:
-                sourcePurchaseOrder.supplierId,
+                sourcePurchaseOrder
+                  .supplierId,
 
               status:
                 PurchaseOrderStatus.DRAFT,
@@ -130,24 +154,28 @@ export async function copyPurchaseOrder(
                   .discountRate,
 
               subtotal:
-                sourcePurchaseOrder.subtotal,
+                sourcePurchaseOrder
+                  .subtotal,
 
               discountAmount:
                 sourcePurchaseOrder
                   .discountAmount,
 
               vatAmount:
-                sourcePurchaseOrder.vatAmount,
+                sourcePurchaseOrder
+                  .vatAmount,
 
               totalAmount:
-                sourcePurchaseOrder.totalAmount,
+                sourcePurchaseOrder
+                  .totalAmount,
 
               supplierNote:
                 sourcePurchaseOrder
                   .supplierNote,
 
               internalNote:
-                sourcePurchaseOrder.internalNote
+                sourcePurchaseOrder
+                  .internalNote
                   ? `${sourcePurchaseOrder.purchaseNumber} numaralı satın alma kopyalandı.\n\n${sourcePurchaseOrder.internalNote}`
                   : `${sourcePurchaseOrder.purchaseNumber} numaralı satın alma kopyalandı.`,
 
@@ -224,7 +252,10 @@ export async function copyPurchaseOrder(
   }
 
   revalidatePath("/admin");
-  revalidatePath("/admin/purchase-orders");
+
+  revalidatePath(
+    "/admin/purchase-orders"
+  );
 
   revalidatePath(
     `/admin/purchase-orders/${sourcePurchaseOrderId}`

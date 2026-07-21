@@ -17,9 +17,15 @@ function getOptionalText(
   return value || null;
 }
 
-function validateCustomerId(
-  customerId: number
+export async function updateCustomerAddress(
+  customerId: number,
+  customerAddressId: number,
+  formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "CUSTOMER_MANAGE"
+  );
+
   if (
     !Number.isInteger(customerId) ||
     customerId <= 0
@@ -28,30 +34,17 @@ function validateCustomerId(
       "Geçerli bir müşteri kimliği bulunamadı."
     );
   }
-}
 
-function validateAddressId(
-  addressId: number
-) {
   if (
-    !Number.isInteger(addressId) ||
-    addressId <= 0
+    !Number.isInteger(
+      customerAddressId
+    ) ||
+    customerAddressId <= 0
   ) {
     throw new Error(
       "Geçerli bir adres kimliği bulunamadı."
     );
   }
-}
-
-export async function createCustomerAddress(
-  customerId: number,
-  formData: FormData
-) {
-  await AuthorizationService.requirePermission(
-    "CUSTOMER_MANAGE"
-  );
-
-  validateCustomerId(customerId);
 
   const title = String(
     formData.get("title") ?? ""
@@ -87,7 +80,7 @@ export async function createCustomerAddress(
 
   if (!address) {
     throw new Error(
-      "Adres bilgisi zorunludur."
+      "Açık adres bilgisi zorunludur."
     );
   }
 
@@ -117,10 +110,9 @@ export async function createCustomerAddress(
   await prisma.$transaction(
     async (tx) => {
       const customer =
-        await tx.customer.findFirst({
+        await tx.customer.findUnique({
           where: {
             id: customerId,
-            isActive: true,
           },
 
           select: {
@@ -130,7 +122,26 @@ export async function createCustomerAddress(
 
       if (!customer) {
         throw new Error(
-          "Müşteri bulunamadı veya müşteri pasif durumda."
+          "Müşteri bulunamadı."
+        );
+      }
+
+      const currentAddress =
+        await tx.customerAddress.findFirst({
+          where: {
+            id: customerAddressId,
+            customerId,
+          },
+
+          select: {
+            id: true,
+            isActive: true,
+          },
+        });
+
+      if (!currentAddress) {
+        throw new Error(
+          "Güncellenecek müşteri adresi bulunamadı."
         );
       }
 
@@ -138,6 +149,11 @@ export async function createCustomerAddress(
         await tx.customerAddress.updateMany({
           where: {
             customerId,
+
+            id: {
+              not:
+                customerAddressId,
+            },
           },
 
           data: {
@@ -146,9 +162,12 @@ export async function createCustomerAddress(
         });
       }
 
-      await tx.customerAddress.create({
+      await tx.customerAddress.update({
+        where: {
+          id: customerAddressId,
+        },
+
         data: {
-          customerId,
           title,
           addressType,
 
@@ -206,7 +225,14 @@ export async function createCustomerAddress(
             ),
 
           isDefault,
-          isActive: true,
+
+          /*
+           * Varsayılan yapılan adres
+           * pasif durumda kalamaz.
+           */
+          isActive: isDefault
+            ? true
+            : currentAddress.isActive,
         },
       });
     },
@@ -216,7 +242,7 @@ export async function createCustomerAddress(
     }
   );
 
-  const path =
+  const addressListPath =
     `/admin/customers/${customerId}/addresses`;
 
   revalidatePath(
@@ -227,168 +253,17 @@ export async function createCustomerAddress(
     `/admin/customers/${customerId}`
   );
 
-  revalidatePath(path);
+  revalidatePath(
+    addressListPath
+  );
+
+  revalidatePath(
+    `/admin/customers/${customerId}/addresses/${customerAddressId}/edit`
+  );
 
   revalidatePath(
     "/admin/orders/new"
   );
 
-  redirect(path);
-}
-
-export async function toggleCustomerAddressStatus(
-  customerId: number,
-  addressId: number,
-  currentStatus: boolean
-) {
-  await AuthorizationService.requirePermission(
-    "CUSTOMER_MANAGE"
-  );
-
-  validateCustomerId(customerId);
-  validateAddressId(addressId);
-
-  const address =
-    await prisma.customerAddress.findFirst({
-      where: {
-        id: addressId,
-        customerId,
-      },
-
-      select: {
-        id: true,
-        isDefault: true,
-      },
-    });
-
-  if (!address) {
-    throw new Error(
-      "Müşteri adresi bulunamadı."
-    );
-  }
-
-  await prisma.customerAddress.update({
-    where: {
-      id: addressId,
-    },
-
-    data: {
-      isActive: !currentStatus,
-
-      /*
-       * Varsayılan adres pasif
-       * yapılıyorsa varsayılanlığı kaldır.
-       */
-      isDefault:
-        currentStatus &&
-        address.isDefault
-          ? false
-          : address.isDefault,
-    },
-  });
-
-  const path =
-    `/admin/customers/${customerId}/addresses`;
-
-  revalidatePath(
-    "/admin/customers"
-  );
-
-  revalidatePath(
-    `/admin/customers/${customerId}`
-  );
-
-  revalidatePath(path);
-
-  revalidatePath(
-    "/admin/orders/new"
-  );
-
-  redirect(path);
-}
-
-export async function setDefaultCustomerAddress(
-  customerId: number,
-  addressId: number
-) {
-  await AuthorizationService.requirePermission(
-    "CUSTOMER_MANAGE"
-  );
-
-  validateCustomerId(customerId);
-  validateAddressId(addressId);
-
-  await prisma.$transaction(
-    async (tx) => {
-      const selectedAddress =
-        await tx.customerAddress.findFirst({
-          where: {
-            id: addressId,
-            customerId,
-          },
-
-          select: {
-            id: true,
-          },
-        });
-
-      if (!selectedAddress) {
-        throw new Error(
-          "Müşteri adresi bulunamadı."
-        );
-      }
-
-      /*
-       * Önce bu müşterinin bütün
-       * adreslerinden varsayılan işaretini kaldır.
-       */
-      await tx.customerAddress.updateMany({
-        where: {
-          customerId,
-        },
-
-        data: {
-          isDefault: false,
-        },
-      });
-
-      /*
-       * Ardından seçilen adresi
-       * varsayılan ve aktif yap.
-       */
-      await tx.customerAddress.update({
-        where: {
-          id: addressId,
-        },
-
-        data: {
-          isDefault: true,
-          isActive: true,
-        },
-      });
-    },
-    {
-      maxWait: 10000,
-      timeout: 20000,
-    }
-  );
-
-  const path =
-    `/admin/customers/${customerId}/addresses`;
-
-  revalidatePath(
-    "/admin/customers"
-  );
-
-  revalidatePath(
-    `/admin/customers/${customerId}`
-  );
-
-  revalidatePath(path);
-
-  revalidatePath(
-    "/admin/orders/new"
-  );
-
-  redirect(path);
+  redirect(addressListPath);
 }

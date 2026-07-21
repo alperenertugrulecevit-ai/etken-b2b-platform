@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type UpdatePurchaseOrderState = {
   success: boolean;
@@ -19,6 +20,10 @@ export async function updatePurchaseOrder(
   _previousState: UpdatePurchaseOrderState,
   formData: FormData
 ): Promise<UpdatePurchaseOrderState> {
+  await AuthorizationService.requirePermission(
+    "RECEIVING_EXECUTE"
+  );
+
   const supplierId = Number(
     formData.get("supplierId")
   );
@@ -176,8 +181,10 @@ export async function updatePurchaseOrder(
             lineNet + lineVat;
 
           subtotal += grossLine;
+
           discountAmount +=
             lineDiscount;
+
           vatAmount += lineVat;
 
           await tx.purchaseOrderItem.update({
@@ -250,6 +257,7 @@ export async function updatePurchaseOrder(
   }
 
   revalidatePath("/admin");
+
   revalidatePath(
     "/admin/purchase-orders"
   );

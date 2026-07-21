@@ -4,9 +4,12 @@ import {
   WavePriority,
   WaveType,
 } from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 type SequenceResult = {
   value: bigint;
@@ -22,9 +25,14 @@ function parseOptionalDate(
     return null;
   }
 
-  const parsedDate = new Date(value);
+  const parsedDate =
+    new Date(value);
 
-  if (Number.isNaN(parsedDate.getTime())) {
+  if (
+    Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
     return null;
   }
 
@@ -33,11 +41,14 @@ function parseOptionalDate(
 
 async function generateNextWaveNo() {
   const sequenceResult =
-    await prisma.$queryRaw<SequenceResult[]>`
+    await prisma.$queryRaw<
+      SequenceResult[]
+    >`
       SELECT nextval('wavenumberseq') AS value
     `;
 
-  const nextValue = sequenceResult[0]?.value;
+  const nextValue =
+    sequenceResult[0]?.value;
 
   if (nextValue === undefined) {
     throw new Error(
@@ -53,11 +64,24 @@ async function generateNextWaveNo() {
 export async function createWaveAction(
   formData: FormData
 ) {
-  const nameValue = formData.get("name");
-  const typeValue = formData.get("type");
-  const priorityValue = formData.get("priority");
-  const notesValue = formData.get("notes");
-  const createdByValue = formData.get("createdBy");
+  await AuthorizationService.requirePermission(
+    "WAVE_MANAGE"
+  );
+
+  const nameValue =
+    formData.get("name");
+
+  const typeValue =
+    formData.get("type");
+
+  const priorityValue =
+    formData.get("priority");
+
+  const notesValue =
+    formData.get("notes");
+
+  const createdByValue =
+    formData.get("createdBy");
 
   const name =
     typeof nameValue === "string" &&
@@ -82,53 +106,74 @@ export async function createWaveAction(
     Object.values(WaveType).includes(
       typeValue as WaveType
     )
-      ? (typeValue as WaveType)
+      ? typeValue as WaveType
       : WaveType.MIXED;
 
   const priority =
     typeof priorityValue === "string" &&
-    Object.values(WavePriority).includes(
+    Object.values(
+      WavePriority
+    ).includes(
       priorityValue as WavePriority
     )
-      ? (priorityValue as WavePriority)
+      ? priorityValue as WavePriority
       : WavePriority.NORMAL;
 
-  const plannedStartAt = parseOptionalDate(
-    formData.get("plannedStartAt")
-  );
+  const plannedStartAt =
+    parseOptionalDate(
+      formData.get(
+        "plannedStartAt"
+      )
+    );
 
-  const plannedFinishAt = parseOptionalDate(
-    formData.get("plannedFinishAt")
-  );
+  const plannedFinishAt =
+    parseOptionalDate(
+      formData.get(
+        "plannedFinishAt"
+      )
+    );
 
   if (
     plannedStartAt &&
     plannedFinishAt &&
-    plannedFinishAt < plannedStartAt
+    plannedFinishAt <
+      plannedStartAt
   ) {
     throw new Error(
       "Planlanan bitiş tarihi başlangıç tarihinden önce olamaz."
     );
   }
 
-  const waveNo = await generateNextWaveNo();
+  const waveNo =
+    await generateNextWaveNo();
 
-  const wave = await prisma.wave.create({
-    data: {
-      waveNo,
-      name,
-      type,
-      priority,
-      status: "DRAFT",
-      plannedStartAt,
-      plannedFinishAt,
-      notes,
-      createdBy,
-      updatedBy: createdBy,
-    },
-  });
+  const wave =
+    await prisma.wave.create({
+      data: {
+        waveNo,
+        name,
+        type,
+        priority,
+        status: "DRAFT",
+        plannedStartAt,
+        plannedFinishAt,
+        notes,
+        createdBy,
+        updatedBy: createdBy,
+      },
 
-  revalidatePath("/admin/waves");
+      select: {
+        id: true,
+      },
+    });
 
-  redirect(`/admin/waves?created=${wave.id}`);
+  revalidatePath("/admin");
+
+  revalidatePath(
+    "/admin/waves"
+  );
+
+  redirect(
+    `/admin/waves?created=${wave.id}`
+  );
 }

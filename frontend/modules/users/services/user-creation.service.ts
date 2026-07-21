@@ -9,6 +9,9 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+
+import { PASSWORD_POLICY } from "@/modules/auth/constants/password-policy.constants";
+
 import { PasswordService } from "@/modules/auth/services/password.service";
 
 import type {
@@ -26,27 +29,35 @@ const EMPLOYEE_CODE_PATTERN =
 const EMAIL_PATTERN =
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const PASSWORD_MIN_LENGTH = 10;
-const PASSWORD_MAX_LENGTH = 72;
-
 export class UserCreationError extends Error {
   constructor(
     message: string,
-    public readonly field: string | null = null
+    public readonly field:
+      string | null = null
   ) {
     super(message);
-    this.name = "UserCreationError";
+
+    this.name =
+      "UserCreationError";
   }
 }
 
-function normalizeOptionalText(value: string) {
-  const normalized = value.trim();
+function normalizeOptionalText(
+  value: string
+) {
+  const normalized =
+    value.trim();
+
   return normalized || null;
 }
 
-function pickCharacter(characters: string) {
+function pickCharacter(
+  characters: string
+) {
   return characters[
-    randomInt(characters.length)
+    randomInt(
+      characters.length
+    )
   ];
 }
 
@@ -54,13 +65,18 @@ function shuffleCharacters(
   characters: string[]
 ) {
   for (
-    let index = characters.length - 1;
+    let index =
+      characters.length - 1;
     index > 0;
     index -= 1
   ) {
-    const targetIndex = randomInt(index + 1);
+    const targetIndex =
+      randomInt(index + 1);
 
-    [characters[index], characters[targetIndex]] = [
+    [
+      characters[index],
+      characters[targetIndex],
+    ] = [
       characters[targetIndex],
       characters[index],
     ];
@@ -77,6 +93,7 @@ export class UserCreationService {
       where: {
         isActive: true,
       },
+
       orderBy: [
         {
           isSystemRole: "desc",
@@ -85,6 +102,7 @@ export class UserCreationService {
           name: "asc",
         },
       ],
+
       select: {
         id: true,
         code: true,
@@ -98,11 +116,20 @@ export class UserCreationService {
   static generateTemporaryPassword(
     length = 14
   ) {
-    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    const lower = "abcdefghijkmnopqrstuvwxyz";
-    const digits = "23456789";
-    const special = "!@#$%*-_?";
-    const all = `${upper}${lower}${digits}${special}`;
+    const upper =
+      "ABCDEFGHJKLMNPQRSTUVWXYZ";
+
+    const lower =
+      "abcdefghijkmnopqrstuvwxyz";
+
+    const digits =
+      "23456789";
+
+    const special =
+      "!@#$%*-_?";
+
+    const all =
+      `${upper}${lower}${digits}${special}`;
 
     const passwordCharacters = [
       pickCharacter(upper),
@@ -111,7 +138,10 @@ export class UserCreationService {
       pickCharacter(special),
     ];
 
-    while (passwordCharacters.length < length) {
+    while (
+      passwordCharacters.length <
+      length
+    ) {
       passwordCharacters.push(
         pickCharacter(all)
       );
@@ -126,37 +156,49 @@ export class UserCreationService {
     password: string
   ) {
     if (
-      password.length < PASSWORD_MIN_LENGTH ||
-      password.length > PASSWORD_MAX_LENGTH
+      password.length <
+        PASSWORD_POLICY.MIN_LENGTH ||
+      password.length >
+        PASSWORD_POLICY.MAX_LENGTH
     ) {
       throw new UserCreationError(
-        `Geçici şifre ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} karakter olmalıdır.`,
+        `Geçici şifre ${PASSWORD_POLICY.MIN_LENGTH}-${PASSWORD_POLICY.MAX_LENGTH} karakter olmalıdır.`,
         "temporaryPassword"
       );
     }
 
-    if (!/[A-Z]/.test(password)) {
+    if (
+      !/[A-Z]/.test(password)
+    ) {
       throw new UserCreationError(
         "Geçici şifre en az bir büyük harf içermelidir.",
         "temporaryPassword"
       );
     }
 
-    if (!/[a-z]/.test(password)) {
+    if (
+      !/[a-z]/.test(password)
+    ) {
       throw new UserCreationError(
         "Geçici şifre en az bir küçük harf içermelidir.",
         "temporaryPassword"
       );
     }
 
-    if (!/[0-9]/.test(password)) {
+    if (
+      !/[0-9]/.test(password)
+    ) {
       throw new UserCreationError(
         "Geçici şifre en az bir rakam içermelidir.",
         "temporaryPassword"
       );
     }
 
-    if (!/[^A-Za-z0-9]/.test(password)) {
+    if (
+      !/[^A-Za-z0-9]/.test(
+        password
+      )
+    ) {
       throw new UserCreationError(
         "Geçici şifre en az bir özel karakter içermelidir.",
         "temporaryPassword"
@@ -169,18 +211,30 @@ export class UserCreationService {
     createdById: string
   ): Promise<CreateUserResult> {
     const employeeCode =
-      input.employeeCode.trim().toUpperCase();
+      input.employeeCode
+        .trim()
+        .toUpperCase();
 
-    const firstName = input.firstName.trim();
-    const lastName = input.lastName.trim();
+    const firstName =
+      input.firstName.trim();
+
+    const lastName =
+      input.lastName.trim();
+
     const username =
-      input.username.trim().toLowerCase();
-    const email = normalizeOptionalText(
-      input.email
-    )?.toLowerCase() ?? null;
+      input.username
+        .trim()
+        .toLowerCase();
+
+    const email =
+      normalizeOptionalText(
+        input.email
+      )?.toLowerCase() ?? null;
 
     if (
-      !EMPLOYEE_CODE_PATTERN.test(employeeCode)
+      !EMPLOYEE_CODE_PATTERN.test(
+        employeeCode
+      )
     ) {
       throw new UserCreationError(
         "Personel kodu 2-30 karakter olmalı; yalnızca harf, rakam, alt çizgi ve tire içermelidir.",
@@ -208,14 +262,21 @@ export class UserCreationService {
       );
     }
 
-    if (!USERNAME_PATTERN.test(username)) {
+    if (
+      !USERNAME_PATTERN.test(
+        username
+      )
+    ) {
       throw new UserCreationError(
         "Kullanıcı adı 3-50 karakter olmalı; küçük harf, rakam, nokta, alt çizgi veya tire kullanılmalıdır.",
         "username"
       );
     }
 
-    if (email && !EMAIL_PATTERN.test(email)) {
+    if (
+      email &&
+      !EMAIL_PATTERN.test(email)
+    ) {
       throw new UserCreationError(
         "Geçerli bir e-posta adresi girin.",
         "email"
@@ -223,7 +284,9 @@ export class UserCreationService {
     }
 
     if (
-      !Object.values(UserType).includes(
+      !Object.values(
+        UserType
+      ).includes(
         input.userType
       )
     ) {
@@ -233,13 +296,17 @@ export class UserCreationService {
       );
     }
 
-    const roleIds = Array.from(
-      new Set(
-        input.roleIds
-          .map((roleId) => roleId.trim())
-          .filter(Boolean)
-      )
-    );
+    const roleIds =
+      Array.from(
+        new Set(
+          input.roleIds
+            .map(
+              (roleId) =>
+                roleId.trim()
+            )
+            .filter(Boolean)
+        )
+      );
 
     if (
       input.isAdminUser &&
@@ -262,6 +329,7 @@ export class UserCreationService {
             {
               employeeCode,
             },
+
             ...(email
               ? [
                   {
@@ -271,17 +339,20 @@ export class UserCreationService {
               : []),
           ],
         },
+
         select: {
           employeeCode: true,
           email: true,
         },
       }),
+
       prisma.user.findFirst({
         where: {
           OR: [
             {
               username,
             },
+
             ...(email
               ? [
                   {
@@ -291,18 +362,22 @@ export class UserCreationService {
               : []),
           ],
         },
+
         select: {
           username: true,
           email: true,
         },
       }),
+
       prisma.role.findMany({
         where: {
           id: {
             in: roleIds,
           },
+
           isActive: true,
         },
+
         select: {
           id: true,
           code: true,
@@ -312,10 +387,15 @@ export class UserCreationService {
 
     if (existingEmployee) {
       throw new UserCreationError(
-        existingEmployee.employeeCode === employeeCode
+        existingEmployee
+          .employeeCode ===
+          employeeCode
           ? "Bu personel kodu zaten kullanılıyor."
           : "Bu e-posta adresine bağlı bir personel zaten var.",
-        existingEmployee.employeeCode === employeeCode
+
+        existingEmployee
+          .employeeCode ===
+          employeeCode
           ? "employeeCode"
           : "email"
       );
@@ -323,16 +403,22 @@ export class UserCreationService {
 
     if (existingUser) {
       throw new UserCreationError(
-        existingUser.username === username
+        existingUser.username ===
+          username
           ? "Bu kullanıcı adı zaten kullanılıyor."
           : "Bu e-posta adresine bağlı bir kullanıcı zaten var.",
-        existingUser.username === username
+
+        existingUser.username ===
+          username
           ? "username"
           : "email"
       );
     }
 
-    if (selectedRoles.length !== roleIds.length) {
+    if (
+      selectedRoles.length !==
+      roleIds.length
+    ) {
       throw new UserCreationError(
         "Seçilen rollerden biri bulunamadı veya pasif durumda.",
         "roleIds"
@@ -342,7 +428,9 @@ export class UserCreationService {
     if (
       input.isAdminUser &&
       !selectedRoles.some(
-        (role) => role.code === "SYSTEM_ADMIN"
+        (role) =>
+          role.code ===
+          "SYSTEM_ADMIN"
       )
     ) {
       throw new UserCreationError(
@@ -354,7 +442,9 @@ export class UserCreationService {
     if (
       !input.isAdminUser &&
       selectedRoles.some(
-        (role) => role.code === "SYSTEM_ADMIN"
+        (role) =>
+          role.code ===
+          "SYSTEM_ADMIN"
       )
     ) {
       throw new UserCreationError(
@@ -364,7 +454,8 @@ export class UserCreationService {
     }
 
     const temporaryPassword =
-      input.temporaryPassword.trim() ||
+      input.temporaryPassword
+        .trim() ||
       this.generateTemporaryPassword();
 
     this.validateTemporaryPassword(
@@ -386,19 +477,29 @@ export class UserCreationService {
                 firstName,
                 lastName,
                 email,
-                phone: normalizeOptionalText(
-                  input.phone
-                ),
-                department: normalizeOptionalText(
-                  input.department
-                ),
-                title: normalizeOptionalText(
-                  input.title
-                ),
-                shiftCode: normalizeOptionalText(
-                  input.shiftCode
-                ),
+
+                phone:
+                  normalizeOptionalText(
+                    input.phone
+                  ),
+
+                department:
+                  normalizeOptionalText(
+                    input.department
+                  ),
+
+                title:
+                  normalizeOptionalText(
+                    input.title
+                  ),
+
+                shiftCode:
+                  normalizeOptionalText(
+                    input.shiftCode
+                  ),
+
                 isActive: true,
+
                 canUseRf:
                   input.isRfUser ||
                   input.userType ===
@@ -409,42 +510,79 @@ export class UserCreationService {
           const user =
             await transaction.user.create({
               data: {
-                employeeId: employee.id,
+                employeeId:
+                  employee.id,
+
                 username,
                 email,
                 passwordHash,
-                userType: input.userType,
-                status: UserStatus.ACTIVE,
+
+                userType:
+                  input.userType,
+
+                status:
+                  UserStatus.ACTIVE,
+
                 mustChangePassword: true,
                 failedLoginCount: 0,
+
                 isRfUser:
                   input.isRfUser ||
                   input.userType ===
                     UserType.RF_OPERATOR,
-                isAdminUser: input.isAdminUser,
+
+                isAdminUser:
+                  input.isAdminUser,
+
                 createdById,
-                updatedById: createdById,
+                updatedById:
+                  createdById,
               },
             });
 
-          if (selectedRoles.length > 0) {
+          if (
+            selectedRoles.length >
+            0
+          ) {
             await transaction.userRole.createMany({
-              data: selectedRoles.map((role) => ({
-                userId: user.id,
-                roleId: role.id,
-                assignedById: createdById,
-              })),
+              data:
+                selectedRoles.map(
+                  (role) => ({
+                    userId:
+                      user.id,
+
+                    roleId:
+                      role.id,
+
+                    assignedById:
+                      createdById,
+                  })
+                ),
             });
           }
 
           return {
-            userId: user.id,
-            employeeId: employee.id,
-            username: user.username,
-            employeeCode: employee.employeeCode,
-            fullName: `${employee.firstName} ${employee.lastName}`,
+            userId:
+              user.id,
+
+            employeeId:
+              employee.id,
+
+            username:
+              user.username,
+
+            employeeCode:
+              employee.employeeCode,
+
+            fullName:
+              `${employee.firstName} ${employee.lastName}`,
+
             temporaryPassword,
           };
+        },
+        {
+          maxWait: 10000,
+          timeout: 20000,
         }
       );
     } catch (error) {

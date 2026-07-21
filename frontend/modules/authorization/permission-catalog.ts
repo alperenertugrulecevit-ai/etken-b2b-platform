@@ -56,6 +56,20 @@ export const PERMISSION_CATALOG: PermissionCatalogItem[] = [
       "Rol oluşturur, düzenler ve izin atamalarını yönetir.",
   },
   {
+    code: "CUSTOMER_VIEW",
+    name: "Müşterileri Görüntüleme",
+    module: "CUSTOMERS",
+    description:
+      "Müşteri listesini, müşteri bilgilerini ve teslimat adreslerini görüntüler.",
+  },
+  {
+    code: "CUSTOMER_MANAGE",
+    name: "Müşterileri Yönetme",
+    module: "CUSTOMERS",
+    description:
+      "Müşteri ve müşteri teslimat adresi kayıtlarını oluşturur ve günceller.",
+  },
+  {
     code: "WAREHOUSE_VIEW",
     name: "Depoları Görüntüleme",
     module: "WAREHOUSE",
@@ -103,6 +117,20 @@ export const PERMISSION_CATALOG: PermissionCatalogItem[] = [
     module: "INVENTORY",
     description:
       "Adresler ve taşıma birimleri arasında stok transferi yapar.",
+  },
+  {
+    code: "ORDER_VIEW",
+    name: "Siparişleri Görüntüleme",
+    module: "ORDERS",
+    description:
+      "Müşteri siparişlerini, ürün satırlarını ve sipariş durumlarını görüntüler.",
+  },
+  {
+    code: "ORDER_MANAGE",
+    name: "Siparişleri Yönetme",
+    module: "ORDERS",
+    description:
+      "Müşteri siparişlerini oluşturur, günceller ve durum işlemlerini yürütür.",
   },
   {
     code: "RECEIVING_VIEW",
@@ -169,18 +197,22 @@ export const PERMISSION_CATALOG: PermissionCatalogItem[] = [
   },
 ];
 
-const WMS_MANAGER_PERMISSIONS = PERMISSION_CATALOG
-  .filter(
-    (permission) =>
-      ![
-        "ALL_ACCESS",
-        "USER_VIEW",
-        "USER_MANAGE",
-        "ROLE_VIEW",
-        "ROLE_MANAGE",
-      ].includes(permission.code)
-  )
-  .map((permission) => permission.code);
+const WMS_MANAGER_PERMISSIONS =
+  PERMISSION_CATALOG
+    .filter(
+      (permission) =>
+        ![
+          "ALL_ACCESS",
+          "USER_VIEW",
+          "USER_MANAGE",
+          "ROLE_VIEW",
+          "ROLE_MANAGE",
+        ].includes(permission.code)
+    )
+    .map(
+      (permission) =>
+        permission.code
+    );
 
 export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
   {
@@ -188,7 +220,22 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
     name: "WMS Yöneticisi",
     description:
       "Kullanıcı ve rol yönetimi dışındaki tüm WMS operasyonlarını yönetir.",
-    permissionCodes: WMS_MANAGER_PERMISSIONS,
+    permissionCodes:
+      WMS_MANAGER_PERMISSIONS,
+  },
+  {
+    code: "SALES_OPERATOR",
+    name: "Satış Operatörü",
+    description:
+      "Müşteri ve satış siparişi kayıtlarını görüntüler ve yönetir.",
+    permissionCodes: [
+      "DASHBOARD_VIEW",
+      "CUSTOMER_VIEW",
+      "CUSTOMER_MANAGE",
+      "INVENTORY_VIEW",
+      "ORDER_VIEW",
+      "ORDER_MANAGE",
+    ],
   },
   {
     code: "WAREHOUSE_SUPERVISOR",
@@ -197,6 +244,7 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
       "Depo, stok, kabul, dalga ve taşıma birimi operasyonlarını yönetir.",
     permissionCodes: [
       "DASHBOARD_VIEW",
+      "CUSTOMER_VIEW",
       "WAREHOUSE_VIEW",
       "WAREHOUSE_MANAGE",
       "LOCATION_VIEW",
@@ -204,6 +252,7 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
       "INVENTORY_VIEW",
       "INVENTORY_ADJUST",
       "TRANSFER_EXECUTE",
+      "ORDER_VIEW",
       "RECEIVING_VIEW",
       "WAVE_VIEW",
       "WAVE_MANAGE",
@@ -294,8 +343,10 @@ export const PERMISSION_MODULE_LABELS: Record<
   DASHBOARD: "WMS Paneli",
   USERS: "Kullanıcı Yönetimi",
   ROLES: "Rol ve Yetki Yönetimi",
+  CUSTOMERS: "Müşteri Yönetimi",
   WAREHOUSE: "Depo ve Adresler",
   INVENTORY: "Stok Yönetimi",
+  ORDERS: "Sipariş Yönetimi",
   RECEIVING: "Mal Kabul ve Adresleme",
   WAVE: "Dalga ve Toplama",
   HANDLING_UNIT: "Taşıma Birimleri",

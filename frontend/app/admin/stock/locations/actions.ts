@@ -7,6 +7,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type LocationStockPlacementState = {
   success: boolean;
@@ -17,6 +18,11 @@ export async function placeStockToLocation(
   _previousState: LocationStockPlacementState,
   formData: FormData
 ): Promise<LocationStockPlacementState> {
+  await AuthorizationService.requireAnyPermission([
+    "INVENTORY_ADJUST",
+    "PUTAWAY_EXECUTE",
+  ]);
+
   const productId = Number(
     formData.get("productId")
   );
@@ -169,8 +175,11 @@ export async function placeStockToLocation(
             );
           }
 
-          const allocatedSummary =
-            await tx.warehouseLocationStock.aggregate({
+          const [
+            locationStockSummary,
+            handlingUnitStockSummary,
+          ] = await Promise.all([
+            tx.warehouseLocationStock.aggregate({
               where: {
                 productId,
               },
@@ -178,19 +187,40 @@ export async function placeStockToLocation(
               _sum: {
                 quantity: true,
               },
-            });
+            }),
 
-          const allocatedQuantity =
-            allocatedSummary._sum.quantity ??
-            0;
+            tx.handlingUnitItem.aggregate({
+              where: {
+                productId,
+              },
+
+              _sum: {
+                quantity: true,
+              },
+            }),
+          ]);
+
+          const allocatedToLocations =
+            locationStockSummary._sum
+              .quantity ?? 0;
+
+          const allocatedToHandlingUnits =
+            handlingUnitStockSummary._sum
+              .quantity ?? 0;
+
+          const totalAllocated =
+            allocatedToLocations +
+            allocatedToHandlingUnits;
 
           const unallocatedQuantity =
             product.stock -
-            allocatedQuantity;
+            totalAllocated;
 
-          if (unallocatedQuantity <= 0) {
+          if (
+            unallocatedQuantity <= 0
+          ) {
             throw new Error(
-              `${product.code} - ${product.name} ürününün fiziksel stoğunun tamamı lokasyonlara yerleştirilmiş.`
+              `${product.code} - ${product.name} ürününün fiziksel stoğunun tamamı lokasyonlara veya koli/paletlere dağıtılmış.`
             );
           }
 
@@ -199,8 +229,11 @@ export async function placeStockToLocation(
             unallocatedQuantity
           ) {
             throw new Error(
-              `${product.code} - ${product.name} için yerleştirilmemiş stok yetersiz. ` +
-                `Yerleştirilmemiş stok: ${unallocatedQuantity}, ` +
+              `${product.code} - ${product.name} için dağıtılmamış stok yetersiz. ` +
+                `Fiziksel stok: ${product.stock}, ` +
+                `lokasyonlardaki stok: ${allocatedToLocations}, ` +
+                `koli/paletlerdeki stok: ${allocatedToHandlingUnits}, ` +
+                `dağıtılabilir stok: ${unallocatedQuantity}, ` +
                 `girilen miktar: ${quantity}.`
             );
           }
@@ -263,35 +296,62 @@ export async function placeStockToLocation(
         {
           maxWait: 10000,
           timeout: 20000,
+
           isolationLevel:
-            Prisma.TransactionIsolationLevel.Serializable,
+            Prisma
+              .TransactionIsolationLevel
+              .Serializable,
         }
       );
 
     revalidatePath("/admin");
+
     revalidatePath(
       "/admin/products"
     );
+
+    revalidatePath(
+      `/admin/products/${productId}`
+    );
+
     revalidatePath(
       "/admin/warehouses"
     );
+
     revalidatePath(
       "/admin/stock/locations"
     );
 
+    revalidatePath(
+      "/admin/stock/location-map"
+    );
+
     return {
       success: true,
+
       message:
         `${result.productCode} - ${result.productName} ürününden ` +
         `${result.placedQuantity} adet ${result.locationCode} lokasyonuna yerleştirildi. ` +
         `Lokasyon bakiyesi: ${result.locationQuantity}. ` +
-        `Yerleştirilmemiş stok: ${result.remainingQuantity}.`,
+        `Dağıtılmamış stok: ${result.remainingQuantity}.`,
     };
   } catch (error) {
     console.error(
       "Lokasyona stok yerleştirme hatası:",
       error
     );
+
+    if (
+      error instanceof
+        Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return {
+        success: false,
+        message:
+          "Aynı stok üzerinde başka bir işlem yapıldı. Lütfen işlemi tekrar deneyin.",
+      };
+    }
 
     return {
       success: false,

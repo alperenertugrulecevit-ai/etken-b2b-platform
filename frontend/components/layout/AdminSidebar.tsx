@@ -16,45 +16,72 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin",
     icon: "📊",
     label: "Dashboard",
-    permissionCodes: ["DASHBOARD_VIEW"],
+    permissionCodes: [
+      "DASHBOARD_VIEW",
+    ],
   },
   {
     href: "/admin/products",
     icon: "📦",
     label: "Ürün Yönetimi",
+    permissionCodes: [
+      "INVENTORY_VIEW",
+      "INVENTORY_ADJUST",
+    ],
   },
   {
     href: "/admin/categories",
     icon: "📁",
     label: "Kategori Yönetimi",
+    permissionCodes: [
+      "INVENTORY_VIEW",
+      "INVENTORY_ADJUST",
+    ],
   },
   {
     href: "/admin/brands",
     icon: "🏷️",
     label: "Marka Yönetimi",
+    permissionCodes: [
+      "INVENTORY_VIEW",
+      "INVENTORY_ADJUST",
+    ],
   },
   {
     href: "/admin/suppliers",
     icon: "🏭",
     label: "Tedarikçi Yönetimi",
-    permissionCodes: ["RECEIVING_VIEW"],
+    permissionCodes: [
+      "RECEIVING_VIEW",
+      "RECEIVING_EXECUTE",
+    ],
   },
   {
     href: "/admin/customers",
     icon: "👥",
     label: "Müşteri Yönetimi",
+    permissionCodes: [
+      "CUSTOMER_VIEW",
+      "CUSTOMER_MANAGE",
+    ],
   },
   {
     href: "/admin/orders",
     icon: "🛒",
     label: "Sipariş Yönetimi",
-    permissionCodes: ["WAVE_VIEW"],
+    permissionCodes: [
+      "ORDER_VIEW",
+      "ORDER_MANAGE",
+    ],
   },
   {
     href: "/admin/purchase-orders",
     icon: "🧾",
     label: "Satın Alma",
-    permissionCodes: ["RECEIVING_VIEW"],
+    permissionCodes: [
+      "RECEIVING_VIEW",
+      "RECEIVING_EXECUTE",
+    ],
   },
 ];
 
@@ -63,19 +90,25 @@ const stockMenuItems: MenuItem[] = [
     href: "/admin/stock/movements",
     icon: "📋",
     label: "Stok Hareketleri",
-    permissionCodes: ["INVENTORY_VIEW"],
+    permissionCodes: [
+      "INVENTORY_VIEW",
+    ],
   },
   {
     href: "/admin/stock/manual",
     icon: "📥",
     label: "Manuel Stok İşlemi",
-    permissionCodes: ["INVENTORY_ADJUST"],
+    permissionCodes: [
+      "INVENTORY_ADJUST",
+    ],
   },
   {
     href: "/admin/stock/locations",
     icon: "📍",
     label: "Lokasyon Bazlı Stok",
-    permissionCodes: ["INVENTORY_VIEW"],
+    permissionCodes: [
+      "INVENTORY_VIEW",
+    ],
   },
   {
     href: "/admin/stock/location-map",
@@ -93,7 +126,10 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units",
     icon: "🧱",
     label: "Koli / Palet Yönetimi",
-    permissionCodes: ["HANDLING_UNIT_VIEW"],
+    permissionCodes: [
+      "HANDLING_UNIT_VIEW",
+      "HANDLING_UNIT_MANAGE",
+    ],
   },
   {
     href: "/admin/handling-units/transfers",
@@ -101,20 +137,23 @@ const handlingUnitMenuItems: MenuItem[] = [
     label: "Koli / Palet Transferi",
     permissionCodes: [
       "TRANSFER_EXECUTE",
-      "HANDLING_UNIT_MANAGE",
     ],
   },
   {
     href: "/admin/handling-units/merge",
     icon: "🔗",
     label: "Toplu Birleştirme",
-    permissionCodes: ["HANDLING_UNIT_MANAGE"],
+    permissionCodes: [
+      "HANDLING_UNIT_MANAGE",
+    ],
   },
   {
     href: "/admin/handling-units/pallet-link",
     icon: "🔗",
     label: "Koli-Palet Bağlama",
-    permissionCodes: ["HANDLING_UNIT_MANAGE"],
+    permissionCodes: [
+      "HANDLING_UNIT_MANAGE",
+    ],
   },
   {
     href: "/admin/handling-units/addressing",
@@ -150,19 +189,26 @@ const wmsMenuItems: MenuItem[] = [
     href: "/admin/wms-dashboard",
     icon: "📊",
     label: "WMS Dashboard",
-    permissionCodes: ["DASHBOARD_VIEW"],
+    permissionCodes: [
+      "DASHBOARD_VIEW",
+    ],
   },
   {
     href: "/admin/waves",
     icon: "🌊",
     label: "Wave Yönetimi",
-    permissionCodes: ["WAVE_VIEW"],
+    permissionCodes: [
+      "WAVE_VIEW",
+      "WAVE_MANAGE",
+    ],
   },
   {
     href: "/admin/waves/new",
     icon: "➕",
     label: "Yeni Wave Oluştur",
-    permissionCodes: ["WAVE_MANAGE"],
+    permissionCodes: [
+      "WAVE_MANAGE",
+    ],
   },
 ];
 
@@ -171,7 +217,10 @@ const warehouseMenuItems: MenuItem[] = [
     href: "/admin/warehouses",
     icon: "🏬",
     label: "Depo Yönetimi",
-    permissionCodes: ["WAREHOUSE_VIEW"],
+    permissionCodes: [
+      "WAREHOUSE_VIEW",
+      "WAREHOUSE_MANAGE",
+    ],
   },
 ];
 
@@ -180,13 +229,19 @@ const systemMenuItems: MenuItem[] = [
     href: "/admin/users",
     icon: "👤",
     label: "Kullanıcı Yönetimi",
-    permissionCodes: ["USER_VIEW", "USER_MANAGE"],
+    permissionCodes: [
+      "USER_VIEW",
+      "USER_MANAGE",
+    ],
   },
   {
     href: "/admin/roles",
     icon: "🛡️",
     label: "Rol ve Yetki Yönetimi",
-    permissionCodes: ["ROLE_VIEW", "ROLE_MANAGE"],
+    permissionCodes: [
+      "ROLE_VIEW",
+      "ROLE_MANAGE",
+    ],
   },
 ];
 
@@ -211,8 +266,12 @@ function filterMenuItems(
   profile: AuthorizationProfile,
   items: MenuItem[]
 ) {
-  return items.filter((item) =>
-    canShowItem(profile, item)
+  return items.filter(
+    (item) =>
+      canShowItem(
+        profile,
+        item
+      )
   );
 }
 
@@ -226,7 +285,10 @@ function MenuLink({
       href={href}
       className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white"
     >
-      <span className="text-lg">{icon}</span>
+      <span className="text-lg">
+        {icon}
+      </span>
+
       <span>{label}</span>
     </Link>
   );
@@ -259,7 +321,9 @@ function MenuGroup({
 
   return (
     <>
-      <MenuTitle>{title}</MenuTitle>
+      <MenuTitle>
+        {title}
+      </MenuTitle>
 
       <div
         className={
@@ -268,12 +332,14 @@ function MenuGroup({
             : "space-y-1"
         }
       >
-        {items.map((item) => (
-          <MenuLink
-            key={item.href}
-            {...item}
-          />
-        ))}
+        {items.map(
+          (item) => (
+            <MenuLink
+              key={item.href}
+              {...item}
+            />
+          )
+        )}
       </div>
     </>
   );
@@ -283,15 +349,17 @@ export default async function AdminSidebar() {
   const profile =
     await AuthorizationService.requireAdminPortalAccess();
 
-  const visibleMainMenuItems = filterMenuItems(
-    profile,
-    mainMenuItems
-  );
+  const visibleMainMenuItems =
+    filterMenuItems(
+      profile,
+      mainMenuItems
+    );
 
-  const visibleStockMenuItems = filterMenuItems(
-    profile,
-    stockMenuItems
-  );
+  const visibleStockMenuItems =
+    filterMenuItems(
+      profile,
+      stockMenuItems
+    );
 
   const visibleHandlingUnitMenuItems =
     filterMenuItems(
@@ -299,10 +367,11 @@ export default async function AdminSidebar() {
       handlingUnitMenuItems
     );
 
-  const visibleWmsMenuItems = filterMenuItems(
-    profile,
-    wmsMenuItems
-  );
+  const visibleWmsMenuItems =
+    filterMenuItems(
+      profile,
+      wmsMenuItems
+    );
 
   const visibleWarehouseMenuItems =
     filterMenuItems(
@@ -310,10 +379,11 @@ export default async function AdminSidebar() {
       warehouseMenuItems
     );
 
-  const visibleSystemMenuItems = filterMenuItems(
-    profile,
-    systemMenuItems
-  );
+  const visibleSystemMenuItems =
+    filterMenuItems(
+      profile,
+      systemMenuItems
+    );
 
   const canUseRf = Boolean(
     profile.isRfUser &&
@@ -335,45 +405,60 @@ export default async function AdminSidebar() {
         <nav className="mt-8">
           <MenuGroup
             title="Genel Yönetim"
-            items={visibleMainMenuItems}
+            items={
+              visibleMainMenuItems
+            }
           />
 
           <div className="my-5 border-t border-slate-700" />
 
           <MenuGroup
             title="Stok Yönetimi"
-            items={visibleStockMenuItems}
+            items={
+              visibleStockMenuItems
+            }
           />
 
           <MenuGroup
             title="Handling Unit"
-            items={visibleHandlingUnitMenuItems}
+            items={
+              visibleHandlingUnitMenuItems
+            }
           />
 
           <MenuGroup
             title="WMS Operasyonları"
-            items={visibleWmsMenuItems}
+            items={
+              visibleWmsMenuItems
+            }
             highlighted
           />
 
           <MenuGroup
             title="Depo Yönetimi"
-            items={visibleWarehouseMenuItems}
+            items={
+              visibleWarehouseMenuItems
+            }
           />
 
-          {visibleSystemMenuItems.length > 0 && (
+          {visibleSystemMenuItems.length >
+            0 && (
             <>
               <MenuTitle>
                 Sistem Yönetimi
               </MenuTitle>
 
               <div className="space-y-1 rounded-2xl border border-violet-800 bg-violet-950/30 p-2">
-                {visibleSystemMenuItems.map((item) => (
-                  <MenuLink
-                    key={item.href}
-                    {...item}
-                  />
-                ))}
+                {visibleSystemMenuItems.map(
+                  (item) => (
+                    <MenuLink
+                      key={
+                        item.href
+                      }
+                      {...item}
+                    />
+                  )
+                )}
               </div>
             </>
           )}
@@ -404,7 +489,9 @@ export default async function AdminSidebar() {
                 🏠
               </span>
 
-              <span>Siteye Dön</span>
+              <span>
+                Siteye Dön
+              </span>
             </Link>
           </div>
         </nav>

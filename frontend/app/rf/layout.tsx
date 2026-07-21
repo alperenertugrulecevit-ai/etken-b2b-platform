@@ -1,6 +1,13 @@
 import Link from "next/link";
 
+import {
+  redirect,
+} from "next/navigation";
+
+import { prisma } from "@/lib/prisma";
+
 import LogoutButton from "@/components/auth/LogoutButton";
+
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 type Props = {
@@ -13,9 +20,36 @@ export default async function RFLayout({
   const profile =
     await AuthorizationService.getCurrentProfile();
 
-  const fullName = profile?.employee
-    ? `${profile.employee.firstName} ${profile.employee.lastName}`
-    : profile?.username ?? "";
+  if (profile) {
+    const userAccount =
+      await prisma.user.findUnique({
+        where: {
+          id: profile.id,
+        },
+
+        select: {
+          id: true,
+          mustChangePassword: true,
+        },
+      });
+
+    if (!userAccount) {
+      redirect("/rf/login");
+    }
+
+    if (
+      userAccount.mustChangePassword
+    ) {
+      redirect(
+        "/change-password?returnTo=%2Frf"
+      );
+    }
+  }
+
+  const fullName =
+    profile?.employee
+      ? `${profile.employee.firstName} ${profile.employee.lastName}`
+      : profile?.username ?? "";
 
   const canOpenAdmin = profile
     ? AuthorizationService.hasPermission(
@@ -56,7 +90,8 @@ export default async function RFLayout({
 
                 <p className="truncate text-xs text-slate-400">
                   @{profile.username}
-                  {profile.employee?.employeeCode
+                  {profile.employee
+                    ?.employeeCode
                     ? ` · ${profile.employee.employeeCode}`
                     : ""}
                 </p>

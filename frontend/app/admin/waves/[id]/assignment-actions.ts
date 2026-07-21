@@ -14,7 +14,11 @@ import {
   updateWaveAssignmentStatus,
 } from "@/lib/wms/wave-assignment-service";
 
-function getErrorMessage(error: unknown) {
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+
+function getErrorMessage(
+  error: unknown
+) {
   if (error instanceof Error) {
     return error.message;
   }
@@ -27,27 +31,42 @@ function createAssignmentsPageUrl(
   type: "success" | "error",
   message: string
 ) {
-  const parameters = new URLSearchParams();
+  const parameters =
+    new URLSearchParams();
 
   parameters.set(type, message);
 
   return `/admin/waves/${waveId}/assignments?${parameters.toString()}`;
 }
 
-function refreshWavePages(waveId: string) {
-  revalidatePath("/admin/waves");
-  revalidatePath(`/admin/waves/${waveId}`);
+function refreshWavePages(
+  waveId: string
+) {
+  revalidatePath("/admin");
+
+  revalidatePath(
+    "/admin/waves"
+  );
+
+  revalidatePath(
+    `/admin/waves/${waveId}`
+  );
+
   revalidatePath(
     `/admin/waves/${waveId}/assignments`
   );
-  revalidatePath("/admin/wms-dashboard");
+
+  revalidatePath(
+    "/admin/wms-dashboard"
+  );
 }
 
 function getRequiredString(
   formData: FormData,
   fieldName: string
 ) {
-  const value = formData.get(fieldName);
+  const value =
+    formData.get(fieldName);
 
   if (
     typeof value !== "string" ||
@@ -66,7 +85,9 @@ function isWmsOperationType(
 ): value is WmsOperationType {
   return Object.values(
     WmsOperationType
-  ).includes(value as WmsOperationType);
+  ).includes(
+    value as WmsOperationType
+  );
 }
 
 function isWaveAssignmentStatus(
@@ -82,6 +103,10 @@ function isWaveAssignmentStatus(
 export async function createWaveAssignmentAction(
   formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "WAVE_MANAGE"
+  );
+
   let waveId = "";
 
   try {
@@ -97,15 +122,20 @@ export async function createWaveAssignmentAction(
       );
 
     const terminalCodeValue =
-      formData.get("terminalCode");
+      formData.get(
+        "terminalCode"
+      );
 
     const terminalCode =
-      typeof terminalCodeValue === "string"
+      typeof terminalCodeValue ===
+        "string"
         ? terminalCodeValue.trim()
         : "";
 
     const operationTypeValue =
-      formData.get("operationType");
+      formData.get(
+        "operationType"
+      );
 
     if (
       typeof operationTypeValue !==
@@ -156,6 +186,10 @@ export async function createWaveAssignmentAction(
 export async function updateWaveAssignmentStatusAction(
   formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "WAVE_MANAGE"
+  );
+
   let waveId = "";
 
   try {
@@ -221,6 +255,10 @@ export async function updateWaveAssignmentStatusAction(
 export async function deleteWaveAssignmentAction(
   formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "WAVE_MANAGE"
+  );
+
   let waveId = "";
 
   try {

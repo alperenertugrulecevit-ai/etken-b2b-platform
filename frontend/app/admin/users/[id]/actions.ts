@@ -4,10 +4,12 @@ import {
   UserStatus,
   UserType,
 } from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+
 import {
   UserUpdateError,
   UserUpdateService,
@@ -31,12 +33,19 @@ function readBoolean(
   formData: FormData,
   fieldName: string
 ) {
-  return formData.get(fieldName) === "on";
+  return (
+    formData.get(fieldName) ===
+    "on"
+  );
 }
 
-function parseUserType(value: string) {
+function parseUserType(
+  value: string
+) {
   if (
-    Object.values(UserType).includes(
+    Object.values(
+      UserType
+    ).includes(
       value as UserType
     )
   ) {
@@ -46,9 +55,13 @@ function parseUserType(value: string) {
   return UserType.WAREHOUSE;
 }
 
-function parseUserStatus(value: string) {
+function parseUserStatus(
+  value: string
+) {
   if (
-    Object.values(UserStatus).includes(
+    Object.values(
+      UserStatus
+    ).includes(
       value as UserStatus
     )
   ) {
@@ -62,53 +75,98 @@ function readValues(
   formData: FormData
 ): UpdateUserFormValues {
   return {
-    employeeCode: readText(
-      formData,
-      "employeeCode"
-    ).toUpperCase(),
-    firstName: readText(
-      formData,
-      "firstName"
-    ),
-    lastName: readText(
-      formData,
-      "lastName"
-    ),
-    email: readText(formData, "email"),
-    phone: readText(formData, "phone"),
-    department: readText(
-      formData,
-      "department"
-    ),
-    title: readText(formData, "title"),
-    shiftCode: readText(
-      formData,
-      "shiftCode"
-    ),
-    username: readText(
-      formData,
-      "username"
-    ).toLowerCase(),
-    userType: parseUserType(
-      readText(formData, "userType")
-    ),
-    status: parseUserStatus(
-      readText(formData, "status")
-    ),
-    isRfUser: readBoolean(
-      formData,
-      "isRfUser"
-    ),
-    isAdminUser: readBoolean(
-      formData,
-      "isAdminUser"
-    ),
-    roleIds: formData
-      .getAll("roleIds")
-      .map((roleId) =>
-        String(roleId).trim()
-      )
-      .filter(Boolean),
+    employeeCode:
+      readText(
+        formData,
+        "employeeCode"
+      ).toUpperCase(),
+
+    firstName:
+      readText(
+        formData,
+        "firstName"
+      ),
+
+    lastName:
+      readText(
+        formData,
+        "lastName"
+      ),
+
+    email:
+      readText(
+        formData,
+        "email"
+      ),
+
+    phone:
+      readText(
+        formData,
+        "phone"
+      ),
+
+    department:
+      readText(
+        formData,
+        "department"
+      ),
+
+    title:
+      readText(
+        formData,
+        "title"
+      ),
+
+    shiftCode:
+      readText(
+        formData,
+        "shiftCode"
+      ),
+
+    username:
+      readText(
+        formData,
+        "username"
+      ).toLowerCase(),
+
+    userType:
+      parseUserType(
+        readText(
+          formData,
+          "userType"
+        )
+      ),
+
+    status:
+      parseUserStatus(
+        readText(
+          formData,
+          "status"
+        )
+      ),
+
+    isRfUser:
+      readBoolean(
+        formData,
+        "isRfUser"
+      ),
+
+    isAdminUser:
+      readBoolean(
+        formData,
+        "isAdminUser"
+      ),
+
+    roleIds:
+      formData
+        .getAll("roleIds")
+        .map(
+          (roleId) =>
+            String(
+              roleId
+            ).trim()
+        )
+        .filter(Boolean),
   };
 }
 
@@ -121,12 +179,14 @@ export async function updateUserAction(
       "USER_MANAGE"
     );
 
-  const userId = readText(
-    formData,
-    "userId"
-  );
+  const userId =
+    readText(
+      formData,
+      "userId"
+    );
 
-  const values = readValues(formData);
+  const values =
+    readValues(formData);
 
   if (!userId) {
     return {
@@ -145,11 +205,16 @@ export async function updateUserAction(
       currentUser.id
     );
   } catch (error) {
-    if (error instanceof UserUpdateError) {
+    if (
+      error instanceof
+      UserUpdateError
+    ) {
       return {
         success: false,
-        message: error.message,
-        field: error.field,
+        message:
+          error.message,
+        field:
+          error.field,
         values,
       };
     }
@@ -168,8 +233,13 @@ export async function updateUserAction(
     };
   }
 
-  revalidatePath("/admin/users");
-  revalidatePath(`/admin/users/${userId}`);
+  revalidatePath(
+    "/admin/users"
+  );
+
+  revalidatePath(
+    `/admin/users/${userId}`
+  );
 
   redirect(
     `/admin/users/${userId}?success=${encodeURIComponent(

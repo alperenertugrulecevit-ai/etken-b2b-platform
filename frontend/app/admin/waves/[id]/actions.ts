@@ -1,9 +1,14 @@
 "use server";
 
-import { WaveStatus } from "@prisma/client";
+import {
+  WaveStatus,
+} from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
 import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 const allowedTransitions: Record<
   WaveStatus,
@@ -45,7 +50,9 @@ const allowedTransitions: Record<
 function isWaveStatus(
   value: string
 ): value is WaveStatus {
-  return Object.values(WaveStatus).includes(
+  return Object.values(
+    WaveStatus
+  ).includes(
     value as WaveStatus
   );
 }
@@ -53,28 +60,44 @@ function isWaveStatus(
 export async function updateWaveStatusAction(
   formData: FormData
 ) {
-  const waveIdValue = formData.get("waveId");
+  await AuthorizationService.requirePermission(
+    "WAVE_MANAGE"
+  );
+
+  const waveIdValue =
+    formData.get("waveId");
+
   const targetStatusValue =
-    formData.get("targetStatus");
+    formData.get(
+      "targetStatus"
+    );
 
   if (
     typeof waveIdValue !== "string" ||
     waveIdValue.trim() === ""
   ) {
-    throw new Error("Wave kimliği bulunamadı.");
+    throw new Error(
+      "Wave kimliği bulunamadı."
+    );
   }
 
   if (
-    typeof targetStatusValue !== "string" ||
-    !isWaveStatus(targetStatusValue)
+    typeof targetStatusValue !==
+      "string" ||
+    !isWaveStatus(
+      targetStatusValue
+    )
   ) {
     throw new Error(
       "Geçerli bir Wave durumu seçilmedi."
     );
   }
 
-  const waveId = waveIdValue.trim();
-  const targetStatus = targetStatusValue;
+  const waveId =
+    waveIdValue.trim();
+
+  const targetStatus =
+    targetStatusValue;
 
   const currentWave =
     await prisma.wave.findUnique({
@@ -90,14 +113,20 @@ export async function updateWaveStatusAction(
     });
 
   if (!currentWave) {
-    throw new Error("Wave kaydı bulunamadı.");
+    throw new Error(
+      "Wave kaydı bulunamadı."
+    );
   }
 
   const permittedStatuses =
-    allowedTransitions[currentWave.status];
+    allowedTransitions[
+      currentWave.status
+    ];
 
   if (
-    !permittedStatuses.includes(targetStatus)
+    !permittedStatuses.includes(
+      targetStatus
+    )
   ) {
     throw new Error(
       `${currentWave.status} durumundaki Wave, ${targetStatus} durumuna geçirilemez.`
@@ -105,7 +134,8 @@ export async function updateWaveStatusAction(
   }
 
   if (
-    targetStatus === WaveStatus.COMPLETED
+    targetStatus ===
+    WaveStatus.COMPLETED
   ) {
     const waveSummary =
       await prisma.wave.findUnique({
@@ -120,11 +150,14 @@ export async function updateWaveStatusAction(
       });
 
     if (!waveSummary) {
-      throw new Error("Wave kaydı bulunamadı.");
+      throw new Error(
+        "Wave kaydı bulunamadı."
+      );
     }
 
     if (
-      waveSummary.plannedQuantity > 0 &&
+      waveSummary.plannedQuantity >
+        0 &&
       waveSummary.completedQuantity <
         waveSummary.plannedQuantity
     ) {
@@ -144,9 +177,21 @@ export async function updateWaveStatusAction(
     },
   });
 
-  revalidatePath("/admin/waves");
-  revalidatePath(`/admin/waves/${waveId}`);
-  revalidatePath("/admin/wms-dashboard");
+  revalidatePath("/admin");
 
-  redirect(`/admin/waves/${waveId}`);
+  revalidatePath(
+    "/admin/waves"
+  );
+
+  revalidatePath(
+    `/admin/waves/${waveId}`
+  );
+
+  revalidatePath(
+    "/admin/wms-dashboard"
+  );
+
+  redirect(
+    `/admin/waves/${waveId}`
+  );
 }

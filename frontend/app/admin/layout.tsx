@@ -1,5 +1,13 @@
+import {
+  redirect,
+} from "next/navigation";
+
+import { prisma } from "@/lib/prisma";
+
 import LogoutButton from "@/components/auth/LogoutButton";
+
 import AdminSidebar from "@/components/layout/AdminSidebar";
+
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export default async function AdminLayout({
@@ -10,13 +18,40 @@ export default async function AdminLayout({
   const profile =
     await AuthorizationService.requireAdminPortalAccess();
 
-  const fullName = profile.employee
-    ? `${profile.employee.firstName} ${profile.employee.lastName}`
-    : profile.username;
+  const userAccount =
+    await prisma.user.findUnique({
+      where: {
+        id: profile.id,
+      },
+
+      select: {
+        id: true,
+        mustChangePassword: true,
+      },
+    });
+
+  if (!userAccount) {
+    redirect("/login");
+  }
+
+  if (
+    userAccount.mustChangePassword
+  ) {
+    redirect(
+      "/change-password?returnTo=%2Fadmin"
+    );
+  }
+
+  const fullName =
+    profile.employee
+      ? `${profile.employee.firstName} ${profile.employee.lastName}`
+      : profile.username;
 
   const roleSummary =
     profile.roleCodes.length > 0
-      ? profile.roleCodes.join(", ")
+      ? profile.roleCodes.join(
+          ", "
+        )
       : profile.isAdminUser
         ? "Sistem Yöneticisi"
         : "Rol atanmamış";
@@ -45,7 +80,8 @@ export default async function AdminLayout({
                 </p>
 
                 <p className="truncate text-xs text-slate-500">
-                  @{profile.username} · {roleSummary}
+                  @{profile.username} ·{" "}
+                  {roleSummary}
                 </p>
               </div>
             </div>

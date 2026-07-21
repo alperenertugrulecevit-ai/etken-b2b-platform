@@ -8,7 +8,11 @@ import {
   removeOrdersFromWave,
 } from "@/lib/wms/wave-order-service";
 
-function getErrorMessage(error: unknown) {
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+
+function getErrorMessage(
+  error: unknown
+) {
   if (error instanceof Error) {
     return error.message;
   }
@@ -21,25 +25,43 @@ function createOrdersPageUrl(
   type: "success" | "error",
   message: string
 ) {
-  const parameters = new URLSearchParams();
+  const parameters =
+    new URLSearchParams();
 
   parameters.set(type, message);
 
   return `/admin/waves/${waveId}/orders?${parameters.toString()}`;
 }
 
-function refreshWavePages(waveId: string) {
-  revalidatePath("/admin/waves");
-  revalidatePath(`/admin/waves/${waveId}`);
+function refreshWavePages(
+  waveId: string
+) {
+  revalidatePath("/admin");
+
+  revalidatePath(
+    "/admin/waves"
+  );
+
+  revalidatePath(
+    `/admin/waves/${waveId}`
+  );
+
   revalidatePath(
     `/admin/waves/${waveId}/orders`
   );
-  revalidatePath("/admin/wms-dashboard");
+
+  revalidatePath(
+    "/admin/wms-dashboard"
+  );
 }
 
 export async function addOrdersToWaveAction(
   formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "WAVE_MANAGE"
+  );
+
   const waveIdValue =
     formData.get("waveId");
 
@@ -52,22 +74,33 @@ export async function addOrdersToWaveAction(
     );
   }
 
-  const waveId = waveIdValue.trim();
+  const waveId =
+    waveIdValue.trim();
 
-  const orderIds = formData
-    .getAll("orderIds")
-    .map((value) => Number(value))
-    .filter((value) =>
-      Number.isInteger(value)
-    );
+  const orderIds = Array.from(
+    new Set(
+      formData
+        .getAll("orderIds")
+        .map(
+          (value) =>
+            Number(value)
+        )
+        .filter(
+          (value) =>
+            Number.isInteger(value) &&
+            value > 0
+        )
+    )
+  );
 
   let addedOrderCount = 0;
 
   try {
-    const result = await addOrdersToWave(
-      waveId,
-      orderIds
-    );
+    const result =
+      await addOrdersToWave(
+        waveId,
+        orderIds
+      );
 
     addedOrderCount =
       result.addedOrderCount;
@@ -95,6 +128,10 @@ export async function addOrdersToWaveAction(
 export async function removeOrdersFromWaveAction(
   formData: FormData
 ) {
+  await AuthorizationService.requirePermission(
+    "WAVE_MANAGE"
+  );
+
   const waveIdValue =
     formData.get("waveId");
 
@@ -107,12 +144,21 @@ export async function removeOrdersFromWaveAction(
     );
   }
 
-  const waveId = waveIdValue.trim();
+  const waveId =
+    waveIdValue.trim();
 
-  const waveOrderIds = formData
-    .getAll("waveOrderIds")
-    .map((value) => String(value))
-    .filter(Boolean);
+  const waveOrderIds =
+    Array.from(
+      new Set(
+        formData
+          .getAll("waveOrderIds")
+          .map(
+            (value) =>
+              String(value).trim()
+          )
+          .filter(Boolean)
+      )
+    );
 
   let removedOrderCount = 0;
 

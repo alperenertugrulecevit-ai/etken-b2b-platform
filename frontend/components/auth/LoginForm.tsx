@@ -1,10 +1,13 @@
 "use client";
 
 import {
-  FormEvent,
+  type FormEvent,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+
+import {
+  useRouter,
+} from "next/navigation";
 
 import { loginAction } from "@/modules/auth/actions/login.action";
 
@@ -17,17 +20,29 @@ export default function LoginForm({
 }: LoginFormProps) {
   const router = useRouter();
 
-  const [username, setUsername] =
-    useState("");
-  const [password, setPassword] =
-    useState("");
-  const [errorMessage, setErrorMessage] =
-    useState("");
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [
+    username,
+    setUsername,
+  ] = useState("");
+
+  const [
+    password,
+    setPassword,
+  ] = useState("");
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
@@ -39,19 +54,42 @@ export default function LoginForm({
     setIsSubmitting(true);
 
     try {
-      const result = await loginAction(
-        username,
-        password,
-        isRfLogin
-      );
+      const result =
+        await loginAction(
+          username,
+          password,
+          isRfLogin
+        );
 
       if (!result.success) {
-        setErrorMessage(result.message);
+        setErrorMessage(
+          result.message
+        );
+
+        return;
+      }
+
+      const destination =
+        isRfLogin
+          ? "/rf"
+          : "/admin";
+
+      if (
+        result.user
+          .mustChangePassword
+      ) {
+        router.replace(
+          `/change-password?returnTo=${encodeURIComponent(
+            destination
+          )}`
+        );
+
+        router.refresh();
         return;
       }
 
       router.replace(
-        isRfLogin ? "/rf" : "/admin"
+        destination
       );
 
       router.refresh();
@@ -93,7 +131,9 @@ export default function LoginForm({
           disabled={isSubmitting}
           value={username}
           onChange={(event) =>
-            setUsername(event.target.value)
+            setUsername(
+              event.target.value
+            )
           }
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 disabled:cursor-not-allowed disabled:bg-slate-100"
           placeholder="Kullanıcı adınızı girin"
@@ -117,7 +157,9 @@ export default function LoginForm({
           disabled={isSubmitting}
           value={password}
           onChange={(event) =>
-            setPassword(event.target.value)
+            setPassword(
+              event.target.value
+            )
           }
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 disabled:cursor-not-allowed disabled:bg-slate-100"
           placeholder="Şifrenizi girin"

@@ -368,7 +368,7 @@ export default function UserCreateForm({
             <input
               name="temporaryPassword"
               type="password"
-              minLength={10}
+              minLength={6}
               maxLength={72}
               autoComplete="new-password"
               placeholder="Boş bırakırsanız güvenli şifre üretilir"
