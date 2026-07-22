@@ -118,6 +118,13 @@ export default async function EditUserPage({
 
           <div className="flex flex-wrap gap-3">
             <Link
+              href={`/admin/users/${user.id}/sessions`}
+              className="rounded-xl border border-blue-300 bg-blue-50 px-5 py-3 font-bold text-blue-800 transition hover:bg-blue-100"
+            >
+              Oturumları Yönet
+            </Link>
+
+            <Link
               href={`/admin/users/${user.id}/password`}
               className="rounded-xl border border-red-300 bg-red-50 px-5 py-3 font-bold text-red-700 transition hover:bg-red-100"
             >

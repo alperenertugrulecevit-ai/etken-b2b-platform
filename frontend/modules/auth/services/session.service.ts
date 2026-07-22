@@ -6,16 +6,25 @@ import {
 } from "@prisma/client";
 
 import { SESSION_CONSTANTS } from "../constants/session.constants";
+
 import {
   SessionRepository,
 } from "../repositories/session.repository";
+
 import type {
   AuthPermission,
   AuthRole,
   AuthUser,
 } from "../types/auth.types";
+
 import { CookieService } from "./cookie.service";
 import { TokenService } from "./token.service";
+
+const ALL_ACCESS_PERMISSION =
+  "ALL_ACCESS";
+
+const LAST_ACTIVITY_UPDATE_INTERVAL_MS =
+  5 * 60 * 1000;
 
 export type CreateSessionInput = {
   userId: string;
@@ -36,9 +45,10 @@ export class SessionService {
   static async createSession(
     input: CreateSessionInput
   ): Promise<CreatedSession> {
-    const sessionType = input.isRfLogin
-      ? AuthSessionType.RF
-      : AuthSessionType.WEB;
+    const sessionType =
+      input.isRfLogin
+        ? AuthSessionType.RF
+        : AuthSessionType.WEB;
 
     const expiresAt =
       SessionService.calculateExpirationDate(
@@ -49,7 +59,9 @@ export class SessionService {
       TokenService.generateSessionToken();
 
     const tokenHash =
-      TokenService.hashSessionToken(token);
+      TokenService.hashSessionToken(
+        token
+      );
 
     const session =
       await SessionRepository.create({
@@ -57,10 +69,16 @@ export class SessionService {
         tokenHash,
         sessionType,
         expiresAt,
+
         terminalCode:
-          input.terminalCode?.trim() || null,
-        ipAddress: input.ipAddress ?? null,
-        userAgent: input.userAgent ?? null,
+          input.terminalCode?.trim() ||
+          null,
+
+        ipAddress:
+          input.ipAddress ?? null,
+
+        userAgent:
+          input.userAgent ?? null,
       });
 
     return {
@@ -75,7 +93,9 @@ export class SessionService {
     input: CreateSessionInput
   ): Promise<CreatedSession> {
     const session =
-      await SessionService.createSession(input);
+      await SessionService.createSession(
+        input
+      );
 
     await CookieService.setSessionCookie(
       session.token,
@@ -94,7 +114,9 @@ export class SessionService {
     }
 
     const tokenHash =
-      TokenService.hashSessionToken(token);
+      TokenService.hashSessionToken(
+        token
+      );
 
     const session =
       await SessionRepository.findActiveByTokenHash(
@@ -106,17 +128,45 @@ export class SessionService {
     }
 
     if (
-      session.user.status !== UserStatus.ACTIVE
+      session.user.status !==
+      UserStatus.ACTIVE
     ) {
       return null;
     }
 
     if (
-      session.user.sessionInvalidatedAt &&
+      session.user
+        .sessionInvalidatedAt &&
       session.createdAt <=
-        session.user.sessionInvalidatedAt
+        session.user
+          .sessionInvalidatedAt
     ) {
       return null;
+    }
+
+    const lastActivityTime =
+      session.lastActivityAt
+        ?.getTime() ?? 0;
+
+    const activityIsStale =
+      Date.now() -
+        lastActivityTime >=
+      LAST_ACTIVITY_UPDATE_INTERVAL_MS;
+
+    if (activityIsStale) {
+      try {
+        await SessionRepository.updateLastActivity(
+          session.id
+        );
+
+        session.lastActivityAt =
+          new Date();
+      } catch (error) {
+        console.error(
+          "Oturum son aktivite zamanı güncellenemedi:",
+          error
+        );
+      }
     }
 
     return session;
@@ -137,78 +187,127 @@ export class SessionService {
           id: role.id,
           code: role.code,
           name: role.name,
-          description: role.description,
+          description:
+            role.description,
         })
       );
 
     const permissionMap =
-      new Map<string, AuthPermission>();
+      new Map<
+        string,
+        AuthPermission
+      >();
 
-    for (const userRole of session.user.userRoles) {
+    for (
+      const userRole of
+      session.user.userRoles
+    ) {
       for (
-        const rolePermission
-        of userRole.role.rolePermissions
+        const rolePermission of
+        userRole.role
+          .rolePermissions
       ) {
         const permission =
           rolePermission.permission;
 
-        permissionMap.set(permission.id, {
-          id: permission.id,
-          code: permission.code,
-          name: permission.name,
-          module: permission.module,
-        });
+        permissionMap.set(
+          permission.id,
+          {
+            id: permission.id,
+            code: permission.code,
+            name: permission.name,
+            module:
+              permission.module,
+          }
+        );
       }
     }
 
     return {
       id: session.user.id,
+
       employeeId:
         session.user.employeeId,
-      username: session.user.username,
-      email: session.user.email,
 
-      userType: session.user.userType,
-      status: session.user.status,
+      username:
+        session.user.username,
+
+      email:
+        session.user.email,
+
+      userType:
+        session.user.userType,
+
+      status:
+        session.user.status,
 
       mustChangePassword:
-        session.user.mustChangePassword,
-      isRfUser: session.user.isRfUser,
+        session.user
+          .mustChangePassword,
+
+      isRfUser:
+        session.user.isRfUser,
+
       isAdminUser:
         session.user.isAdminUser,
 
-      employee: session.user.employee
-        ? {
-            id: session.user.employee.id,
-            employeeCode:
-              session.user.employee.employeeCode,
-            firstName:
-              session.user.employee.firstName,
-            lastName:
-              session.user.employee.lastName,
-            department:
-              session.user.employee.department,
-            title:
-              session.user.employee.title,
-            shiftCode:
-              session.user.employee.shiftCode,
-          }
-        : null,
+      employee:
+        session.user.employee
+          ? {
+              id:
+                session.user
+                  .employee.id,
+
+              employeeCode:
+                session.user
+                  .employee
+                  .employeeCode,
+
+              firstName:
+                session.user
+                  .employee
+                  .firstName,
+
+              lastName:
+                session.user
+                  .employee
+                  .lastName,
+
+              department:
+                session.user
+                  .employee
+                  .department,
+
+              title:
+                session.user
+                  .employee.title,
+
+              shiftCode:
+                session.user
+                  .employee
+                  .shiftCode,
+            }
+          : null,
 
       roles,
-      permissions: Array.from(
-        permissionMap.values()
-      ),
+
+      permissions:
+        Array.from(
+          permissionMap.values()
+        ),
     };
   }
 
-  static async logout(): Promise<void> {
+  static async logout():
+    Promise<void> {
     const token =
       await CookieService.getSessionToken();
 
     if (token) {
       const tokenHash =
-        TokenService.hashSessionToken(token);
+        TokenService.hashSessionToken(
+          token
+        );
 
       await SessionRepository.revokeByTokenHash(
         tokenHash,
@@ -246,7 +345,10 @@ export class SessionService {
 
     return user.permissions.some(
       (permission) =>
-        permission.code === permissionCode
+        permission.code ===
+          ALL_ACCESS_PERMISSION ||
+        permission.code ===
+          permissionCode
     );
   }
 
@@ -265,16 +367,21 @@ export class SessionService {
     }
 
     return user.roles.some(
-      (role) => role.code === roleCode
+      (role) =>
+        role.code === roleCode
     );
   }
 
   private static calculateExpirationDate(
     sessionType: AuthSessionType
   ): Date {
-    const expiresAt = new Date();
+    const expiresAt =
+      new Date();
 
-    if (sessionType === AuthSessionType.RF) {
+    if (
+      sessionType ===
+      AuthSessionType.RF
+    ) {
       expiresAt.setHours(
         expiresAt.getHours() +
           SESSION_CONSTANTS
