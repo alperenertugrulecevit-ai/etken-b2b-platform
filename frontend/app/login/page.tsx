@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import LoginForm from "@/components/auth/LoginForm";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export const metadata = {
   title: "Giriş Yap | ETKEN WMS",
@@ -10,18 +10,43 @@ export const metadata = {
     "ETKEN WMS yönetim paneli kullanıcı girişi",
 };
 
-export default async function LoginPage() {
-  const currentUser =
-    await SessionService.getCurrentUser();
+type Props = {
+  searchParams: Promise<{
+    passwordChanged?: string;
+  }>;
+};
 
-  if (currentUser) {
+export default async function LoginPage({
+  searchParams,
+}: Props) {
+  const [profile, query] =
+    await Promise.all([
+      AuthorizationService.getCurrentProfile(),
+      searchParams,
+    ]);
+
+  if (profile) {
+    const canOpenAdmin =
+      AuthorizationService.hasPermission(
+        profile,
+        "ADMIN_PORTAL_ACCESS"
+      );
+
+    if (canOpenAdmin) {
+      redirect("/admin");
+    }
+
+    if (profile.isRfUser) {
+      redirect("/rf");
+    }
+
     redirect(
-      currentUser.isRfUser &&
-        !currentUser.isAdminUser
-        ? "/rf"
-        : "/admin"
+      "/access-denied?area=admin"
     );
   }
+
+  const passwordChanged =
+    query.passwordChanged === "true";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
@@ -50,6 +75,16 @@ export default async function LoginPage() {
               kullanıcı adı ve şifrenizi girin.
             </p>
           </div>
+
+          {passwordChanged && (
+            <div
+              role="status"
+              className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
+            >
+              Şifreniz başarıyla değiştirildi.
+              Yeni şifrenizle giriş yapabilirsiniz.
+            </div>
+          )}
 
           <LoginForm />
 

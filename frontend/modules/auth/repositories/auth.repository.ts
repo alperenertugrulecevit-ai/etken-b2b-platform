@@ -1,18 +1,41 @@
 import { prisma } from "@/lib/prisma";
 
+type MappedPermission = {
+  id: string;
+  code: string;
+  name: string;
+  module: string;
+};
+
 export class AuthRepository {
-  static async findUserByUsername(username: string) {
+  static async findUserByUsername(
+    username: string
+  ) {
     return prisma.user.findUnique({
       where: {
         username,
       },
+
       include: {
         employee: true,
+
         userRoles: {
+          where: {
+            role: {
+              isActive: true,
+            },
+          },
+
           include: {
             role: {
               include: {
                 rolePermissions: {
+                  where: {
+                    permission: {
+                      isActive: true,
+                    },
+                  },
+
                   include: {
                     permission: true,
                   },
@@ -25,37 +48,50 @@ export class AuthRepository {
     });
   }
 
-  static async updateLastLogin(userId: string) {
+  static async updateLastLogin(
+    userId: string
+  ) {
     return prisma.user.update({
       where: {
         id: userId,
       },
+
       data: {
         lastLoginAt: new Date(),
         failedLoginCount: 0,
+        lastFailedLoginAt: null,
+        lockedAt: null,
       },
     });
   }
 
-  static async increaseFailedLogin(userId: string) {
+  static async increaseFailedLogin(
+    userId: string
+  ) {
     return prisma.user.update({
       where: {
         id: userId,
       },
+
       data: {
         failedLoginCount: {
           increment: 1,
         },
-        lastFailedLoginAt: new Date(),
+
+        lastFailedLoginAt:
+          new Date(),
       },
     });
   }
 
-  static async lockUser(userId: string) {
+  static async lockUser(
+    userId: string
+  ) {
     return prisma.user.update({
       where: {
         id: userId,
       },
+
       data: {
         status: "LOCKED",
         lockedAt: new Date(),
@@ -65,62 +101,106 @@ export class AuthRepository {
 
   static mapToAuthUser(
     user: Awaited<
-      ReturnType<typeof AuthRepository.findUserByUsername>
+      ReturnType<
+        typeof AuthRepository.findUserByUsername
+      >
     >
   ) {
     if (!user) {
-      throw new Error("User not found.");
+      throw new Error(
+        "User not found."
+      );
     }
 
-    const roles = user.userRoles.map((item) => ({
-      id: item.role.id,
-      code: item.role.code,
-      name: item.role.name,
-      description: item.role.description,
-    }));
+    const roles =
+      user.userRoles.map(
+        (item) => ({
+          id: item.role.id,
+          code: item.role.code,
+          name: item.role.name,
+          description:
+            item.role.description,
+        })
+      );
 
-    const permissionMap = new Map();
+    const permissionMap =
+      new Map<
+        string,
+        MappedPermission
+      >();
 
-    for (const userRole of user.userRoles) {
-      for (const rolePermission of userRole.role.rolePermissions) {
-        permissionMap.set(rolePermission.permission.id, {
-          id: rolePermission.permission.id,
-          code: rolePermission.permission.code,
-          name: rolePermission.permission.name,
-          module: rolePermission.permission.module,
-        });
+    for (
+      const userRole of
+      user.userRoles
+    ) {
+      for (
+        const rolePermission of
+        userRole.role
+          .rolePermissions
+      ) {
+        const permission =
+          rolePermission.permission;
+
+        permissionMap.set(
+          permission.id,
+          {
+            id: permission.id,
+            code: permission.code,
+            name: permission.name,
+            module:
+              permission.module,
+          }
+        );
       }
     }
 
     return {
       id: user.id,
-      employeeId: user.employeeId,
+      employeeId:
+        user.employeeId,
       username: user.username,
       email: user.email,
 
       userType: user.userType,
       status: user.status,
 
-      mustChangePassword: user.mustChangePassword,
+      mustChangePassword:
+        user.mustChangePassword,
 
       isRfUser: user.isRfUser,
-      isAdminUser: user.isAdminUser,
+      isAdminUser:
+        user.isAdminUser,
 
       employee: user.employee
         ? {
             id: user.employee.id,
-            employeeCode: user.employee.employeeCode,
-            firstName: user.employee.firstName,
-            lastName: user.employee.lastName,
-            department: user.employee.department,
-            title: user.employee.title,
-            shiftCode: user.employee.shiftCode,
+
+            employeeCode:
+              user.employee
+                .employeeCode,
+
+            firstName:
+              user.employee.firstName,
+
+            lastName:
+              user.employee.lastName,
+
+            department:
+              user.employee.department,
+
+            title:
+              user.employee.title,
+
+            shiftCode:
+              user.employee.shiftCode,
           }
         : null,
 
       roles,
 
-      permissions: [...permissionMap.values()],
+      permissions: Array.from(
+        permissionMap.values()
+      ),
     };
   }
 }

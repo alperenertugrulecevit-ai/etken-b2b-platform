@@ -4,8 +4,13 @@ import {
   AUTH_CONSTANTS,
   AUTH_ERROR_MESSAGES,
 } from "../constants/auth.constants";
+
 import { AuthRepository } from "../repositories/auth.repository";
-import type { LoginResult } from "../types/auth.types";
+
+import type {
+  LoginResult,
+} from "../types/auth.types";
+
 import { PasswordService } from "./password.service";
 
 export class AuthService {
@@ -14,9 +19,21 @@ export class AuthService {
     password: string,
     isRfLogin = false,
   ): Promise<LoginResult> {
-    const normalizedUsername = username
-      .trim()
-      .toLowerCase();
+    const normalizedUsername =
+      username
+        .trim()
+        .toLowerCase();
+
+    if (
+      !normalizedUsername ||
+      !password
+    ) {
+      return {
+        success: false,
+        message:
+          AUTH_ERROR_MESSAGES.INVALID_CREDENTIALS,
+      };
+    }
 
     const user =
       await AuthRepository.findUserByUsername(
@@ -31,19 +48,14 @@ export class AuthService {
       };
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
+    if (
+      user.status !==
+      UserStatus.ACTIVE
+    ) {
       return {
         success: false,
         message:
           AUTH_ERROR_MESSAGES.USER_PASSIVE,
-      };
-    }
-
-    if (isRfLogin && !user.isRfUser) {
-      return {
-        success: false,
-        message:
-          "RF terminal kullanım yetkiniz bulunmuyor.",
       };
     }
 
@@ -74,12 +86,48 @@ export class AuthService {
       };
     }
 
+    if (isRfLogin) {
+      if (!user.isRfUser) {
+        return {
+          success: false,
+          message:
+            "RF terminal kullanım yetkiniz bulunmuyor.",
+        };
+      }
+
+      if (!user.employee) {
+        return {
+          success: false,
+          message:
+            "RF terminal kullanımı için aktif bir personel kaydı gereklidir.",
+        };
+      }
+
+      if (!user.employee.isActive) {
+        return {
+          success: false,
+          message:
+            "Bağlı personel kaydı pasif durumda olduğu için RF terminale giriş yapılamaz.",
+        };
+      }
+
+      if (!user.employee.canUseRf) {
+        return {
+          success: false,
+          message:
+            "Personel kaydınız için RF terminal izni verilmemiş.",
+        };
+      }
+    }
+
     await AuthRepository.updateLastLogin(
       user.id,
     );
 
     const authUser =
-      AuthRepository.mapToAuthUser(user);
+      AuthRepository.mapToAuthUser(
+        user
+      );
 
     return {
       success: true,

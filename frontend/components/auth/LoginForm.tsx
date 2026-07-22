@@ -15,6 +15,27 @@ type LoginFormProps = {
   isRfLogin?: boolean;
 };
 
+function canOpenAdminPortal(
+  user: {
+    isAdminUser: boolean;
+
+    permissions: Array<{
+      code: string;
+    }>;
+  }
+) {
+  return (
+    user.isAdminUser ||
+    user.permissions.some(
+      (permission) =>
+        permission.code ===
+          "ALL_ACCESS" ||
+        permission.code ===
+          "ADMIN_PORTAL_ACCESS"
+    )
+  );
+}
+
 export default function LoginForm({
   isRfLogin = false,
 }: LoginFormProps) {
@@ -69,10 +90,25 @@ export default function LoginForm({
         return;
       }
 
-      const destination =
-        isRfLogin
-          ? "/rf"
-          : "/admin";
+      const hasAdminAccess =
+        canOpenAdminPortal(
+          result.user
+        );
+
+      let destination: string;
+
+      if (isRfLogin) {
+        destination = "/rf";
+      } else if (hasAdminAccess) {
+        destination = "/admin";
+      } else if (
+        result.user.isRfUser
+      ) {
+        destination = "/rf";
+      } else {
+        destination =
+          "/access-denied?area=admin";
+      }
 
       if (
         result.user

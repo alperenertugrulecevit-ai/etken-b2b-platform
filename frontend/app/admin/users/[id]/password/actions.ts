@@ -1,16 +1,18 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import {
+  revalidatePath,
+} from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-
-import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
-
-import { PASSWORD_POLICY } from "@/modules/auth/constants/password-policy.constants";
 
 import { PasswordService } from "@/modules/auth/services/password.service";
 
 import { SessionService } from "@/modules/auth/services/session.service";
+
+import { PASSWORD_POLICY } from "@/modules/auth/constants/password-policy.constants";
+
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type ResetUserPasswordState = {
   success: boolean;
@@ -26,7 +28,10 @@ function validatePassword(
     password.length >
       PASSWORD_POLICY.MAX_LENGTH
   ) {
-    return `Şifre ${PASSWORD_POLICY.MIN_LENGTH}-${PASSWORD_POLICY.MAX_LENGTH} karakter olmalıdır.`;
+    return (
+      `Şifre ${PASSWORD_POLICY.MIN_LENGTH}-` +
+      `${PASSWORD_POLICY.MAX_LENGTH} karakter olmalıdır.`
+    );
   }
 
   if (!/[A-Z]/.test(password)) {
@@ -42,7 +47,9 @@ function validatePassword(
   }
 
   if (
-    !/[^A-Za-z0-9]/.test(password)
+    !/[^A-Za-z0-9]/.test(
+      password
+    )
   ) {
     return "Şifre en az bir özel karakter içermelidir.";
   }
@@ -52,7 +59,8 @@ function validatePassword(
 
 export async function resetUserPasswordAction(
   userId: string,
-  _previousState: ResetUserPasswordState,
+  _previousState:
+    ResetUserPasswordState,
   formData: FormData
 ): Promise<ResetUserPasswordState> {
   const currentUser =
@@ -71,17 +79,19 @@ export async function resetUserPasswordAction(
     };
   }
 
-  const temporaryPassword = String(
-    formData.get(
-      "temporaryPassword"
-    ) ?? ""
-  ).trim();
+  const temporaryPassword =
+    String(
+      formData.get(
+        "temporaryPassword"
+      ) ?? ""
+    ).trim();
 
-  const confirmPassword = String(
-    formData.get(
-      "confirmPassword"
-    ) ?? ""
-  ).trim();
+  const confirmPassword =
+    String(
+      formData.get(
+        "confirmPassword"
+      ) ?? ""
+    ).trim();
 
   const passwordError =
     validatePassword(
@@ -91,7 +101,8 @@ export async function resetUserPasswordAction(
   if (passwordError) {
     return {
       success: false,
-      message: passwordError,
+      message:
+        passwordError,
     };
   }
 
@@ -116,7 +127,6 @@ export async function resetUserPasswordAction(
         select: {
           id: true,
           username: true,
-          status: true,
         },
       });
 
@@ -140,11 +150,6 @@ export async function resetUserPasswordAction(
 
       data: {
         passwordHash,
-
-        /*
-         * Kullanıcı ilk girişinde
-         * kendi şifresini belirlemelidir.
-         */
         mustChangePassword: true,
       },
     });
@@ -168,8 +173,11 @@ export async function resetUserPasswordAction(
 
     return {
       success: true,
+
       message:
-        `${user.username} kullanıcısının şifresi sıfırlandı. Açık oturumları kapatıldı ve bir sonraki girişte şifre değiştirmesi zorunlu hale getirildi.`,
+        `${user.username} kullanıcısının şifresi sıfırlandı. ` +
+        "Açık oturumları kapatıldı ve bir sonraki girişte " +
+        "şifre değiştirmesi zorunlu hale getirildi.",
     };
   } catch (error) {
     console.error(

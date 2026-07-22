@@ -2,25 +2,58 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import LoginForm from "@/components/auth/LoginForm";
-import { SessionService } from "@/modules/auth/services/session.service";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export const metadata = {
   title: "RF Giriş | ETKEN WMS",
+
   description:
     "ETKEN WMS RF terminal kullanıcı girişi",
 };
 
-export default async function RfLoginPage() {
-  const currentUser =
-    await SessionService.getCurrentUser();
+type RfLoginPageProps = {
+  searchParams: Promise<{
+    passwordChanged?: string;
+  }>;
+};
 
-  if (currentUser) {
+export default async function RfLoginPage({
+  searchParams,
+}: RfLoginPageProps) {
+  const [profile, query] =
+    await Promise.all([
+      AuthorizationService.getCurrentProfile(),
+      searchParams,
+    ]);
+
+  if (profile) {
+    const canUseRf = Boolean(
+      profile.isRfUser &&
+        profile.employee?.isActive &&
+        profile.employee.canUseRf
+    );
+
+    if (canUseRf) {
+      redirect("/rf");
+    }
+
+    const canOpenAdmin =
+      AuthorizationService.hasPermission(
+        profile,
+        "ADMIN_PORTAL_ACCESS"
+      );
+
+    if (canOpenAdmin) {
+      redirect("/admin");
+    }
+
     redirect(
-      currentUser.isRfUser
-        ? "/rf"
-        : "/admin"
+      "/access-denied?area=rf"
     );
   }
+
+  const passwordChanged =
+    query.passwordChanged === "true";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-8">
@@ -46,6 +79,17 @@ export default async function RfLoginPage() {
               kullanıcı bilgilerinizle giriş yapın.
             </p>
           </div>
+
+          {passwordChanged && (
+            <div
+              role="status"
+              className="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold leading-6 text-green-800"
+            >
+              Şifreniz başarıyla değiştirildi.
+              Yeni şifrenizle RF terminale giriş
+              yapabilirsiniz.
+            </div>
+          )}
 
           <LoginForm isRfLogin />
 

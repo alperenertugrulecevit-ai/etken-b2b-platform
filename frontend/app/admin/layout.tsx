@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   redirect,
 } from "next/navigation";
@@ -98,6 +100,13 @@ export default async function AdminLayout({
                   RF Erişimi
                 </span>
               )}
+
+              <Link
+                href="/change-password?returnTo=%2Fadmin"
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Şifremi Değiştir
+              </Link>
 
               <LogoutButton
                 redirectTo="/login"

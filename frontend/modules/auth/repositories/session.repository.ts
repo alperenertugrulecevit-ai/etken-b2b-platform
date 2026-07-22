@@ -17,17 +17,28 @@ export type CreateSessionRepositoryInput = {
 
 export class SessionRepository {
   static async create(
-    input: CreateSessionRepositoryInput
+    input:
+      CreateSessionRepositoryInput
   ) {
     return prisma.authSession.create({
       data: {
         userId: input.userId,
         tokenHash: input.tokenHash,
-        sessionType: input.sessionType,
-        expiresAt: input.expiresAt,
-        terminalCode: input.terminalCode ?? null,
-        ipAddress: input.ipAddress ?? null,
-        userAgent: input.userAgent ?? null,
+
+        sessionType:
+          input.sessionType,
+
+        expiresAt:
+          input.expiresAt,
+
+        terminalCode:
+          input.terminalCode ?? null,
+
+        ipAddress:
+          input.ipAddress ?? null,
+
+        userAgent:
+          input.userAgent ?? null,
       },
     });
   }
@@ -39,20 +50,24 @@ export class SessionRepository {
       where: {
         tokenHash,
         revokedAt: null,
+
         expiresAt: {
           gt: new Date(),
         },
       },
+
       include: {
         user: {
           include: {
             employee: true,
+
             userRoles: {
               where: {
                 role: {
                   isActive: true,
                 },
               },
+
               include: {
                 role: {
                   include: {
@@ -62,6 +77,7 @@ export class SessionRepository {
                           isActive: true,
                         },
                       },
+
                       include: {
                         permission: true,
                       },
@@ -83,8 +99,10 @@ export class SessionRepository {
       where: {
         id: sessionId,
       },
+
       data: {
-        lastActivityAt: new Date(),
+        lastActivityAt:
+          new Date(),
       },
     });
   }
@@ -98,6 +116,7 @@ export class SessionRepository {
         tokenHash,
         revokedAt: null,
       },
+
       data: {
         revokedAt: new Date(),
         revokeReason: reason,
@@ -115,10 +134,13 @@ export class SessionRepository {
         id: sessionId,
         revokedAt: null,
       },
+
       data: {
         revokedAt: new Date(),
         revokeReason: reason,
-        revokedById: revokedById ?? null,
+
+        revokedById:
+          revokedById ?? null,
       },
     });
   }
@@ -128,16 +150,25 @@ export class SessionRepository {
     reason: string,
     revokedById?: string | null
   ) {
+    const invalidatedAt =
+      new Date();
+
     return prisma.$transaction([
       prisma.authSession.updateMany({
         where: {
           userId,
           revokedAt: null,
         },
+
         data: {
-          revokedAt: new Date(),
-          revokeReason: reason,
-          revokedById: revokedById ?? null,
+          revokedAt:
+            invalidatedAt,
+
+          revokeReason:
+            reason,
+
+          revokedById:
+            revokedById ?? null,
         },
       }),
 
@@ -145,8 +176,10 @@ export class SessionRepository {
         where: {
           id: userId,
         },
+
         data: {
-          sessionInvalidatedAt: new Date(),
+          sessionInvalidatedAt:
+            invalidatedAt,
         },
       }),
     ]);
@@ -178,9 +211,11 @@ export class SessionRepository {
       where: {
         userId,
       },
+
       orderBy: {
         createdAt: "desc",
       },
+
       select: {
         id: true,
         sessionType: true,

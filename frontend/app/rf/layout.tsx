@@ -100,11 +100,18 @@ export default async function RFLayout({
               {canOpenAdmin && (
                 <Link
                   href="/admin"
-                  className="shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+                  className="shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold transition hover:bg-slate-800"
                 >
                   Admin
                 </Link>
               )}
+
+              <Link
+                href="/change-password?returnTo=%2Frf"
+                className="shrink-0 rounded-lg border border-blue-500 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-900"
+              >
+                Şifre Değiştir
+              </Link>
 
               <LogoutButton
                 redirectTo="/rf/login"

@@ -21,6 +21,13 @@ export const PERMISSION_CATALOG: PermissionCatalogItem[] = [
       "Sistemdeki tüm yönetim ve operasyon işlemlerine erişim sağlar.",
   },
   {
+    code: "ADMIN_PORTAL_ACCESS",
+    name: "Yönetim Paneline Erişim",
+    module: "SYSTEM",
+    description:
+      "Kullanıcının ETKEN yönetim paneline giriş yapmasını sağlar.",
+  },
+  {
     code: "DASHBOARD_VIEW",
     name: "WMS Panelini Görüntüleme",
     module: "DASHBOARD",
@@ -229,6 +236,7 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
     description:
       "Müşteri ve satış siparişi kayıtlarını görüntüler ve yönetir.",
     permissionCodes: [
+      "ADMIN_PORTAL_ACCESS",
       "DASHBOARD_VIEW",
       "CUSTOMER_VIEW",
       "CUSTOMER_MANAGE",
@@ -243,6 +251,7 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
     description:
       "Depo, stok, kabul, dalga ve taşıma birimi operasyonlarını yönetir.",
     permissionCodes: [
+      "ADMIN_PORTAL_ACCESS",
       "DASHBOARD_VIEW",
       "CUSTOMER_VIEW",
       "WAREHOUSE_VIEW",
@@ -267,6 +276,7 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
     description:
       "Mal kabul, adresleme ve ilgili taşıma birimi işlemlerini yürütür.",
     permissionCodes: [
+      "ADMIN_PORTAL_ACCESS",
       "DASHBOARD_VIEW",
       "WAREHOUSE_VIEW",
       "LOCATION_VIEW",
@@ -285,6 +295,7 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
     description:
       "Atanmış dalga ve sipariş toplama görevlerini yürütür.",
     permissionCodes: [
+      "ADMIN_PORTAL_ACCESS",
       "DASHBOARD_VIEW",
       "WAREHOUSE_VIEW",
       "LOCATION_VIEW",
@@ -302,6 +313,7 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleCatalogItem[] = [
     description:
       "Stok görüntüleme, düzeltme ve transfer operasyonlarını yürütür.",
     permissionCodes: [
+      "ADMIN_PORTAL_ACCESS",
       "DASHBOARD_VIEW",
       "WAREHOUSE_VIEW",
       "LOCATION_VIEW",
