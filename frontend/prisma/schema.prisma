@@ -9,26 +9,27 @@ datasource db {
 }
 
 model Product {
-  id                 Int                      @id @default(autoincrement())
-  code               String                   @unique
-  barcode            String                   @unique
-  name               String
-  brand              String
-  category           String
-  supplier           String
-  price              Float
-  stock              Int
-  reservedStock      Int                      @default(0)
-  vat                Int
-  ownStock           Boolean
-  isActive           Boolean                  @default(true)
-  createdAt          DateTime                 @default(now())
-  orderItems         OrderItem[]
-  purchaseOrderItems PurchaseOrderItem[]
-  stockMovements     StockMovement[]
-  locationStocks     WarehouseLocationStock[]
-  handlingUnitItems  HandlingUnitItem[]
-  pickingRecords     PickingRecord[]
+  id                  Int                      @id @default(autoincrement())
+  code                String                   @unique
+  barcode             String                   @unique
+  name                String
+  brand               String
+  category            String
+  supplier            String
+  price               Float
+  stock               Int
+  reservedStock       Int                      @default(0)
+  vat                 Int
+  ownStock            Boolean
+  isActive            Boolean                  @default(true)
+  createdAt           DateTime                 @default(now())
+  orderItems          OrderItem[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  stockMovements      StockMovement[]
+  locationStocks      WarehouseLocationStock[]
+  handlingUnitItems   HandlingUnitItem[]
+  pickingRecords      PickingRecord[]
+  inventoryCountLines InventoryCountLine[]
 }
 
 model Category {
@@ -311,36 +312,39 @@ enum WarehouseLocationType {
 }
 
 model Warehouse {
-  id            Int                 @id @default(autoincrement())
-  code          String              @unique
-  name          String
-  address       String?
-  city          String?
-  district      String?
-  isActive      Boolean             @default(true)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  locations     WarehouseLocation[]
-  handlingUnits HandlingUnit[]
+  id              Int                 @id @default(autoincrement())
+  code            String              @unique
+  name            String
+  address         String?
+  city            String?
+  district        String?
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  locations       WarehouseLocation[]
+  handlingUnits   HandlingUnit[]
+  inventoryCounts InventoryCount[]
 }
 
 model WarehouseLocation {
-  id            Int                      @id @default(autoincrement())
-  warehouseId   Int
-  code          String
-  aisle         String                   @default("")
-  section       String                   @default("")
-  level         String                   @default("")
-  bin           String                   @default("")
-  locationType  WarehouseLocationType    @default(PALLET)
-  capacity      Int                      @default(1)
-  sortOrder     Int                      @default(0)
-  description   String?
-  isActive      Boolean                  @default(true)
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
-  stocks        WarehouseLocationStock[]
-  handlingUnits HandlingUnit[]
+  id                      Int                      @id @default(autoincrement())
+  warehouseId             Int
+  code                    String
+  aisle                   String                   @default("")
+  section                 String                   @default("")
+  level                   String                   @default("")
+  bin                     String                   @default("")
+  locationType            WarehouseLocationType    @default(PALLET)
+  capacity                Int                      @default(1)
+  sortOrder               Int                      @default(0)
+  description             String?
+  isActive                Boolean                  @default(true)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  stocks                  WarehouseLocationStock[]
+  handlingUnits           HandlingUnit[]
+  inventoryCountLocations InventoryCountLocation[]
+  inventoryCountLines     InventoryCountLine[]
 
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
@@ -419,8 +423,9 @@ model HandlingUnit {
 
   items HandlingUnitItem[]
 
-  sourcePickingRecords PickingRecord[] @relation("PickingSourceHandlingUnit")
-  targetPickingRecords PickingRecord[] @relation("PickingTargetHandlingUnit")
+  sourcePickingRecords PickingRecord[]      @relation("PickingSourceHandlingUnit")
+  targetPickingRecords PickingRecord[]      @relation("PickingTargetHandlingUnit")
+  inventoryCountLines  InventoryCountLine[]
 
   @@index([barcode])
   @@index([unitType])
@@ -846,6 +851,14 @@ model User {
 
   authSessions AuthSession[]
 
+  createdInventoryCounts    InventoryCount[]         @relation("InventoryCountCreatedBy")
+  approvedInventoryCounts   InventoryCount[]         @relation("InventoryCountApprovedBy")
+  cancelledInventoryCounts  InventoryCount[]         @relation("InventoryCountCancelledBy")
+  inventoryCountAssignments InventoryCountAssignee[] @relation("InventoryCountAssigneeUser")
+  assignedInventoryCounts   InventoryCountAssignee[] @relation("InventoryCountAssigneeAssignedBy")
+  countedInventoryLocations InventoryCountLocation[] @relation("InventoryCountLocationCountedBy")
+  countedInventoryLines     InventoryCountLine[]     @relation("InventoryCountLineCountedBy")
+
   @@index([employeeId])
   @@index([status])
   @@index([userType])
@@ -1016,4 +1029,189 @@ model WaveAssignment {
   @@index([userId, status])
   @@index([assignedById])
   @@index([operationType])
+}
+
+enum InventoryCountScope {
+  ALL_LOCATIONS
+  SELECTED_LOCATIONS
+}
+
+enum InventoryCountStatus {
+  DRAFT
+  ACTIVE
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  CANCELLED
+}
+
+enum InventoryCountLocationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum InventoryCountLineStatus {
+  PENDING
+  COUNTED
+  RECOUNT_REQUIRED
+  APPROVED
+}
+
+model InventoryCount {
+  id          Int                  @id @default(autoincrement())
+  countNumber String               @unique
+  warehouseId Int
+  scope       InventoryCountScope
+  status      InventoryCountStatus @default(DRAFT)
+
+  notes String?
+
+  snapshotAt  DateTime?
+  startedAt   DateTime?
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  cancelledAt DateTime?
+
+  createdById   String
+  createdByName String
+
+  approvedById   String?
+  approvedByName String?
+
+  cancelledById   String?
+  cancelledByName String?
+  cancelReason    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  createdBy   User  @relation("InventoryCountCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy  User? @relation("InventoryCountApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  cancelledBy User? @relation("InventoryCountCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  locations InventoryCountLocation[]
+  lines     InventoryCountLine[]
+  assignees InventoryCountAssignee[]
+
+  @@index([warehouseId, status])
+  @@index([status, createdAt])
+  @@index([countNumber])
+  @@index([createdById])
+  @@index([approvedById])
+  @@index([cancelledById])
+}
+
+model InventoryCountAssignee {
+  id               Int    @id @default(autoincrement())
+  inventoryCountId Int
+  userId           String
+
+  username     String
+  employeeCode String?
+  fullName     String
+
+  assignedById   String
+  assignedByName String
+  assignedAt     DateTime @default(now())
+
+  inventoryCount InventoryCount @relation(fields: [inventoryCountId], references: [id], onDelete: Cascade)
+  user           User           @relation("InventoryCountAssigneeUser", fields: [userId], references: [id], onDelete: Restrict)
+  assignedBy     User           @relation("InventoryCountAssigneeAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@unique([inventoryCountId, userId], name: "inventory_count_assignee_unique")
+  @@index([inventoryCountId])
+  @@index([userId])
+  @@index([assignedById])
+  @@index([assignedAt])
+}
+
+model InventoryCountLocation {
+  id               Int                          @id @default(autoincrement())
+  inventoryCountId Int
+  locationId       Int
+  status           InventoryCountLocationStatus @default(PENDING)
+
+  locationCode String
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  countedById   String?
+  countedByName String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventoryCount InventoryCount    @relation(fields: [inventoryCountId], references: [id], onDelete: Cascade)
+  location       WarehouseLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  countedBy      User?             @relation("InventoryCountLocationCountedBy", fields: [countedById], references: [id], onDelete: SetNull)
+
+  lines InventoryCountLine[]
+
+  @@unique([inventoryCountId, locationId], name: "inventory_count_location_unique")
+  @@index([inventoryCountId, status])
+  @@index([locationId])
+  @@index([countedById])
+}
+
+model InventoryCountLine {
+  id                       Int                      @id @default(autoincrement())
+  inventoryCountId         Int
+  inventoryCountLocationId Int
+  locationId               Int
+  handlingUnitId           Int
+  productId                Int
+  status                   InventoryCountLineStatus @default(PENDING)
+
+  locationCode        String
+  handlingUnitBarcode String
+  handlingUnitType    String
+  productCode         String
+  productBarcode      String
+  productName         String
+
+  systemQuantity      Int
+  systemReservedStock Int @default(0)
+
+  locationSystemQuantity Int
+  locationReservedStock  Int @default(0)
+
+  countedQuantity Int?
+  difference      Int?
+  isDiscovered    Boolean @default(false)
+
+  countedById   String?
+  countedByName String?
+  countedAt     DateTime?
+  note          String?
+
+  handlingUnitUpdatedAt     DateTime?
+  handlingUnitItemUpdatedAt DateTime?
+  locationStockUpdatedAt    DateTime?
+
+  appliedQuantityChange Int?
+  approvedAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventoryCount         InventoryCount         @relation(fields: [inventoryCountId], references: [id], onDelete: Cascade)
+  inventoryCountLocation InventoryCountLocation @relation(fields: [inventoryCountLocationId], references: [id], onDelete: Cascade)
+  location               WarehouseLocation      @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  handlingUnit           HandlingUnit           @relation(fields: [handlingUnitId], references: [id], onDelete: Restrict)
+  product                Product                @relation(fields: [productId], references: [id], onDelete: Restrict)
+  countedBy              User?                  @relation("InventoryCountLineCountedBy", fields: [countedById], references: [id], onDelete: SetNull)
+
+  @@unique([inventoryCountId, locationId, handlingUnitId, productId], name: "inventory_count_line_unique")
+  @@index([inventoryCountId, status])
+  @@index([inventoryCountLocationId, status])
+  @@index([locationId, productId])
+  @@index([handlingUnitId, productId])
+  @@index([productId])
+  @@index([countedById])
+  @@index([countedAt])
+  @@index([approvedAt])
 }

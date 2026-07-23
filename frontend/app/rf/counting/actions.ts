@@ -1,8 +1,12 @@
 "use server";
 
 import {
+  HandlingUnitPurpose,
+  HandlingUnitStatus,
+  HandlingUnitType,
   Prisma,
   StockMovementType,
+  WmsOperationType,
 } from "@prisma/client";
 
 import {
@@ -12,6 +16,8 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
+
+import { SessionService } from "@/modules/auth/services/session.service";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
@@ -23,6 +29,15 @@ export type RFCountingState = {
   warehouseName: string;
   locationCode: string;
 
+  handlingUnitId?:
+    number | null;
+
+  handlingUnitBarcode?:
+    string;
+
+  handlingUnitType?:
+    string;
+
   productId: number | null;
   productCode: string;
   productName: string;
@@ -31,6 +46,16 @@ export type RFCountingState = {
   expectedQuantity: number;
   countedQuantity: number;
   difference: number;
+
+  handlingUnitReservedStock?:
+    number;
+
+  locationQuantityBefore?:
+    number;
+
+  locationQuantityAfter?:
+    number;
+
   locationReservedStock: number;
 
   movementType: string;
@@ -48,6 +73,10 @@ function createEmptyState(
     warehouseName: "",
     locationCode: "",
 
+    handlingUnitId: null,
+    handlingUnitBarcode: "",
+    handlingUnitType: "",
+
     productId: null,
     productCode: "",
     productName: "",
@@ -56,6 +85,11 @@ function createEmptyState(
     expectedQuantity: 0,
     countedQuantity: 0,
     difference: 0,
+
+    handlingUnitReservedStock: 0,
+
+    locationQuantityBefore: 0,
+    locationQuantityAfter: 0,
     locationReservedStock: 0,
 
     movementType: "",
@@ -96,7 +130,7 @@ function createFullLocationCode({
 
 function createCountDocumentNumber(
   warehouseCode: string,
-  locationId: number
+  handlingUnitId: number
 ) {
   const now = new Date();
 
@@ -132,7 +166,8 @@ function createCountDocumentNumber(
 
   return (
     `SAYIM-${warehouseCode}-` +
-    `${locationId}-${datePart}${timePart}`
+    `${handlingUnitId}-` +
+    `${datePart}${timePart}`
   );
 }
 
@@ -157,6 +192,25 @@ function getMovementTypeLabel(
   return "Fark Yok";
 }
 
+function getHandlingUnitTypeLabel(
+  unitType: HandlingUnitType
+) {
+  const labels:
+    Record<
+      HandlingUnitType,
+      string
+    > = {
+      BOX: "Koli",
+      PALLET: "Palet",
+      PICKING_BOX:
+        "Toplama Kolisi",
+      PICKING_PALLET:
+        "Toplama Paleti",
+    };
+
+  return labels[unitType];
+}
+
 export async function rfCountLocationStock(
   _previousState:
     RFCountingState,
@@ -166,6 +220,9 @@ export async function rfCountLocationStock(
     await AuthorizationService.requireRfAccess(
       "COUNT_EXECUTE"
     );
+
+  const currentSession =
+    await SessionService.getCurrentSession();
 
   const warehouseCode =
     normalizeValue(
@@ -178,6 +235,13 @@ export async function rfCountLocationStock(
     normalizeValue(
       formData.get(
         "locationBarcode"
+      )
+    );
+
+  const handlingUnitBarcode =
+    normalizeValue(
+      formData.get(
+        "handlingUnitBarcode"
       )
     );
 
@@ -213,6 +277,12 @@ export async function rfCountLocationStock(
     );
   }
 
+  if (!handlingUnitBarcode) {
+    return createEmptyState(
+      "Sayım yapılacak koli veya palet barkodunu okutun."
+    );
+  }
+
   if (!productBarcode) {
     return createEmptyState(
       "Sayılacak ürünün kodunu veya barkodunu okutun."
@@ -229,6 +299,11 @@ export async function rfCountLocationStock(
       "Sayılan miktar sıfır veya pozitif tam sayı olmalıdır."
     );
   }
+
+  const operatorName =
+    operator.employee
+      ? `${operator.employee.firstName} ${operator.employee.lastName}`
+      : operator.username;
 
   try {
     const result =
@@ -357,8 +432,6 @@ export async function rfCountLocationStock(
                 barcode: true,
                 name: true,
                 isActive: true,
-                stock: true,
-                reservedStock: true,
               },
             });
 
@@ -373,6 +446,128 @@ export async function rfCountLocationStock(
               `${product.code} - ${product.name} ürünü pasif durumda.`
             );
           }
+
+          const handlingUnit =
+            await tx.handlingUnit.findUnique({
+              where: {
+                barcode:
+                  handlingUnitBarcode,
+              },
+
+              select: {
+                id: true,
+                barcode: true,
+                unitType: true,
+                purpose: true,
+                status: true,
+                warehouseId: true,
+                locationId: true,
+                parentUnitId: true,
+
+                _count: {
+                  select: {
+                    childUnits: true,
+                  },
+                },
+
+                items: {
+                  where: {
+                    productId:
+                      product.id,
+                  },
+
+                  take: 1,
+
+                  select: {
+                    id: true,
+                    quantity: true,
+                    reservedStock: true,
+                  },
+                },
+              },
+            });
+
+          if (!handlingUnit) {
+            throw new Error(
+              `${handlingUnitBarcode} barkodlu koli veya palet bulunamadı.`
+            );
+          }
+
+          if (
+            handlingUnit.status ===
+            HandlingUnitStatus.CANCELLED
+          ) {
+            throw new Error(
+              `${handlingUnit.barcode} iptal durumunda olduğu için sayılamaz.`
+            );
+          }
+
+          if (
+            handlingUnit.status ===
+            HandlingUnitStatus.IN_TRANSIT
+          ) {
+            throw new Error(
+              `${handlingUnit.barcode} transfer sürecinde olduğu için sayılamaz.`
+            );
+          }
+
+          if (
+            handlingUnit.purpose !==
+            HandlingUnitPurpose.STOCK
+          ) {
+            throw new Error(
+              `${handlingUnit.barcode} stok amaçlı bir taşıma birimi değildir.`
+            );
+          }
+
+          if (
+            handlingUnit.warehouseId !==
+              warehouse.id ||
+            handlingUnit.locationId !==
+              location.id
+          ) {
+            throw new Error(
+              `${handlingUnit.barcode} taşıma birimi ${warehouse.code} / ${locationBarcode} lokasyonunda bulunmuyor.`
+            );
+          }
+
+          if (
+            handlingUnit.unitType ===
+              HandlingUnitType.PALLET &&
+            handlingUnit._count
+              .childUnits > 0
+          ) {
+            throw new Error(
+              `${handlingUnit.barcode} paletine bağlı koliler bulunuyor. Sayım için palet yerine ilgili koli barkodunu okutun.`
+            );
+          }
+
+          const handlingUnitItem =
+            handlingUnit.items[0] ??
+            null;
+
+          const expectedQuantity =
+            handlingUnitItem
+              ?.quantity ?? 0;
+
+          const handlingUnitReservedStock =
+            handlingUnitItem
+              ?.reservedStock ?? 0;
+
+          if (
+            countedQuantity <
+            handlingUnitReservedStock
+          ) {
+            throw new Error(
+              `Sayılan miktar THM üzerindeki rezerve stoktan az olamaz. ` +
+                `Rezerve: ${handlingUnitReservedStock}, ` +
+                `sayılan: ${countedQuantity}.`
+            );
+          }
+
+          const difference =
+            countedQuantity -
+            expectedQuantity;
 
           const locationStock =
             await tx.warehouseLocationStock.findUnique({
@@ -393,7 +588,7 @@ export async function rfCountLocationStock(
               },
             });
 
-          const expectedQuantity =
+          const locationQuantityBefore =
             locationStock?.quantity ??
             0;
 
@@ -401,38 +596,46 @@ export async function rfCountLocationStock(
             locationStock
               ?.reservedStock ?? 0;
 
+          const locationQuantityAfter =
+            locationQuantityBefore +
+            difference;
+
           if (
-            countedQuantity <
-            locationReservedStock
+            locationQuantityAfter < 0
           ) {
             throw new Error(
-              `Sayılan miktar lokasyondaki rezerve stoktan az olamaz. ` +
-                `Rezerve stok: ${locationReservedStock}, ` +
-                `sayılan miktar: ${countedQuantity}.`
+              `Sayım farkı lokasyon stoğunu sıfırın altına düşürüyor. ` +
+                `Lokasyon stoğu: ${locationQuantityBefore}, ` +
+                `sayım farkı: ${difference}.`
             );
           }
 
-          const difference =
-            countedQuantity -
-            expectedQuantity;
+          if (
+            locationQuantityAfter <
+            locationReservedStock
+          ) {
+            throw new Error(
+              `Sayım sonrası lokasyon miktarı rezerve stoktan az olamaz. ` +
+                `Rezerve: ${locationReservedStock}, ` +
+                `sayım sonrası: ${locationQuantityAfter}.`
+            );
+          }
+
+          const documentNumber =
+            createCountDocumentNumber(
+              warehouse.code,
+              handlingUnit.id
+            );
 
           let movementType:
             StockMovementType | null =
               null;
-
-          let documentNumber = "";
 
           if (difference !== 0) {
             movementType =
               difference > 0
                 ? StockMovementType.COUNT_INCREASE
                 : StockMovementType.COUNT_DECREASE;
-
-            documentNumber =
-              createCountDocumentNumber(
-                warehouse.code,
-                location.id
-              );
 
             await createStockMovementWithTransaction(
               tx,
@@ -450,9 +653,8 @@ export async function rfCountLocationStock(
                 documentNumber,
 
                 description:
-                  `${warehouse.code} / ${locationBarcode} lokasyonunda ` +
-                  `${operator.username} tarafından RF sayımı yapıldı. ` +
-                  `Sistem miktarı: ${expectedQuantity}, ` +
+                  `${warehouse.code} / ${locationBarcode} / ${handlingUnit.barcode} için RF sayımı yapıldı. ` +
+                  `THM sistem miktarı: ${expectedQuantity}, ` +
                   `sayılan miktar: ${countedQuantity}, ` +
                   `fark: ${difference}.` +
                   (
@@ -463,11 +665,11 @@ export async function rfCountLocationStock(
               }
             );
 
-            if (locationStock) {
-              await tx.warehouseLocationStock.update({
+            if (handlingUnitItem) {
+              await tx.handlingUnitItem.update({
                 where: {
                   id:
-                    locationStock.id,
+                    handlingUnitItem.id,
                 },
 
                 data: {
@@ -476,10 +678,10 @@ export async function rfCountLocationStock(
                 },
               });
             } else {
-              await tx.warehouseLocationStock.create({
+              await tx.handlingUnitItem.create({
                 data: {
-                  locationId:
-                    location.id,
+                  handlingUnitId:
+                    handlingUnit.id,
 
                   productId:
                     product.id,
@@ -491,7 +693,139 @@ export async function rfCountLocationStock(
                 },
               });
             }
+
+            if (locationStock) {
+              await tx.warehouseLocationStock.update({
+                where: {
+                  id:
+                    locationStock.id,
+                },
+
+                data: {
+                  quantity:
+                    locationQuantityAfter,
+                },
+              });
+            } else if (
+              locationQuantityAfter >
+              0
+            ) {
+              await tx.warehouseLocationStock.create({
+                data: {
+                  locationId:
+                    location.id,
+
+                  productId:
+                    product.id,
+
+                  quantity:
+                    locationQuantityAfter,
+
+                  reservedStock: 0,
+                },
+              });
+            }
           }
+
+          await tx.wmsOperationLog.create({
+            data: {
+              operationType:
+                WmsOperationType.COUNT,
+
+              module:
+                "RF_COUNTING",
+
+              entityType:
+                "HANDLING_UNIT",
+
+              entityId:
+                handlingUnit.id,
+
+              operatorId:
+                operator.id,
+
+              operatorName,
+
+              terminalCode:
+                currentSession
+                  ?.terminalCode ?? null,
+
+              ipAddress:
+                currentSession
+                  ?.ipAddress ?? null,
+
+              barcode:
+                handlingUnit.barcode,
+
+              productId:
+                product.id,
+
+              productCode:
+                product.code,
+
+              productName:
+                product.name,
+
+              quantity:
+                countedQuantity,
+
+              warehouseId:
+                warehouse.id,
+
+              warehouseCode:
+                warehouse.code,
+
+              sourceLocationId:
+                location.id,
+
+              sourceLocationCode:
+                locationBarcode,
+
+              previousStatus:
+                String(
+                  expectedQuantity
+                ),
+
+              newStatus:
+                String(
+                  countedQuantity
+                ),
+
+              description:
+                difference === 0
+                  ? "RF sayımı tamamlandı. Sistem miktarı ile fiziksel miktar eşit."
+                  : `RF sayımı tamamlandı. Stok farkı: ${difference}.`,
+
+              metadata: {
+                documentNumber,
+
+                handlingUnitType:
+                  handlingUnit.unitType,
+
+                handlingUnitParentId:
+                  handlingUnit.parentUnitId,
+
+                expectedQuantity,
+
+                countedQuantity,
+
+                difference,
+
+                handlingUnitReservedStock,
+
+                locationQuantityBefore,
+
+                locationQuantityAfter,
+
+                locationReservedStock,
+
+                note:
+                  note || null,
+              },
+
+              isSuccessful: true,
+            },
+          });
 
           return {
             warehouseCode:
@@ -502,6 +836,17 @@ export async function rfCountLocationStock(
 
             locationCode:
               locationBarcode,
+
+            handlingUnitId:
+              handlingUnit.id,
+
+            handlingUnitBarcode:
+              handlingUnit.barcode,
+
+            handlingUnitType:
+              getHandlingUnitTypeLabel(
+                handlingUnit.unitType
+              ),
 
             productId:
               product.id,
@@ -521,6 +866,12 @@ export async function rfCountLocationStock(
             countedQuantity,
 
             difference,
+
+            handlingUnitReservedStock,
+
+            locationQuantityBefore,
+
+            locationQuantityAfter,
 
             locationReservedStock,
 
@@ -555,6 +906,14 @@ export async function rfCountLocationStock(
     );
 
     revalidatePath(
+      "/admin/handling-units"
+    );
+
+    revalidatePath(
+      `/admin/handling-units/${result.handlingUnitId}`
+    );
+
+    revalidatePath(
       "/admin/stock/movements"
     );
 
@@ -571,8 +930,8 @@ export async function rfCountLocationStock(
 
       message:
         result.difference === 0
-          ? `${result.productCode} - ${result.productName} için sayım tamamlandı. Sistem miktarı ile sayılan miktar eşit.`
-          : `${result.productCode} - ${result.productName} için sayım tamamlandı. ` +
+          ? `${result.handlingUnitBarcode} / ${result.productCode} sayımı tamamlandı. Sistem miktarı ile sayılan miktar eşit.`
+          : `${result.handlingUnitBarcode} / ${result.productCode} sayımı tamamlandı. ` +
             `Sistem: ${result.expectedQuantity}, ` +
             `sayılan: ${result.countedQuantity}, ` +
             `fark: ${result.difference}.`,
@@ -585,6 +944,15 @@ export async function rfCountLocationStock(
 
       locationCode:
         result.locationCode,
+
+      handlingUnitId:
+        result.handlingUnitId,
+
+      handlingUnitBarcode:
+        result.handlingUnitBarcode,
+
+      handlingUnitType:
+        result.handlingUnitType,
 
       productId:
         result.productId,
@@ -607,6 +975,15 @@ export async function rfCountLocationStock(
       difference:
         result.difference,
 
+      handlingUnitReservedStock:
+        result.handlingUnitReservedStock,
+
+      locationQuantityBefore:
+        result.locationQuantityBefore,
+
+      locationQuantityAfter:
+        result.locationQuantityAfter,
+
       locationReservedStock:
         result.locationReservedStock,
 
@@ -620,7 +997,7 @@ export async function rfCountLocationStock(
     };
   } catch (error) {
     console.error(
-      "RF lokasyon sayım hatası:",
+      "RF THM sayım hatası:",
       error
     );
 
@@ -630,14 +1007,14 @@ export async function rfCountLocationStock(
       error.code === "P2034"
     ) {
       return createEmptyState(
-        "Aynı stok üzerinde başka bir işlem yapıldı. Lütfen sayımı tekrar deneyin."
+        "Aynı stok veya THM üzerinde başka bir işlem yapıldı. Lütfen sayımı tekrar deneyin."
       );
     }
 
     return createEmptyState(
       error instanceof Error
         ? error.message
-        : "Sayım kaydedilirken beklenmeyen bir hata oluştu."
+        : "THM sayımı kaydedilirken beklenmeyen bir hata oluştu."
     );
   }
 }
