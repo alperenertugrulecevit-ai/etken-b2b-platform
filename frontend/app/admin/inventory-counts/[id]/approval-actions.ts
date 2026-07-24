@@ -2,6 +2,7 @@
 
 import {
   InventoryCountLineStatus,
+  InventoryCountLocationStatus,
   InventoryCountStatus,
   Prisma,
   StockMovementType,
@@ -14,6 +15,8 @@ import { prisma } from "@/lib/prisma";
 
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 
+import { PasswordService } from "@/modules/auth/services/password.service";
+
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 type LocationProductGroup = {
@@ -21,9 +24,14 @@ type LocationProductGroup = {
   productId: number;
   productCode: string;
   productName: string;
+
   snapshotQuantity: number;
-  snapshotReservedStock: number;
-  totalDifference: number;
+
+  snapshotReservedStock:
+    number;
+
+  finalCountedQuantity:
+    number;
 };
 
 type ProductDifferenceGroup = {
@@ -32,6 +40,13 @@ type ProductDifferenceGroup = {
   productName: string;
   totalDifference: number;
 };
+
+const APPROVABLE_STATUSES:
+  InventoryCountStatus[] = [
+    InventoryCountStatus.ACTIVE,
+    InventoryCountStatus.IN_PROGRESS,
+    InventoryCountStatus.SUBMITTED,
+  ];
 
 function validateInventoryCountId(
   inventoryCountId: number
@@ -109,17 +124,25 @@ function refreshInventoryPages(
   revalidatePath("/");
   revalidatePath("/products");
   revalidatePath("/admin");
+
   revalidatePath(
     "/admin/products"
   );
+
   revalidatePath(
     "/admin/stock/movements"
   );
+
   revalidatePath(
     "/admin/stock/locations"
   );
+
   revalidatePath(
     "/admin/inventory-counts"
+  );
+
+  revalidatePath(
+    "/admin/inventory-counts/reports"
   );
 
   revalidatePath(
@@ -127,802 +150,971 @@ function refreshInventoryPages(
   );
 
   revalidatePath("/rf");
+
   revalidatePath(
     "/rf/inventory-counts"
+  );
+
+  revalidatePath(
+    `/rf/inventory-counts/${inventoryCountId}`
   );
 }
 
 export async function approveInventoryCountAction(
   inventoryCountId: number,
-  _formData: FormData
+  formData: FormData
 ): Promise<void> {
   const currentUser =
     await AuthorizationService.requirePermission(
       "INVENTORY_COUNT_APPROVE"
     );
 
+  let incompleteLocationCount =
+    0;
+
+  let automaticZeroLineCount =
+    0;
+
   try {
     validateInventoryCountId(
       inventoryCountId
     );
+
+    const approvalPassword =
+      String(
+        formData.get(
+          "approvalPassword"
+        ) ?? ""
+      );
+
+    if (!approvalPassword) {
+      throw new Error(
+        "Sayımı onaylamak için giriş şifrenizi yazın."
+      );
+    }
+
+    const currentUserAccount =
+      await prisma.user.findUnique({
+        where: {
+          id: currentUser.id,
+        },
+
+        select: {
+          id: true,
+          passwordHash: true,
+        },
+      });
+
+    if (!currentUserAccount) {
+      throw new Error(
+        "Onaylayan kullanıcı hesabı bulunamadı."
+      );
+    }
+
+    const passwordValid =
+      await PasswordService.verify(
+        approvalPassword,
+        currentUserAccount.passwordHash
+      );
+
+    if (!passwordValid) {
+      throw new Error(
+        "Onay şifresi hatalı. Sayım onaylanmadı."
+      );
+    }
+
+    const incompleteLocationsConfirmed =
+      formData.get(
+        "confirmIncompleteLocations"
+      ) === "true";
 
     const approvedByName =
       getProfileName(
         currentUser
       );
 
-    await prisma.$transaction(
-      async (transaction) => {
-        const inventoryCount =
-          await transaction.inventoryCount.findUnique({
-            where: {
-              id:
-                inventoryCountId,
-            },
-
-            select: {
-              id: true,
-              countNumber: true,
-              status: true,
-
-              locations: {
-                select: {
-                  id: true,
-                  status: true,
-                },
+    const approvalResult =
+      await prisma.$transaction(
+        async (transaction) => {
+          const inventoryCount =
+            await transaction.inventoryCount.findUnique({
+              where: {
+                id:
+                  inventoryCountId,
               },
 
-              lines: {
-                orderBy: {
-                  id: "asc",
-                },
+              select: {
+                id: true,
+                countNumber: true,
+                status: true,
+                submittedAt: true,
 
-                select: {
-                  id: true,
-                  locationId: true,
-                  handlingUnitId: true,
-                  productId: true,
-                  status: true,
+                locations: {
+                  select: {
+                    id: true,
 
-                  locationCode: true,
+                    locationId:
+                      true,
 
-                  handlingUnitBarcode:
-                    true,
+                    locationCode:
+                      true,
 
-                  productCode: true,
-                  productName: true,
-
-                  systemQuantity:
-                    true,
-
-                  systemReservedStock:
-                    true,
-
-                  locationSystemQuantity:
-                    true,
-
-                  locationReservedStock:
-                    true,
-
-                  countedQuantity:
-                    true,
-
-                  handlingUnitUpdatedAt:
-                    true,
-
-                  handlingUnitItemUpdatedAt:
-                    true,
-
-                  locationStockUpdatedAt:
-                    true,
-                },
-              },
-            },
-          });
-
-        if (!inventoryCount) {
-          throw new Error(
-            "Onaylanacak sayım bulunamadı."
-          );
-        }
-
-        if (
-          inventoryCount.status !==
-          InventoryCountStatus.SUBMITTED
-        ) {
-          throw new Error(
-            "Yalnızca Onay Bekliyor durumundaki sayım onaylanabilir."
-          );
-        }
-
-        if (
-          inventoryCount.locations.length ===
-          0
-        ) {
-          throw new Error(
-            "Lokasyon bulunmayan sayım onaylanamaz."
-          );
-        }
-
-        const incompleteLocation =
-          inventoryCount.locations.find(
-            (location) =>
-              location.status !==
-              "COMPLETED"
-          );
-
-        if (incompleteLocation) {
-          throw new Error(
-            "Tüm lokasyonlar tamamlanmadan sayım onaylanamaz."
-          );
-        }
-
-        const invalidLine =
-          inventoryCount.lines.find(
-            (line) =>
-              line.status !==
-                InventoryCountLineStatus.COUNTED ||
-              line.countedQuantity ===
-                null
-          );
-
-        if (invalidLine) {
-          throw new Error(
-            "Sayımda tamamlanmamış veya tekrar sayılması gereken ürün satırı bulunuyor."
-          );
-        }
-
-        const handlingUnitIds =
-          Array.from(
-            new Set(
-              inventoryCount.lines.map(
-                (line) =>
-                  line.handlingUnitId
-              )
-            )
-          );
-
-        const productIds =
-          Array.from(
-            new Set(
-              inventoryCount.lines.map(
-                (line) =>
-                  line.productId
-              )
-            )
-          );
-
-        const locationIds =
-          Array.from(
-            new Set(
-              inventoryCount.lines.map(
-                (line) =>
-                  line.locationId
-              )
-            )
-          );
-
-        const [
-          handlingUnits,
-          locationStocks,
-        ] = await Promise.all([
-          transaction.handlingUnit.findMany({
-            where: {
-              id: {
-                in:
-                  handlingUnitIds,
-              },
-            },
-
-            select: {
-              id: true,
-              barcode: true,
-              locationId: true,
-              updatedAt: true,
-
-              parentUnit: {
-                select: {
-                  locationId:
-                    true,
-                },
-              },
-
-              items: {
-                where: {
-                  productId: {
-                    in:
-                      productIds,
+                    status: true,
                   },
                 },
 
-                select: {
-                  id: true,
-                  productId: true,
-                  quantity: true,
-                  reservedStock:
-                    true,
-                  updatedAt: true,
+                lines: {
+                  orderBy: {
+                    id: "asc",
+                  },
+
+                  select: {
+                    id: true,
+
+                    locationId:
+                      true,
+
+                    handlingUnitId:
+                      true,
+
+                    productId: true,
+                    status: true,
+
+                    locationCode:
+                      true,
+
+                    handlingUnitBarcode:
+                      true,
+
+                    productCode: true,
+
+                    productName: true,
+
+                    systemQuantity:
+                      true,
+
+                    locationSystemQuantity:
+                      true,
+
+                    locationReservedStock:
+                      true,
+
+                    countedQuantity:
+                      true,
+
+                    countedById:
+                      true,
+
+                    countedByName:
+                      true,
+
+                    countedAt: true,
+                    note: true,
+
+                    handlingUnitUpdatedAt:
+                      true,
+
+                    handlingUnitItemUpdatedAt:
+                      true,
+                  },
                 },
               },
-            },
-          }),
+            });
 
-          transaction.warehouseLocationStock.findMany({
-            where: {
-              locationId: {
-                in:
-                  locationIds,
-              },
+          if (!inventoryCount) {
+            throw new Error(
+              "Onaylanacak sayım bulunamadı."
+            );
+          }
 
-              productId: {
-                in:
-                  productIds,
-              },
-            },
-
-            select: {
-              id: true,
-              locationId: true,
-              productId: true,
-              quantity: true,
-              reservedStock:
-                true,
-              updatedAt: true,
-            },
-          }),
-        ]);
-
-        const handlingUnitMap =
-          new Map(
-            handlingUnits.map(
-              (handlingUnit) => [
-                handlingUnit.id,
-                handlingUnit,
-              ]
+          if (
+            !APPROVABLE_STATUSES.includes(
+              inventoryCount.status
             )
-          );
-
-        const locationStockMap =
-          new Map(
-            locationStocks.map(
-              (locationStock) => [
-                `${locationStock.locationId}:${locationStock.productId}`,
-                locationStock,
-              ]
-            )
-          );
-
-        const locationProductGroups =
-          new Map<
-            string,
-            LocationProductGroup
-          >();
-
-        const productDifferenceGroups =
-          new Map<
-            number,
-            ProductDifferenceGroup
-          >();
-
-        const approvedAt =
-          new Date();
-
-        /*
-         * Önce bütün satırlar mevcut
-         * operasyonel stok kayıtlarıyla
-         * karşılaştırılır. Bir çakışma
-         * varsa hiçbir stok güncellenmez.
-         */
-        for (
-          const line of
-          inventoryCount.lines
-        ) {
-          if (
-            line.countedQuantity ===
-            null
-          ) {
-            throw new Error(
-              `${line.productCode} ürünü için sayım miktarı bulunamadı.`
-            );
-          }
-
-          const handlingUnit =
-            handlingUnitMap.get(
-              line.handlingUnitId
-            );
-
-          if (!handlingUnit) {
-            throw new Error(
-              `${line.handlingUnitBarcode} THM'si artık sistemde bulunmuyor. Sayım onaylanamaz.`
-            );
-          }
-
-          const effectiveLocationId =
-            handlingUnit.locationId ??
-            handlingUnit.parentUnit
-              ?.locationId ??
-            null;
-
-          if (
-            effectiveLocationId !==
-            line.locationId
-          ) {
-            throw new Error(
-              `${line.handlingUnitBarcode} THM'sinin lokasyonu sayımdan sonra değişmiş. Sayım onaylanamaz.`
-            );
-          }
-
-          if (
-            line.handlingUnitUpdatedAt &&
-            !sameDate(
-              handlingUnit.updatedAt,
-              line.handlingUnitUpdatedAt
-            )
-          ) {
-            throw new Error(
-              `${line.handlingUnitBarcode} THM kaydı sayımdan sonra değiştirilmiş. Sayım onaylanamaz.`
-            );
-          }
-
-          const handlingUnitItem =
-            handlingUnit.items.find(
-              (item) =>
-                item.productId ===
-                line.productId
-            ) ?? null;
-
-          const currentItemQuantity =
-            handlingUnitItem
-              ?.quantity ??
-            0;
-
-          const currentReservedStock =
-            handlingUnitItem
-              ?.reservedStock ??
-            0;
-
-          if (
-            currentItemQuantity !==
-            line.systemQuantity
-          ) {
-            throw new Error(
-              `${line.handlingUnitBarcode} / ${line.productCode} stok miktarı sayımdan sonra değişmiş. ` +
-                `Snapshot: ${line.systemQuantity}, güncel: ${currentItemQuantity}.`
-            );
-          }
-
-          if (
-            line.handlingUnitItemUpdatedAt &&
-            (
-              !handlingUnitItem ||
-              !sameDate(
-                handlingUnitItem.updatedAt,
-                line.handlingUnitItemUpdatedAt
-              )
-            )
-          ) {
-            throw new Error(
-              `${line.handlingUnitBarcode} / ${line.productCode} THM stok kaydı sayımdan sonra değiştirilmiş.`
-            );
-          }
-
-          if (
-            line.countedQuantity <
-            currentReservedStock
-          ) {
-            throw new Error(
-              `${line.handlingUnitBarcode} / ${line.productCode} için sayılan miktar rezerve miktardan az. ` +
-                `Sayılan: ${line.countedQuantity}, rezerve: ${currentReservedStock}.`
-            );
-          }
-
-          const difference =
-            line.countedQuantity -
-            line.systemQuantity;
-
-          const locationProductKey =
-            `${line.locationId}:${line.productId}`;
-
-          const existingLocationGroup =
-            locationProductGroups.get(
-              locationProductKey
-            );
-
-          if (
-            existingLocationGroup
           ) {
             if (
-              existingLocationGroup.snapshotQuantity !==
-                line.locationSystemQuantity ||
-              existingLocationGroup.snapshotReservedStock !==
-                line.locationReservedStock
+              inventoryCount.status ===
+              InventoryCountStatus.DRAFT
             ) {
               throw new Error(
-                `${line.locationCode} / ${line.productCode} snapshot bilgileri tutarlı değil.`
+                "Taslak durumundaki sayım başlatılmadan onaylanamaz."
               );
             }
 
-            existingLocationGroup.totalDifference +=
-              difference;
-          } else {
-            locationProductGroups.set(
-              locationProductKey,
-              {
-                locationId:
-                  line.locationId,
+            if (
+              inventoryCount.status ===
+              InventoryCountStatus.APPROVED
+            ) {
+              throw new Error(
+                "Bu sayım daha önce onaylanmış."
+              );
+            }
 
-                productId:
-                  line.productId,
+            if (
+              inventoryCount.status ===
+              InventoryCountStatus.CANCELLED
+            ) {
+              throw new Error(
+                "İptal edilmiş sayım onaylanamaz."
+              );
+            }
 
-                productCode:
-                  line.productCode,
-
-                productName:
-                  line.productName,
-
-                snapshotQuantity:
-                  line.locationSystemQuantity,
-
-                snapshotReservedStock:
-                  line.locationReservedStock,
-
-                totalDifference:
-                  difference,
-              }
+            throw new Error(
+              "Bu sayım mevcut durumunda onaylanamaz."
             );
           }
 
-          const existingProductGroup =
-            productDifferenceGroups.get(
-              line.productId
+          if (
+            inventoryCount.locations.length ===
+            0
+          ) {
+            throw new Error(
+              "Lokasyon bulunmayan sayım onaylanamaz."
+            );
+          }
+
+          const incompleteLocations =
+            inventoryCount.locations.filter(
+              (location) =>
+                location.status !==
+                InventoryCountLocationStatus.COMPLETED
             );
 
           if (
-            existingProductGroup
+            incompleteLocations.length >
+              0 &&
+            !incompleteLocationsConfirmed
           ) {
-            existingProductGroup.totalDifference +=
-              difference;
-          } else {
-            productDifferenceGroups.set(
-              line.productId,
-              {
-                productId:
-                  line.productId,
-
-                productCode:
-                  line.productCode,
-
-                productName:
-                  line.productName,
-
-                totalDifference:
-                  difference,
-              }
+            throw new Error(
+              `${incompleteLocations.length} lokasyon henüz tamamlanmadı. ` +
+                "Bu lokasyonlardaki okutulmayan bütün ürünler sıfır kabul edilecektir. " +
+                "Devam etmek için uyarıyı onaylayın."
             );
           }
-        }
 
-        /*
-         * Lokasyon bazlı toplamların da
-         * snapshot sonrasında değişmediği
-         * doğrulanır.
-         */
-        for (
+          const recountRequiredLine =
+            inventoryCount.lines.find(
+              (line) =>
+                line.status ===
+                InventoryCountLineStatus.RECOUNT_REQUIRED
+            );
+
+          if (recountRequiredLine) {
+            throw new Error(
+              `${recountRequiredLine.locationCode} / ${recountRequiredLine.productCode} satırı tekrar sayım bekliyor. ` +
+                "Tekrar sayım tamamlanmadan onay verilemez."
+            );
+          }
+
+          const handlingUnitIds =
+            Array.from(
+              new Set(
+                inventoryCount.lines.map(
+                  (line) =>
+                    line.handlingUnitId
+                )
+              )
+            );
+
+          const productIds =
+            Array.from(
+              new Set(
+                inventoryCount.lines.map(
+                  (line) =>
+                    line.productId
+                )
+              )
+            );
+
+          const locationIds =
+            Array.from(
+              new Set(
+                inventoryCount.lines.map(
+                  (line) =>
+                    line.locationId
+                )
+              )
+            );
+
           const [
-            key,
-            group,
-          ] of locationProductGroups
-        ) {
-          const currentLocationStock =
-            locationStockMap.get(
-              key
+            handlingUnits,
+            locationStocks,
+          ] = await Promise.all([
+            transaction.handlingUnit.findMany({
+              where: {
+                id: {
+                  in:
+                    handlingUnitIds,
+                },
+              },
+
+              select: {
+                id: true,
+                barcode: true,
+                locationId: true,
+                updatedAt: true,
+
+                parentUnit: {
+                  select: {
+                    locationId:
+                      true,
+                  },
+                },
+
+                items: {
+                  where: {
+                    productId: {
+                      in:
+                        productIds,
+                    },
+                  },
+
+                  select: {
+                    id: true,
+                    productId: true,
+                    quantity: true,
+
+                    reservedStock:
+                      true,
+
+                    updatedAt: true,
+                  },
+                },
+              },
+            }),
+
+            transaction.warehouseLocationStock.findMany({
+              where: {
+                locationId: {
+                  in:
+                    locationIds,
+                },
+
+                productId: {
+                  in:
+                    productIds,
+                },
+              },
+
+              select: {
+                id: true,
+                locationId: true,
+                productId: true,
+                quantity: true,
+
+                reservedStock:
+                  true,
+
+                updatedAt: true,
+              },
+            }),
+          ]);
+
+          const handlingUnitMap =
+            new Map(
+              handlingUnits.map(
+                (handlingUnit) => [
+                  handlingUnit.id,
+                  handlingUnit,
+                ]
+              )
             );
 
-          const currentQuantity =
-            currentLocationStock
-              ?.quantity ??
-            0;
+          const locationStockMap =
+            new Map(
+              locationStocks.map(
+                (locationStock) => [
+                  `${locationStock.locationId}:${locationStock.productId}`,
+                  locationStock,
+                ]
+              )
+            );
 
-          const currentReservedStock =
-            currentLocationStock
-              ?.reservedStock ??
-            0;
+          const locationProductGroups =
+            new Map<
+              string,
+              LocationProductGroup
+            >();
 
-          if (
-            currentQuantity !==
-            group.snapshotQuantity
+          const productDifferenceGroups =
+            new Map<
+              number,
+              ProductDifferenceGroup
+            >();
+
+          const finalQuantityByLineId =
+            new Map<
+              number,
+              number
+            >();
+
+          const automaticallyZeroedLineIds =
+            new Set<number>();
+
+          const approvedAt =
+            new Date();
+
+          /*
+           * Ürün bazlı global stok
+           * farkı, bütün THM satırlarının
+           * sayılan eksi sistem
+           * miktarlarının toplamıdır.
+           */
+          for (
+            const line of
+            inventoryCount.lines
           ) {
-            throw new Error(
-              `${group.productCode} ürününün lokasyon stoğu sayımdan sonra değişmiş. ` +
-                `Snapshot: ${group.snapshotQuantity}, güncel: ${currentQuantity}.`
-            );
-          }
+            const finalCountedQuantity =
+              line.countedQuantity ??
+              0;
 
-          if (
-            currentReservedStock !==
-            group.snapshotReservedStock
-          ) {
-            throw new Error(
-              `${group.productCode} ürününün lokasyon rezervasyonu sayımdan sonra değişmiş.`
-            );
-          }
-
-          const nextLocationQuantity =
-            currentQuantity +
-            group.totalDifference;
-
-          if (
-            nextLocationQuantity < 0
-          ) {
-            throw new Error(
-              `${group.productCode} için hesaplanan lokasyon stoğu sıfırın altına düşüyor.`
-            );
-          }
-
-          if (
-            nextLocationQuantity <
-            currentReservedStock
-          ) {
-            throw new Error(
-              `${group.productCode} için hesaplanan lokasyon stoğu rezerve miktardan az.`
-            );
-          }
-        }
-
-        /*
-         * Durum geçişi atomik olarak
-         * kilitlenir. Başka bir işlem
-         * durumu değiştirdiyse transaction
-         * iptal edilir.
-         */
-        const transitionResult =
-          await transaction.inventoryCount.updateMany({
-            where: {
-              id:
-                inventoryCount.id,
-
-              status:
-                InventoryCountStatus.SUBMITTED,
-            },
-
-            data: {
-              status:
-                InventoryCountStatus.APPROVED,
-
-              approvedAt,
-
-              approvedById:
-                currentUser.id,
-
-              approvedByName,
-            },
-          });
-
-        if (
-          transitionResult.count !==
-          1
-        ) {
-          throw new Error(
-            "Sayım durumu değiştiği için onay işlemi tamamlanamadı."
-          );
-        }
-
-        /*
-         * THM ürün bakiyeleri sayılan
-         * fiziksel miktara eşitlenir.
-         */
-        for (
-          const line of
-          inventoryCount.lines
-        ) {
-          if (
-            line.countedQuantity ===
-            null
-          ) {
-            throw new Error(
-              "Sayım miktarı bulunamadı."
-            );
-          }
-
-          const handlingUnit =
-            handlingUnitMap.get(
-              line.handlingUnitId
+            finalQuantityByLineId.set(
+              line.id,
+              finalCountedQuantity
             );
 
-          const existingItem =
-            handlingUnit?.items.find(
-              (item) =>
-                item.productId ===
+            if (
+              line.countedQuantity ===
+              null
+            ) {
+              automaticallyZeroedLineIds.add(
+                line.id
+              );
+            }
+
+            const handlingUnit =
+              handlingUnitMap.get(
+                line.handlingUnitId
+              );
+
+            if (!handlingUnit) {
+              throw new Error(
+                `${line.handlingUnitBarcode} THM'si artık sistemde bulunmuyor. Sayım onaylanamaz.`
+              );
+            }
+
+            const effectiveLocationId =
+              handlingUnit.locationId ??
+              handlingUnit.parentUnit
+                ?.locationId ??
+              null;
+
+            if (
+              effectiveLocationId !==
+              line.locationId
+            ) {
+              throw new Error(
+                `${line.handlingUnitBarcode} THM'sinin lokasyonu sayımdan sonra değişmiş. Sayım onaylanamaz.`
+              );
+            }
+
+            if (
+              line.handlingUnitUpdatedAt &&
+              !sameDate(
+                handlingUnit.updatedAt,
+                line.handlingUnitUpdatedAt
+              )
+            ) {
+              throw new Error(
+                `${line.handlingUnitBarcode} THM kaydı sayımdan sonra değiştirilmiş. Sayım onaylanamaz.`
+              );
+            }
+
+            const handlingUnitItem =
+              handlingUnit.items.find(
+                (item) =>
+                  item.productId ===
+                  line.productId
+              ) ?? null;
+
+            const currentItemQuantity =
+              handlingUnitItem
+                ?.quantity ??
+              0;
+
+            const currentReservedStock =
+              handlingUnitItem
+                ?.reservedStock ??
+              0;
+
+            if (
+              currentItemQuantity !==
+              line.systemQuantity
+            ) {
+              throw new Error(
+                `${line.handlingUnitBarcode} / ${line.productCode} stok miktarı sayımdan sonra değişmiş. ` +
+                  `Snapshot: ${line.systemQuantity}, güncel: ${currentItemQuantity}.`
+              );
+            }
+
+            if (
+              line.handlingUnitItemUpdatedAt &&
+              (
+                !handlingUnitItem ||
+                !sameDate(
+                  handlingUnitItem.updatedAt,
+                  line.handlingUnitItemUpdatedAt
+                )
+              )
+            ) {
+              throw new Error(
+                `${line.handlingUnitBarcode} / ${line.productCode} THM stok kaydı sayımdan sonra değiştirilmiş.`
+              );
+            }
+
+            if (
+              finalCountedQuantity <
+              currentReservedStock
+            ) {
+              throw new Error(
+                `${line.handlingUnitBarcode} / ${line.productCode} için sayım sonucu rezerve miktardan az. ` +
+                  `Sayım sonucu: ${finalCountedQuantity}, rezerve: ${currentReservedStock}. ` +
+                  "İlgili rezervasyon çözülmeden sayım onaylanamaz."
+              );
+            }
+
+            const lineDifference =
+              finalCountedQuantity -
+              line.systemQuantity;
+
+            const existingProductGroup =
+              productDifferenceGroups.get(
                 line.productId
-            ) ?? null;
+              );
 
-          await transaction.handlingUnitItem.upsert({
-            where: {
-              handling_unit_product_unique: {
+            if (
+              existingProductGroup
+            ) {
+              existingProductGroup.totalDifference +=
+                lineDifference;
+            } else {
+              productDifferenceGroups.set(
+                line.productId,
+                {
+                  productId:
+                    line.productId,
+
+                  productCode:
+                    line.productCode,
+
+                  productName:
+                    line.productName,
+
+                  totalDifference:
+                    lineDifference,
+                }
+              );
+            }
+
+            const locationProductKey =
+              `${line.locationId}:${line.productId}`;
+
+            const existingLocationGroup =
+              locationProductGroups.get(
+                locationProductKey
+              );
+
+            if (
+              existingLocationGroup
+            ) {
+              if (
+                existingLocationGroup.snapshotQuantity !==
+                  line.locationSystemQuantity ||
+                existingLocationGroup.snapshotReservedStock !==
+                  line.locationReservedStock
+              ) {
+                throw new Error(
+                  `${line.locationCode} / ${line.productCode} snapshot bilgileri tutarlı değil.`
+                );
+              }
+
+              existingLocationGroup.finalCountedQuantity +=
+                finalCountedQuantity;
+            } else {
+              locationProductGroups.set(
+                locationProductKey,
+                {
+                  locationId:
+                    line.locationId,
+
+                  productId:
+                    line.productId,
+
+                  productCode:
+                    line.productCode,
+
+                  productName:
+                    line.productName,
+
+                  snapshotQuantity:
+                    line.locationSystemQuantity,
+
+                  snapshotReservedStock:
+                    line.locationReservedStock,
+
+                  finalCountedQuantity,
+                }
+              );
+            }
+          }
+
+          /*
+           * Lokasyon kayıtları
+           * doğrulanır. Lokasyonun yeni
+           * miktarı doğrudan sayılan
+           * THM toplamı olacaktır.
+           */
+          for (
+            const [
+              key,
+              group,
+            ] of locationProductGroups
+          ) {
+            const currentLocationStock =
+              locationStockMap.get(
+                key
+              );
+
+            const currentQuantity =
+              currentLocationStock
+                ?.quantity ??
+              0;
+
+            const currentReservedStock =
+              currentLocationStock
+                ?.reservedStock ??
+              0;
+
+            if (
+              currentQuantity !==
+              group.snapshotQuantity
+            ) {
+              throw new Error(
+                `${group.productCode} ürününün lokasyon stoğu sayımdan sonra değişmiş. ` +
+                  `Snapshot: ${group.snapshotQuantity}, güncel: ${currentQuantity}.`
+              );
+            }
+
+            if (
+              currentReservedStock !==
+              group.snapshotReservedStock
+            ) {
+              throw new Error(
+                `${group.productCode} ürününün lokasyon rezervasyonu sayımdan sonra değişmiş.`
+              );
+            }
+
+            if (
+              group.finalCountedQuantity <
+              currentReservedStock
+            ) {
+              throw new Error(
+                `${group.productCode} için sayım sonucu rezerve miktardan az. ` +
+                  `Sayım sonucu: ${group.finalCountedQuantity}, rezerve: ${currentReservedStock}. ` +
+                  "İlgili rezervasyon çözülmeden sayım onaylanamaz."
+              );
+            }
+          }
+
+          const transitionResult =
+            await transaction.inventoryCount.updateMany({
+              where: {
+                id:
+                  inventoryCount.id,
+
+                status: {
+                  in:
+                    APPROVABLE_STATUSES,
+                },
+              },
+
+              data: {
+                status:
+                  InventoryCountStatus.APPROVED,
+
+                submittedAt:
+                  inventoryCount.submittedAt ??
+                  approvedAt,
+
+                approvedAt,
+
+                approvedById:
+                  currentUser.id,
+
+                approvedByName,
+              },
+            });
+
+          if (
+            transitionResult.count !==
+            1
+          ) {
+            throw new Error(
+              "Sayım durumu değiştiği için onay işlemi tamamlanamadı."
+            );
+          }
+
+          /*
+           * THM ürün miktarları sayım
+           * sonuçlarına eşitlenir.
+           */
+          for (
+            const line of
+            inventoryCount.lines
+          ) {
+            const finalCountedQuantity =
+              finalQuantityByLineId.get(
+                line.id
+              ) ?? 0;
+
+            const handlingUnit =
+              handlingUnitMap.get(
+                line.handlingUnitId
+              );
+
+            const existingItem =
+              handlingUnit?.items.find(
+                (item) =>
+                  item.productId ===
+                  line.productId
+              ) ?? null;
+
+            await transaction.handlingUnitItem.upsert({
+              where: {
+                handling_unit_product_unique: {
+                  handlingUnitId:
+                    line.handlingUnitId,
+
+                  productId:
+                    line.productId,
+                },
+              },
+
+              update: {
+                quantity:
+                  finalCountedQuantity,
+              },
+
+              create: {
                 handlingUnitId:
                   line.handlingUnitId,
 
                 productId:
                   line.productId,
+
+                quantity:
+                  finalCountedQuantity,
+
+                reservedStock:
+                  existingItem
+                    ?.reservedStock ??
+                  0,
               },
-            },
+            });
+          }
 
-            update: {
-              quantity:
-                line.countedQuantity,
-            },
+          /*
+           * Lokasyon miktarı doğrudan
+           * lokasyondaki sayılan THM
+           * toplamına eşitlenir.
+           */
+          for (
+            const [
+              key,
+              group,
+            ] of locationProductGroups
+          ) {
+            const currentLocationStock =
+              locationStockMap.get(
+                key
+              );
 
-            create: {
-              handlingUnitId:
-                line.handlingUnitId,
+            await transaction.warehouseLocationStock.upsert({
+              where: {
+                location_product_unique: {
+                  locationId:
+                    group.locationId,
 
-              productId:
-                line.productId,
+                  productId:
+                    group.productId,
+                },
+              },
 
-              quantity:
-                line.countedQuantity,
+              update: {
+                quantity:
+                  group.finalCountedQuantity,
+              },
 
-              reservedStock:
-                existingItem
-                  ?.reservedStock ??
-                0,
-            },
-          });
-        }
-
-        /*
-         * Lokasyon bakiyeleri, aynı ürün
-         * için bütün THM farkları
-         * toplandıktan sonra tek seferde
-         * güncellenir.
-         */
-        for (
-          const [
-            key,
-            group,
-          ] of locationProductGroups
-        ) {
-          const currentLocationStock =
-            locationStockMap.get(
-              key
-            );
-
-          const nextQuantity =
-            (
-              currentLocationStock
-                ?.quantity ??
-              0
-            ) +
-            group.totalDifference;
-
-          await transaction.warehouseLocationStock.upsert({
-            where: {
-              location_product_unique: {
+              create: {
                 locationId:
                   group.locationId,
 
                 productId:
                   group.productId,
+
+                quantity:
+                  group.finalCountedQuantity,
+
+                reservedStock:
+                  currentLocationStock
+                    ?.reservedStock ??
+                  0,
               },
-            },
-
-            update: {
-              quantity:
-                nextQuantity,
-            },
-
-            create: {
-              locationId:
-                group.locationId,
-
-              productId:
-                group.productId,
-
-              quantity:
-                nextQuantity,
-
-              reservedStock:
-                currentLocationStock
-                  ?.reservedStock ??
-                0,
-            },
-          });
-        }
-
-        /*
-         * Global ürün stokları ve stok
-         * hareketleri ürün bazında tek
-         * hareketle oluşturulur.
-         */
-        for (
-          const group of
-          productDifferenceGroups.values()
-        ) {
-          if (
-            group.totalDifference ===
-            0
-          ) {
-            continue;
+            });
           }
 
-          await createStockMovementWithTransaction(
-            transaction,
-            {
-              productId:
-                group.productId,
-
-              movementType:
-                group.totalDifference >
-                0
-                  ? StockMovementType.COUNT_INCREASE
-                  : StockMovementType.COUNT_DECREASE,
-
-              physicalChange:
-                group.totalDifference,
-
-              reservedChange:
-                0,
-
-              documentNumber:
-                inventoryCount.countNumber,
-
-              description:
-                `${inventoryCount.countNumber} numaralı planlı sayım onayı: ` +
-                `${group.productCode} - ${group.productName}, ` +
-                `stok farkı ${group.totalDifference}.`,
+          /*
+           * Ürünün tüm THM satırlarının
+           * toplam farkı sıfırsa hiçbir
+           * stok hareketi oluşturulmaz.
+           */
+          for (
+            const group of
+            productDifferenceGroups.values()
+          ) {
+            if (
+              group.totalDifference ===
+              0
+            ) {
+              continue;
             }
-          );
-        }
 
-        await transaction.inventoryCountLine.updateMany({
-          where: {
-            inventoryCountId:
-              inventoryCount.id,
-          },
+            await createStockMovementWithTransaction(
+              transaction,
+              {
+                productId:
+                  group.productId,
 
-          data: {
-            status:
-              InventoryCountLineStatus.APPROVED,
+                movementType:
+                  group.totalDifference >
+                  0
+                    ? StockMovementType.COUNT_INCREASE
+                    : StockMovementType.COUNT_DECREASE,
 
-            approvedAt,
-          },
-        });
+                physicalChange:
+                  group.totalDifference,
 
-        for (
-          const line of
-          inventoryCount.lines
-        ) {
-          if (
-            line.countedQuantity ===
-            null
-          ) {
-            continue;
+                reservedChange: 0,
+
+                documentNumber:
+                  inventoryCount.countNumber,
+
+                description:
+                  `${inventoryCount.countNumber} numaralı planlı sayım sonucu: ` +
+                  `${group.productCode} - ${group.productName}, ` +
+                  (
+                    group.totalDifference >
+                    0
+                      ? `sayım fazlası +${group.totalDifference}.`
+                      : `sayım eksiği ${group.totalDifference}.`
+                  ),
+              }
+            );
           }
 
-          await transaction.inventoryCountLine.update({
-            where: {
-              id:
-                line.id,
-            },
+          /*
+           * Okutulmayan ürünler sıfır
+           * sayılmış olarak kayıt altına
+           * alınır.
+           */
+          for (
+            const line of
+            inventoryCount.lines
+          ) {
+            const finalCountedQuantity =
+              finalQuantityByLineId.get(
+                line.id
+              ) ?? 0;
 
-            data: {
-              appliedQuantityChange:
-                line.countedQuantity -
-                line.systemQuantity,
-            },
-          });
+            const automaticallyZeroed =
+              automaticallyZeroedLineIds.has(
+                line.id
+              );
+
+            const automaticNote =
+              "Sayım onayı sırasında okutulmadığı için miktar otomatik olarak 0 kabul edildi.";
+
+            await transaction.inventoryCountLine.update({
+              where: {
+                id:
+                  line.id,
+              },
+
+              data: {
+                status:
+                  InventoryCountLineStatus.APPROVED,
+
+                countedQuantity:
+                  finalCountedQuantity,
+
+                difference:
+                  finalCountedQuantity -
+                  line.systemQuantity,
+
+                appliedQuantityChange:
+                  finalCountedQuantity -
+                  line.systemQuantity,
+
+                countedById:
+                  line.countedById ??
+                  (
+                    automaticallyZeroed
+                      ? currentUser.id
+                      : null
+                  ),
+
+                countedByName:
+                  line.countedByName ??
+                  (
+                    automaticallyZeroed
+                      ? approvedByName
+                      : null
+                  ),
+
+                countedAt:
+                  line.countedAt ??
+                  (
+                    automaticallyZeroed
+                      ? approvedAt
+                      : null
+                  ),
+
+                note:
+                  automaticallyZeroed
+                    ? line.note
+                      ? `${line.note}\n${automaticNote}`
+                      : automaticNote
+                    : line.note,
+
+                approvedAt,
+              },
+            });
+          }
+
+          return {
+            incompleteLocationCount:
+              incompleteLocations.length,
+
+            automaticZeroLineCount:
+              automaticallyZeroedLineIds.size,
+          };
+        },
+        {
+          maxWait: 10000,
+          timeout: 120000,
+
+          isolationLevel:
+            Prisma
+              .TransactionIsolationLevel
+              .Serializable,
         }
-      },
-      {
-        maxWait: 10000,
-        timeout: 120000,
+      );
 
-        isolationLevel:
-          Prisma
-            .TransactionIsolationLevel
-            .Serializable,
-      }
-    );
+    incompleteLocationCount =
+      approvalResult.incompleteLocationCount;
+
+    automaticZeroLineCount =
+      approvalResult.automaticZeroLineCount;
   } catch (error) {
     console.error(
       "Planlı sayım onaylama hatası:",
@@ -944,11 +1136,19 @@ export async function approveInventoryCountAction(
     inventoryCountId
   );
 
+  const successMessage =
+    incompleteLocationCount > 0
+      ? (
+          `Sayım onaylandı. ${incompleteLocationCount} tamamlanmamış lokasyondaki ` +
+          `${automaticZeroLineCount} okutulmayan ürün satırı 0 kabul edilerek stoklara uygulandı.`
+        )
+      : "Sayım onaylandı ve stok farkları sisteme uygulandı.";
+
   redirect(
     createDetailUrl(
       inventoryCountId,
       "success",
-      "Sayım onaylandı ve stok farkları sisteme uygulandı."
+      successMessage
     )
   );
 }

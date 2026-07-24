@@ -23,12 +23,18 @@ const STATUS_LABELS:
   > = {
     DRAFT: "Taslak",
     ACTIVE: "Aktif",
+
     IN_PROGRESS:
       "Sayım Devam Ediyor",
+
     SUBMITTED:
       "Onay Bekliyor",
-    APPROVED: "Onaylandı",
-    CANCELLED: "İptal Edildi",
+
+    APPROVED:
+      "Onaylandı",
+
+    CANCELLED:
+      "İptal Edildi",
   };
 
 const STATUS_CLASSES:
@@ -76,6 +82,7 @@ function formatDate(
     {
       dateStyle: "medium",
       timeStyle: "short",
+
       timeZone:
         "Europe/Istanbul",
     }
@@ -85,18 +92,20 @@ function formatDate(
 export default async function InventoryCountsPage({
   searchParams,
 }: Props) {
-  const [profile, query] =
-    await Promise.all([
-      AuthorizationService.requireAnyPermission(
-        [
-          "INVENTORY_COUNT_VIEW",
-          "INVENTORY_COUNT_MANAGE",
-          "INVENTORY_COUNT_APPROVE",
-        ]
-      ),
+  const [
+    profile,
+    query,
+  ] = await Promise.all([
+    AuthorizationService.requireAnyPermission(
+      [
+        "INVENTORY_COUNT_VIEW",
+        "INVENTORY_COUNT_MANAGE",
+        "INVENTORY_COUNT_APPROVE",
+      ]
+    ),
 
-      searchParams,
-    ]);
+    searchParams,
+  ]);
 
   const inventoryCounts =
     await prisma.inventoryCount.findMany({
@@ -197,14 +206,23 @@ export default async function InventoryCountsPage({
             </p>
           </div>
 
-          {canManage && (
+          <div className="flex flex-wrap gap-3">
             <Link
-              href="/admin/inventory-counts/new"
-              className="rounded-xl bg-blue-900 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-blue-800"
+              href="/admin/inventory-counts/reports"
+              className="rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-3 font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
             >
-              Yeni Sayım Oluştur
+              Sayım Raporları
             </Link>
-          )}
+
+            {canManage && (
+              <Link
+                href="/admin/inventory-counts/new"
+                className="rounded-xl bg-blue-900 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-blue-800"
+              >
+                Yeni Sayım Oluştur
+              </Link>
+            )}
+          </div>
         </div>
 
         {query.success && (
@@ -308,15 +326,13 @@ export default async function InventoryCountsPage({
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-black ${
                               STATUS_CLASSES[
-                                inventoryCount
-                                  .status
+                                inventoryCount.status
                               ]
                             }`}
                           >
                             {
                               STATUS_LABELS[
-                                inventoryCount
-                                  .status
+                                inventoryCount.status
                               ]
                             }
                           </span>
@@ -349,12 +365,26 @@ export default async function InventoryCountsPage({
                         )}
                       </div>
 
-                      <Link
-                        href={`/admin/inventory-counts/${inventoryCount.id}`}
-                        className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800 transition hover:bg-blue-100"
-                      >
-                        Sayımı Aç
-                      </Link>
+                      <div className="flex flex-wrap gap-2">
+                        {inventoryCount.status ===
+                          InventoryCountStatus.APPROVED && (
+                          <Link
+                            href={`/admin/inventory-counts/reports?countNumber=${encodeURIComponent(
+                              inventoryCount.countNumber
+                            )}`}
+                            className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
+                          >
+                            Raporu Aç
+                          </Link>
+                        )}
+
+                        <Link
+                          href={`/admin/inventory-counts/${inventoryCount.id}`}
+                          className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800 transition hover:bg-blue-100"
+                        >
+                          Sayımı Aç
+                        </Link>
+                      </div>
                     </div>
 
                     <dl className="mt-5 grid gap-4 border-t border-slate-200 pt-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -479,6 +509,7 @@ export default async function InventoryCountsPage({
                         <strong>
                           İptal nedeni:
                         </strong>{" "}
+
                         {
                           inventoryCount.cancelReason
                         }

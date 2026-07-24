@@ -53,14 +53,19 @@ const STATUS_STYLES: Record<
 > = {
   DRAFT:
     "bg-slate-100 text-slate-700",
+
   ACTIVE:
     "bg-blue-100 text-blue-800",
+
   IN_PROGRESS:
     "bg-amber-100 text-amber-800",
+
   SUBMITTED:
     "bg-violet-100 text-violet-800",
+
   APPROVED:
     "bg-emerald-100 text-emerald-800",
+
   CANCELLED:
     "bg-red-100 text-red-800",
 };
@@ -71,6 +76,7 @@ const SCOPE_LABELS: Record<
 > = {
   ALL_LOCATIONS:
     "Tüm Depo Lokasyonları",
+
   SELECTED_LOCATIONS:
     "Seçili Lokasyonlar",
 };
@@ -600,17 +606,30 @@ export default async function InventoryCountDetailPage({
             inventoryCountId={
               inventoryCount.id
             }
+
             countNumber={
               inventoryCount.countNumber
             }
+
             status={
               inventoryCount.status
             }
+
             canApprove={
               canApprove
             }
+
             lines={
               approvalLines
+            }
+
+            totalLocationCount={
+              inventoryCount
+                ._count.locations
+            }
+
+            completedLocationCount={
+              completedLocationCount
             }
           />
         </div>
@@ -717,12 +736,15 @@ export default async function InventoryCountDetailPage({
               inventoryCountId={
                 inventoryCount.id
               }
+
               countNumber={
                 inventoryCount.countNumber
               }
+
               status={
                 inventoryCount.status
               }
+
               canManage={
                 canManage
               }
@@ -780,12 +802,15 @@ export default async function InventoryCountDetailPage({
               inventoryCountId={
                 inventoryCount.id
               }
+
               status={
                 inventoryCount.status
               }
+
               canManage={
                 canManage
               }
+
               availableAssignees={
                 availableAssignees
               }
