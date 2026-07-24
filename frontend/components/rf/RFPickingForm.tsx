@@ -28,6 +28,11 @@ type OrderItemOption = {
 type OrderOption = {
   id: number;
   orderNumber: string;
+  flowType:
+    | "DIRECT_ORDER"
+    | "WAVE";
+  waveId: string | null;
+  waveNo: string | null;
   status: string;
   customerCode: string;
   customerName: string;
@@ -69,11 +74,24 @@ type TargetUnitOption = {
   id: number;
   barcode: string;
   unitType: string;
+  purpose:
+    | "PICKING"
+    | "SHIPPING";
   status: string;
 
   assignedOrderId: number | null;
+  assignedWaveId: string | null;
   assignedOrderNumber: string;
   assignedCustomerName: string;
+  assignedWaveNo: string;
+  shippingStatus:
+    | "OPEN"
+    | "CLOSED"
+    | "READY_TO_SHIP"
+    | "SHIPPED"
+    | "CANCELLED"
+    | null;
+  packageSequence: number | null;
 
   warehouseCode: string;
   locationCode: string;
@@ -298,22 +316,69 @@ export default function RFPickingForm({
       ]
     );
 
-    const availableTargetUnits =
-  useMemo(() => {
-    if (!selectedOrder) {
-      return [];
-    }
+  const isWaveFlow =
+    selectedOrder?.flowType ===
+    "WAVE";
 
-    return targetUnits.filter(
-      (unit) =>
-        unit.assignedOrderId === null ||
-        unit.assignedOrderId ===
-          selectedOrder.id
-    );
-  }, [
-    targetUnits,
-    selectedOrder,
-  ]);
+  const targetPurposeLabel =
+    isWaveFlow
+      ? "Toplama THM"
+      : "Sevk THM";
+
+  const availableTargetUnits =
+    useMemo(() => {
+      if (!selectedOrder) {
+        return [];
+      }
+
+      if (
+        selectedOrder.flowType ===
+        "WAVE"
+      ) {
+        return targetUnits.filter(
+          (unit) =>
+            unit.purpose ===
+              "PICKING" &&
+            unit.assignedOrderId ===
+              null &&
+            (
+              unit.assignedWaveId ===
+                selectedOrder.waveId ||
+              (
+                unit.assignedWaveId ===
+                  null &&
+                unit.totalQuantity === 0
+              )
+            )
+        );
+      }
+
+      return targetUnits.filter(
+        (unit) =>
+          unit.purpose ===
+            "SHIPPING" &&
+          unit.assignedWaveId ===
+            null &&
+          (
+            (
+              unit.assignedOrderId ===
+                null &&
+              unit.totalQuantity === 0 &&
+              unit.shippingStatus ===
+                null
+            ) ||
+            (
+              unit.assignedOrderId ===
+                selectedOrder.id &&
+              unit.shippingStatus ===
+                "OPEN"
+            )
+          )
+      );
+    }, [
+      targetUnits,
+      selectedOrder,
+    ]);
 
   const selectedTargetUnit =
   useMemo(
@@ -1008,6 +1073,7 @@ export default function RFPickingForm({
       false;
 
     setOrderNumber("");
+    setTargetBarcode("");
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
@@ -1045,6 +1111,7 @@ export default function RFPickingForm({
       value.toUpperCase()
     );
 
+    setTargetBarcode("");
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
@@ -1176,7 +1243,7 @@ export default function RFPickingForm({
           </h2>
 
           <p className="mt-1 text-xs text-slate-500">
-            Sipariş → Hedef THM → Lokasyon
+            Sipariş → {targetPurposeLabel} → Lokasyon
             → Kaynak THM → Ürün → Miktar
           </p>
         </div>
@@ -1300,6 +1367,11 @@ export default function RFPickingForm({
             key={order.id}
             value={order.orderNumber}
           >
+            {order.flowType ===
+            "WAVE"
+              ? `Wave ${order.waveNo ?? ""}`
+              : "Doğrudan"}
+            {" — "}
             {order.customerCode}
             {" — "}
             {order.customerName}
@@ -1317,6 +1389,11 @@ export default function RFPickingForm({
             value={unit.barcode}
           >
             {unit.unitType}
+            {" — "}
+            {unit.purpose ===
+            "SHIPPING"
+              ? "Sevk THM"
+              : "Toplama THM"}
             {" — "}
             {unit.status}
             {" — Stok: "}
@@ -1362,8 +1439,26 @@ export default function RFPickingForm({
             )}
 
           {selectedOrder && (
-            <div className="mt-2 flex items-start justify-between gap-3 rounded-xl bg-blue-50 p-3 text-blue-900">
+            <div
+              className={`mt-2 flex items-start justify-between gap-3 rounded-xl p-3 ${
+                isWaveFlow
+                  ? "bg-violet-50 text-violet-900"
+                  : "bg-blue-50 text-blue-900"
+              }`}
+            >
               <div>
+                <span
+                  className={`mb-2 inline-flex rounded-full px-3 py-1 text-xs font-black ${
+                    isWaveFlow
+                      ? "bg-violet-200 text-violet-900"
+                      : "bg-cyan-200 text-cyan-900"
+                  }`}
+                >
+                  {isWaveFlow
+                    ? `WAVE TOPLAMA — ${selectedOrder.waveNo}`
+                    : "DOĞRUDAN SİPARİŞ — SEVK THM"}
+                </span>
+
                 <p className="font-black">
                   {selectedOrder.customerCode}
                   {" — "}
@@ -1383,9 +1478,9 @@ export default function RFPickingForm({
                 type="button"
                 onClick={changeOrder}
                 disabled={isPending}
-                className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-black"
+                className="rounded-lg border border-current bg-white px-3 py-2 text-xs font-black"
               >
-                Değiştir
+                Siparişi Değiştir
               </button>
             </div>
           )}
@@ -1393,7 +1488,7 @@ export default function RFPickingForm({
 
         <label className="block">
           <span className="mb-2 block text-sm font-black">
-            2. Hedef Toplama Koli / Paleti
+            2. Hedef {targetPurposeLabel}
           </span>
 
           <input
@@ -1412,7 +1507,7 @@ export default function RFPickingForm({
             autoComplete="off"
             placeholder={
               selectedOrder
-                ? "Hedef toplama THM'sini okut"
+                ? `${targetPurposeLabel} barkodunu okut`
                 : "Önce sipariş okut"
             }
             className="w-full rounded-xl border-2 border-slate-300 p-4 font-mono text-xl font-bold uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
@@ -1426,8 +1521,9 @@ export default function RFPickingForm({
           {normalizedTargetBarcode &&
             !selectedTargetUnit && (
               <p className="mt-2 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">
-                Kullanılabilir hedef taşıma
-                birimi bulunamadı.
+                Bu sipariş akışına uygun,
+                kullanılabilir{" "}
+                {targetPurposeLabel} bulunamadı.
               </p>
             )}
 
@@ -1435,6 +1531,8 @@ export default function RFPickingForm({
             <div className="mt-2 flex items-start justify-between gap-3 rounded-xl bg-green-50 p-3 text-green-900">
               <div>
                 <p className="font-black">
+                  {targetPurposeLabel}
+                  {" — "}
                   {selectedTargetUnit.unitType}
                   {" — "}
                   {selectedTargetUnit.status}
@@ -1444,23 +1542,46 @@ export default function RFPickingForm({
                   Hedef stok:{" "}
                   {targetTotalQuantity}
                 </p>
-                {selectedTargetUnit.assignedOrderId ? (
-  <p className="mt-2 text-sm font-bold">
-    Bağlı sipariş:{" "}
-    {
-      selectedTargetUnit.assignedOrderNumber
-    }
-    {" — "}
-    {
-      selectedTargetUnit.assignedCustomerName
-    }
-  </p>
-) : (
-  <p className="mt-2 text-sm font-bold">
-    Boş toplama THM’si — ilk işlemde
-    bu siparişe bağlanacak.
-  </p>
-)}
+                {isWaveFlow ? (
+                  selectedTargetUnit.assignedWaveId ? (
+                    <p className="mt-2 text-sm font-bold">
+                      Bağlı Wave:{" "}
+                      {
+                        selectedTargetUnit.assignedWaveNo
+                      }
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm font-bold">
+                      Boş Toplama THM — ilk
+                      işlemde{" "}
+                      {selectedOrder.waveNo}{" "}
+                      Wave’ine bağlanacak.
+                    </p>
+                  )
+                ) : (
+                  selectedTargetUnit.assignedOrderId ? (
+                    <p className="mt-2 text-sm font-bold">
+                      Bağlı sipariş:{" "}
+                      {
+                        selectedTargetUnit.assignedOrderNumber
+                      }
+                      {" — "}
+                      {
+                        selectedTargetUnit.assignedCustomerName
+                      }
+                      {selectedTargetUnit.packageSequence
+                        ? ` — Koli ${selectedTargetUnit.packageSequence}`
+                        : ""}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm font-bold">
+                      Boş Sevk THM — ilk
+                      işlemde bu siparişin yeni
+                      sevk kolisi olarak
+                      açılacak.
+                    </p>
+                  )
+                )}
 
 
               </div>
@@ -1471,10 +1592,24 @@ export default function RFPickingForm({
                 disabled={isPending}
                 className="rounded-lg border border-green-300 bg-white px-3 py-2 text-xs font-black"
               >
-                Değiştir
+                {targetPurposeLabel} Değiştir
               </button>
             </div>
           )}
+
+          {selectedOrder &&
+            !isWaveFlow && (
+              <p className="mt-2 rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm font-semibold leading-6 text-cyan-900">
+                Aynı Sevk THM içinde farklı
+                SKU’ları toplamaya devam
+                edebilirsiniz. Koli dolduğunda{" "}
+                <strong>
+                  Sevk THM Değiştir
+                </strong>{" "}
+                düğmesine basıp yeni koli
+                barkodunu okutun.
+              </p>
+            )}
         </label>
 
         {nextOrderItem && (

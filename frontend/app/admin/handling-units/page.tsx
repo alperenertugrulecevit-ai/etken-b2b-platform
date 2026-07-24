@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import {
+  HandlingUnitPurpose,
   HandlingUnitStatus,
   HandlingUnitType,
   Prisma,
@@ -17,6 +18,7 @@ import {
 type SearchParams = Promise<{
   search?: string;
   unitType?: string;
+  purpose?: string;
   status?: string;
 }>;
 
@@ -110,6 +112,45 @@ function getStatusClass(
   );
 }
 
+function getPurposeLabel(
+  purpose: HandlingUnitPurpose
+) {
+  const labels: Record<
+    HandlingUnitPurpose,
+    string
+  > = {
+    STOCK: "Stok THM",
+    PICKING: "Toplama THM",
+    PACKING: "Paketleme THM",
+    SHIPPING: "Sevk THM",
+    RECEIVING: "Mal Kabul THM",
+  };
+
+  return labels[purpose];
+}
+
+function getPurposeClass(
+  purpose: HandlingUnitPurpose
+) {
+  const classes: Record<
+    HandlingUnitPurpose,
+    string
+  > = {
+    STOCK:
+      "bg-slate-100 text-slate-700",
+    PICKING:
+      "bg-amber-100 text-amber-800",
+    PACKING:
+      "bg-violet-100 text-violet-800",
+    SHIPPING:
+      "bg-cyan-100 text-cyan-800",
+    RECEIVING:
+      "bg-green-100 text-green-800",
+  };
+
+  return classes[purpose];
+}
+
 function isHandlingUnitType(
   value: string
 ): value is HandlingUnitType {
@@ -127,6 +168,16 @@ function isHandlingUnitStatus(
     HandlingUnitStatus
   ).includes(
     value as HandlingUnitStatus
+  );
+}
+
+function isHandlingUnitPurpose(
+  value: string
+): value is HandlingUnitPurpose {
+  return Object.values(
+    HandlingUnitPurpose
+  ).includes(
+    value as HandlingUnitPurpose
   );
 }
 
@@ -161,6 +212,9 @@ export default async function HandlingUnitsPage({
 
   const unitType =
     query.unitType?.trim() ?? "";
+
+  const purpose =
+    query.purpose?.trim() ?? "";
 
   const status =
     query.status?.trim() ?? "";
@@ -224,6 +278,13 @@ export default async function HandlingUnitsPage({
     isHandlingUnitType(unitType)
   ) {
     where.unitType = unitType;
+  }
+
+  if (
+    purpose &&
+    isHandlingUnitPurpose(purpose)
+  ) {
+    where.purpose = purpose;
   }
 
   if (
@@ -345,6 +406,13 @@ export default async function HandlingUnitsPage({
       0
     );
 
+  const shippingUnitCount =
+    handlingUnits.filter(
+      (unit) =>
+        unit.purpose ===
+        HandlingUnitPurpose.SHIPPING
+    ).length;
+
   return (
     <section className="p-10">
       <div className="flex flex-wrap items-start justify-between gap-6">
@@ -354,7 +422,7 @@ export default async function HandlingUnitsPage({
           </h1>
 
           <p className="mt-2 text-gray-500">
-            Stok ve toplama taşıma
+            Stok, toplama ve sevk taşıma
             birimlerinin barkodlarını,
             içeriklerini, üst birimlerini ve
             adres durumlarını yönetin.
@@ -378,7 +446,7 @@ export default async function HandlingUnitsPage({
         </div>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
         <article className="rounded-2xl bg-white p-6 shadow">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Stok Paleti
@@ -462,6 +530,18 @@ export default async function HandlingUnitsPage({
             )}
           </p>
         </article>
+
+        <article className="rounded-2xl bg-white p-6 shadow">
+          <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Sevk THM
+          </p>
+
+          <p className="mt-3 text-4xl font-bold text-cyan-700">
+            {shippingUnitCount.toLocaleString(
+              "tr-TR"
+            )}
+          </p>
+        </article>
       </div>
 
       <div className="mt-8 grid gap-8 2xl:grid-cols-[460px_1fr]">
@@ -469,7 +549,7 @@ export default async function HandlingUnitsPage({
 
         <div className="space-y-6">
           <form className="rounded-2xl bg-white p-6 shadow">
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
               <label>
                 <span className="mb-2 block text-sm font-semibold">
                   Arama
@@ -512,6 +592,37 @@ export default async function HandlingUnitsPage({
                   <option value="PICKING_PALLET">
                     Toplama Paleti
                   </option>
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-semibold">
+                  Kullanım Amacı
+                </span>
+
+                <select
+                  name="purpose"
+                  defaultValue={purpose}
+                  className="w-full rounded-xl border bg-white p-4"
+                >
+                  <option value="">
+                    Tüm amaçlar
+                  </option>
+
+                  {Object.values(
+                    HandlingUnitPurpose
+                  ).map(
+                    (purposeOption) => (
+                      <option
+                        key={purposeOption}
+                        value={purposeOption}
+                      >
+                        {getPurposeLabel(
+                          purposeOption
+                        )}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
 
@@ -565,7 +676,7 @@ export default async function HandlingUnitsPage({
           </form>
 
           <div className="overflow-x-auto rounded-2xl bg-white shadow">
-            <table className="w-full min-w-[1700px] text-left">
+            <table className="w-full min-w-[1800px] text-left">
               <thead className="bg-blue-900 text-white">
                 <tr>
                   <th className="p-4">
@@ -574,6 +685,10 @@ export default async function HandlingUnitsPage({
 
                   <th className="p-4">
                     Tip
+                  </th>
+
+                  <th className="p-4">
+                    Amaç
                   </th>
 
                   <th className="p-4">
@@ -685,6 +800,18 @@ export default async function HandlingUnitsPage({
                             {
                               handlingUnit.barcode
                             }
+                          </span>
+                        </td>
+
+                        <td className="p-4">
+                          <span
+                            className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold ${getPurposeClass(
+                              handlingUnit.purpose
+                            )}`}
+                          >
+                            {getPurposeLabel(
+                              handlingUnit.purpose
+                            )}
                           </span>
                         </td>
 

@@ -6,18 +6,48 @@ import {
   HandlingUnitType,
   Prisma,
 } from "@prisma/client";
-import { revalidatePath } from "next/cache";
 
-import { prisma } from "@/lib/prisma";
-import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import {
+  revalidatePath,
+} from "next/cache";
+
+import {
+  prisma,
+} from "@/lib/prisma";
+
+import {
+  AuthorizationService,
+} from "@/modules/authorization/services/authorization.service";
 
 export type HandlingUnitActionState = {
   success: boolean;
   message: string;
+  handlingUnitId: number | null;
+  barcode: string;
+  purpose:
+    | "STOCK"
+    | "PICKING"
+    | "SHIPPING"
+    | "";
 };
 
+const CREATE_PURPOSES: HandlingUnitPurpose[] = [
+  HandlingUnitPurpose.STOCK,
+  HandlingUnitPurpose.PICKING,
+  HandlingUnitPurpose.SHIPPING,
+];
+
+type PhysicalUnitType =
+  | "BOX"
+  | "PALLET";
+
+type CreatePurpose =
+  | "STOCK"
+  | "PICKING"
+  | "SHIPPING";
+
 function normalizeBarcode(
-  value: FormDataEntryValue | null
+  value: FormDataEntryValue | null,
 ) {
   return String(value ?? "")
     .trim()
@@ -26,86 +56,122 @@ function normalizeBarcode(
 
 function getOptionalText(
   formData: FormData,
-  fieldName: string
+  fieldName: string,
 ) {
   const value = String(
-    formData.get(fieldName) ?? ""
+    formData.get(fieldName) ?? "",
   ).trim();
 
   return value || null;
 }
 
-function isHandlingUnitType(
-  value: string
-): value is HandlingUnitType {
-  return Object.values(
-    HandlingUnitType
-  ).includes(
-    value as HandlingUnitType
+function isPhysicalUnitType(
+  value: string,
+): value is PhysicalUnitType {
+  return (
+    value ===
+      HandlingUnitType.BOX ||
+    value ===
+      HandlingUnitType.PALLET
   );
 }
 
-function getBarcodePrefix(
-  unitType: HandlingUnitType
-) {
-  const prefixes: Record<
-    HandlingUnitType,
-    string
-  > = {
-    [HandlingUnitType.BOX]: "KOL",
-    [HandlingUnitType.PALLET]: "PLT",
-    [HandlingUnitType.PICKING_BOX]:
-      "PKOL",
-    [HandlingUnitType.PICKING_PALLET]:
-      "PPAL",
-  };
-
-  return prefixes[unitType];
+function isCreatePurpose(
+  value: string,
+): value is CreatePurpose {
+  return CREATE_PURPOSES.includes(
+    value as HandlingUnitPurpose,
+  );
 }
 
-function getHandlingUnitPurpose(
-  unitType: HandlingUnitType
+function resolveUnitType(
+  physicalType: PhysicalUnitType,
+  purpose: CreatePurpose,
 ) {
   if (
-    unitType ===
-      HandlingUnitType.PICKING_BOX ||
-    unitType ===
-      HandlingUnitType.PICKING_PALLET
+    purpose ===
+    HandlingUnitPurpose.PICKING
   ) {
-    return HandlingUnitPurpose.PICKING;
+    return physicalType ===
+      HandlingUnitType.BOX
+      ? HandlingUnitType.PICKING_BOX
+      : HandlingUnitType.PICKING_PALLET;
   }
 
-  return HandlingUnitPurpose.STOCK;
+  return physicalType;
+}
+
+function getBarcodePrefix(
+  physicalType: PhysicalUnitType,
+  purpose: CreatePurpose,
+) {
+  if (
+    purpose ===
+    HandlingUnitPurpose.SHIPPING
+  ) {
+    return physicalType ===
+      HandlingUnitType.BOX
+      ? "SKOL"
+      : "SPAL";
+  }
+
+  if (
+    purpose ===
+    HandlingUnitPurpose.PICKING
+  ) {
+    return physicalType ===
+      HandlingUnitType.BOX
+      ? "PKOL"
+      : "PPAL";
+  }
+
+  return physicalType ===
+    HandlingUnitType.BOX
+    ? "KOL"
+    : "PLT";
 }
 
 function getHandlingUnitLabel(
-  unitType: HandlingUnitType
+  physicalType: PhysicalUnitType,
+  purpose: CreatePurpose,
 ) {
-  const labels: Record<
-    HandlingUnitType,
-    string
-  > = {
-    [HandlingUnitType.BOX]: "Koli",
-    [HandlingUnitType.PALLET]: "Palet",
-    [HandlingUnitType.PICKING_BOX]:
-      "Toplama Kolisi",
-    [HandlingUnitType.PICKING_PALLET]:
-      "Toplama Paleti",
-  };
+  const typeLabel =
+    physicalType ===
+    HandlingUnitType.BOX
+      ? "Kolisi"
+      : "Paleti";
 
-  return labels[unitType];
+  if (
+    purpose ===
+    HandlingUnitPurpose.SHIPPING
+  ) {
+    return `Sevk ${typeLabel}`;
+  }
+
+  if (
+    purpose ===
+    HandlingUnitPurpose.PICKING
+  ) {
+    return `Toplama ${typeLabel}`;
+  }
+
+  return `Stok ${typeLabel}`;
 }
 
 async function createAutomaticBarcode(
-  unitType: HandlingUnitType
+  physicalType: PhysicalUnitType,
+  purpose: CreatePurpose,
 ) {
   const prefix =
-    getBarcodePrefix(unitType);
+    getBarcodePrefix(
+      physicalType,
+      purpose,
+    );
 
   const lastUnit =
     await prisma.handlingUnit.findFirst({
       where: {
-        unitType,
+        purpose,
         barcode: {
           startsWith: prefix,
         },
@@ -122,29 +188,26 @@ async function createAutomaticBarcode(
   let nextNumber = 1;
 
   if (lastUnit) {
-    const numberPart =
-      lastUnit.barcode.slice(
-        prefix.length
+    const barcodeNumber =
+      Number(
+        lastUnit.barcode.slice(
+          prefix.length,
+        ),
       );
 
-    const barcodeNumber =
-      Number(numberPart);
-
-    if (
-      Number.isInteger(barcodeNumber) &&
+    nextNumber =
+      Number.isInteger(
+        barcodeNumber,
+      ) &&
       barcodeNumber > 0
-    ) {
-      nextNumber =
-        barcodeNumber + 1;
-    } else {
-      nextNumber =
-        lastUnit.id + 1;
-    }
+        ? barcodeNumber + 1
+        : lastUnit.id + 1;
   }
 
-  let barcode = `${prefix}${String(
-    nextNumber
-  ).padStart(8, "0")}`;
+  let barcode =
+    `${prefix}${String(
+      nextNumber,
+    ).padStart(8, "0")}`;
 
   while (
     await prisma.handlingUnit.findUnique({
@@ -158,9 +221,10 @@ async function createAutomaticBarcode(
   ) {
     nextNumber += 1;
 
-    barcode = `${prefix}${String(
-      nextNumber
-    ).padStart(8, "0")}`;
+    barcode =
+      `${prefix}${String(
+        nextNumber,
+      ).padStart(8, "0")}`;
   }
 
   return barcode;
@@ -168,44 +232,72 @@ async function createAutomaticBarcode(
 
 export async function createHandlingUnit(
   _previousState: HandlingUnitActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<HandlingUnitActionState> {
   await AuthorizationService.requirePermission(
-    "HANDLING_UNIT_MANAGE"
+    "HANDLING_UNIT_MANAGE",
   );
 
-  const unitTypeValue = String(
-    formData.get("unitType") ?? ""
-  )
-    .trim()
-    .toUpperCase();
+  const physicalTypeValue =
+    String(
+      formData.get("unitType") ??
+        "",
+    )
+      .trim()
+      .toUpperCase();
+
+  const purposeValue =
+    String(
+      formData.get("purpose") ??
+        "",
+    )
+      .trim()
+      .toUpperCase();
 
   if (
-    !isHandlingUnitType(
-      unitTypeValue
+    !isPhysicalUnitType(
+      physicalTypeValue,
     )
   ) {
     return {
       success: false,
       message:
-        "Geçerli bir taşıma birimi tipi seçin.",
+        "Koli veya palet tiplerinden birini seçin.",
+      handlingUnitId: null,
+      barcode: "",
+      purpose: "",
+    };
+  }
+
+  if (
+    !isCreatePurpose(
+      purposeValue,
+    )
+  ) {
+    return {
+      success: false,
+      message:
+        "Stok, Toplama veya Sevk kullanım amaçlarından birini seçin.",
+      handlingUnitId: null,
+      barcode: "",
+      purpose: "",
     };
   }
 
   const manualBarcode =
     normalizeBarcode(
-      formData.get("barcode")
+      formData.get("barcode"),
     );
 
   const useAutomaticBarcode =
     formData.get(
-      "useAutomaticBarcode"
+      "useAutomaticBarcode",
     ) === "on";
 
   const description =
     getOptionalText(
       formData,
-      "description"
+      "description",
     );
 
   let barcode = manualBarcode;
@@ -213,7 +305,8 @@ export async function createHandlingUnit(
   if (useAutomaticBarcode) {
     barcode =
       await createAutomaticBarcode(
-        unitTypeValue
+        physicalTypeValue,
+        purposeValue,
       );
   }
 
@@ -222,6 +315,9 @@ export async function createHandlingUnit(
       success: false,
       message:
         "Barkod girin veya otomatik barkod oluşturmayı seçin.",
+      handlingUnitId: null,
+      barcode: "",
+      purpose: "",
     };
   }
 
@@ -230,12 +326,16 @@ export async function createHandlingUnit(
       success: false,
       message:
         "Barkod en fazla 60 karakter olabilir.",
+      handlingUnitId: null,
+      barcode: "",
+      purpose: "",
     };
   }
 
-  const purpose =
-    getHandlingUnitPurpose(
-      unitTypeValue
+  const unitType =
+    resolveUnitType(
+      physicalTypeValue,
+      purposeValue,
     );
 
   try {
@@ -243,28 +343,36 @@ export async function createHandlingUnit(
       await prisma.handlingUnit.create({
         data: {
           barcode,
-          unitType:
-            unitTypeValue,
-          purpose,
+          unitType,
+          purpose:
+            purposeValue,
           status:
             HandlingUnitStatus.OPEN,
           warehouseId: null,
           locationId: null,
           parentUnitId: null,
           assignedOrderId: null,
+          assignedWaveId: null,
           description,
         },
         select: {
           id: true,
           barcode: true,
-          unitType: true,
         },
       });
 
     revalidatePath("/admin");
 
     revalidatePath(
-      "/admin/handling-units"
+      "/admin/handling-units",
+    );
+
+    revalidatePath(
+      "/rf/packing",
+    );
+
+    revalidatePath(
+      "/rf/picking",
     );
 
     return {
@@ -272,13 +380,20 @@ export async function createHandlingUnit(
       message:
         `${handlingUnit.barcode} numaralı ` +
         `${getHandlingUnitLabel(
-          handlingUnit.unitType
+          physicalTypeValue,
+          purposeValue,
         )} başarıyla oluşturuldu.`,
+      handlingUnitId:
+        handlingUnit.id,
+      barcode:
+        handlingUnit.barcode,
+      purpose:
+        purposeValue,
     };
   } catch (error) {
     console.error(
       "Taşıma birimi oluşturma hatası:",
-      error
+      error,
     );
 
     if (
@@ -290,6 +405,9 @@ export async function createHandlingUnit(
         success: false,
         message:
           "Bu barkodla kayıtlı başka bir taşıma birimi bulunuyor.",
+        handlingUnitId: null,
+        barcode: "",
+        purpose: "",
       };
     }
 
@@ -299,20 +417,25 @@ export async function createHandlingUnit(
         error instanceof Error
           ? error.message
           : "Taşıma birimi oluşturulurken beklenmeyen bir hata oluştu.",
+      handlingUnitId: null,
+      barcode: "",
+      purpose: "",
     };
   }
 }
 
 export async function toggleHandlingUnitStatus(
   handlingUnitId: number,
-  currentStatus: HandlingUnitStatus
+  currentStatus: HandlingUnitStatus,
 ) {
   await AuthorizationService.requirePermission(
-    "HANDLING_UNIT_MANAGE"
+    "HANDLING_UNIT_MANAGE",
   );
 
   if (
-    !Number.isInteger(handlingUnitId) ||
+    !Number.isInteger(
+      handlingUnitId,
+    ) ||
     handlingUnitId <= 0
   ) {
     return;
@@ -326,6 +449,12 @@ export async function toggleHandlingUnitStatus(
       select: {
         id: true,
         status: true,
+        purpose: true,
+        shippingProfile: {
+          select: {
+            status: true,
+          },
+        },
         items: {
           select: {
             quantity: true,
@@ -343,11 +472,21 @@ export async function toggleHandlingUnitStatus(
     return;
   }
 
+  if (
+    handlingUnit.purpose ===
+      HandlingUnitPurpose.SHIPPING &&
+    handlingUnit.shippingProfile
+  ) {
+    return;
+  }
+
   const hasContent =
     handlingUnit.items.some(
-      (item) => item.quantity > 0
+      (item) =>
+        item.quantity > 0,
     ) ||
-    handlingUnit.childUnits.length > 0;
+    handlingUnit.childUnits.length >
+      0;
 
   let nextStatus:
     HandlingUnitStatus;
@@ -388,10 +527,10 @@ export async function toggleHandlingUnitStatus(
   });
 
   revalidatePath(
-    "/admin/handling-units"
+    "/admin/handling-units",
   );
 
   revalidatePath(
-    `/admin/handling-units/${handlingUnitId}`
+    `/admin/handling-units/${handlingUnitId}`,
   );
 }
