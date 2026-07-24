@@ -114,10 +114,10 @@ const menuItems: RFMenuItem[] = [
   {
     title: "Paketleme",
     description:
-      "Toplanan siparişleri kontrol edin ve paketleyin.",
+      "Wave Toplama THM’lerini alıcı sırasına göre Sevk THM’lere dağıtın.",
     icon: "🎁",
     href: "/rf/packing",
-    status: "planned",
+    status: "active",
     permissionCodes: [
       "PICKING_EXECUTE",
     ],

@@ -7,10 +7,18 @@ import {
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { updateWaveStatusAction } from "./actions";
+import {
+  createWaveDistributionPlanAction,
+} from "./distribution-actions";
 
 type WaveDetailPageProps = {
   params: Promise<{
     id: string;
+  }>;
+
+  searchParams: Promise<{
+    success?: string;
+    error?: string;
   }>;
 };
 
@@ -236,8 +244,17 @@ function StatusActionButton({
 
 export default async function WaveDetailPage({
   params,
+  searchParams,
 }: WaveDetailPageProps) {
-  const { id } = await params;
+  const [
+    {
+      id,
+    },
+    query,
+  ] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   const wave = await prisma.wave.findUnique({
     where: {
@@ -249,6 +266,36 @@ export default async function WaveDetailPage({
         select: {
           orders: true,
           assignments: true,
+          distributions: true,
+        },
+      },
+
+      distributions: {
+        orderBy: {
+          sequenceNumber: "asc",
+        },
+
+        select: {
+          id: true,
+          sequenceNumber: true,
+          distributionCode: true,
+          status: true,
+          customerCode: true,
+          customerName: true,
+          addressTitle: true,
+          city: true,
+          district: true,
+          plannedOrderCount: true,
+          plannedLineCount: true,
+          plannedQuantity: true,
+          packedQuantity: true,
+          shippedQuantity: true,
+
+          _count: {
+            select: {
+              shippingUnits: true,
+            },
+          },
         },
       },
     },
@@ -272,6 +319,28 @@ export default async function WaveDetailPage({
     wave.plannedQuantity -
       wave.completedQuantity
   );
+
+  const distributionOrderCount =
+    wave.distributions.reduce(
+      (total, distribution) =>
+        total +
+        distribution.plannedOrderCount,
+      0
+    );
+
+  const distributionQuantity =
+    wave.distributions.reduce(
+      (total, distribution) =>
+        total +
+        distribution.plannedQuantity,
+      0
+    );
+
+  const canCreateDistributionPlan =
+    wave.status !==
+      WaveStatus.COMPLETED &&
+    wave.status !==
+      WaveStatus.CANCELLED;
 
   const progressItems = [
     {
@@ -373,6 +442,24 @@ export default async function WaveDetailPage({
           </Link>
         </div>
       </div>
+
+      {query.success && (
+        <div
+          role="status"
+          className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-800"
+        >
+          {query.success}
+        </div>
+      )}
+
+      {query.error && (
+        <div
+          role="alert"
+          className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 font-semibold text-red-800"
+        >
+          {query.error}
+        </div>
+      )}
 
       {/* DURUM İŞLEMLERİ */}
 
@@ -547,6 +634,243 @@ export default async function WaveDetailPage({
             )}
           </div>
         </div>
+      </section>
+
+      {/* WAVE DAĞILIM PLANI */}
+
+      <section className="mt-6 rounded-3xl border border-cyan-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">
+              Paketleme Hazırlığı
+            </p>
+
+            <h2 className="mt-2 text-2xl font-bold text-slate-950">
+              Wave Dağılım Planı
+            </h2>
+
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Wave siparişleri müşteri ve
+              teslimat adresine göre
+              birleştirilir. Her alıcıya
+              kalıcı olarak 001, 002, 003
+              şeklinde dağılım sırası
+              verilir.
+            </p>
+          </div>
+
+          {canCreateDistributionPlan ? (
+            <form
+              action={
+                createWaveDistributionPlanAction
+              }
+            >
+              <input
+                type="hidden"
+                name="waveId"
+                value={wave.id}
+              />
+
+              <button
+                type="submit"
+                className="rounded-xl bg-cyan-700 px-5 py-3 font-bold text-white transition hover:bg-cyan-600"
+              >
+                {wave._count
+                  .distributions > 0
+                  ? "Dağılım Planını Yenile"
+                  : "Dağılım Planı Oluştur"}
+              </button>
+            </form>
+          ) : (
+            <span className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
+              Bu Wave için plan değiştirilemez
+            </span>
+          )}
+        </div>
+
+        {wave.distributions.length ===
+        0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50 p-8 text-center">
+            <div className="text-4xl">
+              📦
+            </div>
+
+            <h3 className="mt-3 font-bold text-cyan-950">
+              Henüz dağılım planı yok
+            </h3>
+
+            <p className="mt-2 text-sm leading-6 text-cyan-800">
+              Siparişler Wave’e eklendikten
+              sonra planı oluşturun. Aynı
+              müşteri ve teslimat adresindeki
+              birden fazla sipariş tek alıcı
+              sırasında birleştirilecektir.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <article className="rounded-2xl bg-cyan-50 p-4">
+                <p className="text-xs font-bold uppercase text-cyan-700">
+                  Alıcı Sırası
+                </p>
+
+                <p className="mt-2 text-3xl font-black text-cyan-950">
+                  {
+                    wave.distributions
+                      .length
+                  }
+                </p>
+              </article>
+
+              <article className="rounded-2xl bg-blue-50 p-4">
+                <p className="text-xs font-bold uppercase text-blue-700">
+                  Sipariş
+                </p>
+
+                <p className="mt-2 text-3xl font-black text-blue-950">
+                  {formatNumber(
+                    distributionOrderCount
+                  )}
+                </p>
+              </article>
+
+              <article className="rounded-2xl bg-violet-50 p-4">
+                <p className="text-xs font-bold uppercase text-violet-700">
+                  Planlanan Ürün
+                </p>
+
+                <p className="mt-2 text-3xl font-black text-violet-950">
+                  {formatNumber(
+                    distributionQuantity
+                  )}
+                </p>
+              </article>
+            </div>
+
+            <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-bold text-slate-600">
+                      Sıra
+                    </th>
+
+                    <th className="px-4 py-3 text-left font-bold text-slate-600">
+                      Alıcı
+                    </th>
+
+                    <th className="px-4 py-3 text-left font-bold text-slate-600">
+                      Teslimat Noktası
+                    </th>
+
+                    <th className="px-4 py-3 text-right font-bold text-slate-600">
+                      Sipariş
+                    </th>
+
+                    <th className="px-4 py-3 text-right font-bold text-slate-600">
+                      Satır
+                    </th>
+
+                    <th className="px-4 py-3 text-right font-bold text-slate-600">
+                      Miktar
+                    </th>
+
+                    <th className="px-4 py-3 text-right font-bold text-slate-600">
+                      Sevk THM
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {wave.distributions.map(
+                    (distribution) => (
+                      <tr
+                        key={
+                          distribution.id
+                        }
+                      >
+                        <td className="px-4 py-4">
+                          <span className="inline-flex rounded-lg bg-cyan-100 px-3 py-2 font-mono text-lg font-black text-cyan-900">
+                            {distribution.sequenceNumber
+                              .toString()
+                              .padStart(
+                                3,
+                                "0"
+                              )}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <p className="font-bold text-slate-900">
+                            {distribution.customerCode ||
+                              "—"}
+                          </p>
+
+                          <p className="mt-1 text-slate-600">
+                            {
+                              distribution.customerName
+                            }
+                          </p>
+                        </td>
+
+                        <td className="px-4 py-4 text-slate-700">
+                          <p className="font-semibold">
+                            {distribution.addressTitle ||
+                              "Müşteri ana adresi"}
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            {
+                              distribution.district
+                            }
+                            {" / "}
+                            {
+                              distribution.city
+                            }
+                          </p>
+                        </td>
+
+                        <td className="px-4 py-4 text-right font-bold">
+                          {
+                            distribution.plannedOrderCount
+                          }
+                        </td>
+
+                        <td className="px-4 py-4 text-right">
+                          {
+                            distribution.plannedLineCount
+                          }
+                        </td>
+
+                        <td className="px-4 py-4 text-right font-bold">
+                          {formatNumber(
+                            distribution.plannedQuantity
+                          )}
+                        </td>
+
+                        <td className="px-4 py-4 text-right font-bold text-blue-800">
+                          {
+                            distribution
+                              ._count
+                              .shippingUnits
+                          }
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              Paketleme veya Sevk THM kaydı
+              başladıktan sonra dağılım planı
+              güvenlik nedeniyle yeniden
+              oluşturulamaz.
+            </p>
+          </>
+        )}
       </section>
 
       {/* KPI KARTLARI */}

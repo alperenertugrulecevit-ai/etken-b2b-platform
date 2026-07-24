@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   useActionState,
   useEffect,
@@ -15,6 +17,9 @@ import {
 const initialState: HandlingUnitActionState = {
   success: false,
   message: "",
+  handlingUnitId: null,
+  barcode: "",
+  purpose: "",
 };
 
 export default function HandlingUnitCreateForm() {
@@ -32,12 +37,17 @@ export default function HandlingUnitCreateForm() {
   ] = useState("BOX");
 
   const [
+    selectedPurpose,
+    setSelectedPurpose,
+  ] = useState("STOCK");
+
+  const [
     state,
     formAction,
     isPending,
   ] = useActionState(
     createHandlingUnit,
-    initialState
+    initialState,
   );
 
   useEffect(() => {
@@ -45,39 +55,59 @@ export default function HandlingUnitCreateForm() {
       formRef.current?.reset();
       setUseAutomaticBarcode(true);
       setSelectedType("BOX");
+      setSelectedPurpose("STOCK");
     }
   }, [state.success]);
 
   function getBarcodeExample() {
-    switch (selectedType) {
-      case "PALLET":
-        return "PLT00000001";
-
-      case "PICKING_BOX":
-        return "PKOL00000001";
-
-      case "PICKING_PALLET":
-        return "PPAL00000001";
-
-      default:
-        return "KOL00000001";
+    if (
+      selectedPurpose ===
+      "SHIPPING"
+    ) {
+      return selectedType ===
+        "PALLET"
+        ? "SPAL00000001"
+        : "SKOL00000001";
     }
+
+    if (
+      selectedPurpose ===
+      "PICKING"
+    ) {
+      return selectedType ===
+        "PALLET"
+        ? "PPAL00000001"
+        : "PKOL00000001";
+    }
+
+    return selectedType ===
+      "PALLET"
+      ? "PLT00000001"
+      : "KOL00000001";
   }
 
   function getButtonText() {
-    switch (selectedType) {
-      case "PALLET":
-        return "Palet Oluştur";
+    const typeLabel =
+      selectedType ===
+      "PALLET"
+        ? "Paleti"
+        : "Kolisi";
 
-      case "PICKING_BOX":
-        return "Toplama Kolisi Oluştur";
-
-      case "PICKING_PALLET":
-        return "Toplama Paleti Oluştur";
-
-      default:
-        return "Koli Oluştur";
+    if (
+      selectedPurpose ===
+      "SHIPPING"
+    ) {
+      return `Sevk ${typeLabel} Oluştur`;
     }
+
+    if (
+      selectedPurpose ===
+      "PICKING"
+    ) {
+      return `Toplama ${typeLabel} Oluştur`;
+    }
+
+    return `Stok ${typeLabel} Oluştur`;
   }
 
   return (
@@ -91,8 +121,9 @@ export default function HandlingUnitCreateForm() {
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-gray-500">
-        Stok veya RF toplama işlemlerinde
-        kullanılacak taşıma birimini oluşturun.
+        Fiziksel tipi ve operasyon amacını
+        seçerek Stok, Toplama veya Sevk
+        THM oluşturun.
       </p>
 
       {state.message && (
@@ -113,21 +144,73 @@ export default function HandlingUnitCreateForm() {
           <p className="mt-2 leading-6">
             {state.message}
           </p>
+
+          {state.success &&
+            state.handlingUnitId && (
+              <Link
+                href={`/labels/print?type=handling-unit&ids=${state.handlingUnitId}&layout=thermal-70x40`}
+                target="_blank"
+                className="mt-4 inline-flex rounded-lg bg-slate-900 px-4 py-3 font-bold text-white"
+              >
+                🖨️ {state.barcode} Etiketini Yazdır
+              </Link>
+            )}
         </div>
       )}
 
       <div className="mt-6 space-y-5">
         <label className="block">
           <span className="mb-2 block text-sm font-semibold">
-            Taşıma Birimi Tipi
+            Kullanım Amacı
+          </span>
+
+          <select
+            name="purpose"
+            value={selectedPurpose}
+            onChange={(event) =>
+              setSelectedPurpose(
+                event.target.value,
+              )
+            }
+            className="w-full rounded-xl border bg-white p-4 font-semibold"
+            required
+          >
+            <option value="STOCK">
+              📚 Stok THM
+            </option>
+
+            <option value="PICKING">
+              🧺 Toplama THM
+            </option>
+
+            <option value="SHIPPING">
+              🚚 Sevk THM
+            </option>
+          </select>
+
+          {selectedPurpose ===
+            "SHIPPING" && (
+            <p className="mt-2 rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm font-semibold leading-6 text-cyan-900">
+              Bu THM, doğrudan sipariş
+              toplamasında veya Wave
+              paketlemesinde hedef sevk
+              kolisi/paleti olarak
+              kullanılacaktır.
+            </p>
+          )}
+        </label>
+
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold">
+            Fiziksel Tip
           </span>
 
           <select
             name="unitType"
             value={selectedType}
-            onChange={(e) =>
+            onChange={(event) =>
               setSelectedType(
-                e.target.value
+                event.target.value,
               )
             }
             className="w-full rounded-xl border bg-white p-4"
@@ -140,14 +223,6 @@ export default function HandlingUnitCreateForm() {
             <option value="PALLET">
               🟦 Palet
             </option>
-
-            <option value="PICKING_BOX">
-              🟨 Toplama Kolisi
-            </option>
-
-            <option value="PICKING_PALLET">
-              🟧 Toplama Paleti
-            </option>
           </select>
         </label>
 
@@ -158,7 +233,7 @@ export default function HandlingUnitCreateForm() {
             checked={useAutomaticBarcode}
             onChange={(event) =>
               setUseAutomaticBarcode(
-                event.target.checked
+                event.target.checked,
               )
             }
             className="mt-1 h-5 w-5"
@@ -219,7 +294,10 @@ export default function HandlingUnitCreateForm() {
         className={`mt-7 w-full rounded-xl py-4 font-bold ${
           isPending
             ? "cursor-not-allowed bg-slate-300 text-slate-500"
-            : "bg-blue-900 text-white hover:bg-blue-800"
+            : selectedPurpose ===
+                "SHIPPING"
+              ? "bg-cyan-700 text-white hover:bg-cyan-600"
+              : "bg-blue-900 text-white hover:bg-blue-800"
         }`}
       >
         {isPending

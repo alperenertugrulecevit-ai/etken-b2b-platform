@@ -9,27 +9,31 @@ datasource db {
 }
 
 model Product {
-  id                  Int                      @id @default(autoincrement())
-  code                String                   @unique
-  barcode             String                   @unique
-  name                String
-  brand               String
-  category            String
-  supplier            String
-  price               Float
-  stock               Int
-  reservedStock       Int                      @default(0)
-  vat                 Int
-  ownStock            Boolean
-  isActive            Boolean                  @default(true)
-  createdAt           DateTime                 @default(now())
-  orderItems          OrderItem[]
-  purchaseOrderItems  PurchaseOrderItem[]
-  stockMovements      StockMovement[]
-  locationStocks      WarehouseLocationStock[]
-  handlingUnitItems   HandlingUnitItem[]
-  pickingRecords      PickingRecord[]
-  inventoryCountLines InventoryCountLine[]
+  id                    Int                        @id @default(autoincrement())
+  code                  String                     @unique
+  barcode               String                     @unique
+  name                  String
+  brand                 String
+  category              String
+  supplier              String
+  price                 Float
+  stock                 Int
+  reservedStock         Int                        @default(0)
+  vat                   Int
+  ownStock              Boolean
+  isActive              Boolean                    @default(true)
+  createdAt             DateTime                   @default(now())
+  orderItems            OrderItem[]
+  purchaseOrderItems    PurchaseOrderItem[]
+  stockMovements        StockMovement[]
+  locationStocks        WarehouseLocationStock[]
+  handlingUnitItems     HandlingUnitItem[]
+  pickingRecords        PickingRecord[]
+  packingRecords        PackingRecord[]
+  shippingUnitItems     ShippingHandlingUnitItem[]
+  dispatchLines         DispatchDocumentLine[]
+  inventoryCountLines   InventoryCountLine[]
+  waveDistributionLines WaveDistributionLine[]
 }
 
 model Category {
@@ -72,25 +76,27 @@ model Brand {
 }
 
 model Customer {
-  id              Int               @id @default(autoincrement())
-  customerCode    String            @unique
-  companyName     String
-  taxOffice       String?
-  taxNumber       String?           @unique
-  contactName     String?
-  phone           String?
-  email           String?
-  address         String?
-  city            String?
-  district        String?
-  paymentTermDays Int               @default(0)
-  discountRate    Float             @default(0)
-  creditLimit     Float             @default(0)
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  addresses       CustomerAddress[]
-  orders          Order[]
+  id                    Int                    @id @default(autoincrement())
+  customerCode          String                 @unique
+  companyName           String
+  taxOffice             String?
+  taxNumber             String?                @unique
+  contactName           String?
+  phone                 String?
+  email                 String?
+  address               String?
+  city                  String?
+  district              String?
+  paymentTermDays       Int                    @default(0)
+  discountRate          Float                  @default(0)
+  creditLimit           Float                  @default(0)
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  addresses             CustomerAddress[]
+  orders                Order[]
+  waveDistributions     WaveDistribution[]
+  shippingHandlingUnits ShippingHandlingUnit[]
 }
 
 model CustomerAddress {
@@ -115,8 +121,10 @@ model CustomerAddress {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  orders   Order[]
+  customer              Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders                Order[]
+  waveDistributions     WaveDistribution[]
+  shippingHandlingUnits ShippingHandlingUnit[]
 
   @@index([customerId])
 }
@@ -157,13 +165,20 @@ model Order {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  customer              Customer         @relation(fields: [customerId], references: [id])
-  shippingAddress       CustomerAddress? @relation(fields: [shippingAddressId], references: [id])
-  items                 OrderItem[]
-  stockMovements        StockMovement[]
-  pickingRecords        PickingRecord[]
-  assignedHandlingUnits HandlingUnit[]   @relation("AssignedHandlingUnits")
-  waveOrders            WaveOrder[]
+  customer                   Customer                    @relation(fields: [customerId], references: [id])
+  shippingAddress            CustomerAddress?            @relation(fields: [shippingAddressId], references: [id])
+  items                      OrderItem[]
+  stockMovements             StockMovement[]
+  pickingRecords             PickingRecord[]
+  assignedHandlingUnits      HandlingUnit[]              @relation("AssignedHandlingUnits")
+  waveOrders                 WaveOrder[]
+  fulfillment                OrderFulfillment?
+  waveDistributionOrders     WaveDistributionOrder[]
+  waveDistributionLines      WaveDistributionLine[]
+  shippingHandlingUnitOrders ShippingHandlingUnitOrder[]
+  shippingHandlingUnitItems  ShippingHandlingUnitItem[]
+  packingRecords             PackingRecord[]
+  dispatchLines              DispatchDocumentLine[]
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -172,27 +187,35 @@ model Order {
 }
 
 model OrderItem {
-  id             Int      @id @default(autoincrement())
-  orderId        Int
-  productId      Int
-  productCode    String
-  productName    String
-  quantity       Int
-  pickedQuantity Int      @default(0)
-  unitPrice      Float
-  vatRate        Int
-  lineNet        Float
-  vatAmount      Float
-  lineTotal      Float
-  createdAt      DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  orderId         Int
+  productId       Int
+  productCode     String
+  productName     String
+  quantity        Int
+  pickedQuantity  Int      @default(0)
+  packedQuantity  Int      @default(0)
+  shippedQuantity Int      @default(0)
+  unitPrice       Float
+  vatRate         Int
+  lineNet         Float
+  vatAmount       Float
+  lineTotal       Float
+  createdAt       DateTime @default(now())
 
-  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product        Product         @relation(fields: [productId], references: [id])
-  pickingRecords PickingRecord[]
+  order                     Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product                   Product                    @relation(fields: [productId], references: [id])
+  pickingRecords            PickingRecord[]
+  waveDistributionLines     WaveDistributionLine[]
+  shippingHandlingUnitItems ShippingHandlingUnitItem[]
+  packingRecords            PackingRecord[]
+  dispatchLines             DispatchDocumentLine[]
 
   @@index([orderId])
   @@index([productId])
   @@index([pickedQuantity])
+  @@index([packedQuantity])
+  @@index([shippedQuantity])
 }
 
 enum PurchaseOrderStatus {
@@ -273,27 +296,30 @@ enum StockMovementType {
 }
 
 model StockMovement {
-  id                    Int               @id @default(autoincrement())
-  productId             Int
-  orderId               Int?
-  purchaseOrderId       Int?
-  movementType          StockMovementType
-  physicalChange        Int               @default(0)
-  reservedChange        Int               @default(0)
-  physicalBalanceAfter  Int
-  reservedBalanceAfter  Int
-  availableBalanceAfter Int
-  documentNumber        String?
-  description           String?
-  createdAt             DateTime          @default(now())
+  id                     Int               @id @default(autoincrement())
+  productId              Int
+  orderId                Int?
+  purchaseOrderId        Int?
+  shippingHandlingUnitId String?
+  movementType           StockMovementType
+  physicalChange         Int               @default(0)
+  reservedChange         Int               @default(0)
+  physicalBalanceAfter   Int
+  reservedBalanceAfter   Int
+  availableBalanceAfter  Int
+  documentNumber         String?
+  description            String?
+  createdAt              DateTime          @default(now())
 
-  product       Product        @relation(fields: [productId], references: [id])
-  order         Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  product              Product               @relation(fields: [productId], references: [id])
+  order                Order?                @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  purchaseOrder        PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  shippingHandlingUnit ShippingHandlingUnit? @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@index([orderId])
   @@index([purchaseOrderId])
+  @@index([shippingHandlingUnitId])
   @@index([movementType])
   @@index([createdAt])
 }
@@ -409,6 +435,7 @@ model HandlingUnit {
   locationId      Int?
   parentUnitId    Int?
   assignedOrderId Int?
+  assignedWaveId  String?
   description     String?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
@@ -420,11 +447,15 @@ model HandlingUnit {
   childUnits HandlingUnit[] @relation("HandlingUnitHierarchy")
 
   assignedOrder Order? @relation("AssignedHandlingUnits", fields: [assignedOrderId], references: [id], onDelete: SetNull)
+  assignedWave  Wave?  @relation("AssignedWaveHandlingUnits", fields: [assignedWaveId], references: [id], onDelete: SetNull)
 
   items HandlingUnitItem[]
 
-  sourcePickingRecords PickingRecord[]      @relation("PickingSourceHandlingUnit")
-  targetPickingRecords PickingRecord[]      @relation("PickingTargetHandlingUnit")
+  sourcePickingRecords PickingRecord[]       @relation("PickingSourceHandlingUnit")
+  targetPickingRecords PickingRecord[]       @relation("PickingTargetHandlingUnit")
+  sourcePackingRecords PackingRecord[]       @relation("PackingSourceHandlingUnit")
+  targetPackingRecords PackingRecord[]       @relation("PackingTargetHandlingUnit")
+  shippingProfile      ShippingHandlingUnit?
   inventoryCountLines  InventoryCountLine[]
 
   @@index([barcode])
@@ -435,6 +466,7 @@ model HandlingUnit {
   @@index([locationId])
   @@index([parentUnitId])
   @@index([assignedOrderId])
+  @@index([assignedWaveId])
 }
 
 model HandlingUnitItem {
@@ -456,28 +488,33 @@ model HandlingUnitItem {
 }
 
 model PickingRecord {
-  id                   Int      @id @default(autoincrement())
+  id                   Int                  @id @default(autoincrement())
   orderId              Int
   orderItemId          Int
   productId            Int
   sourceHandlingUnitId Int
   targetHandlingUnitId Int
+  waveId               String?
+  flowType             OrderFulfillmentFlow @default(DIRECT_ORDER)
   quantity             Int
   sourceQuantityAfter  Int
   targetQuantityAfter  Int
-  createdAt            DateTime @default(now())
+  createdAt            DateTime             @default(now())
 
   order              Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem          OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   product            Product      @relation(fields: [productId], references: [id])
   sourceHandlingUnit HandlingUnit @relation("PickingSourceHandlingUnit", fields: [sourceHandlingUnitId], references: [id])
   targetHandlingUnit HandlingUnit @relation("PickingTargetHandlingUnit", fields: [targetHandlingUnitId], references: [id])
+  wave               Wave?        @relation(fields: [waveId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([orderItemId])
   @@index([productId])
   @@index([sourceHandlingUnitId])
   @@index([targetHandlingUnitId])
+  @@index([waveId])
+  @@index([flowType])
   @@index([createdAt])
 }
 
@@ -705,8 +742,12 @@ model Wave {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orders      WaveOrder[]
-  assignments WaveAssignment[]
+  orders            WaveOrder[]
+  assignments       WaveAssignment[]
+  distributions     WaveDistribution[]
+  handlingUnits     HandlingUnit[]     @relation("AssignedWaveHandlingUnits")
+  orderFulfillments OrderFulfillment[]
+  pickingRecords    PickingRecord[]
 
   @@index([status, priority])
   @@index([plannedStartAt])
@@ -738,8 +779,9 @@ model WaveOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wave  Wave  @relation(fields: [waveId], references: [id], onDelete: Cascade)
-  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  wave              Wave                   @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  order             Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  distributionOrder WaveDistributionOrder?
 
   /**
    * Bir sipariş aynı Wave'e ikinci kez eklenemez.
@@ -748,6 +790,491 @@ model WaveOrder {
   @@index([orderId])
   @@index([orderNumber])
   @@index([waveId, isCompleted])
+}
+
+enum OrderFulfillmentFlow {
+  DIRECT_ORDER
+  WAVE
+}
+
+enum FulfillmentProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  PARTIALLY_COMPLETED
+  COMPLETED
+  CANCELLED
+}
+
+enum WaveDistributionStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ShippingHandlingUnitStatus {
+  OPEN
+  CLOSED
+  READY_TO_SHIP
+  SHIPPED
+  CANCELLED
+}
+
+enum DispatchDocumentStatus {
+  DRAFT
+  READY
+  ISSUED
+  CANCELLED
+}
+
+model OrderFulfillment {
+  id      String  @id @default(cuid())
+  orderId Int     @unique
+  waveId  String?
+
+  flowType OrderFulfillmentFlow @default(DIRECT_ORDER)
+
+  pickingStatus  FulfillmentProgressStatus @default(NOT_STARTED)
+  packingStatus  FulfillmentProgressStatus @default(NOT_STARTED)
+  shippingStatus FulfillmentProgressStatus @default(NOT_STARTED)
+
+  plannedQuantity Int @default(0)
+  pickedQuantity  Int @default(0)
+  packedQuantity  Int @default(0)
+  shippedQuantity Int @default(0)
+
+  pickingStartedAt    DateTime?
+  pickingCompletedAt  DateTime?
+  packingStartedAt    DateTime?
+  packingCompletedAt  DateTime?
+  shippingStartedAt   DateTime?
+  shippingCompletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  wave Wave? @relation(fields: [waveId], references: [id], onDelete: SetNull)
+
+  @@index([waveId])
+  @@index([flowType])
+  @@index([pickingStatus])
+  @@index([packingStatus])
+  @@index([shippingStatus])
+  @@index([updatedAt])
+}
+
+model WaveDistribution {
+  id     String @id @default(cuid())
+  waveId String
+
+  sequenceNumber   Int
+  distributionCode String @unique
+  groupKey         String
+
+  status WaveDistributionStatus @default(PLANNED)
+
+  customerId        Int
+  shippingAddressId Int?
+
+  customerCode String?
+  customerName String
+  taxOffice    String?
+  taxNumber    String?
+
+  addressTitle String?
+  contactName  String?
+  phone        String?
+  address      String
+  city         String
+  district     String
+  postalCode   String?
+
+  plannedOrderCount Int @default(0)
+  plannedLineCount  Int @default(0)
+  plannedQuantity   Int @default(0)
+  packedQuantity    Int @default(0)
+  shippedQuantity   Int @default(0)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  createdById   String?
+  createdByName String?
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wave Wave @relation(fields: [waveId], references: [id], onDelete: Cascade)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  shippingAddress CustomerAddress? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+
+  orders         WaveDistributionOrder[]
+  lines          WaveDistributionLine[]
+  shippingUnits  ShippingHandlingUnit[]
+  packingRecords PackingRecord[]
+
+  @@unique([waveId, sequenceNumber], name: "wave_distribution_sequence_unique")
+  @@unique([waveId, groupKey], name: "wave_distribution_group_unique")
+  @@index([waveId, status])
+  @@index([customerId])
+  @@index([shippingAddressId])
+  @@index([distributionCode])
+  @@index([createdAt])
+}
+
+model WaveDistributionOrder {
+  id             String @id @default(cuid())
+  distributionId String
+  waveOrderId    String @unique
+  orderId        Int
+
+  orderNumber String
+
+  plannedQuantity Int @default(0)
+  packedQuantity  Int @default(0)
+  shippedQuantity Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  distribution WaveDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  waveOrder WaveOrder @relation(fields: [waveOrderId], references: [id], onDelete: Restrict)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  lines WaveDistributionLine[]
+
+  @@unique([distributionId, orderId], name: "wave_distribution_order_unique")
+  @@index([distributionId])
+  @@index([orderId])
+  @@index([orderNumber])
+}
+
+model WaveDistributionLine {
+  id                  String @id @default(cuid())
+  distributionId      String
+  distributionOrderId String
+  orderId             Int
+  orderItemId         Int
+  productId           Int
+
+  productCode    String
+  productBarcode String
+  productName    String
+
+  plannedQuantity Int
+  packedQuantity  Int @default(0)
+  shippedQuantity Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  distribution WaveDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  distributionOrder WaveDistributionOrder @relation(fields: [distributionOrderId], references: [id], onDelete: Cascade)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  packingRecords PackingRecord[]
+
+  @@unique([distributionId, orderItemId], name: "wave_distribution_line_unique")
+  @@index([distributionOrderId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([productCode])
+}
+
+model ShippingHandlingUnit {
+  id             String @id @default(cuid())
+  handlingUnitId Int    @unique
+
+  status ShippingHandlingUnitStatus @default(OPEN)
+
+  packageSequence Int @default(1)
+
+  waveDistributionId String?
+
+  customerId        Int
+  shippingAddressId Int?
+
+  customerCode String?
+  customerName String
+  taxOffice    String?
+  taxNumber    String?
+
+  addressTitle String?
+  contactName  String?
+  phone        String?
+  address      String
+  city         String
+  district     String
+  postalCode   String?
+
+  grossWeightKg Float?
+  netWeightKg   Float?
+  lengthCm      Float?
+  widthCm       Float?
+  heightCm      Float?
+
+  labelPrintedAt DateTime?
+  closedAt       DateTime?
+  readyAt        DateTime?
+  shippedAt      DateTime?
+  cancelledAt    DateTime?
+
+  createdById   String?
+  createdByName String?
+  closedById    String?
+  closedByName  String?
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  handlingUnit HandlingUnit @relation(fields: [handlingUnitId], references: [id], onDelete: Restrict)
+
+  waveDistribution WaveDistribution? @relation(fields: [waveDistributionId], references: [id], onDelete: SetNull)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  shippingAddress CustomerAddress? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+
+  orders ShippingHandlingUnitOrder[]
+  items  ShippingHandlingUnitItem[]
+
+  packingRecords PackingRecord[]
+
+  dispatchDocument DispatchDocument?
+
+  stockMovements StockMovement[]
+
+  @@unique([waveDistributionId, packageSequence], name: "wave_distribution_package_sequence_unique")
+  @@index([status])
+  @@index([waveDistributionId])
+  @@index([customerId])
+  @@index([shippingAddressId])
+  @@index([createdAt])
+  @@index([closedAt])
+  @@index([shippedAt])
+}
+
+model ShippingHandlingUnitOrder {
+  id                     String @id @default(cuid())
+  shippingHandlingUnitId String
+  orderId                Int
+
+  orderNumber String
+
+  plannedQuantity Int @default(0)
+  packedQuantity  Int @default(0)
+  shippedQuantity Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shippingHandlingUnit ShippingHandlingUnit @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: Cascade)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  items ShippingHandlingUnitItem[]
+
+  @@unique([shippingHandlingUnitId, orderId], name: "shipping_handling_unit_order_unique")
+  @@index([orderId])
+  @@index([orderNumber])
+}
+
+model ShippingHandlingUnitItem {
+  id                          String @id @default(cuid())
+  shippingHandlingUnitId      String
+  shippingHandlingUnitOrderId String
+  orderId                     Int
+  orderItemId                 Int
+  productId                   Int
+
+  productCode    String
+  productBarcode String
+  productName    String
+
+  quantity        Int @default(0)
+  shippedQuantity Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shippingHandlingUnit ShippingHandlingUnit @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: Cascade)
+
+  shippingHandlingUnitOrder ShippingHandlingUnitOrder @relation(fields: [shippingHandlingUnitOrderId], references: [id], onDelete: Cascade)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  dispatchLine DispatchDocumentLine?
+
+  @@unique([shippingHandlingUnitId, orderItemId], name: "shipping_handling_unit_item_unique")
+  @@index([shippingHandlingUnitOrderId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([productCode])
+}
+
+model PackingRecord {
+  id Int @id @default(autoincrement())
+
+  waveDistributionId     String?
+  waveDistributionLineId String?
+  shippingHandlingUnitId String
+
+  orderId     Int
+  orderItemId Int
+  productId   Int
+
+  sourceHandlingUnitId Int
+  targetHandlingUnitId Int
+
+  quantity            Int
+  sourceQuantityAfter Int
+  targetQuantityAfter Int
+
+  operatorId   String?
+  operatorName String?
+  terminalCode String?
+
+  createdAt DateTime @default(now())
+
+  waveDistribution WaveDistribution? @relation(fields: [waveDistributionId], references: [id], onDelete: SetNull)
+
+  waveDistributionLine WaveDistributionLine? @relation(fields: [waveDistributionLineId], references: [id], onDelete: SetNull)
+
+  shippingHandlingUnit ShippingHandlingUnit @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: Restrict)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  sourceHandlingUnit HandlingUnit @relation("PackingSourceHandlingUnit", fields: [sourceHandlingUnitId], references: [id], onDelete: Restrict)
+
+  targetHandlingUnit HandlingUnit @relation("PackingTargetHandlingUnit", fields: [targetHandlingUnitId], references: [id], onDelete: Restrict)
+
+  @@index([waveDistributionId])
+  @@index([waveDistributionLineId])
+  @@index([shippingHandlingUnitId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([sourceHandlingUnitId])
+  @@index([targetHandlingUnitId])
+  @@index([operatorId])
+  @@index([createdAt])
+}
+
+model DispatchDocument {
+  id                     String @id @default(cuid())
+  shippingHandlingUnitId String @unique
+
+  status DispatchDocumentStatus @default(DRAFT)
+
+  dispatchNumber String? @unique
+  ettn           String? @unique
+
+  documentDate DateTime?
+  shipmentAt   DateTime?
+
+  recipientCode       String?
+  recipientName       String
+  recipientTaxOffice  String?
+  recipientTaxNumber  String?
+  recipientAddress    String
+  recipientCity       String
+  recipientDistrict   String
+  recipientPostalCode String?
+
+  carrierName          String?
+  vehiclePlate         String?
+  driverName           String?
+  driverIdentityNumber String?
+
+  issuedAt    DateTime?
+  cancelledAt DateTime?
+
+  createdById   String?
+  createdByName String?
+
+  issuedById   String?
+  issuedByName String?
+
+  cancelledById   String?
+  cancelledByName String?
+  cancelReason    String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shippingHandlingUnit ShippingHandlingUnit @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: Restrict)
+
+  lines DispatchDocumentLine[]
+
+  @@index([status])
+  @@index([documentDate])
+  @@index([shipmentAt])
+  @@index([issuedAt])
+  @@index([createdAt])
+}
+
+model DispatchDocumentLine {
+  id                         String @id @default(cuid())
+  dispatchDocumentId         String
+  shippingHandlingUnitItemId String @unique
+
+  orderId     Int
+  orderItemId Int
+  productId   Int
+
+  orderNumber    String
+  productCode    String
+  productBarcode String
+  productName    String
+
+  quantity Int
+  unit     String @default("ADET")
+
+  createdAt DateTime @default(now())
+
+  dispatchDocument DispatchDocument @relation(fields: [dispatchDocumentId], references: [id], onDelete: Cascade)
+
+  shippingHandlingUnitItem ShippingHandlingUnitItem @relation(fields: [shippingHandlingUnitItemId], references: [id], onDelete: Restrict)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([dispatchDocumentId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([orderNumber])
+  @@index([productCode])
 }
 
 enum UserStatus {

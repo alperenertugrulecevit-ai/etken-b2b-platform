@@ -4,6 +4,8 @@ import {
   HandlingUnitPurpose,
   HandlingUnitStatus,
   OrderStatus,
+  ShippingHandlingUnitStatus,
+  WaveStatus,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -116,6 +118,40 @@ export default async function RFPickingPage() {
           select: {
             customerCode: true,
             companyName: true,
+          },
+        },
+
+        waveOrders: {
+          where: {
+            isCompleted: false,
+
+            wave: {
+              status: {
+                in: [
+                  WaveStatus.READY,
+                  WaveStatus.RELEASED,
+                  WaveStatus.IN_PROGRESS,
+                  WaveStatus.PAUSED,
+                ],
+              },
+            },
+          },
+
+          orderBy: {
+            createdAt: "desc",
+          },
+
+          take: 1,
+
+          select: {
+            waveId: true,
+
+            wave: {
+              select: {
+                waveNo: true,
+                status: true,
+              },
+            },
           },
         },
 
@@ -254,15 +290,19 @@ export default async function RFPickingPage() {
     }),
 
     /*
-     * Yalnızca toplama amacıyla oluşturulan
-     * ve bağımsız olan hedef THM'ler.
-     *
-     * Form seçili siparişe göre ayrıca filtreler.
+     * Wave akışı için Toplama THM'leri,
+     * doğrudan sipariş akışı için Sevk THM'leri.
+     * Form seçilen siparişin akışına göre
+     * uygun hedefleri ayrıca filtreler.
      */
     prisma.handlingUnit.findMany({
       where: {
-        purpose:
-          HandlingUnitPurpose.PICKING,
+        purpose: {
+          in: [
+            HandlingUnitPurpose.PICKING,
+            HandlingUnitPurpose.SHIPPING,
+          ],
+        },
 
         parentUnitId: null,
 
@@ -283,8 +323,10 @@ export default async function RFPickingPage() {
         id: true,
         barcode: true,
         unitType: true,
+        purpose: true,
         status: true,
         assignedOrderId: true,
+        assignedWaveId: true,
 
         assignedOrder: {
           select: {
@@ -295,6 +337,19 @@ export default async function RFPickingPage() {
                 companyName: true,
               },
             },
+          },
+        },
+
+        assignedWave: {
+          select: {
+            waveNo: true,
+          },
+        },
+
+        shippingProfile: {
+          select: {
+            status: true,
+            packageSequence: true,
           },
         },
 
@@ -324,6 +379,19 @@ export default async function RFPickingPage() {
 
   const orderOptions = orders
     .map((order) => {
+      const activeWaveOrder =
+        order.waveOrders[0] ?? null;
+
+      const isWaveFlow =
+        activeWaveOrder !== null;
+
+      const isFlowPickable =
+        !activeWaveOrder ||
+        activeWaveOrder.wave.status ===
+          WaveStatus.RELEASED ||
+        activeWaveOrder.wave.status ===
+          WaveStatus.IN_PROGRESS;
+
       const items =
         order.items.map((item) => ({
           id: item.id,
@@ -380,6 +448,21 @@ export default async function RFPickingPage() {
         orderNumber:
           order.orderNumber,
 
+        flowType:
+          isWaveFlow
+            ? ("WAVE" as const)
+            : ("DIRECT_ORDER" as const),
+
+        waveId:
+          activeWaveOrder?.waveId ??
+          null,
+
+        waveNo:
+          activeWaveOrder?.wave
+            .waveNo ?? null,
+
+        isFlowPickable,
+
         status:
           getOrderStatusLabel(
             order.status
@@ -414,7 +497,8 @@ export default async function RFPickingPage() {
     })
     .filter(
       (order) =>
-        order.remainingQuantity > 0
+        order.remainingQuantity > 0 &&
+        order.isFlowPickable
     );
 
   const sourceUnitOptions =
@@ -522,8 +606,17 @@ export default async function RFPickingPage() {
           unit.status
         ),
 
+      purpose:
+        unit.purpose ===
+        HandlingUnitPurpose.SHIPPING
+          ? ("SHIPPING" as const)
+          : ("PICKING" as const),
+
       assignedOrderId:
         unit.assignedOrderId,
+
+      assignedWaveId:
+        unit.assignedWaveId,
 
       assignedOrderNumber:
         unit.assignedOrder
@@ -532,6 +625,18 @@ export default async function RFPickingPage() {
       assignedCustomerName:
         unit.assignedOrder
           ?.customer.companyName ?? "",
+
+      assignedWaveNo:
+        unit.assignedWave
+          ?.waveNo ?? "",
+
+      shippingStatus:
+        unit.shippingProfile
+          ?.status ?? null,
+
+      packageSequence:
+        unit.shippingProfile
+          ?.packageSequence ?? null,
 
       warehouseCode:
         unit.warehouse?.code ?? "",
@@ -559,7 +664,15 @@ export default async function RFPickingPage() {
             total + item.quantity,
           0
         ),
-    }));
+    }))
+    .filter(
+      (unit) =>
+        unit.purpose !==
+          HandlingUnitPurpose.SHIPPING ||
+        unit.shippingStatus === null ||
+        unit.shippingStatus ===
+          ShippingHandlingUnitStatus.OPEN
+    );
 
   return (
     <section>
@@ -601,9 +714,12 @@ export default async function RFPickingPage() {
           Kaynak olarak yalnızca aktif
           lokasyona adreslenmiş planlanabilir
           stok THM’leri kullanılabilir. Hedef
-          olarak yalnızca toplama amacıyla
-          oluşturulmuş ve seçilen siparişe
-          ait THM kullanılabilir.
+          olarak Wave siparişlerinde ilgili
+          Wave’e ait Toplama THM, doğrudan
+          siparişlerde ise açık durumdaki Sevk
+          THM kullanılır. Bir Sevk THM dolduğunda
+          formdaki değiştir düğmesiyle yeni koliye
+          geçilebilir.
         </p>
       </div>
     </section>
