@@ -16,6 +16,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin",
     icon: "📊",
     label: "Dashboard",
+
     permissionCodes: [
       "DASHBOARD_VIEW",
     ],
@@ -24,6 +25,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin/products",
     icon: "📦",
     label: "Ürün Yönetimi",
+
     permissionCodes: [
       "INVENTORY_VIEW",
       "INVENTORY_ADJUST",
@@ -33,6 +35,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin/categories",
     icon: "📁",
     label: "Kategori Yönetimi",
+
     permissionCodes: [
       "INVENTORY_VIEW",
       "INVENTORY_ADJUST",
@@ -42,6 +45,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin/brands",
     icon: "🏷️",
     label: "Marka Yönetimi",
+
     permissionCodes: [
       "INVENTORY_VIEW",
       "INVENTORY_ADJUST",
@@ -51,6 +55,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin/suppliers",
     icon: "🏭",
     label: "Tedarikçi Yönetimi",
+
     permissionCodes: [
       "RECEIVING_VIEW",
       "RECEIVING_EXECUTE",
@@ -60,6 +65,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin/customers",
     icon: "👥",
     label: "Müşteri Yönetimi",
+
     permissionCodes: [
       "CUSTOMER_VIEW",
       "CUSTOMER_MANAGE",
@@ -69,6 +75,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin/orders",
     icon: "🛒",
     label: "Sipariş Yönetimi",
+
     permissionCodes: [
       "ORDER_VIEW",
       "ORDER_MANAGE",
@@ -78,6 +85,7 @@ const mainMenuItems: MenuItem[] = [
     href: "/admin/purchase-orders",
     icon: "🧾",
     label: "Satın Alma",
+
     permissionCodes: [
       "RECEIVING_VIEW",
       "RECEIVING_EXECUTE",
@@ -90,6 +98,7 @@ const stockMenuItems: MenuItem[] = [
     href: "/admin/stock/movements",
     icon: "📋",
     label: "Stok Hareketleri",
+
     permissionCodes: [
       "INVENTORY_VIEW",
     ],
@@ -98,6 +107,7 @@ const stockMenuItems: MenuItem[] = [
     href: "/admin/stock/manual",
     icon: "📥",
     label: "Manuel Stok İşlemi",
+
     permissionCodes: [
       "INVENTORY_ADJUST",
     ],
@@ -106,6 +116,7 @@ const stockMenuItems: MenuItem[] = [
     href: "/admin/stock/locations",
     icon: "📍",
     label: "Lokasyon Bazlı Stok",
+
     permissionCodes: [
       "INVENTORY_VIEW",
     ],
@@ -114,9 +125,31 @@ const stockMenuItems: MenuItem[] = [
     href: "/admin/stock/location-map",
     icon: "🗺️",
     label: "Lokasyon Stok Haritası",
+
     permissionCodes: [
       "INVENTORY_VIEW",
       "LOCATION_VIEW",
+    ],
+  },
+  {
+    href: "/admin/inventory-counts",
+    icon: "🧮",
+    label: "Planlı Sayımlar",
+
+    permissionCodes: [
+      "INVENTORY_COUNT_VIEW",
+      "INVENTORY_COUNT_MANAGE",
+      "INVENTORY_COUNT_APPROVE",
+    ],
+  },
+  {
+    href: "/admin/inventory-counts/reports",
+    icon: "📊",
+    label: "Sayım Raporları",
+
+    permissionCodes: [
+      "INVENTORY_COUNT_VIEW",
+      "INVENTORY_COUNT_APPROVE",
     ],
   },
 ];
@@ -126,6 +159,7 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units",
     icon: "🧱",
     label: "Koli / Palet Yönetimi",
+
     permissionCodes: [
       "HANDLING_UNIT_VIEW",
       "HANDLING_UNIT_MANAGE",
@@ -135,6 +169,7 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units/transfers",
     icon: "🔄",
     label: "Koli / Palet Transferi",
+
     permissionCodes: [
       "TRANSFER_EXECUTE",
     ],
@@ -143,6 +178,7 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units/merge",
     icon: "🔗",
     label: "Toplu Birleştirme",
+
     permissionCodes: [
       "HANDLING_UNIT_MANAGE",
     ],
@@ -151,6 +187,7 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units/pallet-link",
     icon: "🔗",
     label: "Koli-Palet Bağlama",
+
     permissionCodes: [
       "HANDLING_UNIT_MANAGE",
     ],
@@ -159,6 +196,7 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units/addressing",
     icon: "📌",
     label: "Tekli Adresleme",
+
     permissionCodes: [
       "PUTAWAY_EXECUTE",
       "HANDLING_UNIT_MANAGE",
@@ -168,6 +206,7 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units/addressing/bulk",
     icon: "📌",
     label: "Toplu Adresleme",
+
     permissionCodes: [
       "PUTAWAY_EXECUTE",
       "HANDLING_UNIT_MANAGE",
@@ -177,6 +216,7 @@ const handlingUnitMenuItems: MenuItem[] = [
     href: "/admin/handling-units/unaddressing",
     icon: "📤",
     label: "Adres Kaldırma",
+
     permissionCodes: [
       "LOCATION_MANAGE",
       "HANDLING_UNIT_MANAGE",
@@ -189,6 +229,7 @@ const wmsMenuItems: MenuItem[] = [
     href: "/admin/wms-dashboard",
     icon: "📊",
     label: "WMS Dashboard",
+
     permissionCodes: [
       "DASHBOARD_VIEW",
     ],
@@ -197,6 +238,7 @@ const wmsMenuItems: MenuItem[] = [
     href: "/admin/waves",
     icon: "🌊",
     label: "Wave Yönetimi",
+
     permissionCodes: [
       "WAVE_VIEW",
       "WAVE_MANAGE",
@@ -206,6 +248,7 @@ const wmsMenuItems: MenuItem[] = [
     href: "/admin/waves/new",
     icon: "➕",
     label: "Yeni Wave Oluştur",
+
     permissionCodes: [
       "WAVE_MANAGE",
     ],
@@ -217,6 +260,7 @@ const warehouseMenuItems: MenuItem[] = [
     href: "/admin/warehouses",
     icon: "🏬",
     label: "Depo Yönetimi",
+
     permissionCodes: [
       "WAREHOUSE_VIEW",
       "WAREHOUSE_MANAGE",
@@ -229,6 +273,7 @@ const systemMenuItems: MenuItem[] = [
     href: "/admin/users",
     icon: "👤",
     label: "Kullanıcı Yönetimi",
+
     permissionCodes: [
       "USER_VIEW",
       "USER_MANAGE",
@@ -238,6 +283,7 @@ const systemMenuItems: MenuItem[] = [
     href: "/admin/roles",
     icon: "🛡️",
     label: "Rol ve Yetki Yönetimi",
+
     permissionCodes: [
       "ROLE_VIEW",
       "ROLE_MANAGE",
@@ -405,6 +451,7 @@ export default async function AdminSidebar() {
         <nav className="mt-8">
           <MenuGroup
             title="Genel Yönetim"
+
             items={
               visibleMainMenuItems
             }
@@ -414,6 +461,7 @@ export default async function AdminSidebar() {
 
           <MenuGroup
             title="Stok Yönetimi"
+
             items={
               visibleStockMenuItems
             }
@@ -421,6 +469,7 @@ export default async function AdminSidebar() {
 
           <MenuGroup
             title="Handling Unit"
+
             items={
               visibleHandlingUnitMenuItems
             }
@@ -428,14 +477,17 @@ export default async function AdminSidebar() {
 
           <MenuGroup
             title="WMS Operasyonları"
+
             items={
               visibleWmsMenuItems
             }
+
             highlighted
           />
 
           <MenuGroup
             title="Depo Yönetimi"
+
             items={
               visibleWarehouseMenuItems
             }
@@ -455,6 +507,7 @@ export default async function AdminSidebar() {
                       key={
                         item.href
                       }
+
                       {...item}
                     />
                   )

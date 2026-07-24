@@ -29,6 +29,7 @@ export type InventoryCountApprovalLine = {
   note: string;
   isDiscovered: boolean;
   status: string;
+
   appliedQuantityChange:
     number | null;
 };
@@ -49,9 +50,17 @@ type InventoryCountApprovalPanelProps = {
 
   lines:
     InventoryCountApprovalLine[];
+
+  totalLocationCount?: number;
+
+  completedLocationCount?: number;
 };
 
-function ApproveButton() {
+function ApproveButton({
+  disabled,
+}: {
+  disabled: boolean;
+}) {
   const {
     pending,
   } = useFormStatus();
@@ -59,7 +68,10 @@ function ApproveButton() {
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={
+        pending ||
+        disabled
+      }
       className="w-full rounded-xl bg-emerald-700 px-6 py-4 text-lg font-black text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-400"
     >
       {pending
@@ -70,14 +82,8 @@ function ApproveButton() {
 }
 
 function getDifferenceStyle(
-  difference: number | null
+  difference: number
 ) {
-  if (
-    difference === null
-  ) {
-    return "bg-slate-100 text-slate-600";
-  }
-
   if (difference > 0) {
     return "bg-emerald-100 text-emerald-800";
   }
@@ -90,19 +96,41 @@ function getDifferenceStyle(
 }
 
 function formatDifference(
-  difference: number | null
+  difference: number
 ) {
-  if (
-    difference === null
-  ) {
-    return "-";
-  }
-
   if (difference > 0) {
     return `+${difference}`;
   }
 
   return String(difference);
+}
+
+function getApprovalDifference(
+  line: InventoryCountApprovalLine
+) {
+  if (
+    line.appliedQuantityChange !==
+    null
+  ) {
+    return line.appliedQuantityChange;
+  }
+
+  return (
+    (
+      line.countedQuantity ??
+      0
+    ) -
+    line.systemQuantity
+  );
+}
+
+function getApprovalQuantity(
+  line: InventoryCountApprovalLine
+) {
+  return (
+    line.countedQuantity ??
+    0
+  );
 }
 
 export default function InventoryCountApprovalPanel({
@@ -111,6 +139,8 @@ export default function InventoryCountApprovalPanel({
   status,
   canApprove,
   lines,
+  totalLocationCount,
+  completedLocationCount,
 }: InventoryCountApprovalPanelProps) {
   const [
     showOnlyDifferences,
@@ -121,6 +151,16 @@ export default function InventoryCountApprovalPanel({
     searchValue,
     setSearchValue,
   ] = useState("");
+
+  const [
+    approvalPassword,
+    setApprovalPassword,
+  ] = useState("");
+
+  const [
+    riskAccepted,
+    setRiskAccepted,
+  ] = useState(false);
 
   const approveAction =
     approveInventoryCountAction.bind(
@@ -135,19 +175,80 @@ export default function InventoryCountApprovalPanel({
         "tr-TR"
       );
 
+  const statusAllowsApproval =
+    status === "ACTIVE" ||
+    status === "IN_PROGRESS" ||
+    status === "SUBMITTED";
+
+  const inferredIncompleteLocations =
+    status === "ACTIVE" ||
+    status === "IN_PROGRESS";
+
+  const hasLocationCounts =
+    typeof totalLocationCount ===
+      "number" &&
+    typeof completedLocationCount ===
+      "number";
+
+  const hasIncompleteLocations =
+    hasLocationCounts
+      ? completedLocationCount <
+        totalLocationCount
+      : inferredIncompleteLocations;
+
+  const incompleteLocationCount =
+    hasLocationCounts
+      ? Math.max(
+          totalLocationCount -
+            completedLocationCount,
+          0
+        )
+      : null;
+
+  const uncountedLineCount =
+    lines.filter(
+      (line) =>
+        line.countedQuantity ===
+        null
+    ).length;
+
+  const automaticZeroQuantity =
+    lines.reduce(
+      (
+        total,
+        line
+      ) =>
+        total +
+        (
+          line.countedQuantity ===
+          null
+            ? line.systemQuantity
+            : 0
+        ),
+      0
+    );
+
+  const hasRecountRequired =
+    lines.some(
+      (line) =>
+        line.status ===
+        "RECOUNT_REQUIRED"
+    );
+
   const visibleLines =
     useMemo(
       () =>
         lines.filter(
           (line) => {
+            const approvalDifference =
+              getApprovalDifference(
+                line
+              );
+
             if (
               showOnlyDifferences &&
-              (
-                line.difference ===
-                  null ||
-                line.difference ===
-                  0
-              )
+              approvalDifference ===
+                0
             ) {
               return false;
             }
@@ -186,9 +287,9 @@ export default function InventoryCountApprovalPanel({
   const differenceLineCount =
     lines.filter(
       (line) =>
-        line.difference !==
-          null &&
-        line.difference !== 0
+        getApprovalDifference(
+          line
+        ) !== 0
     ).length;
 
   const increaseTotal =
@@ -196,14 +297,21 @@ export default function InventoryCountApprovalPanel({
       (
         total,
         line
-      ) =>
-        total +
-        (
-          line.difference &&
-          line.difference > 0
-            ? line.difference
-            : 0
-        ),
+      ) => {
+        const difference =
+          getApprovalDifference(
+            line
+          );
+
+        return (
+          total +
+          (
+            difference > 0
+              ? difference
+              : 0
+          )
+        );
+      },
       0
     );
 
@@ -212,30 +320,35 @@ export default function InventoryCountApprovalPanel({
       (
         total,
         line
-      ) =>
-        total +
-        (
-          line.difference &&
-          line.difference < 0
-            ? Math.abs(
-                line.difference
-              )
-            : 0
-        ),
+      ) => {
+        const difference =
+          getApprovalDifference(
+            line
+          );
+
+        return (
+          total +
+          (
+            difference < 0
+              ? Math.abs(
+                  difference
+                )
+              : 0
+          )
+        );
+      },
       0
     );
 
-  const uncountedLineCount =
-    lines.filter(
-      (line) =>
-        line.countedQuantity ===
-        null
-    ).length;
-
   const canSubmitApproval =
-    status === "SUBMITTED" &&
+    statusAllowsApproval &&
     canApprove &&
-    uncountedLineCount === 0;
+    !hasRecountRequired &&
+    approvalPassword.length > 0 &&
+    (
+      !hasIncompleteLocations ||
+      riskAccepted
+    );
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -253,18 +366,46 @@ export default function InventoryCountApprovalPanel({
             Lokasyon, THM ve ürün
             bazındaki sistem miktarını,
             fiziksel sayım sonucunu ve
-            uygulanacak stok farkını
+            stoklara uygulanacak farkı
             inceleyin.
           </p>
         </div>
 
         <span className="rounded-full bg-violet-100 px-4 py-2 text-sm font-black text-violet-800">
-          {
-            lines.length
-          }{" "}
-          satır
+          {lines.length} satır
         </span>
       </div>
+
+      {uncountedLineCount > 0 &&
+        status !== "APPROVED" &&
+        status !== "CANCELLED" && (
+          <div className="mt-6 rounded-2xl border-2 border-red-300 bg-red-50 p-5 text-red-950">
+            <h3 className="text-lg font-black">
+              Sayılmamış Ürünler
+              Bulunuyor
+            </h3>
+
+            <p className="mt-2 text-sm font-semibold leading-6">
+              {
+                uncountedLineCount
+              }{" "}
+              ürün / THM satırında
+              fiziksel sayım sonucu
+              bulunmuyor. Sayımı şimdi
+              onaylarsanız bu ürünlerin
+              sayım sonucu{" "}
+              <strong>0</strong>{" "}
+              kabul edilecek ve toplam{" "}
+              <strong>
+                {
+                  automaticZeroQuantity
+                }
+              </strong>{" "}
+              adet stok sistemden
+              düşülecektir.
+            </p>
+          </div>
+        )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl bg-slate-100 p-4">
@@ -273,9 +414,7 @@ export default function InventoryCountApprovalPanel({
           </p>
 
           <p className="mt-2 text-3xl font-black text-slate-950">
-            {
-              lines.length
-            }
+            {lines.length}
           </p>
         </div>
 
@@ -388,11 +527,11 @@ export default function InventoryCountApprovalPanel({
                 </th>
 
                 <th className="px-4 py-3 text-right">
-                  Sayılan
+                  Sayım Sonucu
                 </th>
 
                 <th className="px-4 py-3 text-right">
-                  Fark
+                  Uygulanacak Fark
                 </th>
 
                 <th className="px-4 py-3">
@@ -403,140 +542,228 @@ export default function InventoryCountApprovalPanel({
 
             <tbody>
               {visibleLines.map(
-                (line) => (
-                  <tr
-                    key={
-                      line.id
-                    }
-                    className="border-t border-slate-200 align-top"
-                  >
-                    <td className="whitespace-nowrap px-4 py-4 font-black text-slate-900">
-                      {
-                        line.locationCode
+                (line) => {
+                  const approvalQuantity =
+                    getApprovalQuantity(
+                      line
+                    );
+
+                  const approvalDifference =
+                    getApprovalDifference(
+                      line
+                    );
+
+                  const automaticallyZero =
+                    line.countedQuantity ===
+                    null;
+
+                  return (
+                    <tr
+                      key={
+                        line.id
                       }
-                    </td>
-
-                    <td className="whitespace-nowrap px-4 py-4">
-                      <p className="font-bold text-slate-900">
+                      className={`border-t border-slate-200 align-top ${
+                        automaticallyZero
+                          ? "bg-red-50/60"
+                          : ""
+                      }`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-4 font-black text-slate-900">
                         {
-                          line.handlingUnitBarcode
+                          line.locationCode
                         }
-                      </p>
+                      </td>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        {
-                          line.handlingUnitType
-                        }
-                      </p>
-                    </td>
-
-                    <td className="min-w-72 px-4 py-4">
-                      <p className="font-black text-slate-900">
-                        {
-                          line.productCode
-                        }{" "}
-                        -{" "}
-                        {
-                          line.productName
-                        }
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        Barkod:{" "}
-                        {
-                          line.productBarcode
-                        }
-                      </p>
-
-                      {line.isDiscovered && (
-                        <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
-                          Snapshot Dışı Ürün
-                        </span>
-                      )}
-
-                      {line.note && (
-                        <p className="mt-2 rounded-lg bg-blue-50 p-2 text-xs leading-5 text-blue-800">
-                          Not:{" "}
+                      <td className="whitespace-nowrap px-4 py-4">
+                        <p className="font-bold text-slate-900">
                           {
-                            line.note
+                            line.handlingUnitBarcode
                           }
                         </p>
-                      )}
-                    </td>
 
-                    <td className="px-4 py-4 text-right text-lg font-black text-slate-700">
-                      {
-                        line.systemQuantity
-                      }
-                    </td>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {
+                            line.handlingUnitType
+                          }
+                        </p>
+                      </td>
 
-                    <td className="px-4 py-4 text-right text-lg font-black text-blue-800">
-                      {
-                        line.countedQuantity ??
-                        "-"
-                      }
-                    </td>
+                      <td className="min-w-72 px-4 py-4">
+                        <p className="font-black text-slate-900">
+                          {
+                            line.productCode
+                          }{" "}
+                          -{" "}
+                          {
+                            line.productName
+                          }
+                        </p>
 
-                    <td className="px-4 py-4 text-right">
-                      <span
-                        className={`inline-flex min-w-14 justify-center rounded-full px-3 py-2 text-base font-black ${getDifferenceStyle(
-                          line.difference
-                        )}`}
+                        <p className="mt-1 text-xs text-slate-500">
+                          Barkod:{" "}
+                          {
+                            line.productBarcode
+                          }
+                        </p>
+
+                        {line.isDiscovered && (
+                          <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                            Snapshot Dışı
+                            Ürün
+                          </span>
+                        )}
+
+                        {automaticallyZero &&
+                          status !==
+                            "APPROVED" && (
+                            <span className="mt-2 inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-800">
+                              Onayda 0
+                              Kabul Edilecek
+                            </span>
+                          )}
+
+                        {line.note && (
+                          <p className="mt-2 rounded-lg bg-blue-50 p-2 text-xs leading-5 text-blue-800">
+                            Not:{" "}
+                            {
+                              line.note
+                            }
+                          </p>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-4 text-right text-lg font-black text-slate-700">
+                        {
+                          line.systemQuantity
+                        }
+                      </td>
+
+                      <td
+                        className={`px-4 py-4 text-right text-lg font-black ${
+                          automaticallyZero
+                            ? "text-red-700"
+                            : "text-blue-800"
+                        }`}
                       >
                         {
-                          formatDifference(
-                            line.difference
-                          )
+                          approvalQuantity
                         }
-                      </span>
-                    </td>
 
-                    <td className="min-w-44 px-4 py-4">
-                      <p className="font-semibold text-slate-700">
-                        {
-                          line.countedByName ||
-                          "-"
-                        }
-                      </p>
+                        {automaticallyZero &&
+                          status !==
+                            "APPROVED" && (
+                            <p className="mt-1 text-xs font-bold text-red-600">
+                              Otomatik
+                            </p>
+                          )}
+                      </td>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        {
-                          line.countedAt
-                        }
-                      </p>
-                    </td>
-                  </tr>
-                )
+                      <td className="px-4 py-4 text-right">
+                        <span
+                          className={`inline-flex min-w-14 justify-center rounded-full px-3 py-2 text-base font-black ${getDifferenceStyle(
+                            approvalDifference
+                          )}`}
+                        >
+                          {formatDifference(
+                            approvalDifference
+                          )}
+                        </span>
+                      </td>
+
+                      <td className="min-w-44 px-4 py-4">
+                        <p className="font-semibold text-slate-700">
+                          {line.countedByName ||
+                            (
+                              automaticallyZero
+                                ? "Onaylayan kullanıcı"
+                                : "-"
+                            )}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {
+                            line.countedAt
+                          }
+                        </p>
+                      </td>
+                    </tr>
+                  );
+                }
               )}
             </tbody>
           </table>
         </div>
       )}
 
-      {status === "SUBMITTED" && (
-        <div className="mt-7 rounded-2xl border border-violet-200 bg-violet-50 p-5 text-violet-950">
+      {statusAllowsApproval && (
+        <div className="mt-7 rounded-2xl border-2 border-violet-300 bg-violet-50 p-5 text-violet-950">
           <h3 className="text-xl font-black">
-            Sayım Yönetici Onayı
-            Bekliyor
+            Sayımı Onayla
           </h3>
 
           <p className="mt-2 text-sm leading-6">
             Onay verdiğinizde THM,
             lokasyon ve global ürün
-            stokları fiziksel sayım
+            stokları yukarıdaki sayım
             sonuçlarına göre
             güncellenecektir. Bu işlem
             geri alınamaz.
           </p>
 
-          {uncountedLineCount > 0 && (
-            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 font-semibold text-red-800">
-              {
-                uncountedLineCount
-              }{" "}
-              satırda sayım miktarı
-              bulunmadığı için onay
-              verilemez.
+          {hasIncompleteLocations && (
+            <div className="mt-5 rounded-2xl border-2 border-red-300 bg-red-50 p-5 text-red-950">
+              <h4 className="text-lg font-black">
+                Sayılmayan
+                Lokasyonlar Var
+              </h4>
+
+              <p className="mt-2 text-sm font-semibold leading-6">
+                {incompleteLocationCount !==
+                null
+                  ? `${incompleteLocationCount} lokasyon henüz tamamlanmadı. `
+                  : "Bazı lokasyonlar henüz tamamlanmadı. "}
+
+                Bu lokasyonlardaki
+                okutulmayan bütün
+                ürünler gerçekten eksik
+                kabul edilerek sayım
+                sonucu{" "}
+                <strong>0</strong>{" "}
+                yapılacak ve stoklardan
+                düşülecektir.
+              </p>
+
+              <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-red-300 bg-white p-4">
+                <input
+                  type="checkbox"
+                  checked={
+                    riskAccepted
+                  }
+                  onChange={(event) =>
+                    setRiskAccepted(
+                      event.target.checked
+                    )
+                  }
+                  className="mt-1 h-5 w-5 shrink-0"
+                />
+
+                <span className="text-sm font-bold leading-6 text-red-900">
+                  Sayılmayan ürünlerin
+                  0 kabul edilerek
+                  stoklardan
+                  düşüleceğini
+                  anlıyorum ve devam
+                  etmek istiyorum.
+                </span>
+              </label>
+            </div>
+          )}
+
+          {hasRecountRequired && (
+            <div className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 font-semibold text-red-800">
+              Tekrar sayım bekleyen
+              ürün satırı bulunduğu için
+              onay verilemez.
             </div>
           )}
 
@@ -549,26 +776,130 @@ export default function InventoryCountApprovalPanel({
             </div>
           )}
 
-          {canSubmitApproval && (
-            <form
-              action={
-                approveAction
-              }
-              className="mt-5"
-              onSubmit={(event) => {
-                const confirmed =
-                  window.confirm(
-                    `${countNumber} numaralı sayımı onaylayıp stok farklarını uygulamak istiyor musunuz? Bu işlem geri alınamaz.`
-                  );
-
-                if (!confirmed) {
-                  event.preventDefault();
+          {canApprove &&
+            !hasRecountRequired && (
+              <form
+                action={
+                  approveAction
                 }
-              }}
-            >
-              <ApproveButton />
-            </form>
-          )}
+                className="mt-5 space-y-4"
+                onSubmit={(
+                  event
+                ) => {
+                  if (
+                    !approvalPassword
+                  ) {
+                    event.preventDefault();
+
+                    window.alert(
+                      "Sayımı onaylamak için giriş şifrenizi yazın."
+                    );
+
+                    return;
+                  }
+
+                  if (
+                    hasIncompleteLocations &&
+                    !riskAccepted
+                  ) {
+                    event.preventDefault();
+
+                    window.alert(
+                      "Sayılmayan lokasyonlarla devam etmek için risk onay kutusunu işaretleyin."
+                    );
+
+                    return;
+                  }
+
+                  const warningMessage =
+                    hasIncompleteLocations
+                      ? (
+                          "Sayılmayan lokasyonlar var. Devam edilsin mi?\n\n" +
+                          "Bu lokasyonlardaki okutulmayan tüm ürünler 0 kabul edilecek ve stoklardan düşülecektir.\n\n" +
+                          "Bu işlem geri alınamaz."
+                        )
+                      : (
+                          `${countNumber} numaralı sayımı onaylayıp stok farklarını uygulamak istiyor musunuz?\n\n` +
+                          "Bu işlem geri alınamaz."
+                        );
+
+                  const confirmed =
+                    window.confirm(
+                      warningMessage
+                    );
+
+                  if (!confirmed) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                <input
+                  type="hidden"
+                  name="confirmIncompleteLocations"
+                  value={
+                    hasIncompleteLocations &&
+                    riskAccepted
+                      ? "true"
+                      : "false"
+                  }
+                />
+
+                <div>
+                  <label
+                    htmlFor={`approvalPassword-${inventoryCountId}`}
+                    className="mb-2 block text-sm font-black text-violet-950"
+                  >
+                    Onay Şifresi
+                  </label>
+
+                  <input
+                    id={`approvalPassword-${inventoryCountId}`}
+                    name="approvalPassword"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={
+                      approvalPassword
+                    }
+                    onChange={(event) =>
+                      setApprovalPassword(
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-xl border border-violet-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-violet-700 focus:ring-2 focus:ring-violet-700/20"
+                    placeholder="Giriş şifrenizi yazın"
+                  />
+
+                  <p className="mt-2 text-xs leading-5 text-violet-700">
+                    Güvenlik için
+                    sisteme giriş
+                    yaparken
+                    kullandığınız kendi
+                    şifrenizi yazın.
+                  </p>
+                </div>
+
+                <ApproveButton
+                  disabled={
+                    !canSubmitApproval
+                  }
+                />
+              </form>
+            )}
+        </div>
+      )}
+
+      {status === "DRAFT" && (
+        <div className="mt-7 rounded-2xl border border-slate-300 bg-slate-50 p-5 text-slate-800">
+          <h3 className="text-xl font-black">
+            Sayım Henüz Başlatılmadı
+          </h3>
+
+          <p className="mt-2 text-sm leading-6">
+            Taslak durumundaki sayım
+            başlatılmadan stoklara
+            uygulanamaz.
+          </p>
         </div>
       )}
 
@@ -579,10 +910,23 @@ export default function InventoryCountApprovalPanel({
           </h3>
 
           <p className="mt-2 text-sm leading-6">
-            Sayım farkları stoklara
+            Sayım sonuçları stoklara
             uygulanmıştır. Onaylanan
             sayım değiştirilemez veya
             iptal edilemez.
+          </p>
+        </div>
+      )}
+
+      {status === "CANCELLED" && (
+        <div className="mt-7 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-950">
+          <h3 className="text-xl font-black">
+            Sayım İptal Edildi
+          </h3>
+
+          <p className="mt-2 text-sm leading-6">
+            İptal edilmiş sayım
+            stoklara uygulanamaz.
           </p>
         </div>
       )}
