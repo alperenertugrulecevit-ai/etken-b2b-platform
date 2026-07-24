@@ -135,13 +135,42 @@ export const PERMISSION_CATALOG:
     },
     {
       code: "COUNT_EXECUTE",
-      name: "Stok Sayımı",
+      name:
+        "RF Sayım İşlemi",
       module: "INVENTORY",
       description:
-        "RF veya web ekranından lokasyon bazlı fiziksel stok sayımı gerçekleştirir.",
+        "RF terminalden Cycle Count ve aktif planlı sayım işlemlerini gerçekleştirir.",
     },
     {
-      code: "TRANSFER_EXECUTE",
+      code:
+        "INVENTORY_COUNT_VIEW",
+      name:
+        "Planlı Sayımları Görüntüleme",
+      module: "INVENTORY",
+      description:
+        "Planlı depo sayımlarını, farklarını ve sayım raporlarını görüntüler.",
+    },
+    {
+      code:
+        "INVENTORY_COUNT_MANAGE",
+      name:
+        "Planlı Sayımları Yönetme",
+      module: "INVENTORY",
+      description:
+        "Planlı sayım oluşturur, aktifleştirir, tamamlar ve onay öncesinde iptal eder.",
+    },
+    {
+      code:
+        "INVENTORY_COUNT_APPROVE",
+      name:
+        "Planlı Sayımı Onaylama",
+      module: "INVENTORY",
+      description:
+        "Tamamlanan sayım farklarını kontrol ederek stoklara uygular.",
+    },
+    {
+      code:
+        "TRANSFER_EXECUTE",
       name: "Stok Transferi",
       module: "INVENTORY",
       description:
@@ -172,7 +201,8 @@ export const PERMISSION_CATALOG:
         "Satın alma siparişlerini ve mal kabul kayıtlarını görüntüler.",
     },
     {
-      code: "RECEIVING_EXECUTE",
+      code:
+        "RECEIVING_EXECUTE",
       name:
         "Mal Kabul İşlemi",
       module: "RECEIVING",
@@ -204,7 +234,8 @@ export const PERMISSION_CATALOG:
         "Dalga oluşturur, sipariş ekler ve operatör atar.",
     },
     {
-      code: "PICKING_EXECUTE",
+      code:
+        "PICKING_EXECUTE",
       name:
         "Toplama İşlemi",
       module: "WAVE",
@@ -212,7 +243,8 @@ export const PERMISSION_CATALOG:
         "Atanmış toplama görevlerini RF veya web ekranından yürütür.",
     },
     {
-      code: "HANDLING_UNIT_VIEW",
+      code:
+        "HANDLING_UNIT_VIEW",
       name:
         "Taşıma Birimlerini Görüntüleme",
       module: "HANDLING_UNIT",
@@ -220,7 +252,8 @@ export const PERMISSION_CATALOG:
         "Palet, koli ve diğer taşıma birimlerini görüntüler.",
     },
     {
-      code: "HANDLING_UNIT_MANAGE",
+      code:
+        "HANDLING_UNIT_MANAGE",
       name:
         "Taşıma Birimlerini Yönetme",
       module: "HANDLING_UNIT",
@@ -285,7 +318,7 @@ export const DEFAULT_ROLE_CATALOG:
         "WAREHOUSE_SUPERVISOR",
       name: "Depo Sorumlusu",
       description:
-        "Depo, stok, kabul, dalga ve taşıma birimi operasyonlarını yönetir.",
+        "Depo, stok, kabul, dalga, sayım ve taşıma birimi operasyonlarını yönetir.",
       permissionCodes: [
         "ADMIN_PORTAL_ACCESS",
         "DASHBOARD_VIEW",
@@ -297,6 +330,9 @@ export const DEFAULT_ROLE_CATALOG:
         "INVENTORY_VIEW",
         "INVENTORY_ADJUST",
         "COUNT_EXECUTE",
+        "INVENTORY_COUNT_VIEW",
+        "INVENTORY_COUNT_MANAGE",
+        "INVENTORY_COUNT_APPROVE",
         "TRANSFER_EXECUTE",
         "ORDER_VIEW",
         "RECEIVING_VIEW",
@@ -354,7 +390,7 @@ export const DEFAULT_ROLE_CATALOG:
       name:
         "Stok Kontrol Sorumlusu",
       description:
-        "Stok görüntüleme, düzeltme, sayım ve transfer operasyonlarını yürütür.",
+        "Stok görüntüleme, düzeltme, planlı sayım, Cycle Count ve transfer operasyonlarını yürütür.",
       permissionCodes: [
         "ADMIN_PORTAL_ACCESS",
         "DASHBOARD_VIEW",
@@ -363,6 +399,9 @@ export const DEFAULT_ROLE_CATALOG:
         "INVENTORY_VIEW",
         "INVENTORY_ADJUST",
         "COUNT_EXECUTE",
+        "INVENTORY_COUNT_VIEW",
+        "INVENTORY_COUNT_MANAGE",
+        "INVENTORY_COUNT_APPROVE",
         "TRANSFER_EXECUTE",
         "HANDLING_UNIT_VIEW",
         "HANDLING_UNIT_MANAGE",
@@ -396,7 +435,8 @@ export const PERMISSION_MODULE_LABELS:
   Record<string, string> = {
     SYSTEM: "Sistem",
     DASHBOARD: "WMS Paneli",
-    USERS: "Kullanıcı Yönetimi",
+    USERS:
+      "Kullanıcı Yönetimi",
     ROLES:
       "Rol ve Yetki Yönetimi",
     CUSTOMERS:
@@ -404,7 +444,7 @@ export const PERMISSION_MODULE_LABELS:
     WAREHOUSE:
       "Depo ve Adresler",
     INVENTORY:
-      "Stok Yönetimi",
+      "Stok ve Sayım Yönetimi",
     ORDERS:
       "Sipariş Yönetimi",
     RECEIVING:
