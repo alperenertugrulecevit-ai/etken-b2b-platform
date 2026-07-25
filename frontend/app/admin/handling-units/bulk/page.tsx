@@ -4,18 +4,18 @@ import HandlingUnitBulkCreateForm from "@/components/admin/HandlingUnitBulkCreat
 
 export default function BulkHandlingUnitPage() {
   return (
-    <section className="p-10">
+    <section className="p-6 lg:p-10">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <h1 className="text-4xl font-bold">
             Toplu Taşıma Birimi Barkodu
           </h1>
 
-          <p className="mt-2 text-gray-500">
-            Koli, palet, toplama kolisi ve
-            toplama paleti için seri barkod
-            oluşturabilir ve etiketlerini
-            yazdırabilirsiniz.
+          <p className="mt-2 max-w-3xl text-gray-500">
+            Stok, toplama ve sevkiyat
+            operasyonlarında kullanılacak
+            koli veya palet barkodlarını
+            toplu oluşturup yazdırın.
           </p>
         </div>
 
@@ -29,51 +29,49 @@ export default function BulkHandlingUnitPage() {
 
       <div className="mt-8 rounded-xl border border-blue-200 bg-blue-50 p-6">
         <h2 className="text-lg font-bold text-blue-900">
-          Toplu Barkod Üretimi
+          Barkod Standartları
         </h2>
 
-        <div className="mt-4 space-y-3 text-sm leading-6 text-blue-800">
+        <div className="mt-4 grid gap-3 text-sm leading-6 text-blue-800 md:grid-cols-2 lg:grid-cols-3">
           <p>
-            Bu ekrandan tek seferde toplu
-            olarak taşıma birimi barkodu
-            oluşturabilirsiniz.
-          </p>
-
-          <ul className="list-disc space-y-2 pl-6">
-            <li>
-              📦 Stok Kolisi →
-              <strong> KOL00000001</strong>
-            </li>
-
-            <li>
-              🟦 Stok Paleti →
-              <strong> PLT00000001</strong>
-            </li>
-
-            <li>
-              🟨 Toplama Kolisi →
-              <strong> PKOL00000001</strong>
-            </li>
-
-            <li>
-              🟧 Toplama Paleti →
-              <strong> PPAL00000001</strong>
-            </li>
-          </ul>
-
-          <p>
-            Oluşturulan barkodlar
-            yazdırıldıktan sonra fiziksel
-            taşıma birimlerine
-            yapıştırılmalıdır.
+            📦 Stok Kolisi:
+            <strong> KOL00000001</strong>
           </p>
 
           <p>
-            RF Terminal okutulduğunda ilgili
-            THM açılır ve tüm hareketleri
-            takip edilir.
+            🟦 Stok Paleti:
+            <strong> PLT00000001</strong>
+          </p>
+
+          <p>
+            🛒 Toplama Kolisi:
+            <strong> PKOL00000001</strong>
+          </p>
+
+          <p>
+            🟧 Toplama Paleti:
+            <strong> PPAL00000001</strong>
+          </p>
+
+          <p>
+            🚚 Sevk Kolisi:
+            <strong> SKOL00000001</strong>
+          </p>
+
+          <p>
+            🚛 Sevk Paleti:
+            <strong> SPAL00000001</strong>
           </p>
         </div>
+
+        <p className="mt-5 text-sm leading-6 text-blue-800">
+          Sevk THM barkodu paketleme
+          sırasında müşteri, teslimat adresi
+          ve sipariş kayıtlarıyla
+          ilişkilendirilir. Bir Sevk THM,
+          tek bir irsaliye ve sevkiyat
+          birimini temsil eder.
+        </p>
       </div>
 
       <div className="mt-8">

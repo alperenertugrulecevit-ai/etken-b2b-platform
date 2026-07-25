@@ -242,7 +242,14 @@ export const PERMISSION_CATALOG:
       description:
         "Atanmış toplama görevlerini RF veya web ekranından yürütür.",
     },
-    {
+      {
+    code: "SHIPPING_EXECUTE",
+    name: "Sevkiyat İşlemi",
+    module: "SHIPPING",
+    description:
+      "Sevk THM çıkışı, stok düşümü ve sevk belgesi oluşturma işlemlerini gerçekleştirir.",
+  },
+{
       code:
         "HANDLING_UNIT_VIEW",
       name:
@@ -341,6 +348,7 @@ export const DEFAULT_ROLE_CATALOG:
         "HANDLING_UNIT_VIEW",
         "HANDLING_UNIT_MANAGE",
         "LABEL_PRINT",
+      "SHIPPING_EXECUTE",
       ],
     },
     {
@@ -427,6 +435,7 @@ export const DEFAULT_ROLE_CATALOG:
         "HANDLING_UNIT_VIEW",
         "HANDLING_UNIT_MANAGE",
         "LABEL_PRINT",
+      "SHIPPING_EXECUTE",
       ],
     },
   ];
@@ -454,4 +463,5 @@ export const PERMISSION_MODULE_LABELS:
     HANDLING_UNIT:
       "Taşıma Birimleri",
     LABEL: "Etiketleme",
+  SHIPPING: "Sevkiyat",
   };

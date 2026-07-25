@@ -21,47 +21,65 @@ const initialState: BulkHandlingUnitState = {
   lastBarcode: "",
 };
 
+type Purpose =
+  | "STOCK"
+  | "PICKING"
+  | "SHIPPING";
+
+type PhysicalUnitType =
+  | "BOX"
+  | "PALLET";
+
 function getDefaultPrefix(
-  unitType: string
+  purpose: Purpose,
+  physicalUnitType: PhysicalUnitType
 ) {
-  switch (unitType) {
-    case "PALLET":
-      return "PLT";
-
-    case "PICKING_BOX":
-      return "PKOL";
-
-    case "PICKING_PALLET":
-      return "PPAL";
-
-    case "BOX":
-    default:
-      return "KOL";
+  if (purpose === "PICKING") {
+    return physicalUnitType === "PALLET"
+      ? "PPAL"
+      : "PKOL";
   }
+
+  if (purpose === "SHIPPING") {
+    return physicalUnitType === "PALLET"
+      ? "SPAL"
+      : "SKOL";
+  }
+
+  return physicalUnitType === "PALLET"
+    ? "PLT"
+    : "KOL";
 }
 
-function getUnitTypeLabel(
-  unitType: string
+function getUnitLabel(
+  purpose: Purpose,
+  physicalUnitType: PhysicalUnitType
 ) {
-  switch (unitType) {
-    case "PALLET":
-      return "Palet";
+  const physicalLabel =
+    physicalUnitType === "PALLET"
+      ? "Paleti"
+      : "Kolisi";
 
-    case "PICKING_BOX":
-      return "Toplama Kolisi";
-
-    case "PICKING_PALLET":
-      return "Toplama Paleti";
-
-    case "BOX":
-    default:
-      return "Koli";
+  if (purpose === "PICKING") {
+    return `Toplama ${physicalLabel}`;
   }
+
+  if (purpose === "SHIPPING") {
+    return `Sevk ${physicalLabel}`;
+  }
+
+  return `Stok ${physicalLabel}`;
 }
 
 export default function HandlingUnitBulkCreateForm() {
-  const [unitType, setUnitType] =
-    useState("BOX");
+  const [purpose, setPurpose] =
+    useState<Purpose>("STOCK");
+
+  const [
+    physicalUnitType,
+    setPhysicalUnitType,
+  ] =
+    useState<PhysicalUnitType>("BOX");
 
   const [count, setCount] =
     useState("10");
@@ -87,7 +105,10 @@ export default function HandlingUnitBulkCreateForm() {
   );
 
   const defaultPrefix =
-    getDefaultPrefix(unitType);
+    getDefaultPrefix(
+      purpose,
+      physicalUnitType
+    );
 
   const previewPrefix =
     prefix.trim().toUpperCase() ||
@@ -143,8 +164,27 @@ export default function HandlingUnitBulkCreateForm() {
   const createdIdsQuery =
     state.createdIds.join(",");
 
-  const unitTypeLabel =
-    getUnitTypeLabel(unitType);
+  const unitLabel =
+    getUnitLabel(
+      purpose,
+      physicalUnitType
+    );
+
+  function changePurpose(
+    value: string
+  ) {
+    setPurpose(value as Purpose);
+    setPrefix("");
+  }
+
+  function changePhysicalUnitType(
+    value: string
+  ) {
+    setPhysicalUnitType(
+      value as PhysicalUnitType
+    );
+    setPrefix("");
+  }
 
   return (
     <form
@@ -157,9 +197,9 @@ export default function HandlingUnitBulkCreateForm() {
         </h2>
 
         <p className="mt-2 leading-6 text-gray-500">
-          Stok kolisi, stok paleti,
-          toplama kolisi veya toplama
-          paleti için seri barkod
+          Stok, toplama veya sevkiyat
+          operasyonunda kullanılacak koli
+          ve paletler için seri barkod
           oluşturun.
         </p>
       </div>
@@ -226,19 +266,53 @@ export default function HandlingUnitBulkCreateForm() {
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <label>
           <span className="mb-2 block text-sm font-semibold">
-            Taşıma Birimi Tipi
+            Kullanım Amacı
           </span>
 
           <select
-            name="unitType"
-            value={unitType}
-            onChange={(event) => {
-              setUnitType(
+            name="purpose"
+            value={purpose}
+            onChange={(event) =>
+              changePurpose(
                 event.target.value
-              );
+              )
+            }
+            className="w-full rounded-xl border bg-white p-4"
+            required
+          >
+            <option value="STOCK">
+              📦 Stok THM
+            </option>
 
-              setPrefix("");
-            }}
+            <option value="PICKING">
+              🛒 Toplama THM
+            </option>
+
+            <option value="SHIPPING">
+              🚚 Sevk THM
+            </option>
+          </select>
+
+          <p className="mt-2 text-xs leading-5 text-gray-500">
+            Sevk THM, koli bazlı irsaliye
+            ve sevkiyat işlemlerinde
+            kullanılır.
+          </p>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-semibold">
+            Fiziksel Taşıma Birimi
+          </span>
+
+          <select
+            name="physicalUnitType"
+            value={physicalUnitType}
+            onChange={(event) =>
+              changePhysicalUnitType(
+                event.target.value
+              )
+            }
             className="w-full rounded-xl border bg-white p-4"
             required
           >
@@ -249,20 +323,11 @@ export default function HandlingUnitBulkCreateForm() {
             <option value="PALLET">
               🟦 Palet
             </option>
-
-            <option value="PICKING_BOX">
-              🟨 Toplama Kolisi
-            </option>
-
-            <option value="PICKING_PALLET">
-              🟧 Toplama Paleti
-            </option>
           </select>
 
           <p className="mt-2 text-xs leading-5 text-gray-500">
-            Toplama tipleri RF toplama
-            operasyonlarında hedef THM
-            olarak kullanılacaktır.
+            Kullanım amacı ve fiziksel tip
+            birlikte THM sınıfını belirler.
           </p>
         </label>
 
@@ -367,20 +432,20 @@ export default function HandlingUnitBulkCreateForm() {
           />
 
           <p className="mt-2 text-xs leading-5 text-gray-500">
-            0 girilirse sistem seçilen
-            barkod ön ekine ait mevcut son
-            numaradan otomatik devam eder.
+            0 girilirse aynı barkod ön
+            ekindeki mevcut son numaradan
+            otomatik devam edilir.
           </p>
         </label>
 
-        <label>
+        <label className="md:col-span-2">
           <span className="mb-2 block text-sm font-semibold">
             Açıklama
           </span>
 
           <input
             name="description"
-            placeholder={`Örneğin: ${unitTypeLabel} etiketleri`}
+            placeholder={`Örneğin: ${unitLabel} etiketleri`}
             className="w-full rounded-xl border p-4"
           />
 
@@ -396,7 +461,7 @@ export default function HandlingUnitBulkCreateForm() {
         </p>
 
         <p className="mt-3 text-sm font-semibold text-blue-800">
-          {unitTypeLabel}
+          {unitLabel}
         </p>
 
         <p className="mt-2 break-all font-mono text-xl font-bold text-blue-900">
@@ -432,7 +497,7 @@ export default function HandlingUnitBulkCreateForm() {
       >
         {isPending
           ? "Barkodlar Oluşturuluyor..."
-          : `${Number(count) || 0} Adet ${unitTypeLabel} Barkodu Oluştur`}
+          : `${Number(count) || 0} Adet ${unitLabel} Barkodu Oluştur`}
       </button>
     </form>
   );
