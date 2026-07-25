@@ -128,9 +128,9 @@ const menuItems: RFMenuItem[] = [
       "Hazır taşıma birimlerini sevkiyata aktarın.",
     icon: "🚚",
     href: "/rf/shipping",
-    status: "planned",
+    status: "active",
     permissionCodes: [
-      "WAVE_VIEW",
+      "SHIPPING_EXECUTE",
     ],
   },
 ];

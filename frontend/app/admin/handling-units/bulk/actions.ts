@@ -19,6 +19,25 @@ export type BulkHandlingUnitState = {
   lastBarcode: string;
 };
 
+type SupportedPurpose =
+  | typeof HandlingUnitPurpose.STOCK
+  | typeof HandlingUnitPurpose.PICKING
+  | typeof HandlingUnitPurpose.SHIPPING;
+
+type PhysicalUnitType = "BOX" | "PALLET";
+
+function emptyResult(
+  message: string
+): BulkHandlingUnitState {
+  return {
+    success: false,
+    message,
+    createdIds: [],
+    firstBarcode: "",
+    lastBarcode: "",
+  };
+}
+
 function normalizeText(
   value: FormDataEntryValue | null
 ) {
@@ -27,71 +46,79 @@ function normalizeText(
     .toUpperCase();
 }
 
-function isHandlingUnitType(
+function isSupportedPurpose(
   value: string
-): value is HandlingUnitType {
-  return Object.values(
-    HandlingUnitType
-  ).includes(
-    value as HandlingUnitType
+): value is SupportedPurpose {
+  return (
+    value === HandlingUnitPurpose.STOCK ||
+    value === HandlingUnitPurpose.PICKING ||
+    value === HandlingUnitPurpose.SHIPPING
   );
 }
 
-function getDefaultPrefix(
-  unitType: HandlingUnitType
-) {
-  switch (unitType) {
-    case HandlingUnitType.PALLET:
-      return "PLT";
-
-    case HandlingUnitType.BOX:
-      return "KOL";
-
-    case HandlingUnitType.PICKING_PALLET:
-      return "PPAL";
-
-    case HandlingUnitType.PICKING_BOX:
-      return "PKOL";
-
-    default:
-      return "KOL";
-  }
+function isPhysicalUnitType(
+  value: string
+): value is PhysicalUnitType {
+  return (
+    value === HandlingUnitType.BOX ||
+    value === HandlingUnitType.PALLET
+  );
 }
 
-function getHandlingUnitPurpose(
-  unitType: HandlingUnitType
-) {
-  switch (unitType) {
-    case HandlingUnitType.PICKING_BOX:
-    case HandlingUnitType.PICKING_PALLET:
-      return HandlingUnitPurpose.PICKING;
-
-    case HandlingUnitType.BOX:
-    case HandlingUnitType.PALLET:
-    default:
-      return HandlingUnitPurpose.STOCK;
+function resolveUnitType(
+  purpose: SupportedPurpose,
+  physicalUnitType: PhysicalUnitType
+): HandlingUnitType {
+  if (purpose === HandlingUnitPurpose.PICKING) {
+    return physicalUnitType === "PALLET"
+      ? HandlingUnitType.PICKING_PALLET
+      : HandlingUnitType.PICKING_BOX;
   }
+
+  return physicalUnitType === "PALLET"
+    ? HandlingUnitType.PALLET
+    : HandlingUnitType.BOX;
+}
+
+function getDefaultPrefix(
+  purpose: SupportedPurpose,
+  physicalUnitType: PhysicalUnitType
+) {
+  if (purpose === HandlingUnitPurpose.PICKING) {
+    return physicalUnitType === "PALLET"
+      ? "PPAL"
+      : "PKOL";
+  }
+
+  if (purpose === HandlingUnitPurpose.SHIPPING) {
+    return physicalUnitType === "PALLET"
+      ? "SPAL"
+      : "SKOL";
+  }
+
+  return physicalUnitType === "PALLET"
+    ? "PLT"
+    : "KOL";
 }
 
 function getHandlingUnitLabel(
-  unitType: HandlingUnitType
+  purpose: SupportedPurpose,
+  physicalUnitType: PhysicalUnitType
 ) {
-  switch (unitType) {
-    case HandlingUnitType.PALLET:
-      return "palet";
+  const physicalLabel =
+    physicalUnitType === "PALLET"
+      ? "paleti"
+      : "kolisi";
 
-    case HandlingUnitType.BOX:
-      return "koli";
-
-    case HandlingUnitType.PICKING_BOX:
-      return "toplama kolisi";
-
-    case HandlingUnitType.PICKING_PALLET:
-      return "toplama paleti";
-
-    default:
-      return "taşıma birimi";
+  if (purpose === HandlingUnitPurpose.PICKING) {
+    return `toplama ${physicalLabel}`;
   }
+
+  if (purpose === HandlingUnitPurpose.SHIPPING) {
+    return `sevk ${physicalLabel}`;
+  }
+
+  return `stok ${physicalLabel}`;
 }
 
 function getBarcodeNumber(
@@ -135,22 +162,35 @@ export async function createBulkHandlingUnits(
     "HANDLING_UNIT_MANAGE"
   );
 
-  const unitTypeValue = normalizeText(
-    formData.get("unitType")
+  const purposeValue = normalizeText(
+    formData.get("purpose")
   );
 
-  if (
-    !isHandlingUnitType(unitTypeValue)
-  ) {
-    return {
-      success: false,
-      message:
-        "Geçerli bir taşıma birimi tipi seçin.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+  if (!isSupportedPurpose(purposeValue)) {
+    return emptyResult(
+      "Geçerli bir kullanım amacı seçin."
+    );
   }
+
+  const physicalUnitTypeValue =
+    normalizeText(
+      formData.get("physicalUnitType")
+    );
+
+  if (
+    !isPhysicalUnitType(
+      physicalUnitTypeValue
+    )
+  ) {
+    return emptyResult(
+      "Geçerli bir fiziksel taşıma birimi tipi seçin."
+    );
+  }
+
+  const unitType = resolveUnitType(
+    purposeValue,
+    physicalUnitTypeValue
+  );
 
   const count = Number(
     formData.get("count")
@@ -175,60 +215,36 @@ export async function createBulkHandlingUnits(
 
   const prefix =
     customPrefix ||
-    getDefaultPrefix(unitTypeValue);
-
-  const purpose =
-    getHandlingUnitPurpose(
-      unitTypeValue
+    getDefaultPrefix(
+      purposeValue,
+      physicalUnitTypeValue
     );
 
   if (
     !Number.isInteger(count) ||
     count <= 0
   ) {
-    return {
-      success: false,
-      message:
-        "Oluşturulacak barkod adedi sıfırdan büyük olmalıdır.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+    return emptyResult(
+      "Oluşturulacak barkod adedi sıfırdan büyük olmalıdır."
+    );
   }
 
   if (count > 200) {
-    return {
-      success: false,
-      message:
-        "Tek işlemde en fazla 200 barkod oluşturabilirsiniz.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+    return emptyResult(
+      "Tek işlemde en fazla 200 barkod oluşturabilirsiniz."
+    );
   }
 
-  if (
-    !/^[A-Z0-9-]+$/.test(prefix)
-  ) {
-    return {
-      success: false,
-      message:
-        "Barkod ön ekinde yalnızca harf, rakam ve tire kullanılabilir.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+  if (!/^[A-Z0-9-]+$/.test(prefix)) {
+    return emptyResult(
+      "Barkod ön ekinde yalnızca harf, rakam ve tire kullanılabilir."
+    );
   }
 
   if (prefix.length > 20) {
-    return {
-      success: false,
-      message:
-        "Barkod ön eki en fazla 20 karakter olabilir.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+    return emptyResult(
+      "Barkod ön eki en fazla 20 karakter olabilir."
+    );
   }
 
   if (
@@ -236,28 +252,18 @@ export async function createBulkHandlingUnits(
     digitCount < 4 ||
     digitCount > 12
   ) {
-    return {
-      success: false,
-      message:
-        "Numara uzunluğu 4 ile 12 basamak arasında olmalıdır.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+    return emptyResult(
+      "Numara uzunluğu 4 ile 12 basamak arasında olmalıdır."
+    );
   }
 
   if (
     !Number.isInteger(startNumberValue) ||
     startNumberValue < 0
   ) {
-    return {
-      success: false,
-      message:
-        "Başlangıç numarası sıfır veya pozitif tam sayı olmalıdır.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+    return emptyResult(
+      "Başlangıç numarası sıfır veya pozitif tam sayı olmalıdır."
+    );
   }
 
   try {
@@ -267,11 +273,6 @@ export async function createBulkHandlingUnits(
           let startNumber =
             startNumberValue;
 
-          /*
-           * Başlangıç numarası 0 ise
-           * seçilen ön eke ait mevcut en
-           * büyük numaradan devam edilir.
-           */
           if (startNumber === 0) {
             const existingUnits =
               await tx.handlingUnit.findMany({
@@ -358,14 +359,15 @@ export async function createBulkHandlingUnits(
               data: barcodes.map(
                 (barcode) => ({
                   barcode,
-                  unitType:
-                    unitTypeValue,
-                  purpose,
+                  unitType,
+                  purpose:
+                    purposeValue,
                   status:
                     HandlingUnitStatus.OPEN,
                   warehouseId: null,
                   locationId: null,
                   parentUnitId: null,
+                  assignedOrderId: null,
                   description,
                 })
               ),
@@ -407,11 +409,9 @@ export async function createBulkHandlingUnits(
       );
 
     revalidatePath("/admin");
-
     revalidatePath(
       "/admin/handling-units"
     );
-
     revalidatePath(
       "/admin/handling-units/bulk"
     );
@@ -420,7 +420,8 @@ export async function createBulkHandlingUnits(
       success: true,
       message:
         `${count} adet ${getHandlingUnitLabel(
-          unitTypeValue
+          purposeValue,
+          physicalUnitTypeValue
         )} barkodu başarıyla oluşturuldu.`,
       createdIds:
         result.createdIds,
@@ -440,14 +441,9 @@ export async function createBulkHandlingUnits(
         Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return {
-        success: false,
-        message:
-          "Oluşturulmak istenen barkodlardan biri daha önce kayıt edilmiş.",
-        createdIds: [],
-        firstBarcode: "",
-        lastBarcode: "",
-      };
+      return emptyResult(
+        "Oluşturulmak istenen barkodlardan biri daha önce kaydedilmiş."
+      );
     }
 
     if (
@@ -455,25 +451,15 @@ export async function createBulkHandlingUnits(
         Prisma.PrismaClientKnownRequestError &&
       error.code === "P2034"
     ) {
-      return {
-        success: false,
-        message:
-          "Aynı anda başka bir barkod oluşturma işlemi yapıldı. Lütfen tekrar deneyin.",
-        createdIds: [],
-        firstBarcode: "",
-        lastBarcode: "",
-      };
+      return emptyResult(
+        "Aynı anda başka bir barkod oluşturma işlemi yapıldı. Lütfen tekrar deneyin."
+      );
     }
 
-    return {
-      success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Barkodlar oluşturulurken beklenmeyen bir hata oluştu.",
-      createdIds: [],
-      firstBarcode: "",
-      lastBarcode: "",
-    };
+    return emptyResult(
+      error instanceof Error
+        ? error.message
+        : "Barkodlar oluşturulurken beklenmeyen bir hata oluştu."
+    );
   }
 }
