@@ -270,6 +270,17 @@ const warehouseMenuItems: MenuItem[] = [
 
 const systemMenuItems: MenuItem[] = [
   {
+    href: "/admin/data-imports",
+    icon: "📥",
+    label: "Excel Veri Aktarımı",
+
+    permissionCodes: [
+      "DATA_IMPORT_VIEW",
+      "DATA_IMPORT_MANAGE",
+    ],
+  },
+
+  {
     href: "/admin/users",
     icon: "👤",
     label: "Kullanıcı Yönetimi",

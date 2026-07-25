@@ -268,6 +268,22 @@ export const PERMISSION_CATALOG:
         "Taşıma birimi oluşturma, bağlama, ayırma ve birleştirme işlemlerini yapar.",
     },
     {
+      code: "DATA_IMPORT_VIEW",
+      name:
+        "Excel Aktarımlarını Görüntüleme",
+      module: "DATA_IMPORT",
+      description:
+        "Excel veri aktarım geçmişini, ön izlemeleri ve hata raporlarını görüntüler.",
+    },
+    {
+      code: "DATA_IMPORT_MANAGE",
+      name:
+        "Excel Veri Aktarımı",
+      module: "DATA_IMPORT",
+      description:
+        "Excel şablonlarını indirir, dosyaları doğrular ve onaylanan kayıtları sisteme aktarır.",
+    },
+    {
       code: "LABEL_PRINT",
       name: "Etiket Yazdırma",
       module: "LABEL",
@@ -462,6 +478,8 @@ export const PERMISSION_MODULE_LABELS:
       "Dalga ve Toplama",
     HANDLING_UNIT:
       "Taşıma Birimleri",
+    DATA_IMPORT:
+      "Excel Veri Aktarımı",
     LABEL: "Etiketleme",
   SHIPPING: "Sevkiyat",
   };

@@ -1742,3 +1742,100 @@ model InventoryCountLine {
   @@index([countedAt])
   @@index([approvedAt])
 }
+
+enum DataImportType {
+  PRODUCT
+  SUPPLIER
+  CUSTOMER
+  PURCHASE_ORDER
+  SALES_ORDER
+}
+
+enum DataImportMode {
+  CREATE_ONLY
+  UPSERT
+}
+
+enum DataImportStatus {
+  VALIDATING
+  READY
+  PROCESSING
+  COMPLETED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum DataImportRowStatus {
+  VALID
+  INVALID
+  IMPORTED
+  UPDATED
+  SKIPPED
+  FAILED
+}
+
+model DataImportJob {
+  id           String           @id @default(cuid())
+  importNumber String           @unique
+  importType   DataImportType
+  mode         DataImportMode   @default(CREATE_ONLY)
+  status       DataImportStatus @default(VALIDATING)
+
+  originalFileName String
+  mimeType         String?
+  fileSize         Int
+  fileHash         String
+
+  totalRows    Int @default(0)
+  validRows    Int @default(0)
+  invalidRows  Int @default(0)
+  insertedRows Int @default(0)
+  updatedRows  Int @default(0)
+  skippedRows  Int @default(0)
+  failedRows   Int @default(0)
+
+  createdById   String
+  createdByName String
+
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  summary      Json?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rows DataImportRow[]
+
+  @@index([importType, status, createdAt])
+  @@index([createdById, createdAt])
+  @@index([fileHash])
+}
+
+model DataImportRow {
+  id String @id @default(cuid())
+
+  jobId       String
+  sheetName   String
+  rowNumber   Int
+  externalKey String?
+
+  status DataImportRowStatus
+
+  rawData        Json
+  normalizedData Json?
+  errors         Json?
+
+  resultRecordId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  job DataImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, sheetName, rowNumber])
+  @@index([jobId, status])
+  @@index([externalKey])
+}
