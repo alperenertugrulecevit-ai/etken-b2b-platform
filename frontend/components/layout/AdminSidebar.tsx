@@ -104,6 +104,15 @@ const stockMenuItems: MenuItem[] = [
     ],
   },
   {
+    href: "/admin/stock/thm-movements",
+    icon: "🔄",
+    label: "THM Hareketleri",
+
+    permissionCodes: [
+      "INVENTORY_VIEW",
+    ],
+  },
+  {
     href: "/admin/stock/manual",
     icon: "📥",
     label: "Manuel Stok İşlemi",

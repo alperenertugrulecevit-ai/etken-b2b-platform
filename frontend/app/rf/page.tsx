@@ -24,14 +24,47 @@ const menuItems: RFMenuItem[] = [
     ],
   },
   {
-    title: "Sipariş Toplama",
+    title: "Sipariş Bazlı Toplama",
     description:
-      "Sipariş ürünlerini lokasyonlardan hedef toplama THM'sine aktarın.",
+      "Tek siparişin ürünlerini doğrudan bir veya birden fazla Sevk THM'ine toplayın.",
     icon: "🛒",
     href: "/rf/picking",
     status: "active",
     permissionCodes: [
       "PICKING_EXECUTE",
+    ],
+  },
+  {
+    title: "Wave Havuz Toplama",
+    description:
+      "Birden fazla siparişin ortak SKU ihtiyaçlarını aynı Toplama THM'ine havuz olarak toplayın.",
+    icon: "🧺",
+    href: "/rf/wave-picking",
+    status: "active",
+    permissionCodes: [
+      "PICKING_EXECUTE",
+    ],
+  },
+  {
+    title: "Paketleme ve Dağılım",
+    description:
+      "Wave Toplama THM'lerindeki ürünleri alıcı ve sipariş sırasına göre Sevk THM'lerine dağıtın.",
+    icon: "🎁",
+    href: "/rf/packing",
+    status: "active",
+    permissionCodes: [
+      "PICKING_EXECUTE",
+    ],
+  },
+  {
+    title: "Sevkiyat",
+    description:
+      "Hazır Sevk THM'lerini irsaliye kaydıyla sevkiyata aktarın.",
+    icon: "🚚",
+    href: "/rf/shipping",
+    status: "active",
+    permissionCodes: [
+      "SHIPPING_EXECUTE",
     ],
   },
   {
@@ -111,28 +144,6 @@ const menuItems: RFMenuItem[] = [
       "COUNT_EXECUTE",
     ],
   },
-  {
-    title: "Paketleme",
-    description:
-      "Wave Toplama THM’lerini alıcı sırasına göre Sevk THM’lere dağıtın.",
-    icon: "🎁",
-    href: "/rf/packing",
-    status: "active",
-    permissionCodes: [
-      "PICKING_EXECUTE",
-    ],
-  },
-  {
-    title: "Sevkiyat",
-    description:
-      "Hazır taşıma birimlerini sevkiyata aktarın.",
-    icon: "🚚",
-    href: "/rf/shipping",
-    status: "active",
-    permissionCodes: [
-      "SHIPPING_EXECUTE",
-    ],
-  },
 ];
 
 export default async function RFHomePage() {
@@ -180,9 +191,7 @@ export default async function RFHomePage() {
             </p>
 
             <p className="mt-2 text-3xl font-black">
-              {
-                activeModuleCount
-              }
+              {activeModuleCount}
             </p>
           </div>
 

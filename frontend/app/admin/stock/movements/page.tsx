@@ -459,13 +459,20 @@ export default async function StockMovementsPage({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3">
           <a
             href={exportUrl}
             className="rounded-xl bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800"
           >
             📊 CSV İndir
           </a>
+
+          <Link
+            href="/admin/stock/thm-movements"
+            className="rounded-xl bg-cyan-800 px-5 py-3 font-semibold text-white hover:bg-cyan-700"
+          >
+            🔄 THM Hareketleri
+          </Link>
 
           <Link
             href="/admin/stock/manual"
