@@ -91,27 +91,38 @@ function getWaveTypeLabel(type: WaveType) {
 }
 
 function calculateOverallProgress(wave: {
-  pickingProgress: number;
-  transferProgress: number;
-  consolidationProgress: number;
-  packingProgress: number;
-  shippingProgress: number;
+  status: WaveStatus;
+  plannedQuantity: number;
+  completedQuantity: number;
 }) {
-  const progressValues = [
-    wave.pickingProgress,
-    wave.transferProgress,
-    wave.consolidationProgress,
-    wave.packingProgress,
-    wave.shippingProgress,
-  ];
+  if (
+    wave.status ===
+    WaveStatus.CANCELLED
+  ) {
+    return 0;
+  }
 
-  const total = progressValues.reduce(
-    (summary, value) => summary + value,
-    0
-  );
+  if (
+    wave.status ===
+    WaveStatus.COMPLETED
+  ) {
+    return 100;
+  }
 
-  return Math.round(
-    total / progressValues.length
+  if (
+    wave.plannedQuantity <= 0
+  ) {
+    return 0;
+  }
+
+  return Math.min(
+    100,
+    Math.round(
+      (
+        wave.completedQuantity /
+        wave.plannedQuantity
+      ) * 100
+    )
   );
 }
 
