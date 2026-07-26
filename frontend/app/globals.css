@@ -38,12 +38,22 @@ body {
 
 a {
   text-decoration: none;
-  color: inherit;
+}
+
+/*
+ * Koyu bağlantı ve düğmelerin yazı rengini kesin olarak
+ * beyaz yapar. İçlerindeki span ve diğer öğeleri de kapsar.
+ */
+a.text-white,
+a.text-white *,
+button.text-white,
+button.text-white * {
+  color: #ffffff !important;
 }
 
 button {
   cursor: pointer;
-  transition: .25s;
+  transition: 0.25s;
 }
 
 input {

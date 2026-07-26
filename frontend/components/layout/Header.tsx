@@ -45,14 +45,14 @@ export default function Header() {
 
           <Link
             href="/admin"
-            className="bg-slate-800 px-5 py-3 rounded-xl font-bold hover:bg-slate-700"
+            className="bg-slate-800 px-5 py-3 rounded-xl font-bold hover:bg-slate-700 text-white"
           >
             ⚙ Yönetim Paneli
           </Link>
 
           <Link
             href="/cart"
-            className="bg-orange-500 px-5 py-3 rounded-xl font-bold hover:bg-orange-600"
+            className="bg-orange-500 px-5 py-3 rounded-xl font-bold hover:bg-orange-600 text-white"
           >
             🛒 Sepet ({totalQty})
           </Link>
