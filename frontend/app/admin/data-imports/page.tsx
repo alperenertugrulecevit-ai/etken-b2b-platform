@@ -14,6 +14,8 @@ import ProductImportUploadForm from "@/components/admin/ProductImportUploadForm"
 
 import PurchaseOrderImportUploadForm from "@/components/admin/PurchaseOrderImportUploadForm";
 
+import SalesOrderImportUploadForm from "@/components/admin/SalesOrderImportUploadForm";
+
 import SupplierImportUploadForm from "@/components/admin/SupplierImportUploadForm";
 
 import {
@@ -80,6 +82,9 @@ function getTypeClassName(
     case DataImportType.PURCHASE_ORDER:
       return "bg-violet-100 text-violet-800";
 
+    case DataImportType.SALES_ORDER:
+      return "bg-rose-100 text-rose-800";
+
     default:
       return "bg-slate-100 text-slate-700";
   }
@@ -134,6 +139,7 @@ export default async function DataImportsPage() {
             DataImportType.SUPPLIER,
             DataImportType.CUSTOMER,
             DataImportType.PURCHASE_ORDER,
+            DataImportType.SALES_ORDER,
           ],
         },
       },
@@ -205,8 +211,8 @@ export default async function DataImportsPage() {
 
             <p className="mt-3 max-w-3xl leading-7 text-slate-600">
               Ürün, tedarikçi,
-              müşteri ve satın alma
-              siparişi kayıtlarını
+              müşteri, satın alma
+              ve sevk siparişi kayıtlarını
               Excel şablonlarıyla
               kontrollü biçimde
               sisteme aktarın.
@@ -253,6 +259,8 @@ export default async function DataImportsPage() {
             <CustomerImportUploadForm />
 
             <PurchaseOrderImportUploadForm />
+
+            <SalesOrderImportUploadForm />
           </div>
         ) : (
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">

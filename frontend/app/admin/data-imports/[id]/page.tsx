@@ -20,6 +20,8 @@ import ProductImportApproveForm from "@/components/admin/ProductImportApproveFor
 
 import PurchaseOrderImportApproveForm from "@/components/admin/PurchaseOrderImportApproveForm";
 
+import SalesOrderImportApproveForm from "@/components/admin/SalesOrderImportApproveForm";
+
 import SupplierImportApproveForm from "@/components/admin/SupplierImportApproveForm";
 
 import {
@@ -136,6 +138,103 @@ function getRowDisplay({
 }) {
 
     if (
+    importType ===
+    DataImportType.SALES_ORDER
+  ) {
+    /*
+     * Sevk aktarımında
+     * sipariş başlığı
+     */
+    if (
+      "customerCode" in
+      data
+    ) {
+      return {
+        primary:
+          readText(
+            data.orderNumber
+          ),
+
+        secondary:
+          readText(
+            data.customerCode
+          ),
+
+        reference:
+          readText(
+            data.status
+          ),
+
+        detail:
+          data.orderDate
+            ? String(
+                data.orderDate
+              ).slice(
+                0,
+                10
+              )
+            : "-",
+
+        extra:
+          data.requestedDate
+            ? `Talep edilen teslim: ${String(
+                data.requestedDate
+              ).slice(
+                0,
+                10
+              )}`
+            : "Talep edilen teslim tarihi yok",
+      };
+    }
+
+    /*
+     * Sevk siparişi
+     * ürün satırı
+     */
+    return {
+      primary:
+        readText(
+          data.orderNumber
+        ),
+
+      secondary:
+        readText(
+          data.productCode
+        ),
+
+      reference:
+        data.quantity !==
+          null &&
+        data.quantity !==
+          undefined
+          ? `${String(
+              data.quantity
+            )} adet`
+          : "-",
+
+      detail:
+        data.unitPrice !==
+          null &&
+        data.unitPrice !==
+          undefined
+          ? `${String(
+              data.unitPrice
+            )} TL`
+          : "-",
+
+      extra:
+        data.vatRate !==
+          null &&
+        data.vatRate !==
+          undefined
+          ? `%${String(
+              data.vatRate
+            )} KDV`
+          : "-",
+    };
+  }
+
+  if (
     importType ===
     DataImportType.PURCHASE_ORDER
   ) {
@@ -456,7 +555,9 @@ export default async function DataImportDetailPage({
       job.importType !==
         DataImportType.CUSTOMER &&
       job.importType !==
-        DataImportType.PURCHASE_ORDER
+        DataImportType.PURCHASE_ORDER &&
+      job.importType !==
+        DataImportType.SALES_ORDER
     )
   ) {
     notFound();
@@ -478,9 +579,15 @@ export default async function DataImportDetailPage({
     job.importType ===
     DataImportType.PURCHASE_ORDER;
 
+  const isSalesOrder =
+    job.importType ===
+    DataImportType.SALES_ORDER;
+
   const typeLabel =
-    isPurchaseOrder
-      ? "Satın Alma Siparişi"
+    isSalesOrder
+      ? "Sevk Siparişi"
+      : isPurchaseOrder
+        ? "Satın Alma Siparişi"
       : isCustomer
         ? "Müşteri"
         : isSupplier
@@ -488,8 +595,10 @@ export default async function DataImportDetailPage({
           : "Ürün";
 
   const resultLabel =
-    isPurchaseOrder
+    isSalesOrder
       ? "sipariş/ürün"
+      : isPurchaseOrder
+        ? "sipariş/ürün"
       : isCustomer
         ? "müşteri/adres"
         : isSupplier
@@ -497,8 +606,10 @@ export default async function DataImportDetailPage({
           : "ürün";
 
   const accentClassName =
-    isPurchaseOrder
-      ? "text-violet-700"
+    isSalesOrder
+      ? "text-rose-700"
+      : isPurchaseOrder
+        ? "text-violet-700"
       : isCustomer
         ? "text-orange-700"
         : isSupplier
@@ -727,6 +838,23 @@ export default async function DataImportDetailPage({
         isPurchaseOrder ? (
           <div className="mt-6">
             <PurchaseOrderImportApproveForm
+              jobId={
+                job.id
+              }
+              totalRows={
+                job.totalRows
+              }
+              modeLabel={
+                modeLabel
+              }
+            />
+          </div>
+        ) : null}
+
+        {canApprove &&
+        isSalesOrder ? (
+          <div className="mt-6">
+            <SalesOrderImportApproveForm
               jobId={
                 job.id
               }
