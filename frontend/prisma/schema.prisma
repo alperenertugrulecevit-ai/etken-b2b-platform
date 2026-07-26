@@ -996,6 +996,34 @@ model WaveDistributionLine {
   @@index([productCode])
 }
 
+model BarcodePrinter {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String
+
+  ipAddress String
+  port      Int    @default(9100)
+
+  dpi Int @default(203)
+
+  labelWidthMm  Int @default(100)
+  labelHeightMm Int @default(100)
+
+  commandLanguage String @default("ZPL")
+
+  isActive Boolean @default(true)
+
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([name])
+  @@index([ipAddress])
+}
+
 model ShippingHandlingUnit {
   id             String @id @default(cuid())
   handlingUnitId Int    @unique
@@ -1029,10 +1057,15 @@ model ShippingHandlingUnit {
   heightCm      Float?
 
   labelPrintedAt DateTime?
-  closedAt       DateTime?
-  readyAt        DateTime?
-  shippedAt      DateTime?
-  cancelledAt    DateTime?
+
+  packingListPrintedAt       DateTime?
+  packingListPrintCount      Int       @default(0)
+  packingListLastPrinterCode String?
+
+  closedAt    DateTime?
+  readyAt     DateTime?
+  shippedAt   DateTime?
+  cancelledAt DateTime?
 
   createdById   String?
   createdByName String?
@@ -1068,6 +1101,8 @@ model ShippingHandlingUnit {
   @@index([createdAt])
   @@index([closedAt])
   @@index([shippedAt])
+  @@index([packingListPrintedAt])
+  @@index([packingListLastPrinterCode])
 }
 
 model ShippingHandlingUnitOrder {

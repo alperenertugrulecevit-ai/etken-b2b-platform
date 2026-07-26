@@ -56,7 +56,18 @@ const menuItems: RFMenuItem[] = [
       "PICKING_EXECUTE",
     ],
   },
-  {
+      {
+    title: "Çeki Listesi Baskısı",
+    description:
+      "Sevk THM barkodlarını seri okutarak 10 × 10 cm termal çeki listelerini yazdırın.",
+    icon: "🖨️",
+    href: "/rf/packing-list-print",
+    status: "active",
+    permissionCodes: [
+      "PICKING_EXECUTE",
+    ],
+  },
+    {
     title: "Sevkiyat",
     description:
       "Hazır Sevk THM'lerini irsaliye kaydıyla sevkiyata aktarın.",

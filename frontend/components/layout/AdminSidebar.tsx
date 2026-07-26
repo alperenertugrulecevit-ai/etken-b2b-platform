@@ -95,6 +95,16 @@ const mainMenuItems: MenuItem[] = [
 
 const stockMenuItems: MenuItem[] = [
   {
+    href: "/admin/barcode-printers",
+    icon: "🖨️",
+    label: "Barkod Yazıcıları",
+
+    permissionCodes: [
+      "HANDLING_UNIT_MANAGE",
+    ],
+  },
+
+  {
     href: "/admin/stock/movements",
     icon: "📋",
     label: "Stok Hareketleri",
@@ -103,15 +113,7 @@ const stockMenuItems: MenuItem[] = [
       "INVENTORY_VIEW",
     ],
   },
-  {
-    href: "/admin/stock/thm-movements",
-    icon: "🔄",
-    label: "THM Hareketleri",
 
-    permissionCodes: [
-      "INVENTORY_VIEW",
-    ],
-  },
   {
     href: "/admin/stock/manual",
     icon: "📥",
