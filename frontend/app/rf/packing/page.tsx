@@ -12,7 +12,7 @@ import {
   prisma,
 } from "@/lib/prisma";
 
-import RFPackingForm from "@/components/rf/RFPackingForm";
+import RFProductDrivenPackingForm from "@/components/rf/RFProductDrivenPackingForm";
 
 import {
   AuthorizationService,
@@ -436,7 +436,7 @@ export default async function RFPackingPage() {
         </Link>
       </div>
 
-      <RFPackingForm
+      <RFProductDrivenPackingForm
         distributions={
           distributionOptions
         }

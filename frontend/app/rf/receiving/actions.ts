@@ -5,6 +5,7 @@ import {
   PurchaseOrderStatus,
   Prisma,
   StockMovementType,
+  WmsOperationType,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
@@ -428,6 +429,69 @@ export async function rfReceivePurchaseItem(
               description:
                 `${handlingUnit.barcode} taşıma birimine RF mal kabulü. ` +
                 `Tedarikçi: ${purchaseOrder.supplier.name}.`,
+            },
+          });
+                    await tx.wmsOperationLog.create({
+            data: {
+              operationType:
+                WmsOperationType.RECEIVING,
+
+              module:
+                "RF_RECEIVING",
+
+              entityType:
+                "HANDLING_UNIT",
+
+              entityId:
+                handlingUnit.id,
+
+              barcode:
+                handlingUnit.barcode,
+
+              targetBarcode:
+                handlingUnit.barcode,
+
+              purchaseOrderId:
+                purchaseOrder.id,
+
+              purchaseNumber:
+                purchaseOrder.purchaseNumber,
+
+              productId:
+                updatedProduct.id,
+
+              productCode:
+                updatedProduct.code,
+
+              productName:
+                updatedProduct.name,
+
+              quantity,
+
+              description:
+                `${handlingUnit.barcode} THM üzerine RF mal kabulü yapıldı. ` +
+                `Tedarikçi: ${purchaseOrder.supplier.name}. ` +
+                `Satın alma siparişi: ${purchaseOrder.purchaseNumber}.`,
+
+              metadata: {
+                supplierName:
+                  purchaseOrder.supplier.name,
+
+                purchaseNumber:
+                  purchaseOrder.purchaseNumber,
+
+                handlingUnitId:
+                  handlingUnit.id,
+
+                handlingUnitBarcode:
+                  handlingUnit.barcode,
+
+                handlingUnitProductQuantity:
+                  updatedHandlingUnitItem.quantity,
+
+                productPhysicalStockAfter:
+                  updatedProduct.stock,
+              },
             },
           });
 

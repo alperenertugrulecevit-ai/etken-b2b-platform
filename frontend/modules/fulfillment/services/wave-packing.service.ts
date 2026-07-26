@@ -905,15 +905,41 @@ export class WavePackingService {
             metadata: {
               waveId:
                 distribution.waveId,
+
               waveNo:
                 distribution.wave.waveNo,
+
               distributionId:
                 distribution.id,
+
+              distributionCode:
+                distribution.distributionCode,
+
+              customerName:
+                distribution.customerName,
+
+              orderNumbers:
+                Array.from(
+                  new Set(
+                    availableLines.map(
+                      (line) =>
+                        line.distributionOrder
+                          .orderNumber
+                    )
+                  )
+                ),
+
               shippingHandlingUnitId:
                 shippingUnit.id,
+
+              shippingHandlingUnitBarcode:
+                targetUnit.barcode,
+
               packageSequence:
                 shippingUnit.packageSequence,
+
               sourceQuantityAfter,
+
               targetQuantityAfter:
                 targetItem.quantity,
             },
