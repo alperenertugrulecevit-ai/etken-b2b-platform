@@ -56,7 +56,43 @@ const menuItems: RFMenuItem[] = [
       "PICKING_EXECUTE",
     ],
   },
+
+    {
+    title: "Sevk THM Kapatma",
+    description:
+      "Açık Sevk THM'lerini aktif Wave gerektirmeden kapatın ve sevke hazır hâle getirin.",
+    icon: "🔒",
+    href: "/rf/shipping-unit-close",
+    status: "active",
+    permissionCodes: [
+      "PICKING_EXECUTE",
+    ],
+  },
+
+    {
+    title: "Çeki Listesi Ön İzleme",
+    description:
+      "Sevk THM içeriğini ve 10 × 10 cm çeki listesi etiketlerini yazıcı kullanmadan kontrol edin.",
+    icon: "🔍",
+    href: "/rf/packing-list-preview",
+    status: "active",
+    permissionCodes: [
+      "PICKING_EXECUTE",
+    ],
+  },
+
   {
+    title: "Çeki Listesi Baskısı",
+    description:
+      "Sevk THM barkodlarını seri okutarak 10 × 10 cm termal çeki listelerini yazdırın.",
+    icon: "🖨️",
+    href: "/rf/packing-list-print",
+    status: "active",
+    permissionCodes: [
+      "PICKING_EXECUTE",
+    ],
+  },
+    {
     title: "Sevkiyat",
     description:
       "Hazır Sevk THM'lerini irsaliye kaydıyla sevkiyata aktarın.",
