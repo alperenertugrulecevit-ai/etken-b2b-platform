@@ -87,6 +87,27 @@ export const PERMISSION_CATALOG:
         "Müşteri ve müşteri teslimat adresi kayıtlarını oluşturur ve günceller.",
     },
     {
+      code: "WMS_COMPANY_VIEW",
+      name: "3PL Şirket Yapısını Görüntüleme",
+      module: "WMS_STRUCTURE",
+      description:
+        "Stok sahibi şirketleri, lojistik merkezlerini ve depo bağlantılarını görüntüler.",
+    },
+    {
+      code: "WMS_COMPANY_MANAGE",
+      name: "3PL Şirket Yapısını Yönetme",
+      module: "WMS_STRUCTURE",
+      description:
+        "Stok sahibi şirket, lojistik merkezi ve şirket-depo bağlantılarını yönetir.",
+    },
+    {
+      code: "WMS_ACCESS_MANAGE",
+      name: "Şirket ve Depo Erişimlerini Yönetme",
+      module: "WMS_STRUCTURE",
+      description:
+        "Kullanıcılara stok sahibi şirket ve depo çalışma erişimi atar.",
+    },
+    {
       code: "WAREHOUSE_VIEW",
       name:
         "Depoları Görüntüleme",
@@ -466,6 +487,8 @@ export const PERMISSION_MODULE_LABELS:
       "Rol ve Yetki Yönetimi",
     CUSTOMERS:
       "Müşteri Yönetimi",
+    WMS_STRUCTURE:
+      "3PL Şirket ve Erişim Yönetimi",
     WAREHOUSE:
       "Depo ve Adresler",
     INVENTORY:
