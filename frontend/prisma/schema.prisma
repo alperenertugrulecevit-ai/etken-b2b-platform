@@ -338,18 +338,32 @@ enum WarehouseLocationType {
 }
 
 model Warehouse {
-  id              Int                 @id @default(autoincrement())
-  code            String              @unique
-  name            String
-  address         String?
-  city            String?
-  district        String?
-  isActive        Boolean             @default(true)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                Int      @id @default(autoincrement())
+  tenantId          String   @default("tenant_etken")
+  companyId         String   @default("company_etken_office")
+  logisticsCenterId String   @default("logistics_center_etken")
+  code              String   @unique
+  name              String
+  address           String?
+  city              String?
+  district          String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant          WmsTenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company         WmsCompany      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  logisticsCenter LogisticsCenter @relation(fields: [logisticsCenterId], references: [id], onDelete: Restrict)
+
   locations       WarehouseLocation[]
   handlingUnits   HandlingUnit[]
   inventoryCounts InventoryCount[]
+  userAccesses    UserWarehouseAccess[]
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([logisticsCenterId])
+  @@index([tenantId, companyId, isActive])
 }
 
 model WarehouseLocation {
@@ -1312,6 +1326,180 @@ model DispatchDocumentLine {
   @@index([productCode])
 }
 
+model WmsTenant {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String
+
+  legalName String?
+  taxOffice String?
+  taxNumber String?
+
+  phone String?
+  email String?
+
+  address    String?
+  city       String?
+  district   String?
+  postalCode String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companies         WmsCompany[]
+  logisticsCenters  LogisticsCenter[]
+  warehouses        Warehouse[]
+  memberships       WmsTenantMembership[]
+  companyAccesses   UserCompanyAccess[]
+  warehouseAccesses UserWarehouseAccess[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model WmsCompany {
+  id String @id @default(cuid())
+
+  tenantId String
+
+  code String
+  name String
+
+  legalName String?
+  taxOffice String?
+  taxNumber String?
+
+  phone       String?
+  email       String?
+  contactName String?
+
+  address    String?
+  city       String?
+  district   String?
+  postalCode String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant WmsTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  warehouses   Warehouse[]
+  userAccesses UserCompanyAccess[]
+
+  @@unique([tenantId, code], name: "wms_company_tenant_code_unique")
+  @@index([tenantId, isActive])
+  @@index([name])
+  @@index([taxNumber])
+}
+
+model LogisticsCenter {
+  id String @id @default(cuid())
+
+  tenantId String
+
+  code String
+  name String
+
+  address    String?
+  city       String?
+  district   String?
+  postalCode String?
+
+  phone String?
+  email String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     WmsTenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  warehouses Warehouse[]
+
+  @@unique([tenantId, code], name: "logistics_center_tenant_code_unique")
+  @@index([tenantId, isActive])
+  @@index([name])
+}
+
+model WmsTenantMembership {
+  id String @id @default(cuid())
+
+  tenantId String
+  userId   String
+
+  isTenantAdmin Boolean @default(false)
+  isActive      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant WmsTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId], name: "wms_tenant_user_unique")
+  @@index([userId, isActive])
+  @@index([tenantId, isActive])
+}
+
+model UserCompanyAccess {
+  id String @id @default(cuid())
+
+  tenantId  String
+  companyId String
+  userId    String
+
+  canView    Boolean @default(true)
+  canOperate Boolean @default(true)
+  canManage  Boolean @default(false)
+
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  WmsTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company WmsCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId], name: "wms_company_user_unique")
+  @@index([tenantId, userId, isActive])
+  @@index([companyId, isActive])
+  @@index([userId, isDefault])
+}
+
+model UserWarehouseAccess {
+  id String @id @default(cuid())
+
+  tenantId    String
+  warehouseId Int
+  userId      String
+
+  canView    Boolean @default(true)
+  canOperate Boolean @default(true)
+  canManage  Boolean @default(false)
+
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    WmsTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, userId], name: "wms_warehouse_user_unique")
+  @@index([tenantId, userId, isActive])
+  @@index([warehouseId, isActive])
+  @@index([userId, isDefault])
+}
+
 enum UserStatus {
   ACTIVE
   PASSIVE
@@ -1412,6 +1600,10 @@ model User {
   assignedWaveTasks WaveAssignment[] @relation("WaveAssignmentAssignedBy")
 
   authSessions AuthSession[]
+
+  wmsTenantMemberships WmsTenantMembership[]
+  wmsCompanyAccesses   UserCompanyAccess[]
+  wmsWarehouseAccesses UserWarehouseAccess[]
 
   createdInventoryCounts    InventoryCount[]         @relation("InventoryCountCreatedBy")
   approvedInventoryCounts   InventoryCount[]         @relation("InventoryCountApprovedBy")
