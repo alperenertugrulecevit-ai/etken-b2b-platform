@@ -268,6 +268,17 @@ const wmsMenuItems: MenuItem[] = [
 
 const warehouseMenuItems: MenuItem[] = [
   {
+    href: "/admin/wms-structure",
+    icon: "🏢",
+    label: "3PL Şirket Yapısı",
+
+    permissionCodes: [
+      "WMS_COMPANY_VIEW",
+      "WMS_COMPANY_MANAGE",
+      "WMS_ACCESS_MANAGE",
+    ],
+  },
+  {
     href: "/admin/warehouses",
     icon: "🏬",
     label: "Depo Yönetimi",
