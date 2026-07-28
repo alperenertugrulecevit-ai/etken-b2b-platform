@@ -9,8 +9,10 @@ import { prisma } from "@/lib/prisma";
 import LogoutButton from "@/components/auth/LogoutButton";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
+import WmsContextSelector from "@/components/layout/WmsContextSelector";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
 
 export default async function AdminLayout({
   children,
@@ -19,6 +21,12 @@ export default async function AdminLayout({
 }>) {
   const profile =
     await AuthorizationService.requireAdminPortalAccess();
+
+  const wmsContextData =
+    await WmsContextService.getSelectorData(
+      profile.id,
+      profile.isAdminUser
+    );
 
   const userAccount =
     await prisma.user.findUnique({
@@ -89,6 +97,16 @@ export default async function AdminLayout({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <WmsContextSelector
+                activeContext={
+                  wmsContextData.activeContext
+                }
+                companies={
+                  wmsContextData.companies
+                }
+                variant="admin"
+              />
+
               {profile.isAdminUser && (
                 <span className="rounded-full bg-violet-100 px-3 py-2 text-xs font-bold text-violet-800">
                   Yönetici

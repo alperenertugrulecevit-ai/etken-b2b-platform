@@ -1,5 +1,7 @@
 import "server-only";
 
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
+
 import {
   AuthSessionType,
   UserStatus,
@@ -316,6 +318,8 @@ export class SessionService {
     }
 
     await CookieService.deleteSessionCookie();
+
+    await WmsContextService.clearActiveContext();
   }
 
   static async revokeAllUserSessions(
