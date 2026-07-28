@@ -7,8 +7,10 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import LogoutButton from "@/components/auth/LogoutButton";
+import WmsContextSelector from "@/components/layout/WmsContextSelector";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
 
 type Props = {
   children: React.ReactNode;
@@ -19,6 +21,16 @@ export default async function RFLayout({
 }: Props) {
   const profile =
     await AuthorizationService.getCurrentProfile();
+
+  const wmsContextData = profile
+    ? await WmsContextService.getSelectorData(
+        profile.id,
+        profile.isAdminUser
+      )
+    : {
+        activeContext: null,
+        companies: [],
+      };
 
   if (profile) {
     const userAccount =
@@ -83,6 +95,16 @@ export default async function RFLayout({
 
           {profile ? (
             <div className="flex flex-wrap items-center justify-end gap-3">
+              <WmsContextSelector
+                activeContext={
+                  wmsContextData.activeContext
+                }
+                companies={
+                  wmsContextData.companies
+                }
+                variant="rf"
+              />
+
               <div className="min-w-0 text-right">
                 <p className="truncate text-sm font-bold text-white">
                   {fullName}
