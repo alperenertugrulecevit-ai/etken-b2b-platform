@@ -3,23 +3,30 @@ import type {
   StockMovementType,
 } from "@prisma/client";
 
-export type CreateStockMovementInput = {
-  productId: number;
-
-  orderId?: number | null;
-
-  purchaseOrderId?: number | null;
-
-  movementType: StockMovementType;
-
-  physicalChange?: number;
-
-  reservedChange?: number;
-
-  documentNumber?: string | null;
-
-  description?: string | null;
+export type StockMovementScope = {
+  tenantId?: string;
+  companyId?: string;
+  warehouseId?: number;
 };
+
+export type CreateStockMovementInput =
+  StockMovementScope & {
+    productId: number;
+
+    orderId?: number | null;
+
+    purchaseOrderId?: number | null;
+
+    movementType: StockMovementType;
+
+    physicalChange?: number;
+
+    reservedChange?: number;
+
+    documentNumber?: string | null;
+
+    description?: string | null;
+  };
 
 export type StockBalances = {
   physicalStock: number;

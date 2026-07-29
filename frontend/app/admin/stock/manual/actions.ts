@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
 
 export type ManualStockActionState = {
   success: boolean;
@@ -87,9 +88,16 @@ export async function createManualStockMovement(
   _previousState: ManualStockActionState,
   formData: FormData
 ): Promise<ManualStockActionState> {
-  await AuthorizationService.requirePermission(
-    "INVENTORY_ADJUST"
-  );
+  const profile =
+    await AuthorizationService.requirePermission(
+      "INVENTORY_ADJUST"
+    );
+
+  const activeContext =
+    await WmsContextService.requireActiveContext(
+      profile.id,
+      profile.isAdminUser
+    );
 
   const productId = Number(
     formData.get("productId")
@@ -162,28 +170,59 @@ export async function createManualStockMovement(
     const result =
       await prisma.$transaction(
         async (tx) => {
-          const product =
-            await tx.product.findUnique({
+          const productRecord =
+            await tx.product.findFirst({
               where: {
                 id: productId,
+                tenantId:
+                  activeContext.tenantId,
+                companyId:
+                  activeContext.companyId,
               },
               select: {
                 id: true,
                 code: true,
                 name: true,
-                stock: true,
-                reservedStock: true,
                 isActive: true,
+                warehouseStocks: {
+                  where: {
+                    warehouseId:
+                      activeContext.warehouseId,
+                  },
+                  take: 1,
+                  select: {
+                    physicalStock: true,
+                    reservedStock: true,
+                  },
+                },
               },
             });
 
-          if (!product) {
+          if (!productRecord) {
             return {
               product: null,
               error:
                 "Stok işlemi yapılacak ürün bulunamadı.",
             };
           }
+
+          const warehouseStock =
+            productRecord
+              .warehouseStocks[0];
+
+          const product = {
+            id: productRecord.id,
+            code: productRecord.code,
+            name: productRecord.name,
+            isActive:
+              productRecord.isActive,
+            stock:
+              warehouseStock
+                ?.physicalStock ?? 0,
+            reservedStock:
+              warehouseStock
+                ?.reservedStock ?? 0,
+          };
 
           if (!product.isActive) {
             return {
@@ -228,6 +267,12 @@ export async function createManualStockMovement(
           await createStockMovementWithTransaction(
             tx,
             {
+              tenantId:
+                activeContext.tenantId,
+              companyId:
+                activeContext.companyId,
+              warehouseId:
+                activeContext.warehouseId,
               productId,
               movementType,
               physicalChange,
