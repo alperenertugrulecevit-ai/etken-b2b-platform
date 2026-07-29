@@ -2,15 +2,32 @@ import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
 import ManualStockForm from "@/components/admin/ManualStockForm";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
 
 function formatNumber(value: number) {
   return value.toLocaleString("tr-TR");
 }
 
 export default async function ManualStockPage() {
-  const products =
+  const profile =
+    await AuthorizationService.requirePermission(
+      "INVENTORY_ADJUST"
+    );
+
+  const activeContext =
+    await WmsContextService.requireActiveContext(
+      profile.id,
+      profile.isAdminUser
+    );
+
+  const productRecords =
     await prisma.product.findMany({
       where: {
+        tenantId:
+          activeContext.tenantId,
+        companyId:
+          activeContext.companyId,
         isActive: true,
       },
 
@@ -27,10 +44,34 @@ export default async function ManualStockPage() {
         id: true,
         code: true,
         name: true,
-        stock: true,
-        reservedStock: true,
+        warehouseStocks: {
+          where: {
+            warehouseId:
+              activeContext.warehouseId,
+          },
+          take: 1,
+          select: {
+            physicalStock: true,
+            reservedStock: true,
+          },
+        },
       },
     });
+
+  const products =
+    productRecords.map(
+      (product) => ({
+        id: product.id,
+        code: product.code,
+        name: product.name,
+        stock:
+          product.warehouseStocks[0]
+            ?.physicalStock ?? 0,
+        reservedStock:
+          product.warehouseStocks[0]
+            ?.reservedStock ?? 0,
+      })
+    );
 
   const totalPhysicalStock =
     products.reduce(

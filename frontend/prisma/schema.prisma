@@ -9,20 +9,26 @@ datasource db {
 }
 
 model Product {
-  id                    Int                        @id @default(autoincrement())
-  code                  String                     @unique
-  barcode               String                     @unique
-  name                  String
-  brand                 String
-  category              String
-  supplier              String
-  price                 Float
-  stock                 Int
-  reservedStock         Int                        @default(0)
-  vat                   Int
-  ownStock              Boolean
-  isActive              Boolean                    @default(true)
-  createdAt             DateTime                   @default(now())
+  id            Int      @id @default(autoincrement())
+  tenantId      String   @default("tenant_etken")
+  companyId     String   @default("company_etken_office")
+  code          String   @unique
+  barcode       String   @unique
+  name          String
+  brand         String
+  category      String
+  supplier      String
+  price         Float
+  stock         Int
+  reservedStock Int      @default(0)
+  vat           Int
+  ownStock      Boolean
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  tenant                WmsTenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company               WmsCompany                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  warehouseStocks       WarehouseProductStock[]
   orderItems            OrderItem[]
   purchaseOrderItems    PurchaseOrderItem[]
   stockMovements        StockMovement[]
@@ -34,6 +40,10 @@ model Product {
   dispatchLines         DispatchDocumentLine[]
   inventoryCountLines   InventoryCountLine[]
   waveDistributionLines WaveDistributionLine[]
+
+  @@index([tenantId, companyId, isActive])
+  @@index([companyId, code])
+  @@index([companyId, barcode])
 }
 
 model Category {
@@ -297,6 +307,9 @@ enum StockMovementType {
 
 model StockMovement {
   id                     Int               @id @default(autoincrement())
+  tenantId               String            @default("tenant_etken")
+  companyId              String            @default("company_etken_office")
+  warehouseId            Int?
   productId              Int
   orderId                Int?
   purchaseOrderId        Int?
@@ -311,11 +324,17 @@ model StockMovement {
   description            String?
   createdAt              DateTime          @default(now())
 
+  tenant               WmsTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company              WmsCompany            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  warehouse            Warehouse?            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   product              Product               @relation(fields: [productId], references: [id])
   order                Order?                @relation(fields: [orderId], references: [id], onDelete: SetNull)
   purchaseOrder        PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
   shippingHandlingUnit ShippingHandlingUnit? @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: SetNull)
 
+  @@index([tenantId, companyId, warehouseId])
+  @@index([companyId, productId, createdAt])
+  @@index([warehouseId, productId, createdAt])
   @@index([productId])
   @@index([orderId])
   @@index([purchaseOrderId])
@@ -357,6 +376,8 @@ model Warehouse {
 
   locations       WarehouseLocation[]
   handlingUnits   HandlingUnit[]
+  productStocks   WarehouseProductStock[]
+  stockMovements  StockMovement[]
   inventoryCounts InventoryCount[]
   userAccesses    UserWarehouseAccess[]
 
@@ -415,6 +436,29 @@ model WarehouseLocationStock {
   @@index([quantity])
 }
 
+model WarehouseProductStock {
+  id            Int      @id @default(autoincrement())
+  tenantId      String   @default("tenant_etken")
+  companyId     String   @default("company_etken_office")
+  warehouseId   Int
+  productId     Int
+  physicalStock Int      @default(0)
+  reservedStock Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant    WmsTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company   WmsCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  warehouse Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([warehouseId, productId], name: "warehouse_product_stock_unique")
+  @@index([tenantId, companyId, warehouseId])
+  @@index([companyId, productId])
+  @@index([warehouseId, physicalStock])
+  @@index([warehouseId, reservedStock])
+}
+
 enum HandlingUnitPurpose {
   STOCK
   PICKING
@@ -441,6 +485,8 @@ enum HandlingUnitStatus {
 
 model HandlingUnit {
   id              Int                 @id @default(autoincrement())
+  tenantId        String              @default("tenant_etken")
+  companyId       String              @default("company_etken_office")
   barcode         String              @unique
   unitType        HandlingUnitType
   purpose         HandlingUnitPurpose @default(STOCK)
@@ -454,6 +500,8 @@ model HandlingUnit {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
+  tenant    WmsTenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company   WmsCompany         @relation(fields: [companyId], references: [id], onDelete: Restrict)
   warehouse Warehouse?         @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
   location  WarehouseLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
@@ -472,6 +520,8 @@ model HandlingUnit {
   shippingProfile      ShippingHandlingUnit?
   inventoryCountLines  InventoryCountLine[]
 
+  @@index([tenantId, companyId, warehouseId])
+  @@index([companyId, barcode])
   @@index([barcode])
   @@index([unitType])
   @@index([purpose])
@@ -1352,6 +1402,10 @@ model WmsTenant {
   companies         WmsCompany[]
   logisticsCenters  LogisticsCenter[]
   warehouses        Warehouse[]
+  products          Product[]
+  productStocks     WarehouseProductStock[]
+  stockMovements    StockMovement[]
+  handlingUnits     HandlingUnit[]
   memberships       WmsTenantMembership[]
   companyAccesses   UserCompanyAccess[]
   warehouseAccesses UserWarehouseAccess[]
@@ -1388,8 +1442,12 @@ model WmsCompany {
 
   tenant WmsTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
-  warehouses   Warehouse[]
-  userAccesses UserCompanyAccess[]
+  warehouses     Warehouse[]
+  products       Product[]
+  productStocks  WarehouseProductStock[]
+  stockMovements StockMovement[]
+  handlingUnits  HandlingUnit[]
+  userAccesses   UserCompanyAccess[]
 
   @@unique([tenantId, code], name: "wms_company_tenant_code_unique")
   @@index([tenantId, isActive])
