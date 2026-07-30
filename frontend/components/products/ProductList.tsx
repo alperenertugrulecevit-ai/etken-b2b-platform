@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useCart } from "@/context/CartContext";
+import {
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  useCart,
+} from "@/context/CartContext";
 
 type Product = {
   id: number;
@@ -11,107 +17,418 @@ type Product = {
   name: string;
   brand: string;
   category: string;
-  supplier: string;
   price: number;
-  stock: number;
   vat: number;
+  availableStock: number;
   ownStock: boolean;
 };
 
-export default function ProductList({ products }: { products: Product[] }) {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("Tümü");
+type Props = {
+  products: Product[];
+  initialSearch?: string;
+  initialCategory?: string;
+  initialBrand?: string;
+};
 
-  const { addToCart } = useCart();
+function normalizeText(
+  value: string
+) {
+  return value
+    .toLocaleLowerCase(
+      "tr-TR"
+    )
+    .trim();
+}
 
-  const categories = ["Tümü", ...new Set(products.map((p) => p.category))];
+function formatCurrency(
+  value: number
+) {
+  return value.toLocaleString(
+    "tr-TR",
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }
+  );
+}
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const q = search.toLowerCase();
+export default function ProductList({
+  products,
+  initialSearch = "",
+  initialCategory = "Tümü",
+  initialBrand = "Tümü",
+}: Props) {
+  const [
+    search,
+    setSearch,
+  ] = useState(initialSearch);
 
-      const searchMatch =
-        product.name.toLowerCase().includes(q) ||
-        product.brand.toLowerCase().includes(q) ||
-        product.code.toLowerCase().includes(q);
+  const [
+    category,
+    setCategory,
+  ] = useState(
+    initialCategory
+  );
 
-      const categoryMatch =
-        category === "Tümü" || product.category === category;
+  const [
+    brand,
+    setBrand,
+  ] = useState(initialBrand);
 
-      return searchMatch && categoryMatch;
+  const [
+    addedCode,
+    setAddedCode,
+  ] = useState("");
+
+  const { addToCart } =
+    useCart();
+
+  const categories =
+    useMemo(
+      () => [
+        "Tümü",
+        ...Array.from(
+          new Set(
+            products.map(
+              (product) =>
+                product.category
+            )
+          )
+        ).sort((a, b) =>
+          a.localeCompare(
+            b,
+            "tr"
+          )
+        ),
+      ],
+      [products]
+    );
+
+  const brands = useMemo(
+    () => [
+      "Tümü",
+      ...Array.from(
+        new Set(
+          products.map(
+            (product) =>
+              product.brand
+          )
+        )
+      ).sort((a, b) =>
+        a.localeCompare(
+          b,
+          "tr"
+        )
+      ),
+    ],
+    [products]
+  );
+
+  const filteredProducts =
+    useMemo(() => {
+      const query =
+        normalizeText(search);
+
+      return products.filter(
+        (product) => {
+          const searchMatch =
+            !query ||
+            normalizeText(
+              product.name
+            ).includes(query) ||
+            normalizeText(
+              product.brand
+            ).includes(query) ||
+            normalizeText(
+              product.code
+            ).includes(query) ||
+            normalizeText(
+              product.barcode
+            ).includes(query);
+
+          const categoryMatch =
+            category === "Tümü" ||
+            product.category ===
+              category;
+
+          const brandMatch =
+            brand === "Tümü" ||
+            product.brand ===
+              brand;
+
+          return (
+            searchMatch &&
+            categoryMatch &&
+            brandMatch
+          );
+        }
+      );
+    }, [
+      search,
+      category,
+      brand,
+      products,
+    ]);
+
+  function handleAdd(
+    product: Product
+  ) {
+    if (
+      product.availableStock <= 0
+    ) {
+      return;
+    }
+
+    addToCart({
+      productId: product.id,
+      code: product.code,
+      name: product.name,
+      unitPrice:
+        product.price,
+      vatRate: product.vat,
+      availableStock:
+        product.availableStock,
+      qty: 1,
     });
-  }, [search, category, products]);
+
+    setAddedCode(
+      product.code
+    );
+
+    window.setTimeout(
+      () =>
+        setAddedCode(""),
+      1500
+    );
+  }
 
   return (
-    <div className="grid grid-cols-12 gap-8 mt-8">
-      <aside className="col-span-3 bg-white rounded-2xl p-6 shadow">
-        <h2 className="text-xl font-bold mb-6">Kategoriler</h2>
+    <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
+      <aside className="h-fit rounded-2xl bg-white p-6 shadow">
+        <h2 className="text-xl font-bold">
+          Filtreler
+        </h2>
 
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`w-full text-left p-3 rounded-lg mb-2 transition ${
-              category === cat ? "bg-blue-900 text-white" : "hover:bg-slate-100"
-            }`}
+        <label className="mt-6 block">
+          <span className="mb-2 block text-sm font-semibold">
+            Kategori
+          </span>
+
+          <select
+            value={category}
+            onChange={(event) =>
+              setCategory(
+                event.target.value
+              )
+            }
+            className="w-full rounded-xl border bg-white p-3"
           >
-            {cat}
-          </button>
-        ))}
+            {categories.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+
+        <label className="mt-5 block">
+          <span className="mb-2 block text-sm font-semibold">
+            Marka
+          </span>
+
+          <select
+            value={brand}
+            onChange={(event) =>
+              setBrand(
+                event.target.value
+              )
+            }
+            className="w-full rounded-xl border bg-white p-3"
+          >
+            {brands.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => {
+            setSearch("");
+            setCategory("Tümü");
+            setBrand("Tümü");
+          }}
+          className="mt-6 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Filtreleri Temizle
+        </button>
       </aside>
 
-      <section className="col-span-9">
+      <section>
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Ürün, Marka veya Kod Ara..."
-          className="w-full bg-white rounded-xl p-4 shadow outline-none mb-8"
+          onChange={(event) =>
+            setSearch(
+              event.target.value
+            )
+          }
+          placeholder="Ürün, marka, kod veya barkod ara..."
+          className="mb-5 w-full rounded-xl border bg-white p-4 shadow-sm outline-none focus:border-blue-900"
         />
 
-        <div className="text-gray-500 mb-5">
-          {filteredProducts.length} ürün bulundu
-        </div>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-gray-500">
+          <span>
+            {
+              filteredProducts.length
+            }{" "}
+            ürün bulundu
+          </span>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.code}
-              className="bg-white rounded-2xl p-5 shadow hover:shadow-xl transition"
+          {addedCode ? (
+            <span
+              role="status"
+              className="rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-green-700"
             >
-              <Link href={`/products/${product.code}`}>
-                <div className="h-36 bg-slate-200 rounded-xl flex items-center justify-center text-5xl">
-                  📦
-                </div>
-
-                <h2 className="font-bold mt-5">{product.name}</h2>
-
-                <p className="text-gray-500 mt-2">{product.brand}</p>
-
-                <p className="text-sm text-gray-400">{product.category}</p>
-
-                <p className="mt-3 text-green-600">Stok : {product.stock}</p>
-
-                <p className="text-2xl text-blue-900 font-bold mt-3">
-                  {product.price.toFixed(2)} ₺
-                </p>
-              </Link>
-
-              <button
-                onClick={() =>
-                  addToCart({
-                    code: product.code,
-                    name: product.name,
-                    price: product.price,
-                    qty: 1,
-                  })
-                }
-                className="mt-5 w-full bg-blue-900 text-white py-3 rounded-xl hover:bg-blue-800"
-              >
-                Sepete Ekle
-              </button>
-            </div>
-          ))}
+              {addedCode} sepete
+              eklendi
+            </span>
+          ) : null}
         </div>
+
+        {filteredProducts.length ===
+        0 ? (
+          <div className="rounded-2xl bg-white p-10 text-center shadow">
+            <h2 className="text-2xl font-bold">
+              Ürün bulunamadı
+            </h2>
+
+            <p className="mt-3 text-gray-500">
+              Arama veya filtre
+              kriterlerini değiştirin.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {filteredProducts.map(
+              (product) => {
+                const grossPrice =
+                  product.price *
+                  (1 +
+                    product.vat /
+                      100);
+
+                const isOutOfStock =
+                  product
+                    .availableStock <=
+                  0;
+
+                return (
+                  <article
+                    key={
+                      product.id
+                    }
+                    className="flex flex-col rounded-2xl bg-white p-5 shadow transition hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <Link
+                      href={`/products/${product.code}`}
+                      className="flex-1"
+                    >
+                      <div className="flex h-36 items-center justify-center rounded-xl bg-slate-100 text-5xl">
+                        📦
+                      </div>
+
+                      <p className="mt-5 text-xs font-bold uppercase tracking-wide text-blue-900">
+                        {
+                          product.category
+                        }
+                      </p>
+
+                      <h2 className="mt-2 min-h-12 font-bold text-slate-900">
+                        {
+                          product.name
+                        }
+                      </h2>
+
+                      <p className="mt-2 text-sm text-gray-500">
+                        {
+                          product.brand
+                        }{" "}
+                        ·{" "}
+                        {
+                          product.code
+                        }
+                      </p>
+
+                      <p
+                        className={`mt-3 text-sm font-semibold ${
+                          isOutOfStock
+                            ? "text-red-600"
+                            : "text-green-700"
+                        }`}
+                      >
+                        {isOutOfStock
+                          ? "Stokta yok"
+                          : `Stok: ${product.availableStock} adet`}
+                      </p>
+
+                      <p className="mt-4 text-2xl font-black text-blue-900">
+                        {formatCurrency(
+                          product.price
+                        )}{" "}
+                        ₺
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        KDV hariç · KDV
+                        %
+                        {
+                          product.vat
+                        }
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-slate-700">
+                        KDV dâhil:{" "}
+                        {formatCurrency(
+                          grossPrice
+                        )}{" "}
+                        ₺
+                      </p>
+                    </Link>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isOutOfStock
+                      }
+                      onClick={() =>
+                        handleAdd(
+                          product
+                        )
+                      }
+                      className="mt-5 w-full rounded-xl bg-blue-900 py-3 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                    >
+                      {isOutOfStock
+                        ? "Stokta Yok"
+                        : "Sepete Ekle"}
+                    </button>
+                  </article>
+                );
+              }
+            )}
+          </div>
+        )}
       </section>
     </div>
   );

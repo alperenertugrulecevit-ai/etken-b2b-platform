@@ -18,6 +18,43 @@ function formatDate(value: Date) {
   }).format(value);
 }
 
+function getSourceLabel(
+  source: string
+) {
+  const labels: Record<
+    string,
+    string
+  > = {
+    ADMIN: "Yönetim",
+    B2B: "B2B Portal",
+    IMPORT: "Excel",
+    API: "API",
+  };
+
+  return labels[source] ?? source;
+}
+
+function getPaymentLabel(
+  paymentMethod:
+    string | null
+) {
+  if (
+    paymentMethod ===
+    "BANK_TRANSFER"
+  ) {
+    return "Havale / EFT";
+  }
+
+  if (
+    paymentMethod ===
+    "CURRENT_ACCOUNT"
+  ) {
+    return "Cari Hesap";
+  }
+
+  return "-";
+}
+
 function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
     DRAFT: "Taslak",
@@ -107,7 +144,7 @@ export default async function AdminOrdersPage() {
       </div>
 
       <div className="mt-10 overflow-x-auto rounded-2xl bg-white shadow">
-        <table className="w-full min-w-[1350px] text-left">
+        <table className="w-full min-w-[1650px] text-left">
           <thead className="bg-blue-900 text-white">
             <tr>
               <th className="p-4">
@@ -116,6 +153,10 @@ export default async function AdminOrdersPage() {
 
               <th className="p-4">
                 Tarih
+              </th>
+
+              <th className="p-4">
+                Kaynak
               </th>
 
               <th className="p-4">
@@ -132,6 +173,10 @@ export default async function AdminOrdersPage() {
 
               <th className="p-4">
                 Vade
+              </th>
+
+              <th className="p-4">
+                Ödeme / Kullanıcı
               </th>
 
               <th className="p-4">
@@ -160,6 +205,21 @@ export default async function AdminOrdersPage() {
 
                 <td className="p-4 whitespace-nowrap">
                   {formatDate(order.orderDate)}
+                </td>
+
+                <td className="p-4">
+                  <span
+                    className={
+                      order.source ===
+                      "B2B"
+                        ? "inline-flex rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700"
+                        : "inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700"
+                    }
+                  >
+                    {getSourceLabel(
+                      order.source
+                    )}
+                  </span>
                 </td>
 
                 <td className="p-4">
@@ -197,6 +257,18 @@ export default async function AdminOrdersPage() {
                   {order.paymentTermDays} gün
                 </td>
 
+                <td className="p-4">
+                  <p className="font-semibold">
+                    {getPaymentLabel(
+                      order.paymentMethod
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {order.placedByUsername ||
+                      "-"}
+                  </p>
+                </td>
+
                 <td className="p-4 whitespace-nowrap font-bold">
                   {formatCurrency(
                     order.totalAmount
@@ -230,7 +302,7 @@ export default async function AdminOrdersPage() {
             {orders.length === 0 && (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={11}
                   className="p-10 text-center text-gray-500"
                 >
                   Henüz sipariş oluşturulmadı.

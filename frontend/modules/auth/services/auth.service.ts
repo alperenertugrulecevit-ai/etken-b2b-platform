@@ -1,4 +1,7 @@
-import { UserStatus } from "@prisma/client";
+import {
+  UserStatus,
+  UserType,
+} from "@prisma/client";
 
 import {
   AUTH_CONSTANTS,
@@ -18,6 +21,7 @@ export class AuthService {
     username: string,
     password: string,
     isRfLogin = false,
+    isCustomerLogin = false,
   ): Promise<LoginResult> {
     const normalizedUsername =
       username
@@ -56,6 +60,30 @@ export class AuthService {
         success: false,
         message:
           AUTH_ERROR_MESSAGES.USER_PASSIVE,
+      };
+    }
+
+    if (isCustomerLogin) {
+      if (
+        user.userType !==
+          UserType.CUSTOMER ||
+        !user.customer ||
+        !user.customer.isActive
+      ) {
+        return {
+          success: false,
+          message:
+            AUTH_ERROR_MESSAGES.INVALID_CREDENTIALS,
+        };
+      }
+    } else if (
+      user.userType ===
+      UserType.CUSTOMER
+    ) {
+      return {
+        success: false,
+        message:
+          AUTH_ERROR_MESSAGES.INVALID_CREDENTIALS,
       };
     }
 

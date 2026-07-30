@@ -70,5 +70,6 @@ export const USER_TYPE_LABELS: Record<
   WAREHOUSE: "Depo",
   RF_OPERATOR: "RF Operatörü",
   SYSTEM: "Sistem",
+  CUSTOMER: "B2B Müşterisi",
   API: "API",
 };

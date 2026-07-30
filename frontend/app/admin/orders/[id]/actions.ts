@@ -66,6 +66,16 @@ export async function updateOrderStatus(
   const newStatus =
     statusValue as OrderStatus;
 
+  const statusNote =
+    String(
+      formData.get(
+        "statusNote"
+      ) ?? ""
+    )
+      .trim()
+      .slice(0, 500) ||
+    null;
+
   await prisma.$transaction(
     async (tx) => {
       const order =
@@ -99,6 +109,15 @@ export async function updateOrderStatus(
       if (order.status === newStatus) {
         return;
       }
+
+      const statusHistory = {
+        create: {
+          status: newStatus,
+          note: statusNote,
+          visibleToCustomer:
+            true,
+        },
+      };
 
       /*
        * 1. REZERVASYON OLUŞTURMA
@@ -148,6 +167,7 @@ export async function updateOrderStatus(
 
           data: {
             status: newStatus,
+            statusHistory,
             stockReserved: true,
 
             stockReservedAt:
@@ -211,6 +231,7 @@ export async function updateOrderStatus(
 
           data: {
             status: newStatus,
+            statusHistory,
             stockReserved: false,
             stockDeducted: true,
 
@@ -278,6 +299,7 @@ export async function updateOrderStatus(
           data: {
             status:
               OrderStatus.CANCELLED,
+            statusHistory,
 
             stockReserved: false,
           },
@@ -338,6 +360,7 @@ export async function updateOrderStatus(
 
           data: {
             status: newStatus,
+            statusHistory,
             stockReserved: false,
           },
         });
@@ -358,6 +381,7 @@ export async function updateOrderStatus(
 
         data: {
           status: newStatus,
+            statusHistory,
         },
       });
     },
@@ -377,6 +401,11 @@ export async function updateOrderStatus(
   revalidatePath("/admin/orders");
   revalidatePath("/admin/orders/new");
   revalidatePath("/admin/waves");
+  revalidatePath("/account");
+  revalidatePath("/account/orders");
+  revalidatePath(
+    `/account/orders/${orderId}`
+  );
   revalidatePath(detailPath);
 
   redirect(detailPath);

@@ -60,6 +60,7 @@ export class SessionRepository {
         user: {
           include: {
             employee: true,
+            customer: true,
 
             userRoles: {
               where: {

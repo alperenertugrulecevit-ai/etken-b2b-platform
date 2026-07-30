@@ -105,6 +105,7 @@ model Customer {
   updatedAt             DateTime               @updatedAt
   addresses             CustomerAddress[]
   orders                Order[]
+  users                 User[]
   waveDistributions     WaveDistribution[]
   shippingHandlingUnits ShippingHandlingUnit[]
 }
@@ -152,32 +153,50 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum OrderSource {
+  ADMIN
+  B2B
+  IMPORT
+  API
+}
+
+enum B2BPaymentMethod {
+  BANK_TRANSFER
+  CURRENT_ACCOUNT
+}
+
 model Order {
-  id                Int         @id @default(autoincrement())
-  orderNumber       String      @unique
+  id                Int               @id @default(autoincrement())
+  orderNumber       String            @unique
   customerId        Int
   shippingAddressId Int?
-  status            OrderStatus @default(PENDING)
-  orderDate         DateTime    @default(now())
+  status            OrderStatus       @default(PENDING)
+  source            OrderSource       @default(ADMIN)
+  paymentMethod     B2BPaymentMethod?
+  placedByUserId    String?
+  placedByUsername  String?
+  orderDate         DateTime          @default(now())
   requestedDate     DateTime?
-  paymentTermDays   Int         @default(0)
-  discountRate      Float       @default(0)
-  subtotal          Float       @default(0)
-  discountAmount    Float       @default(0)
-  vatAmount         Float       @default(0)
-  totalAmount       Float       @default(0)
+  paymentTermDays   Int               @default(0)
+  discountRate      Float             @default(0)
+  subtotal          Float             @default(0)
+  discountAmount    Float             @default(0)
+  vatAmount         Float             @default(0)
+  totalAmount       Float             @default(0)
   customerNote      String?
   internalNote      String?
-  stockReserved     Boolean     @default(false)
-  stockDeducted     Boolean     @default(false)
+  stockReserved     Boolean           @default(false)
+  stockDeducted     Boolean           @default(false)
   stockReservedAt   DateTime?
   stockDeductedAt   DateTime?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   customer                   Customer                    @relation(fields: [customerId], references: [id])
   shippingAddress            CustomerAddress?            @relation(fields: [shippingAddressId], references: [id])
+  placedByUser               User?                       @relation("OrderPlacedByUser", fields: [placedByUserId], references: [id], onDelete: SetNull)
   items                      OrderItem[]
+  statusHistory              OrderStatusHistory[]
   stockMovements             StockMovement[]
   pickingRecords             PickingRecord[]
   assignedHandlingUnits      HandlingUnit[]              @relation("AssignedHandlingUnits")
@@ -192,8 +211,49 @@ model Order {
 
   @@index([customerId])
   @@index([shippingAddressId])
+  @@index([placedByUserId])
+  @@index([source, status])
   @@index([status])
   @@index([orderDate])
+}
+
+model B2BBankAccount {
+  id Int @id @default(autoincrement())
+
+  tenantId  String
+  companyId String
+
+  bankName      String
+  branchName    String?
+  accountHolder String
+  iban          String
+  currency      String  @default("TRY")
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, companyId, iban])
+  @@index([tenantId, companyId, isActive])
+}
+
+model OrderStatusHistory {
+  id      Int         @id @default(autoincrement())
+  orderId Int
+  status  OrderStatus
+
+  note              String?
+  changedByUserId   String?
+  changedByUsername String?
+  visibleToCustomer Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([orderId, visibleToCustomer])
 }
 
 model OrderItem {
@@ -1571,6 +1631,7 @@ enum UserType {
   WAREHOUSE
   RF_OPERATOR
   SYSTEM
+  CUSTOMER
   API
 }
 
@@ -1616,6 +1677,7 @@ model User {
   id String @id @default(cuid())
 
   employeeId String? @unique
+  customerId Int?
 
   username String  @unique
   email    String? @unique
@@ -1644,6 +1706,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   createdBy    User?  @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdUsers User[] @relation("UserCreatedBy")
@@ -1658,6 +1721,7 @@ model User {
   assignedWaveTasks WaveAssignment[] @relation("WaveAssignmentAssignedBy")
 
   authSessions AuthSession[]
+  placedOrders Order[]       @relation("OrderPlacedByUser")
 
   wmsTenantMemberships WmsTenantMembership[]
   wmsCompanyAccesses   UserCompanyAccess[]
@@ -1672,6 +1736,7 @@ model User {
   countedInventoryLines     InventoryCountLine[]     @relation("InventoryCountLineCountedBy")
 
   @@index([employeeId])
+  @@index([customerId, status])
   @@index([status])
   @@index([userType])
   @@index([isRfUser])

@@ -21,6 +21,14 @@ export type AuthEmployee = {
   shiftCode: string | null;
 };
 
+export type AuthCustomer = {
+  id: number;
+  customerCode: string;
+  companyName: string;
+  contactName: string | null;
+  isActive: boolean;
+};
+
 export type AuthRole = Pick<
   Role,
   "id" | "code" | "name" | "description"
@@ -34,6 +42,7 @@ export type AuthPermission = Pick<
 export type AuthUser = {
   id: string;
   employeeId: string | null;
+  customerId: number | null;
   username: string;
   email: string | null;
 
@@ -45,6 +54,7 @@ export type AuthUser = {
   isAdminUser: boolean;
 
   employee: AuthEmployee | null;
+  customer: AuthCustomer | null;
   roles: AuthRole[];
   permissions: AuthPermission[];
 };
