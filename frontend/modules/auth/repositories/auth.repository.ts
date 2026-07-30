@@ -18,6 +18,7 @@ export class AuthRepository {
 
       include: {
         employee: true,
+        customer: true,
 
         userRoles: {
           where: {
@@ -158,6 +159,8 @@ export class AuthRepository {
       id: user.id,
       employeeId:
         user.employeeId,
+      customerId:
+        user.customerId,
       username: user.username,
       email: user.email,
 
@@ -170,6 +173,20 @@ export class AuthRepository {
       isRfUser: user.isRfUser,
       isAdminUser:
         user.isAdminUser,
+
+      customer: user.customer
+        ? {
+            id: user.customer.id,
+            customerCode:
+              user.customer.customerCode,
+            companyName:
+              user.customer.companyName,
+            contactName:
+              user.customer.contactName,
+            isActive:
+              user.customer.isActive,
+          }
+        : null,
 
       employee: user.employee
         ? {

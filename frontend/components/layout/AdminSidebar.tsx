@@ -82,6 +82,15 @@ const mainMenuItems: MenuItem[] = [
     ],
   },
   {
+    href: "/admin/b2b-settings",
+    icon: "🏦",
+    label: "B2B Ödeme Ayarları",
+
+    permissionCodes: [
+      "ORDER_MANAGE",
+    ],
+  },
+  {
     href: "/admin/purchase-orders",
     icon: "🧾",
     label: "Satın Alma",

@@ -1,26 +1,123 @@
 import Header from "@/components/layout/Header";
 import ProductList from "@/components/products/ProductList";
 import { prisma } from "@/lib/prisma";
+import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
-export default async function ProductsPage() {
-  const products = await prisma.product.findMany({
-  where: {
-    isActive: true,
-  },
-  orderBy: {
-    id: "asc",
-  },
-});
+type SearchParams = {
+  q?: string | string[];
+  category?: string | string[];
+  brand?: string | string[];
+};
+
+function getQueryValue(
+  value: string | string[] | undefined
+) {
+  return Array.isArray(value)
+    ? value[0] ?? ""
+    : value ?? "";
+}
+
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const query =
+    await searchParams;
+
+  const products =
+    await prisma.product.findMany({
+      where: {
+        tenantId:
+          B2B_CONSTANTS
+            .TENANT_ID,
+        companyId:
+          B2B_CONSTANTS
+            .COMPANY_ID,
+        isActive: true,
+      },
+      orderBy: [
+        {
+          category: "asc",
+        },
+        {
+          name: "asc",
+        },
+      ],
+      select: {
+        id: true,
+        code: true,
+        barcode: true,
+        name: true,
+        brand: true,
+        category: true,
+        price: true,
+        stock: true,
+        reservedStock: true,
+        vat: true,
+        ownStock: true,
+      },
+    });
+
+  const productViewModels =
+    products.map(
+      (product) => ({
+        id: product.id,
+        code: product.code,
+        barcode:
+          product.barcode,
+        name: product.name,
+        brand: product.brand,
+        category:
+          product.category,
+        price: product.price,
+        vat: product.vat,
+        ownStock:
+          product.ownStock,
+        availableStock:
+          Math.max(
+            0,
+            product.stock -
+              product.reservedStock
+          ),
+      })
+    );
 
   return (
     <>
       <Header />
 
       <main className="min-h-screen bg-slate-100">
-        <div className="max-w-7xl mx-auto px-8 py-10">
-          <h1 className="text-4xl font-bold">Ürünler</h1>
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <h1 className="text-4xl font-black text-slate-900">
+            Ürünler
+          </h1>
 
-          <ProductList products={products} />
+          <p className="mt-2 text-slate-500">
+            Kurumsal ihtiyaçlarınız
+            için ürünleri arayın,
+            karşılaştırın ve
+            sepetinize ekleyin.
+          </p>
+
+          <ProductList
+            products={
+              productViewModels
+            }
+            initialSearch={getQueryValue(
+              query.q
+            )}
+            initialCategory={
+              getQueryValue(
+                query.category
+              ) || "Tümü"
+            }
+            initialBrand={
+              getQueryValue(
+                query.brand
+              ) || "Tümü"
+            }
+          />
         </div>
       </main>
     </>

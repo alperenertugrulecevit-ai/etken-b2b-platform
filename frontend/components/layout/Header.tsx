@@ -43,12 +43,12 @@ export default function Header() {
             İletişim
           </a>
 
-          <Link
-            href="/admin"
-            className="bg-slate-800 px-5 py-3 rounded-xl font-bold hover:bg-slate-700 text-white"
-          >
-            ⚙ Yönetim Paneli
-          </Link>
+<Link
+  href="/customer-login"
+  className="rounded-xl bg-slate-800 px-5 py-3 font-bold text-white hover:bg-slate-700"
+>
+  👤 Kurumsal Hesabım
+</Link>
 
           <Link
             href="/cart"

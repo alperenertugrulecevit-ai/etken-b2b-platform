@@ -45,6 +45,43 @@ function formatSimpleDate(
   ).format(value);
 }
 
+function getSourceLabel(
+  source: string
+) {
+  const labels: Record<
+    string,
+    string
+  > = {
+    ADMIN: "Yönetim",
+    B2B: "B2B Portal",
+    IMPORT: "Excel",
+    API: "API",
+  };
+
+  return labels[source] ?? source;
+}
+
+function getPaymentLabel(
+  paymentMethod:
+    string | null
+) {
+  if (
+    paymentMethod ===
+    "BANK_TRANSFER"
+  ) {
+    return "Havale / EFT";
+  }
+
+  if (
+    paymentMethod ===
+    "CURRENT_ACCOUNT"
+  ) {
+    return "Cari Hesap";
+  }
+
+  return "-";
+}
+
 function getStatusLabel(
   status: string
 ) {
@@ -146,25 +183,25 @@ export default async function OrderDetailPage({
     notFound();
   }
 
-  // Doğru sipariş hesabı doğrudan
-  // sipariş satırlarından hesaplanır.
+  // Finansal özet sipariş anında sunucuda
+  // kaydedilen iskonto ve KDV değerlerini kullanır.
   const calculatedSubtotal =
-    order.items.reduce(
-      (sum, item) =>
-        sum + item.lineNet,
-      0
-    );
+    order.subtotal;
 
   const calculatedVatAmount =
-    order.items.reduce(
-      (sum, item) =>
-        sum + item.vatAmount,
-      0
-    );
+    order.vatAmount;
 
   const calculatedTotalAmount =
-    calculatedSubtotal +
-    calculatedVatAmount;
+    order.totalAmount;
+
+  const vatDiscountFactor =
+    order.subtotal > 0
+      ? (
+          order.subtotal -
+          order.discountAmount
+        ) /
+        order.subtotal
+      : 1;
 
   const vatBreakdownMap =
     new Map<number, number>();
@@ -178,7 +215,8 @@ export default async function OrderDetailPage({
     vatBreakdownMap.set(
       item.vatRate,
       currentAmount +
-        item.vatAmount
+        item.vatAmount *
+          vatDiscountFactor
     );
   }
 
@@ -211,6 +249,19 @@ export default async function OrderDetailPage({
             >
               {getStatusLabel(
                 order.status
+              )}
+            </span>
+
+            <span
+              className={
+                order.source ===
+                "B2B"
+                  ? "rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700"
+                  : "rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+              }
+            >
+              {getSourceLabel(
+                order.source
               )}
             </span>
           </div>
@@ -402,6 +453,32 @@ export default async function OrderDetailPage({
             Sipariş Yönetimi
           </p>
 
+          <div className="mt-5 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
+            <p>
+              <strong>
+                Sipariş Kaynağı:
+              </strong>{" "}
+              {getSourceLabel(
+                order.source
+              )}
+            </p>
+            <p>
+              <strong>
+                Ödeme Yöntemi:
+              </strong>{" "}
+              {getPaymentLabel(
+                order.paymentMethod
+              )}
+            </p>
+            <p>
+              <strong>
+                Siparişi Veren:
+              </strong>{" "}
+              {order.placedByUsername ||
+                "-"}
+            </p>
+          </div>
+
           <form
             action={updateOrderStatus.bind(
               null,
@@ -447,6 +524,17 @@ export default async function OrderDetailPage({
                 İptal
               </option>
             </select>
+
+            <label className="mt-4 block text-sm font-semibold">
+              Müşteriye Gösterilecek Durum Notu
+              <textarea
+                name="statusNote"
+                rows={3}
+                maxLength={500}
+                placeholder="Örnek: Siparişiniz hazırlanmak üzere depoya aktarıldı."
+                className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3"
+              />
+            </label>
 
             <button
               type="submit"
@@ -621,6 +709,23 @@ export default async function OrderDetailPage({
                 ₺
               </strong>
             </div>
+
+            {order.discountAmount >
+            0 ? (
+              <div className="flex justify-between border-t pt-5 text-emerald-700">
+                <span>
+                  İskonto %
+                  {order.discountRate}
+                </span>
+                <strong>
+                  -
+                  {formatCurrency(
+                    order.discountAmount
+                  )}{" "}
+                  ₺
+                </strong>
+              </div>
+            ) : null}
 
             <div className="border-t pt-5">
               <p className="mb-4 font-bold">

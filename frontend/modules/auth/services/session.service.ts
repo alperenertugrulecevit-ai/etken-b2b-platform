@@ -231,6 +231,9 @@ export class SessionService {
       employeeId:
         session.user.employeeId,
 
+      customerId:
+        session.user.customerId,
+
       username:
         session.user.username,
 
@@ -252,6 +255,35 @@ export class SessionService {
 
       isAdminUser:
         session.user.isAdminUser,
+
+      customer:
+        session.user.customer
+          ? {
+              id:
+                session.user
+                  .customer.id,
+
+              customerCode:
+                session.user
+                  .customer
+                  .customerCode,
+
+              companyName:
+                session.user
+                  .customer
+                  .companyName,
+
+              contactName:
+                session.user
+                  .customer
+                  .contactName,
+
+              isActive:
+                session.user
+                  .customer
+                  .isActive,
+            }
+          : null,
 
       employee:
         session.user.employee
