@@ -233,24 +233,6 @@ const productCount = await prisma.product.count({
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="bg-slate-900 text-white">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-6 px-8 py-12 md:flex-row">
-          <div>
-            <h2 className="text-2xl font-bold">
-              ETKEN
-            </h2>
-
-            <p className="mt-3 text-slate-400">
-              Kurumsal Tedarik Platformu
-            </p>
-          </div>
-
-          <div className="text-slate-400 md:text-right">
-            © 2026 ETKEN Ofis Tedarik Hizmetleri Ltd. Şti.
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }

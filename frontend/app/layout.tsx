@@ -1,9 +1,23 @@
+import type {
+  Metadata,
+} from "next";
+
 import "./globals.css";
+
+import RouteAwareFooter from "@/components/layout/RouteAwareFooter";
 import { CartProvider } from "@/context/CartContext";
 
-export const metadata = {
-  title: "ETKEN B2B",
-  description: "ETKEN B2B Platform",
+export const metadata: Metadata = {
+  metadataBase: new URL(
+    "https://www.etkenofis.com",
+  ),
+  title: {
+    default:
+      "Etken | Kurumsal Tedarik Platformu",
+    template: "%s | Etken",
+  },
+  description:
+    "İşletmeler için kurumsal ürün tedarik ve sipariş platformu.",
 };
 
 export default function RootLayout({
@@ -16,6 +30,7 @@ export default function RootLayout({
       <body>
         <CartProvider>
           {children}
+          <RouteAwareFooter />
         </CartProvider>
       </body>
     </html>
