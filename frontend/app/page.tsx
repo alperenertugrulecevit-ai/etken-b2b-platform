@@ -2,6 +2,8 @@ import Header from "@/components/layout/Header";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 const categories = [
   {
     title: "Ofis Kırtasiye",
