@@ -58,8 +58,11 @@ function getSafeReturnPath(
     value ?? ""
   ).trim();
 
-  if (returnPath === "/rf") {
-    return "/rf";
+  if (
+    returnPath === "/rf" ||
+    returnPath === "/account"
+  ) {
+    return returnPath;
   }
 
   return "/admin";
@@ -189,6 +192,8 @@ export async function changePasswordAction(
           newPasswordHash,
 
         mustChangePassword: false,
+        passwordChangedAt:
+          new Date(),
       },
     });
 
@@ -214,7 +219,9 @@ export async function changePasswordAction(
   const loginPath =
     returnPath === "/rf"
       ? "/rf/login"
-      : "/login";
+      : returnPath === "/account"
+        ? "/customer-login"
+        : "/login";
 
   redirect(
     `${loginPath}?passwordChanged=true`

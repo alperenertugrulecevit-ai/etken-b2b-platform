@@ -107,7 +107,7 @@ export default async function AccountPage() {
         </form>
       </div>
 
-      <section className="mt-8 grid gap-5 md:grid-cols-3">
+      <section className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <Link
           href="/products"
           className="rounded-2xl bg-blue-900 p-6 text-white shadow hover:bg-blue-800"
@@ -141,6 +141,18 @@ export default async function AccountPage() {
           </h2>
           <p className="mt-2 text-sm text-slate-300">
             Siparişlerinizi ve güncel durumlarını görüntüleyin.
+          </p>
+        </Link>
+
+        <Link
+          href="/change-password?returnTo=%2Faccount"
+          className="rounded-2xl bg-violet-800 p-6 text-white shadow hover:bg-violet-700"
+        >
+          <h2 className="text-xl font-bold">
+            Şifrem
+          </h2>
+          <p className="mt-2 text-sm text-violet-100">
+            Mevcut şifrenizi doğrulayarak güvenli bir yeni şifre belirleyin.
           </p>
         </Link>
       </section>
