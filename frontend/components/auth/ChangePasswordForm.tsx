@@ -13,7 +13,10 @@ import {
 import { PASSWORD_POLICY } from "@/modules/auth/constants/password-policy.constants";
 
 type ChangePasswordFormProps = {
-  returnTo: "/admin" | "/rf";
+  returnTo:
+    | "/admin"
+    | "/rf"
+    | "/account";
 };
 
 const initialState: ChangePasswordState = {

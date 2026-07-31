@@ -1720,8 +1720,9 @@ model User {
   waveAssignments   WaveAssignment[]
   assignedWaveTasks WaveAssignment[] @relation("WaveAssignmentAssignedBy")
 
-  authSessions AuthSession[]
-  placedOrders Order[]       @relation("OrderPlacedByUser")
+  authSessions        AuthSession[]
+  passwordResetTokens PasswordResetToken[]
+  placedOrders        Order[]              @relation("OrderPlacedByUser")
 
   wmsTenantMemberships WmsTenantMembership[]
   wmsCompanyAccesses   UserCompanyAccess[]
@@ -1798,6 +1799,27 @@ model AuthSession {
   @@index([revokedAt])
   @@index([lastActivityAt])
   @@index([terminalCode])
+}
+
+model PasswordResetToken {
+  id String @id @default(cuid())
+
+  userId    String
+  tokenHash String @unique
+
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  requestedIpAddress String?
+  requestedUserAgent String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@index([usedAt])
 }
 
 model Role {

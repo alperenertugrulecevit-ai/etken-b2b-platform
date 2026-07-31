@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { UserType } from "@prisma/client";
+import {
+  redirect,
+} from "next/navigation";
+import {
+  UserType,
+} from "@prisma/client";
 
 import CustomerLoginForm from "@/components/auth/CustomerLoginForm";
-import { SessionService } from "@/modules/auth/services/session.service";
+import {
+  SessionService,
+} from "@/modules/auth/services/session.service";
 
 export const metadata = {
   title:
@@ -12,9 +18,23 @@ export const metadata = {
     "ETKEN Ofis kurumsal müşteri hesabı girişi",
 };
 
-export default async function CustomerLoginPage() {
-  const user =
-    await SessionService.getCurrentUser();
+type CustomerLoginPageProps = {
+  searchParams: Promise<{
+    passwordChanged?: string;
+    passwordReset?: string;
+  }>;
+};
+
+export default async function CustomerLoginPage({
+  searchParams,
+}: CustomerLoginPageProps) {
+  const [
+    user,
+    query,
+  ] = await Promise.all([
+    SessionService.getCurrentUser(),
+    searchParams,
+  ]);
 
   if (
     user?.userType ===
@@ -23,6 +43,15 @@ export default async function CustomerLoginPage() {
   ) {
     redirect("/account");
   }
+
+  const successMessage =
+    query.passwordReset ===
+    "true"
+      ? "Şifreniz değiştirildi. Yeni şifrenizle giriş yapabilirsiniz."
+      : query.passwordChanged ===
+          "true"
+        ? "Şifreniz değiştirildi. Yeni şifrenizle yeniden giriş yapın."
+        : "";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
@@ -34,6 +63,7 @@ export default async function CustomerLoginPage() {
           >
             ETKEN
           </Link>
+
           <p className="mt-2 text-sm font-semibold text-slate-500">
             Kurumsal Müşteri Portalı
           </p>
@@ -42,11 +72,17 @@ export default async function CustomerLoginPage() {
         <h1 className="text-2xl font-bold text-slate-900">
           Kurumsal Giriş
         </h1>
-        <p className="mt-2 mb-7 text-sm leading-6 text-slate-500">
-          Fiyatlarınızı görmek, sepetinizi yönetmek ve sipariş vermek için hesabınıza giriş yapın.
+
+        <p className="mb-7 mt-2 text-sm leading-6 text-slate-500">
+          Fiyatlarınızı görmek, sepetinizi yönetmek ve sipariş vermek
+          için hesabınıza giriş yapın.
         </p>
 
-        <CustomerLoginForm />
+        <CustomerLoginForm
+          successMessage={
+            successMessage
+          }
+        />
 
         <div className="mt-7 border-t border-slate-200 pt-6 text-center">
           <Link

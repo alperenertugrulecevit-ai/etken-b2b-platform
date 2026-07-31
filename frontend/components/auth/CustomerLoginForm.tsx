@@ -4,11 +4,22 @@ import {
   type FormEvent,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  useRouter,
+} from "next/navigation";
 
-import { customerLoginAction } from "@/app/customer-login/actions";
+import {
+  customerLoginAction,
+} from "@/app/customer-login/actions";
 
-export default function CustomerLoginForm() {
+type CustomerLoginFormProps = {
+  successMessage?: string;
+};
+
+export default function CustomerLoginForm({
+  successMessage = "",
+}: CustomerLoginFormProps) {
   const router = useRouter();
   const [
     username,
@@ -29,7 +40,7 @@ export default function CustomerLoginForm() {
 
   async function handleSubmit(
     event:
-      FormEvent<HTMLFormElement>
+      FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
@@ -44,12 +55,12 @@ export default function CustomerLoginForm() {
       const result =
         await customerLoginAction(
           username,
-          password
+          password,
         );
 
       if (!result.success) {
         setMessage(
-          result.message
+          result.message,
         );
         return;
       }
@@ -60,16 +71,16 @@ export default function CustomerLoginForm() {
           : "/account";
 
       router.replace(
-        destination
+        destination,
       );
       router.refresh();
     } catch (error) {
       console.error(
         "Müşteri girişi tamamlanamadı:",
-        error
+        error,
       );
       setMessage(
-        "Giriş işlemi tamamlanamadı. Lütfen tekrar deneyin."
+        "Giriş işlemi tamamlanamadı. Lütfen tekrar deneyin.",
       );
     } finally {
       setPending(false);
@@ -81,6 +92,15 @@ export default function CustomerLoginForm() {
       onSubmit={handleSubmit}
       className="space-y-5"
     >
+      {successMessage ? (
+        <div
+          role="status"
+          className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800"
+        >
+          {successMessage}
+        </div>
+      ) : null}
+
       <div>
         <label
           htmlFor="customer-username"
@@ -88,6 +108,7 @@ export default function CustomerLoginForm() {
         >
           Kullanıcı Adı
         </label>
+
         <input
           id="customer-username"
           type="text"
@@ -99,7 +120,7 @@ export default function CustomerLoginForm() {
           value={username}
           onChange={(event) =>
             setUsername(
-              event.target.value
+              event.target.value,
             )
           }
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 disabled:bg-slate-100"
@@ -107,12 +128,22 @@ export default function CustomerLoginForm() {
       </div>
 
       <div>
-        <label
-          htmlFor="customer-password"
-          className="mb-2 block text-sm font-semibold text-slate-700"
-        >
-          Şifre
-        </label>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <label
+            htmlFor="customer-password"
+            className="block text-sm font-semibold text-slate-700"
+          >
+            Şifre
+          </label>
+
+          <Link
+            href="/forgot-password"
+            className="text-xs font-semibold text-blue-900 hover:underline"
+          >
+            Şifremi Unuttum
+          </Link>
+        </div>
+
         <input
           id="customer-password"
           type="password"
@@ -122,7 +153,7 @@ export default function CustomerLoginForm() {
           value={password}
           onChange={(event) =>
             setPassword(
-              event.target.value
+              event.target.value,
             )
           }
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 disabled:bg-slate-100"

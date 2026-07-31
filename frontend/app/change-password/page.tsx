@@ -16,9 +16,12 @@ type ChangePasswordPageProps = {
 
 function getSafeReturnPath(
   value: string | undefined
-): "/admin" | "/rf" {
-  if (value === "/rf") {
-    return "/rf";
+): "/admin" | "/rf" | "/account" {
+  if (
+    value === "/rf" ||
+    value === "/account"
+  ) {
+    return value;
   }
 
   return "/admin";
@@ -94,10 +97,9 @@ export default async function ChangePasswordPage({
             {user.mustChangePassword ? (
               <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
                 Geçici şifre kullanıyorsunuz.
-                Yönetim paneline veya RF
-                terminaline geçmeden önce
-                şifrenizi değiştirmeniz
-                zorunludur.
+                Hesabınızı kullanmaya devam
+                etmeden önce geçici şifrenizi
+                değiştirmeniz zorunludur.
               </div>
             ) : (
               <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold leading-6 text-blue-900">
