@@ -1,6 +1,7 @@
+import Link from "next/link";
+
 import Header from "@/components/layout/Header";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -38,68 +39,73 @@ const categories = [
 ];
 
 export default async function Home() {
-const featuredProducts = await prisma.product.findMany({
-  where: {
-    isActive: true,
-  },
-  orderBy: {
-    id: "asc",
-  },
-  take: 4,
-});
+  const featuredProducts =
+    await prisma.product.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+      take: 4,
+    });
 
-const productCount = await prisma.product.count({
-  where: {
-    isActive: true,
-  },
-});
+  const productCount =
+    await prisma.product.count({
+      where: {
+        isActive: true,
+      },
+    });
 
   return (
     <main className="min-h-screen bg-slate-100">
       <Header />
 
       {/* HERO */}
-      <section className="mx-auto max-w-7xl px-8 py-20">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-8 sm:py-16 lg:py-20">
         <div className="max-w-4xl">
-          <h1 className="text-6xl font-bold leading-tight text-slate-800">
+          <h1 className="break-words text-4xl font-bold leading-[1.12] text-slate-800 sm:text-5xl lg:text-6xl">
             Kurumsal Ofis Tedarikinde
-            <span className="text-blue-900"> Yeni Nesil Platform</span>
+            <span className="mt-2 block text-blue-900 sm:ml-2 sm:mt-0 sm:inline">
+              Yeni Nesil Platform
+            </span>
           </h1>
 
-          <p className="mt-8 text-xl leading-9 text-slate-600">
-            Ofis kırtasiye, temizlik, endüstriyel, teknoloji, iş güvenliği
-            ve gıda ürünlerini tek platformdan yönetin.
+          <p className="mt-6 text-base leading-7 text-slate-600 sm:mt-8 sm:text-xl sm:leading-9">
+            Ofis kırtasiye, temizlik, endüstriyel,
+            teknoloji, iş güvenliği ve gıda ürünlerini
+            tek platformdan yönetin.
           </p>
 
           <form
             action="/products"
-            className="mt-12 flex max-w-3xl"
+            className="mt-8 flex max-w-3xl flex-col gap-3 sm:mt-12 sm:flex-row sm:gap-0"
           >
             <input
               name="q"
-              className="flex-1 rounded-l-xl border bg-white px-6 py-5 text-lg outline-none"
+              className="min-w-0 flex-1 rounded-xl border bg-white px-4 py-4 text-base outline-none sm:rounded-l-xl sm:rounded-r-none sm:px-6 sm:py-5 sm:text-lg"
               placeholder="Ürün, marka veya ürün kodu ara..."
             />
 
             <button
               type="submit"
-              className="rounded-r-xl bg-blue-900 px-10 font-bold text-white hover:bg-blue-800"
+              className="min-h-12 rounded-xl bg-blue-900 px-8 py-4 font-bold text-white hover:bg-blue-800 sm:rounded-l-none sm:rounded-r-xl sm:px-10"
             >
               ARA
             </button>
           </form>
 
-          <div className="mt-10 flex gap-5">
+          <div className="mt-6 grid gap-3 sm:mt-10 sm:flex sm:gap-5">
             <Link
               href="/products"
-              className="rounded-xl bg-blue-900 px-8 py-4 font-semibold text-white hover:bg-blue-800"
+              className="rounded-xl bg-blue-900 px-6 py-4 text-center font-semibold text-white hover:bg-blue-800 sm:px-8"
             >
               Ürünleri İncele
             </Link>
 
             <Link
               href="/products"
-              className="rounded-xl border-2 border-blue-900 px-8 py-4 font-semibold text-blue-900 hover:bg-blue-50"
+              className="rounded-xl border-2 border-blue-900 px-6 py-4 text-center font-semibold text-blue-900 hover:bg-blue-50 sm:px-8"
             >
               Teklif Al
             </Link>
@@ -108,23 +114,23 @@ const productCount = await prisma.product.count({
       </section>
 
       {/* KATEGORİLER */}
-      <section className="mx-auto max-w-7xl px-8 pb-24">
-        <h2 className="mb-10 text-3xl font-bold">
+      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-8 sm:pb-24">
+        <h2 className="mb-6 text-2xl font-bold sm:mb-10 sm:text-3xl">
           Popüler Kategoriler
         </h2>
 
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
           {categories.map((category) => (
             <Link
               key={category.title}
               href="/products"
-              className="rounded-2xl bg-white p-8 shadow transition-all hover:-translate-y-1 hover:shadow-xl"
+              className="rounded-2xl bg-white p-6 shadow transition-all hover:-translate-y-1 hover:shadow-xl sm:p-8"
             >
-              <div className="text-5xl">
+              <div className="text-4xl sm:text-5xl">
                 {category.icon}
               </div>
 
-              <h3 className="mt-5 text-2xl font-bold">
+              <h3 className="mt-4 text-xl font-bold sm:mt-5 sm:text-2xl">
                 {category.title}
               </h3>
 
@@ -137,9 +143,9 @@ const productCount = await prisma.product.count({
       </section>
 
       {/* ÖNE ÇIKAN ÜRÜNLER */}
-      <section className="mx-auto max-w-7xl px-8 pb-24">
-        <div className="mb-10 flex items-center justify-between">
-          <h2 className="text-3xl font-bold">
+      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-8 sm:pb-24">
+        <div className="mb-6 flex flex-col items-start gap-3 sm:mb-10 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-2xl font-bold sm:text-3xl">
             Öne Çıkan Ürünler
           </h2>
 
@@ -151,18 +157,18 @@ const productCount = await prisma.product.count({
           </Link>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4 xl:gap-8">
           {featuredProducts.map((product) => (
             <div
               key={product.id}
-              className="rounded-2xl bg-white p-6 shadow transition hover:shadow-xl"
+              className="rounded-2xl bg-white p-5 shadow transition hover:shadow-xl sm:p-6"
             >
               <Link href={`/products/${product.code}`}>
-                <div className="flex h-40 items-center justify-center rounded-xl bg-slate-200 text-6xl">
+                <div className="flex h-36 items-center justify-center rounded-xl bg-slate-200 text-5xl sm:h-40 sm:text-6xl">
                   📦
                 </div>
 
-                <h3 className="mt-6 min-h-14 text-lg font-bold">
+                <h3 className="mt-5 min-h-14 text-lg font-bold sm:mt-6">
                   {product.name}
                 </h3>
 
@@ -196,45 +202,44 @@ const productCount = await prisma.product.count({
 
       {/* İSTATİSTİKLER */}
       <section className="bg-blue-900 text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-8 py-16 text-center md:grid-cols-4">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-4 py-12 text-center sm:px-8 sm:py-16 md:grid-cols-4 md:gap-10">
           <div>
-            <div className="text-5xl font-bold">
+            <div className="text-3xl font-bold sm:text-5xl">
               {productCount}+
             </div>
-            <div className="mt-2">
+            <div className="mt-2 text-sm sm:text-base">
               Kayıtlı Ürün
             </div>
           </div>
 
           <div>
-            <div className="text-5xl font-bold">
+            <div className="text-3xl font-bold sm:text-5xl">
               10+
             </div>
-            <div className="mt-2">
+            <div className="mt-2 text-sm sm:text-base">
               Tedarikçi Hedefi
             </div>
           </div>
 
           <div>
-            <div className="text-5xl font-bold">
+            <div className="text-3xl font-bold sm:text-5xl">
               50+
             </div>
-            <div className="mt-2">
+            <div className="mt-2 text-sm sm:text-base">
               Kurumsal Müşteri Hedefi
             </div>
           </div>
 
           <div>
-            <div className="text-5xl font-bold">
+            <div className="text-3xl font-bold sm:text-5xl">
               %100
             </div>
-            <div className="mt-2">
+            <div className="mt-2 text-sm sm:text-base">
               B2B Odaklı
             </div>
           </div>
         </div>
       </section>
-
     </main>
   );
 }
