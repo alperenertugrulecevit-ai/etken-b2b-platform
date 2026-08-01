@@ -25,6 +25,7 @@ function formatDate(value: Date) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Istanbul",
   }).format(value);
 }
 
@@ -41,6 +42,7 @@ function formatSimpleDate(
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      timeZone: "Europe/Istanbul",
     }
   ).format(value);
 }

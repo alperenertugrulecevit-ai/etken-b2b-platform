@@ -85,7 +85,9 @@ export default function B2BOrderStatusTracker({
               <div className="flex flex-wrap justify-between gap-2">
                 <strong>{LABELS[item.status]}</strong>
                 <time className="text-sm text-slate-500">
-                  {item.createdAt.toLocaleString("tr-TR")}
+                  {item.createdAt.toLocaleString("tr-TR", {
+                    timeZone: "Europe/Istanbul",
+                  })}
                 </time>
               </div>
               {item.note ? (

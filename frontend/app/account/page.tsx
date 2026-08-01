@@ -214,7 +214,11 @@ export default async function AccountPage() {
                       </td>
                       <td className="px-5 py-4">
                         {order.createdAt.toLocaleDateString(
-                          "tr-TR"
+                          "tr-TR",
+                          {
+                            timeZone:
+                              "Europe/Istanbul",
+                          }
                         )}
                       </td>
                       <td className="px-5 py-4">
