@@ -27,18 +27,15 @@ function formatCurrency(
 export default async function ProductDetailPage({
   params,
 }: Props) {
-  const { code } =
-    await params;
+  const { code } = await params;
 
   const product =
     await prisma.product.findFirst({
       where: {
         tenantId:
-          B2B_CONSTANTS
-            .TENANT_ID,
+          B2B_CONSTANTS.TENANT_ID,
         companyId:
-          B2B_CONSTANTS
-            .COMPANY_ID,
+          B2B_CONSTANTS.COMPANY_ID,
         code,
         isActive: true,
       },
@@ -62,12 +59,11 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const availableStock =
-    Math.max(
-      0,
-      product.stock -
-        product.reservedStock
-    );
+  const availableStock = Math.max(
+    0,
+    product.stock -
+      product.reservedStock
+  );
 
   const grossPrice =
     product.price *
@@ -78,72 +74,87 @@ export default async function ProductDetailPage({
       <Header />
 
       <main className="min-h-screen bg-slate-100">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <Link
             href="/products"
-            className="font-semibold text-blue-900 hover:underline"
+            className="inline-flex items-center gap-2 text-sm font-bold text-[#202B38] transition hover:text-[#EF4B23]"
           >
-            ← Ürünlere Dön
+            <span aria-hidden="true">
+              ←
+            </span>
+            Ürünlere Dön
           </Link>
 
-          <div className="mt-8 grid gap-12 rounded-2xl bg-white p-6 shadow md:grid-cols-2 md:p-10">
-            <div className="flex min-h-80 items-center justify-center rounded-2xl bg-slate-100 text-8xl">
+          <article className="mt-4 grid gap-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)] md:gap-8 md:p-6 lg:p-8">
+            <div className="flex h-48 items-center justify-center rounded-xl bg-slate-100 text-6xl sm:h-64 sm:text-7xl md:h-full md:min-h-[360px]">
               📦
             </div>
 
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-blue-900">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-[#EF4B23]">
                 {product.category}
               </p>
 
-              <h1 className="mt-3 text-4xl font-black text-slate-900 md:text-5xl">
+              <h1 className="mt-2 text-2xl font-black leading-tight text-slate-900 sm:text-3xl lg:text-4xl">
                 {product.name}
               </h1>
 
-              <div className="mt-7 grid gap-3 text-slate-600 sm:grid-cols-2">
-                <p>
-                  <strong>
-                    Marka:
-                  </strong>{" "}
-                  {product.brand}
+              <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 sm:text-sm">
+                <p className="min-w-0">
+                  <strong className="block text-slate-900">
+                    Marka
+                  </strong>
+
+                  <span className="mt-0.5 block truncate">
+                    {product.brand}
+                  </span>
+                </p>
+
+                <p className="min-w-0">
+                  <strong className="block text-slate-900">
+                    Ürün kodu
+                  </strong>
+
+                  <span className="mt-0.5 block truncate">
+                    {product.code}
+                  </span>
+                </p>
+
+                <p className="min-w-0">
+                  <strong className="block text-slate-900">
+                    Barkod
+                  </strong>
+
+                  <span className="mt-0.5 block truncate">
+                    {product.barcode ||
+                      "-"}
+                  </span>
                 </p>
 
                 <p>
-                  <strong>
-                    Ürün kodu:
-                  </strong>{" "}
-                  {product.code}
-                </p>
+                  <strong className="block text-slate-900">
+                    KDV
+                  </strong>
 
-                <p>
-                  <strong>
-                    Barkod:
-                  </strong>{" "}
-                  {product.barcode}
-                </p>
-
-                <p>
-                  <strong>
-                    KDV:
-                  </strong>{" "}
-                  %{product.vat}
+                  <span className="mt-0.5 block">
+                    %{product.vat}
+                  </span>
                 </p>
               </div>
 
-              <div className="mt-8 rounded-2xl bg-blue-50 p-5">
-                <p className="text-4xl font-black text-blue-900">
+              <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 p-4">
+                <p className="text-2xl font-black text-[#EF4B23] sm:text-3xl">
                   {formatCurrency(
                     product.price
                   )}{" "}
                   ₺
                 </p>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  KDV hariç birim
-                  fiyat
+                <p className="mt-0.5 text-xs text-slate-500">
+                  KDV hariç birim fiyat
                 </p>
 
-                <p className="mt-3 font-bold text-slate-800">
+                <p className="mt-2 text-sm font-bold text-slate-800">
                   KDV dâhil:{" "}
                   {formatCurrency(
                     grossPrice
@@ -153,39 +164,39 @@ export default async function ProductDetailPage({
               </div>
 
               <div
-                className={`mt-5 rounded-xl p-4 font-semibold ${
-                  availableStock > 0
-                    ? "bg-green-50 text-green-700"
-                    : "bg-red-50 text-red-700"
-                }`}
+                className={
+                  "mt-3 rounded-xl px-4 py-3 text-sm font-bold " +
+                  (availableStock > 0
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-red-50 text-red-700")
+                }
               >
                 {availableStock > 0
                   ? `Kullanılabilir stok: ${availableStock} adet`
                   : "Ürün şu anda stokta bulunmuyor."}
               </div>
 
-              <div className="mt-4 rounded-xl bg-slate-100 p-4 text-slate-700">
+              <div className="mt-3 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
                 {product.ownStock
                   ? "ETKEN deposundan sevk edilir."
                   : "Tedarikçi stoğundan tedarik edilir."}
               </div>
 
-              <ProductAddToCartButton
-                product={{
-                  id: product.id,
-                  code:
-                    product.code,
-                  name:
-                    product.name,
-                  price:
-                    product.price,
-                  vat:
-                    product.vat,
-                  availableStock,
-                }}
-              />
+              <div className="mt-4">
+                <ProductAddToCartButton
+                  product={{
+                    id: product.id,
+                    code: product.code,
+                    name: product.name,
+                    price:
+                      product.price,
+                    vat: product.vat,
+                    availableStock,
+                  }}
+                />
+              </div>
             </div>
-          </div>
+          </article>
         </div>
       </main>
     </>
