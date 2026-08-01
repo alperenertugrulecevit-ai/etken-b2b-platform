@@ -153,7 +153,11 @@ export default async function CustomerOrderDetailPage({
           </h1>
           <p className="mt-2 text-slate-500">
             {order.createdAt.toLocaleString(
-              "tr-TR"
+              "tr-TR",
+              {
+                timeZone:
+                  "Europe/Istanbul",
+              }
             )}
           </p>
         </div>
