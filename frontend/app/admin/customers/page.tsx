@@ -345,6 +345,13 @@ export default async function AdminCustomersPage() {
                       </Link>
 
                       <Link
+  href={`/admin/customers/${customer.id}/users`}
+  className="rounded-lg bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-600"
+>
+  👥 Kullanıcılar
+</Link>
+
+                      <Link
                         href={`/admin/customers/${customer.id}/edit`}
                         className="rounded-lg bg-blue-900 px-4 py-2 font-semibold text-white hover:bg-blue-800"
                       >
