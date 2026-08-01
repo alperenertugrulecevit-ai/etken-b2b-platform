@@ -124,7 +124,7 @@ export default async function Home() {
       </section>
 
       <div className="mx-auto grid max-w-[1400px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:px-8">
-        <aside className="self-start lg:sticky lg:top-4">
+        <aside className="hidden self-start lg:sticky lg:top-4 lg:block">
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="bg-[#202B38] px-4 py-2.5 text-sm font-black text-white">
               Kategoriler
@@ -202,7 +202,7 @@ export default async function Home() {
               ürün bulunmuyor.
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {products.map(
                 (product) => (
                   <article
