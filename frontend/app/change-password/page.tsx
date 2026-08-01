@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 import ChangePasswordForm from "@/components/auth/ChangePasswordForm";
+import Header from "@/components/layout/Header";
 
 type ChangePasswordPageProps = {
   searchParams: Promise<{
@@ -62,27 +63,30 @@ export default async function ChangePasswordPage({
     );
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-10">
-      <div className="mx-auto max-w-xl">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
-          <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-7 text-white">
+    <>
+      {returnTo === "/account" ? <Header /> : null}
+
+      <main className="min-h-screen bg-slate-100 px-4 py-5">
+      <div className="mx-auto max-w-lg">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+          <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-5 text-white">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-xl font-black">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EF4B23] text-xl font-black">
                 ET
               </div>
 
               <div>
-                <p className="text-sm font-bold uppercase tracking-widest text-blue-300">
+                <p className="text-sm font-bold uppercase tracking-widest text-orange-200">
                   ETKEN Güvenlik
                 </p>
 
-                <h1 className="mt-1 text-2xl font-black">
+                <h1 className="mt-1 text-xl font-black">
                   Şifrenizi Değiştirin
                 </h1>
               </div>
             </div>
 
-            <p className="mt-5 leading-7 text-slate-300">
+            <p className="mt-4 text-sm leading-6 text-slate-300">
               Merhaba{" "}
               <strong className="text-white">
                 {user.username}
@@ -93,7 +97,7 @@ export default async function ChangePasswordPage({
             </p>
           </div>
 
-          <div className="p-6 md:p-8">
+          <div className="p-5 md:p-6">
             {user.mustChangePassword ? (
               <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
                 Geçici şifre kullanıyorsunuz.
@@ -102,7 +106,7 @@ export default async function ChangePasswordPage({
                 değiştirmeniz zorunludur.
               </div>
             ) : (
-              <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold leading-6 text-blue-900">
+              <div className="mb-6 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm font-semibold leading-6 text-orange-900">
                 Güvenliğiniz için mevcut
                 şifrenizi doğrulayarak yeni
                 bir şifre belirleyebilirsiniz.
@@ -115,6 +119,7 @@ export default async function ChangePasswordPage({
           </div>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

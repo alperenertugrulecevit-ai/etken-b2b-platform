@@ -1,245 +1,309 @@
-import Link from "next/link";
-
 import Header from "@/components/layout/Header";
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
+
+export const revalidate = 0;
 
 const categories = [
   {
     title: "Ofis Kırtasiye",
     icon: "📄",
-    desc: "Kâğıt, kalem, dosyalama ve masaüstü ürünleri",
+    desc: "Kâğıt, kalem ve dosyalama",
   },
   {
     title: "Teknoloji-Hırdavat",
     icon: "💻",
-    desc: "Bilgisayar aksesuarları, kablolar ve teknik ürünler",
+    desc: "Aksesuar ve teknik ürünler",
   },
   {
     title: "Endüstriyel",
     icon: "📦",
-    desc: "Streç, koli bandı, ambalaj ve sarf ürünleri",
+    desc: "Ambalaj ve sarf ürünleri",
   },
   {
     title: "Temizlik ve Hijyen",
     icon: "🧼",
-    desc: "Temizlik kimyasalları, aparatlar ve hijyen ürünleri",
+    desc: "Temizlik ve hijyen ürünleri",
   },
   {
     title: "Gıda Ürünleri",
     icon: "☕",
-    desc: "Çay, kahve, içecek ve mutfak ihtiyaçları",
+    desc: "İçecek ve mutfak ihtiyaçları",
   },
   {
     title: "İş Güvenliği",
     icon: "🦺",
-    desc: "Maske, eldiven, ilk yardım ve ikaz ürünleri",
+    desc: "Koruyucu ve ikaz ürünleri",
   },
 ];
 
-export default async function Home() {
-  const featuredProducts =
-    await prisma.product.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: {
-        id: "asc",
-      },
-      take: 4,
-    });
+function formatCurrency(
+  value: number
+) {
+  return value.toLocaleString(
+    "tr-TR",
+    {
+      style: "currency",
+      currency: "TRY",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }
+  );
+}
 
-  const productCount =
-    await prisma.product.count({
+export default async function Home() {
+  const [
+    products,
+    productCount,
+  ] = await Promise.all([
+    prisma.product.findMany({
       where: {
         isActive: true,
       },
-    });
+
+      orderBy: [
+        {
+          stock: "desc",
+        },
+        {
+          id: "asc",
+        },
+      ],
+
+      take: 15,
+    }),
+
+    prisma.product.count({
+      where: {
+        isActive: true,
+      },
+    }),
+  ]);
 
   return (
-    <main className="min-h-screen bg-slate-100">
+    <main className="min-h-screen bg-slate-100 text-slate-900">
       <Header />
 
-      {/* HERO */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-8 sm:py-16 lg:py-20">
-        <div className="max-w-4xl">
-          <h1 className="break-words text-4xl font-bold leading-[1.12] text-slate-800 sm:text-5xl lg:text-6xl">
-            Kurumsal Ofis Tedarikinde
-            <span className="mt-2 block text-blue-900 sm:ml-2 sm:mt-0 sm:inline">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
+          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+            Kurumsal Ofis Tedarikinde{" "}
+            <span className="text-[#EF4B23]">
               Yeni Nesil Platform
             </span>
           </h1>
 
-          <p className="mt-6 text-base leading-7 text-slate-600 sm:mt-8 sm:text-xl sm:leading-9">
-            Ofis kırtasiye, temizlik, endüstriyel,
-            teknoloji, iş güvenliği ve gıda ürünlerini
+          <p className="mt-1.5 max-w-4xl text-sm leading-5 text-slate-600">
+            Ofis kırtasiye, temizlik,
+            endüstriyel, teknoloji, iş
+            güvenliği ve gıda ürünlerini
             tek platformdan yönetin.
           </p>
 
           <form
             action="/products"
-            className="mt-8 flex max-w-3xl flex-col gap-3 sm:mt-12 sm:flex-row sm:gap-0"
+            className="mt-4 flex max-w-3xl shadow-sm"
           >
             <input
               name="q"
-              className="min-w-0 flex-1 rounded-xl border bg-white px-4 py-4 text-base outline-none sm:rounded-l-xl sm:rounded-r-none sm:px-6 sm:py-5 sm:text-lg"
+              className="min-w-0 flex-1 rounded-l-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#EF4B23]"
               placeholder="Ürün, marka veya ürün kodu ara..."
             />
 
             <button
               type="submit"
-              className="min-h-12 rounded-xl bg-blue-900 px-8 py-4 font-bold text-white hover:bg-blue-800 sm:rounded-l-none sm:rounded-r-xl sm:px-10"
+              className="rounded-r-xl bg-[#EF4B23] px-6 text-sm font-black text-white hover:bg-[#D83D18]"
             >
               ARA
             </button>
           </form>
+        </div>
+      </section>
 
-          <div className="mt-6 grid gap-3 sm:mt-10 sm:flex sm:gap-5">
-            <Link
-              href="/products"
-              className="rounded-xl bg-blue-900 px-6 py-4 text-center font-semibold text-white hover:bg-blue-800 sm:px-8"
-            >
-              Ürünleri İncele
-            </Link>
+      <div className="mx-auto grid max-w-[1400px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:px-8">
+        <aside className="self-start lg:sticky lg:top-4">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="bg-[#202B38] px-4 py-2.5 text-sm font-black text-white">
+              Kategoriler
+            </div>
 
-            <Link
-              href="/products"
-              className="rounded-xl border-2 border-blue-900 px-6 py-4 text-center font-semibold text-blue-900 hover:bg-blue-50 sm:px-8"
-            >
-              Teklif Al
-            </Link>
+            <nav className="divide-y divide-slate-100">
+              {categories.map(
+                (category) => (
+                  <Link
+                    key={
+                      category.title
+                    }
+                    href="/products"
+                    className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-orange-50"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg">
+                      {category.icon}
+                    </span>
+
+                    <span className="min-w-0">
+                      <strong className="block text-sm text-slate-900">
+                        {
+                          category.title
+                        }
+                      </strong>
+
+                      <small className="block truncate text-xs text-slate-500">
+                        {
+                          category.desc
+                        }
+                      </small>
+                    </span>
+                  </Link>
+                )
+              )}
+            </nav>
           </div>
-        </div>
-      </section>
-
-      {/* KATEGORİLER */}
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-8 sm:pb-24">
-        <h2 className="mb-6 text-2xl font-bold sm:mb-10 sm:text-3xl">
-          Popüler Kategoriler
-        </h2>
-
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
-          {categories.map((category) => (
-            <Link
-              key={category.title}
-              href="/products"
-              className="rounded-2xl bg-white p-6 shadow transition-all hover:-translate-y-1 hover:shadow-xl sm:p-8"
-            >
-              <div className="text-4xl sm:text-5xl">
-                {category.icon}
-              </div>
-
-              <h3 className="mt-4 text-xl font-bold sm:mt-5 sm:text-2xl">
-                {category.title}
-              </h3>
-
-              <p className="mt-3 leading-7 text-slate-500">
-                {category.desc}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ÖNE ÇIKAN ÜRÜNLER */}
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-8 sm:pb-24">
-        <div className="mb-6 flex flex-col items-start gap-3 sm:mb-10 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-bold sm:text-3xl">
-            Öne Çıkan Ürünler
-          </h2>
 
           <Link
             href="/products"
-            className="font-semibold text-blue-900 hover:underline"
+            className="mt-2 flex items-center justify-center rounded-xl border border-[#202B38] bg-white px-4 py-3 text-sm font-black text-[#202B38] hover:bg-slate-50"
           >
-            Tüm ürünleri görüntüle →
+            Tüm Kategoriler
           </Link>
-        </div>
+        </aside>
 
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4 xl:gap-8">
-          {featuredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="rounded-2xl bg-white p-5 shadow transition hover:shadow-xl sm:p-6"
+        <section className="min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-[#EF4B23]">
+                Ürün Vitrini
+              </p>
+
+              <h2 className="mt-1 text-2xl font-black">
+                Öne Çıkan Ürünler
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Stoktaki kurumsal tedarik
+                ürünleri
+              </p>
+            </div>
+
+            <Link
+              href="/products"
+              className="text-sm font-black text-[#202B38] hover:text-[#EF4B23] hover:underline"
             >
-              <Link href={`/products/${product.code}`}>
-                <div className="flex h-36 items-center justify-center rounded-xl bg-slate-200 text-5xl sm:h-40 sm:text-6xl">
-                  📦
-                </div>
-
-                <h3 className="mt-5 min-h-14 text-lg font-bold sm:mt-6">
-                  {product.name}
-                </h3>
-
-                <p className="mt-2 text-sm text-gray-500">
-                  Marka: {product.brand}
-                </p>
-
-                <p className="text-sm text-gray-500">
-                  Ürün kodu: {product.code}
-                </p>
-
-                <p className="mt-4 text-2xl font-bold text-blue-900">
-                  {product.price.toFixed(2)} ₺
-                </p>
-
-                <p className="mt-2 text-green-600">
-                  Stok: {product.stock} adet
-                </p>
-              </Link>
-
-              <Link
-                href={`/products/${product.code}`}
-                className="mt-6 block w-full rounded-xl bg-blue-900 py-3 text-center font-semibold text-white hover:bg-blue-800"
-              >
-                Ürünü İncele
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* İSTATİSTİKLER */}
-      <section className="bg-blue-900 text-white">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-4 py-12 text-center sm:px-8 sm:py-16 md:grid-cols-4 md:gap-10">
-          <div>
-            <div className="text-3xl font-bold sm:text-5xl">
-              {productCount}+
-            </div>
-            <div className="mt-2 text-sm sm:text-base">
-              Kayıtlı Ürün
-            </div>
+              Tüm ürünleri görüntüle →
+            </Link>
           </div>
 
-          <div>
-            <div className="text-3xl font-bold sm:text-5xl">
-              10+
+          {products.length === 0 ? (
+            <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
+              Henüz görüntülenecek aktif
+              ürün bulunmuyor.
             </div>
-            <div className="mt-2 text-sm sm:text-base">
-              Tedarikçi Hedefi
-            </div>
-          </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              {products.map(
+                (product) => (
+                  <article
+                    key={product.id}
+                    className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    <Link
+                      href={
+                        "/products/" +
+                        product.code
+                      }
+                      className="flex flex-1 flex-col"
+                    >
+                      <div className="flex h-24 items-center justify-center rounded-lg bg-slate-100 text-4xl">
+                        📦
+                      </div>
 
-          <div>
-            <div className="text-3xl font-bold sm:text-5xl">
-              50+
-            </div>
-            <div className="mt-2 text-sm sm:text-base">
-              Kurumsal Müşteri Hedefi
-            </div>
-          </div>
+                      <h3 className="mt-3 line-clamp-2 min-h-10 text-sm font-black leading-5 text-slate-900">
+                        {product.name}
+                      </h3>
 
-          <div>
-            <div className="text-3xl font-bold sm:text-5xl">
-              %100
+                      <p className="mt-1 truncate text-xs text-slate-500">
+                        {product.brand}
+                        {" · "}
+                        {product.code}
+                      </p>
+
+                      <p className="mt-2.5 text-lg font-black text-[#EF4B23]">
+                        {formatCurrency(
+                          product.price
+                        )}
+                      </p>
+
+                      <p
+                        className={
+                          "mt-1 text-xs font-bold " +
+                          (
+                            product.stock >
+                            0
+                              ? "text-emerald-700"
+                              : "text-red-700"
+                          )
+                        }
+                      >
+                        {product.stock >
+                        0
+                          ? "Stok: " +
+                            product.stock +
+                            " adet"
+                          : "Stok bekleniyor"}
+                      </p>
+                    </Link>
+
+                    <Link
+                      href={
+                        "/products/" +
+                        product.code
+                      }
+                      className="mt-3 rounded-lg bg-[#202B38] px-3 py-2 text-center text-xs font-black text-white hover:bg-[#111923]"
+                    >
+                      Ürünü İncele
+                    </Link>
+                  </article>
+                )
+              )}
             </div>
-            <div className="mt-2 text-sm sm:text-base">
-              B2B Odaklı
+          )}
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-[#202B38] p-4 text-white shadow-sm">
+              <strong className="text-2xl">
+                {productCount}+
+              </strong>
+
+              <p className="mt-1 text-sm text-slate-300">
+                Kayıtlı ürün
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-[#EF4B23] p-4 text-white shadow-sm">
+              <strong className="text-2xl">
+                B2B
+              </strong>
+
+              <p className="mt-1 text-sm text-orange-100">
+                Kurumsal satın alma
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-700 p-4 text-white shadow-sm">
+              <strong className="text-2xl">
+                6
+              </strong>
+
+              <p className="mt-1 text-sm text-slate-200">
+                Ana ürün kategorisi
+              </p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }

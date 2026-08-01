@@ -77,14 +77,14 @@ export default function CartPage() {
       <Header />
 
       <main className="min-h-screen bg-slate-100">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-black">
+              <h1 className="text-2xl font-black">
                 Sepetim
               </h1>
 
-              <p className="mt-2 text-slate-500">
+              <p className="mt-1 text-sm text-slate-500">
                 Sipariş miktarlarını
                 kontrol ederek devam
                 edin.
@@ -93,23 +93,23 @@ export default function CartPage() {
 
             <Link
               href="/products"
-              className="rounded-xl border border-blue-900 bg-white px-5 py-3 font-bold text-blue-900 hover:bg-blue-50"
+              className="rounded-xl border border-[#202B38] bg-white px-4 py-2.5 text-sm font-bold text-[#202B38] hover:bg-slate-50"
             >
               + Ürün Ekle
             </Link>
           </div>
 
           {!isHydrated ? (
-            <div className="mt-8 rounded-2xl bg-white p-10 text-center shadow">
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-8 text-center shadow">
               Sepet yükleniyor...
             </div>
           ) : cart.length === 0 ? (
-            <div className="mt-8 rounded-2xl bg-white p-10 text-center shadow">
-              <div className="text-6xl">
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-8 text-center shadow">
+              <div className="text-5xl">
                 🛒
               </div>
 
-              <h2 className="mt-5 text-2xl font-bold">
+              <h2 className="mt-4 text-xl font-bold">
                 Sepetiniz boş
               </h2>
 
@@ -120,14 +120,14 @@ export default function CartPage() {
 
               <Link
                 href="/products"
-                className="mt-6 inline-flex rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
+                className="mt-5 inline-flex rounded-lg bg-[#202B38] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#111923]"
               >
                 Ürünleri İncele
               </Link>
             </div>
           ) : (
-            <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
-              <div className="space-y-5">
+            <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
+              <div className="space-y-3">
                 {cart.map(
                   (item) => {
                     const lineNet =
@@ -144,13 +144,13 @@ export default function CartPage() {
                         key={
                           item.code
                         }
-                        className="rounded-2xl bg-white p-6 shadow"
+                        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                       >
                         <div className="flex flex-wrap justify-between gap-5">
                           <div>
                             <Link
                               href={`/products/${item.code}`}
-                              className="text-xl font-bold text-slate-900 hover:text-blue-900"
+                              className="text-base font-black text-slate-900 hover:text-[#EF4B23]"
                             >
                               {
                                 item.name
@@ -164,7 +164,7 @@ export default function CartPage() {
                               }
                             </p>
 
-                            <p className="mt-3 font-bold text-blue-900">
+                            <p className="mt-2 font-bold text-[#EF4B23]">
                               {formatCurrency(
                                 item.unitPrice
                               )}{" "}
@@ -176,7 +176,7 @@ export default function CartPage() {
                           </div>
 
                           <div className="text-right">
-                            <p className="text-2xl font-black text-blue-900">
+                            <p className="text-xl font-black text-[#EF4B23]">
                               {formatCurrency(
                                 lineNet
                               )}{" "}
@@ -193,7 +193,7 @@ export default function CartPage() {
                           </div>
                         </div>
 
-                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={() =>
@@ -201,7 +201,7 @@ export default function CartPage() {
                                 item.code
                               )
                             }
-                            className="h-11 w-11 rounded-lg bg-slate-200 text-xl font-bold text-slate-800 hover:bg-slate-300"
+                            className="h-9 w-9 rounded-lg bg-slate-200 text-xl font-bold text-slate-800 hover:bg-slate-300"
                           >
                             −
                           </button>
@@ -227,7 +227,7 @@ export default function CartPage() {
                                 )
                               )
                             }
-                            className="h-11 w-24 rounded-lg border text-center text-lg font-bold"
+                            className="h-9 w-20 rounded-lg border text-center text-lg font-bold"
                           />
 
                           <button
@@ -241,7 +241,7 @@ export default function CartPage() {
                                 item.code
                               )
                             }
-                            className="h-11 w-11 rounded-lg bg-blue-900 text-xl font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                            className="h-9 w-9 rounded-lg bg-[#202B38] text-lg font-bold text-white hover:bg-[#111923] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                           >
                             +
                           </button>
@@ -272,12 +272,12 @@ export default function CartPage() {
                 )}
               </div>
 
-              <aside className="h-fit rounded-2xl bg-white p-6 shadow">
-                <h2 className="text-2xl font-bold">
+              <aside className="h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h2 className="text-xl font-black">
                   Sipariş Özeti
                 </h2>
 
-                <div className="mt-7 space-y-4">
+                <div className="mt-5 space-y-3">
                   <div className="flex justify-between gap-4">
                     <span>
                       Ara Toplam
@@ -311,7 +311,7 @@ export default function CartPage() {
                       Genel Toplam
                     </span>
 
-                    <strong className="text-blue-900">
+                    <strong className="text-[#EF4B23]">
                       {formatCurrency(
                         grossTotal
                       )}{" "}
@@ -357,7 +357,7 @@ export default function CartPage() {
                 {canCheckout ? (
                   <Link
                     href="/checkout"
-                    className="mt-6 block w-full rounded-xl bg-blue-900 py-4 text-center font-bold text-white hover:bg-blue-800"
+                    className="mt-6 block w-full rounded-xl bg-[#202B38] py-3 text-center text-sm font-bold text-white hover:bg-[#111923]"
                   >
                     Sipariş Adımına
                     Geç

@@ -1,10 +1,17 @@
 "use server";
 
+import {
+  CustomerAccountEntryDirection,
+  CustomerAccountEntryType,
+} from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import {
+  getCustomerDueDate,
+} from "@/modules/b2b/services/customer-account.service";
 
 type SubmittedOrderItem = {
   productId: number;
@@ -333,6 +340,33 @@ export async function createOrder(
       totalAmount,
       customerNote,
       internalNote,
+
+      accountEntries: {
+        create: {
+          customerId,
+          direction:
+            CustomerAccountEntryDirection.DEBIT,
+          entryType:
+            CustomerAccountEntryType.ORDER,
+          amount:
+            Math.round(
+              (
+                totalAmount +
+                Number.EPSILON
+              ) *
+                100
+            ) / 100,
+          description:
+            "Yönetim paneli sipariş borç kaydı",
+          dueDate:
+            getCustomerDueDate(
+              customer
+                .paymentTermDays
+            ),
+          createdByUsername:
+            "Yönetim Paneli",
+        },
+      },
 
       items: {
         create:

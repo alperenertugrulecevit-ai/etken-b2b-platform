@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+import Header from "@/components/layout/Header";
 import {
   notFound,
   redirect,
@@ -134,10 +136,13 @@ export default async function CustomerOrderDetailPage({
       : [];
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-10">
+    <>
+      <Header />
+
+      <main className="mx-auto min-h-screen max-w-[1080px] px-4 py-4 sm:px-6">
       {query.created ===
       "true" ? (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 font-semibold text-emerald-800">
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5 font-semibold text-emerald-800">
           Siparişiniz başarıyla oluşturuldu. Sipariş numaranız:{" "}
           {order.orderNumber}
         </div>
@@ -145,10 +150,10 @@ export default async function CustomerOrderDetailPage({
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-blue-700">
+          <p className="text-xs font-black uppercase tracking-wide text-[#EF4B23]">
             Sipariş Detayı
           </p>
-          <h1 className="mt-2 text-3xl font-black">
+          <h1 className="mt-1 text-2xl font-black">
             {order.orderNumber}
           </h1>
           <p className="mt-2 text-slate-500">
@@ -163,14 +168,14 @@ export default async function CustomerOrderDetailPage({
         </div>
         <Link
           href="/account/orders"
-          className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold"
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold"
         >
           Siparişlerime Dön
         </Link>
       </div>
 
-      <section className="mt-8 grid gap-5 md:grid-cols-3">
-        <div className="rounded-2xl bg-white p-5 shadow">
+      <section className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-500">
             Durum
           </p>
@@ -180,7 +185,7 @@ export default async function CustomerOrderDetailPage({
             ]}
           </p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-500">
             Ödeme
           </p>
@@ -191,11 +196,11 @@ export default async function CustomerOrderDetailPage({
               : "Havale / EFT"}
           </p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-500">
             Genel Toplam
           </p>
-          <p className="mt-2 text-xl font-black text-blue-900">
+          <p className="mt-2 text-lg font-black text-[#EF4B23]">
             {formatCurrency(
               order.totalAmount
             )}{" "}
@@ -211,8 +216,8 @@ export default async function CustomerOrderDetailPage({
 
       {order.paymentMethod ===
       B2BPaymentMethod.BANK_TRANSFER ? (
-        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6">
-          <h2 className="text-xl font-black text-amber-950">
+        <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-lg font-black text-amber-950">
             Havale / EFT Bilgileri
           </h2>
           <p className="mt-2 text-sm text-amber-900">
@@ -225,12 +230,12 @@ export default async function CustomerOrderDetailPage({
               Banka hesap bilgileri sipariş onayından sonra paylaşılacaktır.
             </p>
           ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
               {bankAccounts.map(
                 (account) => (
                   <article
                     key={account.id}
-                    className="rounded-xl bg-white p-5 shadow-sm"
+                    className="rounded-lg bg-white p-4 shadow-sm"
                   >
                     <p className="font-black">
                       {account.bankName}
@@ -249,7 +254,7 @@ export default async function CustomerOrderDetailPage({
                     <p className="mt-4 text-sm text-slate-500">
                       IBAN · {account.currency}
                     </p>
-                    <p className="mt-1 break-all font-mono font-black text-blue-900">
+                    <p className="mt-1 break-all font-mono font-black text-[#EF4B23]">
                       {account.iban.replace(
                         /(.{4})/g,
                         "$1 "
@@ -264,8 +269,8 @@ export default async function CustomerOrderDetailPage({
       ) : null}
 
       {order.shippingAddress ? (
-        <section className="mt-6 rounded-2xl bg-white p-6 shadow">
-          <h2 className="text-xl font-bold">
+        <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-black">
             Teslimat Adresi
           </h2>
           <p className="mt-3 font-semibold">
@@ -280,8 +285,8 @@ export default async function CustomerOrderDetailPage({
       ) : null}
 
       <section className="mt-6 overflow-hidden rounded-2xl bg-white shadow">
-        <div className="border-b border-slate-200 p-6">
-          <h2 className="text-xl font-bold">
+        <div className="border-b border-slate-200 p-4">
+          <h2 className="text-lg font-black">
             Ürünler
           </h2>
         </div>
@@ -310,7 +315,7 @@ export default async function CustomerOrderDetailPage({
                     key={item.id}
                     className="border-t border-slate-100"
                   >
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       <strong className="block">
                         {item.productName}
                       </strong>
@@ -318,10 +323,10 @@ export default async function CustomerOrderDetailPage({
                         {item.productCode}
                       </span>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       {item.quantity}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       {formatCurrency(
                         item.unitPrice
                       )}{" "}
@@ -341,7 +346,7 @@ export default async function CustomerOrderDetailPage({
         </div>
       </section>
 
-      <section className="mt-6 ml-auto max-w-md rounded-2xl bg-white p-6 shadow">
+      <section className="mt-6 ml-auto max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="space-y-3">
           <div className="flex justify-between">
             <span>Ara Toplam</span>
@@ -382,7 +387,7 @@ export default async function CustomerOrderDetailPage({
             <span className="font-bold">
               Genel Toplam
             </span>
-            <strong className="text-blue-900">
+            <strong className="text-[#EF4B23]">
               {formatCurrency(
                 order.totalAmount
               )}{" "}
@@ -391,6 +396,7 @@ export default async function CustomerOrderDetailPage({
           </div>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }

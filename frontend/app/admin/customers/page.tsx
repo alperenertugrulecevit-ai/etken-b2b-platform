@@ -344,7 +344,14 @@ export default async function AdminCustomersPage() {
                         📍 Adresler
                       </Link>
 
-                      <Link
+                                            <Link
+                        href={`/admin/customers/${customer.id}/account`}
+                        className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-600"
+                      >
+                        Cari Hesap
+                      </Link>
+
+<Link
   href={`/admin/customers/${customer.id}/users`}
   className="rounded-lg bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-600"
 >
