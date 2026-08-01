@@ -1,5 +1,11 @@
 import Link from "next/link";
+
+import RefreshButton from "@/components/common/RefreshButton";
 import { prisma } from "@/lib/prisma";
+
+export const dynamic =
+  "force-dynamic";
+export const revalidate = 0;
 
 function formatCurrency(value: number) {
   return value.toLocaleString("tr-TR", {
@@ -124,10 +130,10 @@ export default async function AdminOrdersPage() {
   });
 
   return (
-    <section className="p-10">
-      <div className="flex items-center justify-between gap-6">
+    <section className="p-4 sm:p-6 lg:p-10">
+      <div className="flex flex-wrap items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-bold">
+          <h1 className="text-3xl font-bold sm:text-4xl">
             Sipariş Yönetimi
           </h1>
 
@@ -136,12 +142,16 @@ export default async function AdminOrdersPage() {
           </p>
         </div>
 
-        <Link
-          href="/admin/orders/new"
-          className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
-        >
-          + Yeni Sipariş
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <RefreshButton />
+
+          <Link
+            href="/admin/orders/new"
+            className="inline-flex items-center justify-center rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
+          >
+            + Yeni Sipariş
+          </Link>
+        </div>
       </div>
 
       <div className="mt-10 overflow-x-auto rounded-2xl bg-white shadow">
@@ -211,8 +221,7 @@ export default async function AdminOrdersPage() {
                 <td className="p-4">
                   <span
                     className={
-                      order.source ===
-                      "B2B"
+                      order.source === "B2B"
                         ? "inline-flex rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700"
                         : "inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700"
                     }
@@ -264,6 +273,7 @@ export default async function AdminOrdersPage() {
                       order.paymentMethod
                     )}
                   </p>
+
                   <p className="mt-1 text-sm text-gray-500">
                     {order.placedByUsername ||
                       "-"}

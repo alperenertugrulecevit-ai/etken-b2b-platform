@@ -1,12 +1,17 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   OrderStatus,
   UserType,
 } from "@prisma/client";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import RefreshButton from "@/components/common/RefreshButton";
 import { prisma } from "@/lib/prisma";
 import { SessionService } from "@/modules/auth/services/session.service";
+
+export const dynamic =
+  "force-dynamic";
+export const revalidate = 0;
 
 const STATUS_LABELS:
   Record<OrderStatus, string> = {
@@ -32,6 +37,23 @@ function formatCurrency(
       maximumFractionDigits: 2,
     }
   );
+}
+
+function formatDate(
+  value: Date
+) {
+  return new Intl.DateTimeFormat(
+    "tr-TR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone:
+        "Europe/Istanbul",
+    }
+  ).format(value);
 }
 
 export default async function CustomerOrdersPage() {
@@ -75,16 +97,22 @@ export default async function CustomerOrdersPage() {
           <p className="text-sm font-bold uppercase tracking-wide text-blue-700">
             Kurumsal Hesabım
           </p>
+
           <h1 className="mt-2 text-3xl font-black">
             Siparişlerim
           </h1>
         </div>
-        <Link
-          href="/account"
-          className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800"
-        >
-          Hesabıma Dön
-        </Link>
+
+        <div className="flex flex-wrap gap-3">
+          <RefreshButton />
+
+          <Link
+            href="/account"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 hover:bg-slate-50"
+          >
+            Hesabıma Dön
+          </Link>
+        </div>
       </div>
 
       <section className="mt-8 overflow-hidden rounded-2xl bg-white shadow">
@@ -93,6 +121,7 @@ export default async function CustomerOrdersPage() {
             <p className="text-slate-500">
               Henüz siparişiniz bulunmuyor.
             </p>
+
             <Link
               href="/products"
               className="mt-5 inline-flex rounded-xl bg-blue-900 px-6 py-3 font-bold text-white"
@@ -108,20 +137,25 @@ export default async function CustomerOrdersPage() {
                   <th className="px-5 py-3">
                     Sipariş No
                   </th>
+
                   <th className="px-5 py-3">
                     Tarih
                   </th>
+
                   <th className="px-5 py-3">
                     Satır
                   </th>
+
                   <th className="px-5 py-3">
                     Durum
                   </th>
+
                   <th className="px-5 py-3">
                     Toplam
                   </th>
                 </tr>
               </thead>
+
               <tbody>
                 {orders.map(
                   (order) => (
@@ -140,24 +174,24 @@ export default async function CustomerOrdersPage() {
                           {order.orderNumber}
                         </Link>
                       </td>
-                      <td className="px-5 py-4">
-                        {order.createdAt.toLocaleDateString(
-                          "tr-TR",
-                          {
-                            timeZone:
-                              "Europe/Istanbul",
-                          }
+
+                      <td className="whitespace-nowrap px-5 py-4">
+                        {formatDate(
+                          order.createdAt
                         )}
                       </td>
+
                       <td className="px-5 py-4">
                         {order._count.items}
                       </td>
+
                       <td className="px-5 py-4">
                         {STATUS_LABELS[
                           order.status
                         ]}
                       </td>
-                      <td className="px-5 py-4 font-bold">
+
+                      <td className="whitespace-nowrap px-5 py-4 font-bold">
                         {formatCurrency(
                           order.totalAmount
                         )}{" "}
