@@ -88,12 +88,12 @@ export default async function ProductsPage({
       <Header />
 
       <main className="min-h-screen bg-slate-100">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-black text-slate-900">
+        <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-black text-slate-900">
             Ürünler
           </h1>
 
-          <p className="mt-2 text-slate-500">
+          <p className="mt-1 text-sm text-slate-500">
             Kurumsal ihtiyaçlarınız
             için ürünleri arayın,
             karşılaştırın ve

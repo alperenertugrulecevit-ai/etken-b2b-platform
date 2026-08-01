@@ -2,6 +2,8 @@ import "server-only";
 
 import {
   B2BPaymentMethod,
+  CustomerAccountEntryDirection,
+  CustomerAccountEntryType,
   OrderSource,
   OrderStatus,
   UserType,
@@ -9,6 +11,10 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
+import {
+  getCustomerAccountSummary,
+  getCustomerDueDate,
+} from "@/modules/b2b/services/customer-account.service";
 import type { AuthUser } from "@/modules/auth/types/auth.types";
 
 export type B2BCheckoutItemInput = {
@@ -480,6 +486,24 @@ export class B2BCheckoutService {
           vatAmount
       );
 
+    const accountSummary =
+      paymentMethod ===
+        B2BPaymentMethod
+          .CURRENT_ACCOUNT
+        ? await getCustomerAccountSummary(
+            customer.id
+          )
+        : null;
+
+    const projectedBalance =
+      roundMoney(
+        (
+          accountSummary
+            ?.balance ?? 0
+        ) +
+          totalAmount
+      );
+
     if (
       paymentMethod ===
         B2BPaymentMethod
@@ -487,14 +511,14 @@ export class B2BCheckoutService {
       (
         customer.creditLimit <=
           0 ||
-        totalAmount >
+        projectedBalance >
           customer.creditLimit
       )
     ) {
       throw new B2BCheckoutError(
         customer.creditLimit <= 0
           ? "Cari hesap ödeme yöntemi bu müşteri için tanımlı değil."
-          : "Sipariş toplamı tanımlı kredi limitini aşıyor."
+          : "Mevcut cari bakiye ile birlikte sipariş toplamı tanımlı kredi limitini aşıyor."
       );
     }
 
@@ -536,6 +560,29 @@ export class B2BCheckoutService {
                 "Siparişiniz alındı ve onay bekliyor.",
               visibleToCustomer:
                 true,
+            },
+          },
+          accountEntries: {
+            create: {
+              customerId:
+                customer.id,
+              direction:
+                CustomerAccountEntryDirection.DEBIT,
+              entryType:
+                CustomerAccountEntryType.ORDER,
+              amount:
+                totalAmount,
+              description:
+                "B2B sipariş borç kaydı",
+              dueDate:
+                getCustomerDueDate(
+                  customer
+                    .paymentTermDays
+                ),
+              createdByUserId:
+                user.id,
+              createdByUsername:
+                user.username,
             },
           },
           items: {

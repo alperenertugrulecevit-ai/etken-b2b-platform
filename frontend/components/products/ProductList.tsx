@@ -203,13 +203,13 @@ export default function ProductList({
   }
 
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
-      <aside className="h-fit rounded-2xl bg-white p-6 shadow">
-        <h2 className="text-xl font-bold">
+    <div className="mt-5 grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
+      <aside className="h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-base font-black">
           Filtreler
         </h2>
 
-        <label className="mt-6 block">
+        <label className="mt-4 block">
           <span className="mb-2 block text-sm font-semibold">
             Kategori
           </span>
@@ -221,7 +221,7 @@ export default function ProductList({
                 event.target.value
               )
             }
-            className="w-full rounded-xl border bg-white p-3"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
           >
             {categories.map(
               (item) => (
@@ -236,7 +236,7 @@ export default function ProductList({
           </select>
         </label>
 
-        <label className="mt-5 block">
+        <label className="mt-4 block">
           <span className="mb-2 block text-sm font-semibold">
             Marka
           </span>
@@ -248,7 +248,7 @@ export default function ProductList({
                 event.target.value
               )
             }
-            className="w-full rounded-xl border bg-white p-3"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
           >
             {brands.map(
               (item) => (
@@ -270,7 +270,7 @@ export default function ProductList({
             setCategory("Tümü");
             setBrand("Tümü");
           }}
-          className="mt-6 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+          className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
           Filtreleri Temizle
         </button>
@@ -285,10 +285,10 @@ export default function ProductList({
             )
           }
           placeholder="Ürün, marka, kod veya barkod ara..."
-          className="mb-5 w-full rounded-xl border bg-white p-4 shadow-sm outline-none focus:border-blue-900"
+          className="mb-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#EF4B23]"
         />
 
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-gray-500">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-gray-500">
           <span>
             {
               filteredProducts.length
@@ -320,7 +320,7 @@ export default function ProductList({
             </p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {filteredProducts.map(
               (product) => {
                 const grossPrice =
@@ -339,23 +339,23 @@ export default function ProductList({
                     key={
                       product.id
                     }
-                    className="flex flex-col rounded-2xl bg-white p-5 shadow transition hover:-translate-y-1 hover:shadow-xl"
+                    className="flex flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     <Link
                       href={`/products/${product.code}`}
                       className="flex-1"
                     >
-                      <div className="flex h-36 items-center justify-center rounded-xl bg-slate-100 text-5xl">
+                      <div className="flex h-24 items-center justify-center rounded-lg bg-slate-100 text-4xl">
                         📦
                       </div>
 
-                      <p className="mt-5 text-xs font-bold uppercase tracking-wide text-blue-900">
+                      <p className="mt-3 text-xs font-black uppercase tracking-wide text-[#EF4B23]">
                         {
                           product.category
                         }
                       </p>
 
-                      <h2 className="mt-2 min-h-12 font-bold text-slate-900">
+                      <h2 className="mt-2 min-h-10 text-sm font-black leading-5 text-slate-900">
                         {
                           product.name
                         }
@@ -383,7 +383,7 @@ export default function ProductList({
                           : `Stok: ${product.availableStock} adet`}
                       </p>
 
-                      <p className="mt-4 text-2xl font-black text-blue-900">
+                      <p className="mt-3 text-lg font-black text-[#EF4B23]">
                         {formatCurrency(
                           product.price
                         )}{" "}
@@ -417,7 +417,7 @@ export default function ProductList({
                           product
                         )
                       }
-                      className="mt-5 w-full rounded-xl bg-blue-900 py-3 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                      className="mt-3 w-full rounded-lg bg-[#202B38] py-2.5 text-sm font-bold text-white transition hover:bg-[#111923] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                     >
                       {isOutOfStock
                         ? "Stokta Yok"

@@ -105,6 +105,7 @@ model Customer {
   updatedAt             DateTime               @updatedAt
   addresses             CustomerAddress[]
   orders                Order[]
+  accountEntries        CustomerAccountEntry[]
   users                 User[]
   waveDistributions     WaveDistribution[]
   shippingHandlingUnits ShippingHandlingUnit[]
@@ -165,6 +166,28 @@ enum B2BPaymentMethod {
   CURRENT_ACCOUNT
 }
 
+enum CustomerAccountEntryDirection {
+  DEBIT
+  CREDIT
+}
+
+enum CustomerAccountEntryType {
+  OPENING_BALANCE
+  ORDER
+  PAYMENT
+  ADJUSTMENT
+  REFUND
+  CANCELLATION
+}
+
+enum CustomerAccountPaymentMethod {
+  MANUAL
+  BANK_TRANSFER
+  CASH
+  CREDIT_CARD
+  OTHER
+}
+
 model Order {
   id                Int               @id @default(autoincrement())
   orderNumber       String            @unique
@@ -197,6 +220,7 @@ model Order {
   placedByUser               User?                       @relation("OrderPlacedByUser", fields: [placedByUserId], references: [id], onDelete: SetNull)
   items                      OrderItem[]
   statusHistory              OrderStatusHistory[]
+  accountEntries             CustomerAccountEntry[]
   stockMovements             StockMovement[]
   pickingRecords             PickingRecord[]
   assignedHandlingUnits      HandlingUnit[]              @relation("AssignedHandlingUnits")
@@ -237,6 +261,40 @@ model B2BBankAccount {
 
   @@unique([tenantId, companyId, iban])
   @@index([tenantId, companyId, isActive])
+}
+
+model CustomerAccountEntry {
+  id Int @id @default(autoincrement())
+
+  customerId Int
+  orderId    Int?
+
+  direction     CustomerAccountEntryDirection
+  entryType     CustomerAccountEntryType
+  paymentMethod CustomerAccountPaymentMethod?
+
+  amount      Float
+  currency    String  @default("TRY")
+  description String
+  referenceNo String?
+
+  transactionDate DateTime  @default(now())
+  dueDate         DateTime?
+
+  createdByUserId   String?
+  createdByUsername String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([orderId, entryType, direction])
+  @@index([customerId, transactionDate])
+  @@index([customerId, dueDate])
+  @@index([customerId, direction])
+  @@index([orderId])
 }
 
 model OrderStatusHistory {

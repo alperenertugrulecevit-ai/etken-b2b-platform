@@ -1,6 +1,8 @@
 "use server";
 
 import {
+  CustomerAccountEntryDirection,
+  CustomerAccountEntryType,
   OrderStatus,
   StockMovementType,
 } from "@prisma/client";
@@ -108,6 +110,15 @@ export async function updateOrderStatus(
        */
       if (order.status === newStatus) {
         return;
+      }
+
+      if (
+        order.status ===
+          OrderStatus.CANCELLED
+      ) {
+        throw new Error(
+          "İptal edilmiş sipariş yeniden açılamaz. Yeni bir sipariş oluşturmalısınız."
+        );
       }
 
       const statusHistory = {
@@ -289,6 +300,64 @@ export async function updateOrderStatus(
               }
             );
           }
+        }
+
+        const orderDebit =
+          await tx.customerAccountEntry.findFirst({
+            where: {
+              orderId:
+                order.id,
+              direction:
+                CustomerAccountEntryDirection.DEBIT,
+              entryType:
+                CustomerAccountEntryType.ORDER,
+            },
+            select: {
+              id: true,
+              amount: true,
+            },
+          });
+
+        const existingCancellation =
+          await tx.customerAccountEntry.findFirst({
+            where: {
+              orderId:
+                order.id,
+              direction:
+                CustomerAccountEntryDirection.CREDIT,
+              entryType:
+                CustomerAccountEntryType.CANCELLATION,
+            },
+            select: {
+              id: true,
+            },
+          });
+
+        if (
+          orderDebit &&
+          !existingCancellation
+        ) {
+          await tx.customerAccountEntry.create({
+            data: {
+              customerId:
+                order.customerId,
+              orderId:
+                order.id,
+              direction:
+                CustomerAccountEntryDirection.CREDIT,
+              entryType:
+                CustomerAccountEntryType.CANCELLATION,
+              amount:
+                orderDebit.amount,
+              description:
+                order.orderNumber +
+                " numaralı sipariş iptal ters kaydı",
+              referenceNo:
+                order.orderNumber,
+              createdByUsername:
+                "Yönetim Paneli",
+            },
+          });
         }
 
         await tx.order.update({
