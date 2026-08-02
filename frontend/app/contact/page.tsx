@@ -42,6 +42,7 @@ export default async function ContactPage() {
       eyebrow="Kurumsal"
       title="İletişim"
       description="Sipariş, ürün ve kurumsal üyelik konularında bize aşağıdaki kanallardan ulaşabilirsiniz."
+      profileComplete={profile.isComplete}
     >
       <section>
         <h2 className="text-xl font-bold text-slate-900">Şirket ve iletişim bilgileri</h2>
