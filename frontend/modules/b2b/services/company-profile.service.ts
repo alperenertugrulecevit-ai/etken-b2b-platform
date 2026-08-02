@@ -5,6 +5,20 @@ import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 import type { PublicCompanyProfile } from "@/modules/b2b/types/company-profile.types";
 import { SITE_CONFIG } from "@/modules/site/constants/site.constants";
 
+export function formatPublicCompanyAddress(
+  profile: PublicCompanyProfile,
+) {
+  return [
+    profile.addressLine,
+    profile.postalCode,
+    profile.district,
+    profile.city,
+    profile.country,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export async function getPublicCompanyProfile(): Promise<PublicCompanyProfile> {
   const profile = await prisma.b2BCompanyProfile.findFirst({
     where: {

@@ -3,14 +3,14 @@ import type {
 } from "react";
 
 import Header from "@/components/layout/Header";
-import {
-  SITE_LEGAL_PROFILE_COMPLETE,
-} from "@/modules/site/constants/site.constants";
 
 type LegalPageProps = {
   eyebrow: string;
   title: string;
   description: string;
+  profileComplete?: boolean;
+  effectiveDate?: string;
+  version?: string;
   children: ReactNode;
 };
 
@@ -18,6 +18,9 @@ export default function LegalPage({
   eyebrow,
   title,
   description,
+  profileComplete = true,
+  effectiveDate,
+  version,
   children,
 }: LegalPageProps) {
   return (
@@ -38,12 +41,19 @@ export default function LegalPage({
             {description}
           </p>
 
-          {!SITE_LEGAL_PROFILE_COMPLETE ? (
+          {effectiveDate ? (
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-1 text-xs font-semibold text-slate-500">
+              <span>Yürürlük tarihi: {effectiveDate}</span>
+              {version ? <span>Sürüm: {version}</span> : null}
+            </div>
+          ) : null}
+
+          {!profileComplete ? (
             <div className="mt-7 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
-              <strong>Taslak bilgi:</strong> Resmî şirket unvanı, adres,
-              vergi, MERSİS ve iletişim bilgileri henüz tanımlanmadı.
-              Bu metin faaliyete geçmeden önce gerçek bilgilerle
-              tamamlanmalı ve hukuki kontrolden geçirilmelidir.
+              <strong>Bilgilendirme:</strong> Resmî şirket profilindeki
+              zorunlu bilgiler tamamlanmadığı için bazı iletişim alanları
+              gösterilemiyor. Eksik bilgiler yönetim panelinden
+              tamamlanmalıdır.
             </div>
           ) : null}
 
