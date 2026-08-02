@@ -163,6 +163,10 @@ export class AuthRepository {
         user.customerId,
       username: user.username,
       email: user.email,
+      fullName:
+        user.fullName,
+      customerRole:
+        user.customerRole,
 
       userType: user.userType,
       status: user.status,

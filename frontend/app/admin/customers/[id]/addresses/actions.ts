@@ -53,6 +53,10 @@ export async function createCustomerAddress(
 
   validateCustomerId(customerId);
 
+  const addressCode = String(
+    formData.get("addressCode") ?? ""
+  ).trim().toUpperCase();
+
   const title = String(
     formData.get("title") ?? ""
   ).trim();
@@ -72,6 +76,10 @@ export async function createCustomerAddress(
   const district = String(
     formData.get("district") ?? ""
   ).trim();
+
+  if (!/^[A-Z0-9][A-Z0-9._-]{1,29}$/.test(addressCode)) {
+    throw new Error("Adres kodu 2-30 karakter olmalı; harf, rakam, nokta, alt çizgi veya tire içerebilir.");
+  }
 
   if (!title) {
     throw new Error(
@@ -149,6 +157,7 @@ export async function createCustomerAddress(
       await tx.customerAddress.create({
         data: {
           customerId,
+          addressCode,
           title,
           addressType,
 

@@ -114,6 +114,7 @@ model Customer {
 model CustomerAddress {
   id                Int      @id @default(autoincrement())
   customerId        Int
+  addressCode       String
   title             String
   addressType       String
   contactName       String?
@@ -133,11 +134,13 @@ model CustomerAddress {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  customer              Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer              Customer                    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   orders                Order[]
   waveDistributions     WaveDistribution[]
   shippingHandlingUnits ShippingHandlingUnit[]
+  userAccesses          CustomerUserAddressAccess[]
 
+  @@unique([customerId, addressCode])
   @@index([customerId])
 }
 
@@ -186,6 +189,21 @@ enum CustomerAccountPaymentMethod {
   CASH
   CREDIT_CARD
   OTHER
+}
+
+model CustomerUserAddressAccess {
+  userId       String
+  addressId    Int
+  assignedById String?
+  createdAt    DateTime @default(now())
+
+  user       User            @relation("CustomerUserAddressAccessUser", fields: [userId], references: [id], onDelete: Cascade)
+  address    CustomerAddress @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  assignedBy User?           @relation("CustomerUserAddressAccessAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@id([userId, addressId])
+  @@index([addressId])
+  @@index([assignedById])
 }
 
 model Order {
@@ -1683,6 +1701,12 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum CustomerUserRole {
+  CUSTOMER_ADMIN
+  BUYER
+  ADDRESS_USER
+}
+
 enum UserType {
   ADMIN
   OFFICE
@@ -1739,11 +1763,13 @@ model User {
 
   username String  @unique
   email    String? @unique
+  fullName String?
 
   passwordHash String
 
-  userType UserType   @default(WAREHOUSE)
-  status   UserStatus @default(ACTIVE)
+  userType     UserType          @default(WAREHOUSE)
+  status       UserStatus        @default(ACTIVE)
+  customerRole CustomerUserRole?
 
   mustChangePassword Boolean @default(true)
   failedLoginCount   Int     @default(0)
@@ -1782,6 +1808,9 @@ model User {
   passwordResetTokens PasswordResetToken[]
   placedOrders        Order[]              @relation("OrderPlacedByUser")
 
+  customerAddressAccesses         CustomerUserAddressAccess[] @relation("CustomerUserAddressAccessUser")
+  assignedCustomerAddressAccesses CustomerUserAddressAccess[] @relation("CustomerUserAddressAccessAssignedBy")
+
   wmsTenantMemberships WmsTenantMembership[]
   wmsCompanyAccesses   UserCompanyAccess[]
   wmsWarehouseAccesses UserWarehouseAccess[]
@@ -1796,6 +1825,7 @@ model User {
 
   @@index([employeeId])
   @@index([customerId, status])
+  @@index([customerId, customerRole, status])
   @@index([status])
   @@index([userType])
   @@index([isRfUser])

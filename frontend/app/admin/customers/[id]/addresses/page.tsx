@@ -99,6 +99,10 @@ export default async function CustomerAddressesPage({
 
           <div className="mt-6 space-y-4">
             <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Adres Kodu</span>
+              <input name="addressCode" placeholder="Örneğin: MERKEZ-DEPO" maxLength={30} className="w-full rounded-xl border p-4 uppercase" required />
+            </label>
+            <label className="block">
               <span className="mb-2 block text-sm font-semibold">
                 Adres Başlığı
               </span>
@@ -351,6 +355,9 @@ export default async function CustomerAddressesPage({
                         <h2 className="text-xl font-bold">
                           {address.title}
                         </h2>
+                        <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-black text-indigo-700">
+                          {address.addressCode}
+                        </span>
 
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">
                           {address.addressType}

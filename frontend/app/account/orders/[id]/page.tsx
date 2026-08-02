@@ -13,6 +13,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { SessionService } from "@/modules/auth/services/session.service";
+import { getCustomerOrderWhere } from "@/modules/b2b/services/customer-user-access.service";
 import B2BOrderStatusTracker from "@/components/b2b/B2BOrderStatusTracker";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
@@ -91,8 +92,7 @@ export default async function CustomerOrderDetailPage({
     await prisma.order.findFirst({
       where: {
         id: orderId,
-        customerId:
-          user.customerId,
+        ...getCustomerOrderWhere(user),
       },
       include: {
         shippingAddress: true,

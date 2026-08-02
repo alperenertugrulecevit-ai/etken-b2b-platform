@@ -16,6 +16,7 @@ import {
   getCustomerDueDate,
 } from "@/modules/b2b/services/customer-account.service";
 import type { AuthUser } from "@/modules/auth/types/auth.types";
+import { getCustomerAddressWhere } from "@/modules/b2b/services/customer-user-access.service";
 
 export type B2BCheckoutItemInput = {
   productId: number;
@@ -281,9 +282,7 @@ export class B2BCheckoutService {
       prisma.customerAddress.findFirst({
         where: {
           id: shippingAddressId,
-          customerId:
-            user.customerId,
-          isActive: true,
+          ...getCustomerAddressWhere(user),
         },
         select: {
           id: true,

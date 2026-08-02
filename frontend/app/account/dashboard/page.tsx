@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { SessionService } from "@/modules/auth/services/session.service";
+import { requireCustomerDashboardAccess } from "@/modules/b2b/services/customer-user-access.service";
 import { getCustomerAccountSummary } from "@/modules/b2b/services/customer-account.service";
 
 import { customerLogoutAction } from "../actions";
@@ -114,6 +115,7 @@ export default async function AccountPage() {
   ) {
     redirect("/customer-login");
   }
+  requireCustomerDashboardAccess(user);
 
   const customerId = user.customerId;
   const monthStart = getIstanbulMonthStart();
@@ -266,6 +268,9 @@ export default async function AccountPage() {
           <h1 className="mt-1 text-lg font-black text-slate-900 lg:text-2xl">
             {customer.companyName}
           </h1>
+          <p className="mt-1 text-sm font-semibold text-slate-700">
+            Kullanıcı: {user.fullName?.trim() || user.username}
+          </p>
           <p className="mt-1 text-sm text-slate-600">
             Müşteri kodu: {customer.customerCode} · Vade: {customer.paymentTermDays} gün · İskonto: %{customer.discountRate.toLocaleString("tr-TR")}
           </p>

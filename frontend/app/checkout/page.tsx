@@ -5,6 +5,7 @@ import B2BCheckoutForm from "@/components/b2b/B2BCheckoutForm";
 import Header from "@/components/layout/Header";
 import { prisma } from "@/lib/prisma";
 import { SessionService } from "@/modules/auth/services/session.service";
+import { getCustomerAddressWhere } from "@/modules/b2b/services/customer-user-access.service";
 
 export const metadata = {
   title:
@@ -47,9 +48,7 @@ export default async function CheckoutPage() {
         creditLimit: true,
         paymentTermDays: true,
         addresses: {
-          where: {
-            isActive: true,
-          },
+          where: getCustomerAddressWhere(user),
           orderBy: [
             {
               isDefault: "desc",
