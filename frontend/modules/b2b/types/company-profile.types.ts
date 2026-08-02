@@ -1,0 +1,22 @@
+export type PublicCompanyProfile = {
+  brandName: string;
+  legalName: string;
+  taxOffice: string | null;
+  taxNumber: string | null;
+  mersisNumber: string | null;
+  tradeRegistryNumber: string | null;
+  authorizedPerson: string | null;
+  phone: string | null;
+  supportEmail: string | null;
+  email: string | null;
+  kepAddress: string | null;
+  website: string | null;
+  addressLine: string | null;
+  city: string | null;
+  district: string | null;
+  postalCode: string | null;
+  country: string;
+  workingHours: string | null;
+  logoUrl: string | null;
+  isComplete: boolean;
+};
