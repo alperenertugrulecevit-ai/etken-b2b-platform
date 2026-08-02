@@ -1,4 +1,5 @@
 import {
+  CustomerUserRole,
   OrderStatus,
   UserType,
 } from "@prisma/client";
@@ -54,6 +55,9 @@ export default async function AccountPage() {
   }
 
   const customerId = user.customerId;
+  const canViewDashboard =
+    user.customerRole === CustomerUserRole.CUSTOMER_ADMIN;
+  const displayName = user.fullName?.trim() || user.username;
 
   const [customer, newProducts, favoriteGroups, opportunityProduct] =
     await Promise.all([
@@ -181,6 +185,9 @@ export default async function AccountPage() {
           <h1 className="mt-1 text-xl font-black text-slate-900 lg:text-2xl">
             {customer.companyName}
           </h1>
+          <p className="mt-1 text-sm font-semibold text-slate-700">
+            Kullanıcı: {displayName}
+          </p>
           <p className="mt-1 text-sm text-slate-600">
             Müşteri kodu: {customer.customerCode}
           </p>
@@ -205,11 +212,15 @@ export default async function AccountPage() {
         </p>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <Link href="/account/dashboard" className="group rounded-xl border border-slate-200 border-t-4 border-t-cyan-600 bg-white p-3.5 text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md">
+          {canViewDashboard && (
+
+            <Link href="/account/dashboard" className="group rounded-xl border border-slate-200 border-t-4 border-t-cyan-600 bg-white p-3.5 text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50 text-xl">📊</div>
             <h3 className="mt-3 text-sm font-black text-cyan-800">Dashboard</h3>
             <p className="mt-1.5 text-xs leading-5 text-slate-500">Satın alma, sipariş ve cari hesap özetleri.</p>
           </Link>
+
+          )}
           <Link href="/products" className="group rounded-xl border border-slate-200 border-t-4 border-t-orange-500 bg-white p-3.5 text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50 text-xl">📦</div>
             <h3 className="mt-3 text-sm font-black text-orange-700">Ürünler</h3>

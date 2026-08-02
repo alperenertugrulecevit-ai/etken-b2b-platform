@@ -1,4 +1,5 @@
 import type {
+  CustomerUserRole,
   Permission,
   Role,
   UserStatus,
@@ -46,6 +47,8 @@ export type AuthUser = {
   username: string;
   email: string | null;
 
+  fullName: string | null;
+  customerRole: CustomerUserRole | null;
   userType: UserType;
   status: UserStatus;
 

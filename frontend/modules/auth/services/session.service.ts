@@ -240,6 +240,12 @@ export class SessionService {
       email:
         session.user.email,
 
+
+      fullName:
+        session.user.fullName,
+
+      customerRole:
+        session.user.customerRole,
       userType:
         session.user.userType,
 

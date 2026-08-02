@@ -981,6 +981,9 @@ export class CustomerImportExecutionService {
               data: {
                 customerId,
 
+                addressCode:
+                  ("IMP-" + row.id).toUpperCase(),
+
                 title:
                   data.title,
 

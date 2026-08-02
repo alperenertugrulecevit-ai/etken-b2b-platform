@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import RefreshButton from "@/components/common/RefreshButton";
 import { prisma } from "@/lib/prisma";
 import { SessionService } from "@/modules/auth/services/session.service";
+import { getCustomerOrderWhere } from "@/modules/b2b/services/customer-user-access.service";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -147,8 +148,10 @@ export default async function CustomerOrdersPage({
       orderNumber
   );
 
+  const accessWhere = getCustomerOrderWhere(user);
+
   const where: Prisma.OrderWhereInput = {
-    customerId: user.customerId,
+    ...accessWhere,
     ...(selectedStatuses.length > 0
       ? {
           status: {
