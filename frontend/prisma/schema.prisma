@@ -259,6 +259,42 @@ model Order {
   @@index([orderDate])
 }
 
+model B2BCompanyProfile {
+  id Int @id @default(autoincrement())
+
+  tenantId  String
+  companyId String
+
+  brandName           String
+  legalName           String
+  taxOffice           String?
+  taxNumber           String?
+  mersisNumber        String?
+  tradeRegistryNumber String?
+  authorizedPerson    String?
+
+  phone        String?
+  supportEmail String?
+  email        String?
+  kepAddress   String?
+  website      String?
+
+  addressLine String?
+  city        String?
+  district    String?
+  postalCode  String?
+  country     String  @default("Türkiye")
+
+  workingHours String?
+  logoUrl      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, companyId])
+  @@index([tenantId, companyId])
+}
+
 model B2BBankAccount {
   id Int @id @default(autoincrement())
 

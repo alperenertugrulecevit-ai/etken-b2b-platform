@@ -11,17 +11,128 @@ export type B2BBankAccountActionState = {
   message: string;
 };
 
+export type B2BCompanyProfileActionState = {
+  success: boolean;
+  message: string;
+};
+
 function text(formData: FormData, name: string, maxLength: number) {
   return String(formData.get(name) ?? "").trim().slice(0, maxLength);
+}
+
+function nullableText(formData: FormData, name: string, maxLength: number) {
+  return text(formData, name, maxLength) || null;
 }
 
 function normalizeIban(value: string) {
   return value.replace(/\s+/g, "").toUpperCase();
 }
 
+function isEmail(value: string | null) {
+  return !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+export async function saveB2BCompanyProfileAction(
+  _previousState: B2BCompanyProfileActionState,
+  formData: FormData,
+): Promise<B2BCompanyProfileActionState> {
+  await AuthorizationService.requirePermission("ORDER_MANAGE");
+
+  const brandName = text(formData, "brandName", 100);
+  const legalName = text(formData, "legalName", 200);
+  const taxOffice = nullableText(formData, "taxOffice", 100);
+  const taxNumber = nullableText(formData, "taxNumber", 10)?.replace(/\s+/g, "") ?? null;
+  const mersisNumber = nullableText(formData, "mersisNumber", 16)?.replace(/\s+/g, "") ?? null;
+  const tradeRegistryNumber = nullableText(formData, "tradeRegistryNumber", 50);
+  const authorizedPerson = nullableText(formData, "authorizedPerson", 120);
+  const phone = nullableText(formData, "phone", 30);
+  const supportEmail = nullableText(formData, "supportEmail", 160)?.toLowerCase() ?? null;
+  const email = nullableText(formData, "email", 160)?.toLowerCase() ?? null;
+  const kepAddress = nullableText(formData, "kepAddress", 160)?.toLowerCase() ?? null;
+  const website = nullableText(formData, "website", 200);
+  const addressLine = nullableText(formData, "addressLine", 500);
+  const city = nullableText(formData, "city", 80);
+  const district = nullableText(formData, "district", 80);
+  const postalCode = nullableText(formData, "postalCode", 20);
+  const country = text(formData, "country", 80) || "Türkiye";
+  const workingHours = nullableText(formData, "workingHours", 160);
+  const logoUrl = nullableText(formData, "logoUrl", 250);
+
+  if (!brandName || !legalName) {
+    return { success: false, message: "Kısa şirket adı ve ticari unvan zorunludur." };
+  }
+  if (taxNumber && !/^\d{10}$/.test(taxNumber)) {
+    return { success: false, message: "Vergi numarası 10 rakam olmalıdır." };
+  }
+  if (mersisNumber && !/^\d{16}$/.test(mersisNumber)) {
+    return { success: false, message: "MERSİS numarası 16 rakam olmalıdır." };
+  }
+  if (![email, supportEmail, kepAddress].every(isEmail)) {
+    return { success: false, message: "E-posta veya KEP adreslerinden biri geçerli değil." };
+  }
+  if (website && !/^(https?:\/\/|www\.)/i.test(website)) {
+    return { success: false, message: "Web sitesi https:// veya www. ile başlamalıdır." };
+  }
+  if (logoUrl && !logoUrl.startsWith("/") && !/^https?:\/\//i.test(logoUrl)) {
+    return { success: false, message: "Logo adresi / veya http:// ya da https:// ile başlamalıdır." };
+  }
+
+  const data = {
+    brandName,
+    legalName,
+    taxOffice,
+    taxNumber,
+    mersisNumber,
+    tradeRegistryNumber,
+    authorizedPerson,
+    phone,
+    supportEmail,
+    email,
+    kepAddress,
+    website,
+    addressLine,
+    city,
+    district,
+    postalCode,
+    country,
+    workingHours,
+    logoUrl,
+  };
+
+  try {
+    const existing = await prisma.b2BCompanyProfile.findFirst({
+      where: {
+        tenantId: B2B_CONSTANTS.TENANT_ID,
+        companyId: B2B_CONSTANTS.COMPANY_ID,
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      await prisma.b2BCompanyProfile.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.b2BCompanyProfile.create({
+        data: {
+          tenantId: B2B_CONSTANTS.TENANT_ID,
+          companyId: B2B_CONSTANTS.COMPANY_ID,
+          ...data,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("B2B şirket profili kayıt hatası:", error);
+    return { success: false, message: "Şirket bilgileri kaydedilemedi." };
+  }
+
+  revalidatePath("/admin/b2b-settings");
+  revalidatePath("/contact");
+  revalidatePath("/", "layout");
+  return { success: true, message: "Şirket bilgileri başarıyla güncellendi." };
+}
+
 export async function saveB2BBankAccountAction(
   _previousState: B2BBankAccountActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<B2BBankAccountActionState> {
   await AuthorizationService.requirePermission("ORDER_MANAGE");
 
@@ -39,7 +150,7 @@ export async function saveB2BBankAccountAction(
     return { success: false, message: "Banka adı ve hesap sahibi zorunludur." };
   }
   if (!/^TR\d{24}$/.test(iban)) {
-    return { success: false, message: "IBAN TR ile başlayan 26 karakter olmalıdır." };
+    return { success: false, message: "IBAN, TR ile başlayan 26 karakter olmalıdır." };
   }
   if (!/^[A-Z]{3}$/.test(currency)) {
     return { success: false, message: "Para birimi üç harfli olmalıdır. Örnek: TRY." };
