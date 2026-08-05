@@ -83,12 +83,21 @@ export default async function AdminProductsPage() {
           </p>
         </div>
 
-        <Link
-          href="/admin/products/new"
-          className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
-        >
-          + Yeni Ürün Ekle
-        </Link>
+<div className="flex flex-wrap gap-3">
+  <Link
+    href="/admin/products/import"
+    className="rounded-xl border border-blue-900 bg-white px-6 py-3 font-bold text-blue-900 hover:bg-blue-50"
+  >
+    Excel’den Ürün Yükle
+  </Link>
+
+  <Link
+    href="/admin/products/new"
+    className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
+  >
+    + Yeni Ürün Ekle
+  </Link>
+</div>
       </div>
 
       {/* STOK ÖZET KARTLARI */}
