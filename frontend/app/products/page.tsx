@@ -56,6 +56,7 @@ export default async function ProductsPage({
         reservedStock: true,
         vat: true,
         ownStock: true,
+        imageUrl: true,
       },
     });
 
@@ -74,6 +75,8 @@ export default async function ProductsPage({
         vat: product.vat,
         ownStock:
           product.ownStock,
+          imageUrl:
+  product.imageUrl,
         availableStock:
           Math.max(
             0,

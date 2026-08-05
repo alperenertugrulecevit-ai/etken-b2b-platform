@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import ProductImage from "@/components/products/ProductImage";
+
 import Header from "@/components/layout/Header";
 import ProductAddToCartButton from "@/components/products/ProductAddToCartButton";
 import { prisma } from "@/lib/prisma";
@@ -52,6 +54,7 @@ export default async function ProductDetailPage({
         reservedStock: true,
         vat: true,
         ownStock: true,
+        imageUrl: true,
       },
     });
 
@@ -89,9 +92,12 @@ export default async function ProductDetailPage({
           </Link>
 
           <article className="mt-4 grid gap-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)] md:gap-8 md:p-6 lg:p-8">
-            <div className="flex h-48 items-center justify-center rounded-xl bg-slate-100 text-6xl sm:h-64 sm:text-7xl md:h-full md:min-h-[360px]">
-              📦
-            </div>
+<ProductImage
+  imageUrl={product.imageUrl}
+  productName={product.name}
+  className="h-64 rounded-xl border border-slate-200 p-5 sm:h-80 md:h-full md:min-h-[360px]"
+  fallbackClassName="h-64 rounded-xl text-6xl sm:h-80 sm:text-7xl md:h-full md:min-h-[360px]"
+/>
 
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.12em] text-[#EF4B23]">

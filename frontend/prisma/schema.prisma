@@ -18,6 +18,7 @@ model Product {
   brand         String
   category      String
   supplier      String
+  imageUrl      String?
   price         Float
   stock         Int
   reservedStock Int      @default(0)
