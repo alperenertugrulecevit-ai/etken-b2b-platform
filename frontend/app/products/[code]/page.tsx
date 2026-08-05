@@ -69,6 +69,9 @@ export default async function ProductDetailPage({
     product.price *
     (1 + product.vat / 100);
 
+    const isComingSoon =
+  product.price <= 0;
+
   return (
     <>
       <Header />
@@ -142,39 +145,64 @@ export default async function ProductDetailPage({
                 </p>
               </div>
 
-              <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 p-4">
-                <p className="text-2xl font-black text-[#EF4B23] sm:text-3xl">
-                  {formatCurrency(
-                    product.price
-                  )}{" "}
-                  ₺
-                </p>
+<div
+  className={`mt-4 rounded-xl border p-4 ${
+    isComingSoon
+      ? "border-amber-200 bg-amber-50"
+      : "border-orange-100 bg-orange-50"
+  }`}
+>
+  {isComingSoon ? (
+    <>
+      <p className="text-2xl font-black text-amber-700 sm:text-3xl">
+        Yakında Stokta
+      </p>
 
-                <p className="mt-0.5 text-xs text-slate-500">
-                  KDV hariç birim fiyat
-                </p>
+      <p className="mt-2 text-sm text-amber-800">
+        Ürünün fiyat ve stok bilgileri hazırlanıyor.
+        Tedarik süreci tamamlandığında satışa açılacaktır.
+      </p>
+    </>
+  ) : (
+    <>
+      <p className="text-2xl font-black text-[#EF4B23] sm:text-3xl">
+        {formatCurrency(
+          product.price
+        )}{" "}
+        ₺
+      </p>
 
-                <p className="mt-2 text-sm font-bold text-slate-800">
-                  KDV dâhil:{" "}
-                  {formatCurrency(
-                    grossPrice
-                  )}{" "}
-                  ₺
-                </p>
-              </div>
+      <p className="mt-0.5 text-xs text-slate-500">
+        KDV hariç birim fiyat
+      </p>
 
-              <div
-                className={
-                  "mt-3 rounded-xl px-4 py-3 text-sm font-bold " +
-                  (availableStock > 0
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-red-50 text-red-700")
-                }
-              >
-                {availableStock > 0
-                  ? `Kullanılabilir stok: ${availableStock} adet`
-                  : "Ürün şu anda stokta bulunmuyor."}
-              </div>
+      <p className="mt-2 text-sm font-bold text-slate-800">
+        KDV dâhil:{" "}
+        {formatCurrency(
+          grossPrice
+        )}{" "}
+        ₺
+      </p>
+    </>
+  )}
+</div>
+
+<div
+  className={
+    "mt-3 rounded-xl px-4 py-3 text-sm font-bold " +
+    (isComingSoon
+      ? "bg-amber-50 text-amber-700"
+      : availableStock > 0
+        ? "bg-emerald-50 text-emerald-700"
+        : "bg-red-50 text-red-700")
+  }
+>
+  {isComingSoon
+    ? "Fiyat ve stok bilgisi yakında yayınlanacaktır."
+    : availableStock > 0
+      ? `Kullanılabilir stok: ${availableStock} adet`
+      : "Ürün şu anda stokta bulunmuyor."}
+</div>
 
               <div className="mt-3 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
                 {product.ownStock
