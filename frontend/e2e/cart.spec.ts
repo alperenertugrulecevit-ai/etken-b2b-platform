@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 async function prepareEmptyCart(page: Page): Promise<void> {
   await page.goto("/", {
@@ -15,12 +15,34 @@ async function prepareEmptyCart(page: Page): Promise<void> {
   });
 }
 
-async function openFirstProductDetail(page: Page): Promise<void> {
-  const productLink = page
-    .locator('a[href^="/products/"]')
+async function getFirstSellableProductCard(
+  page: Page,
+): Promise<Locator> {
+  const sellableProductCard = page
+    .getByRole("article")
     .filter({
-      hasNot: page.locator('a[href="/products"]'),
+      has: page.getByRole("button", {
+        name: "Sepete Ekle",
+        exact: true,
+      }),
     })
+    .first();
+
+  await expect(sellableProductCard).toBeVisible({
+    timeout: 20_000,
+  });
+
+  return sellableProductCard;
+}
+
+async function openFirstSellableProductDetail(
+  page: Page,
+): Promise<void> {
+  const productCard =
+    await getFirstSellableProductCard(page);
+
+  const productLink = productCard
+    .locator('a[href^="/products/"]')
     .first();
 
   await expect(productLink).toBeVisible({
@@ -39,7 +61,9 @@ async function openFirstProductDetail(page: Page): Promise<void> {
   await page.waitForLoadState("networkidle");
 }
 
-async function readCartText(page: Page): Promise<string> {
+async function readCartText(
+  page: Page,
+): Promise<string> {
   const cartLink = page.getByRole("link", {
     name: /Sepet/i,
   });
@@ -48,18 +72,23 @@ async function readCartText(page: Page): Promise<string> {
     timeout: 20_000,
   });
 
-  return (await cartLink.textContent())?.trim() ?? "";
+  return (
+    await cartLink.textContent()
+  )?.trim() ?? "";
 }
 
 async function addProductFromDetailPage(
   page: Page,
 ): Promise<void> {
-  await openFirstProductDetail(page);
+  await openFirstSellableProductDetail(page);
 
-  const addToCartButton = page.getByRole("button", {
-    name: "Sepete Ekle",
-    exact: true,
-  });
+  const addToCartButton = page.getByRole(
+    "button",
+    {
+      name: "Sepete Ekle",
+      exact: true,
+    },
+  );
 
   await expect(addToCartButton).toBeVisible({
     timeout: 20_000,
@@ -70,26 +99,37 @@ async function addProductFromDetailPage(
   });
 
   /*
-   * GitHub Actions ortamında sayfanın görünür olması,
-   * React tarafının tamamen hazır olduğu anlamına
-   * gelmeyebilir. İlk tıklama boşa giderse ürün ekleme
-   * işlemini en fazla üç kez tekrar deneriz.
+   * GitHub Actions ortamında sayfa görünür olsa da
+   * React tarafı ilk tıklama sırasında tamamen hazır
+   * olmayabilir. Bu nedenle sepete ekleme işlemini
+   * en fazla üç kez doğrularız.
    */
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  for (
+    let attempt = 1;
+    attempt <= 3;
+    attempt += 1
+  ) {
     await addToCartButton.click();
 
     try {
       await expect
         .poll(
-          async () => readCartText(page),
+          async () =>
+            readCartText(page),
           {
             message:
               `Sepet adedi ${attempt}. denemeden sonra güncellenmedi.`,
             timeout: 7_000,
-            intervals: [250, 500, 1_000],
+            intervals: [
+              250,
+              500,
+              1_000,
+            ],
           },
         )
-        .toMatch(/Sepet\s*\([1-9]\d*\)/i);
+        .toMatch(
+          /Sepet\s*\([1-9]\d*\)/i,
+        );
 
       return;
     } catch {
@@ -99,51 +139,71 @@ async function addProductFromDetailPage(
         );
       }
 
-      await page.waitForTimeout(1_000);
+      await page.waitForTimeout(
+        1_000,
+      );
     }
   }
 }
 
-test.describe("Sepet kullanıcı akışı", () => {
-  test.describe.configure({
-    mode: "serial",
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await prepareEmptyCart(page);
-  });
-
-  test("ürün detayından sepete ürün eklenebiliyor", async ({
-    page,
-  }) => {
-    await addProductFromDetailPage(page);
-
-    const cartLink = page.getByRole("link", {
-      name: /Sepet\s*\([1-9]\d*\)/i,
+test.describe(
+  "Sepet kullanıcı akışı",
+  () => {
+    test.describe.configure({
+      mode: "serial",
     });
 
-    await expect(cartLink).toBeVisible();
-
-    await cartLink.click();
-
-    await expect(page).toHaveURL(
-      /\/cart(?:\?.*)?$/,
+    test.beforeEach(
+      async ({ page }) => {
+        await prepareEmptyCart(page);
+      },
     );
 
-    await expect(page.locator("body")).not.toContainText(
-      /sepetiniz boş|sepet boş/i,
+    test(
+      "ürün detayından sepete ürün eklenebiliyor",
+      async ({ page }) => {
+        await addProductFromDetailPage(
+          page,
+        );
+
+        const cartLink =
+          page.getByRole("link", {
+            name: /Sepet\s*\([1-9]\d*\)/i,
+          });
+
+        await expect(
+          cartLink,
+        ).toBeVisible();
+
+        await cartLink.click();
+
+        await expect(
+          page,
+        ).toHaveURL(
+          /\/cart(?:\?.*)?$/,
+        );
+
+        await expect(
+          page.locator("body"),
+        ).not.toContainText(
+          /sepetiniz boş|sepet boş/i,
+        );
+      },
     );
-  });
 
-  test("sepete eklenen ürün sayısı üst menüde güncelleniyor", async ({
-    page,
-  }) => {
-    await addProductFromDetailPage(page);
+    test(
+      "sepete eklenen ürün sayısı üst menüde güncelleniyor",
+      async ({ page }) => {
+        await addProductFromDetailPage(
+          page,
+        );
 
-    await expect(
-      page.getByRole("link", {
-        name: /Sepet\s*\([1-9]\d*\)/i,
-      }),
-    ).toBeVisible();
-  });
-});
+        await expect(
+          page.getByRole("link", {
+            name: /Sepet\s*\([1-9]\d*\)/i,
+          }),
+        ).toBeVisible();
+      },
+    );
+  },
+);
