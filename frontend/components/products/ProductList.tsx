@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ProductImage from "@/components/products/ProductImage";
 import {
   useMemo,
   useState,
@@ -17,6 +18,7 @@ type Product = {
   name: string;
   brand: string;
   category: string;
+  imageUrl: string | null;
   price: number;
   vat: number;
   availableStock: number;
@@ -351,9 +353,12 @@ const cannotAddToCart =
                       href={`/products/${product.code}`}
                       className="flex-1"
                     >
-                      <div className="flex h-24 items-center justify-center rounded-lg bg-slate-100 text-4xl">
-                        📦
-                      </div>
+<ProductImage
+  imageUrl={product.imageUrl}
+  productName={product.name}
+  className="h-28 rounded-lg border border-slate-100 p-2"
+  fallbackClassName="h-28 rounded-lg text-4xl"
+/>
 
                       <p className="mt-3 text-xs font-black uppercase tracking-wide text-[#EF4B23]">
                         {

@@ -21,26 +21,38 @@ const mainMenuItems: MenuItem[] = [
       "DASHBOARD_VIEW",
     ],
   },
-  {
-    href: "/admin/products",
-    icon: "📦",
-    label: "Ürün Yönetimi",
+{
+  href: "/admin/products",
+  icon: "📦",
+  label: "Ürün Yönetimi",
 
-    permissionCodes: [
-      "INVENTORY_VIEW",
-      "INVENTORY_ADJUST",
-    ],
-  },
-  {
-    href: "/admin/categories",
-    icon: "📁",
-    label: "Kategori Yönetimi",
+  permissionCodes: [
+    "INVENTORY_VIEW",
+    "INVENTORY_ADJUST",
+  ],
+},
 
-    permissionCodes: [
-      "INVENTORY_VIEW",
-      "INVENTORY_ADJUST",
-    ],
-  },
+{
+  href: "/admin/product-images",
+  icon: "🖼️",
+  label: "Ürün Görsel Yönetimi",
+
+  permissionCodes: [
+    "INVENTORY_VIEW",
+    "INVENTORY_ADJUST",
+  ],
+},
+
+{
+  href: "/admin/categories",
+  icon: "📁",
+  label: "Kategori Yönetimi",
+
+  permissionCodes: [
+    "INVENTORY_VIEW",
+    "INVENTORY_ADJUST",
+  ],
+},
   {
     href: "/admin/brands",
     icon: "🏷️",

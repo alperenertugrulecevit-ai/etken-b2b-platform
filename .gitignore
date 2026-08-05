@@ -3,3 +3,7 @@ node_modules
 .env
 
 /generated/prisma
+# Yerel ürün görselleri
+# Yerel ürün görselleri
+/frontend/public/products/*
+!/frontend/public/products/.gitkeep
