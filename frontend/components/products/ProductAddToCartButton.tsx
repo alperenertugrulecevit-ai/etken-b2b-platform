@@ -30,11 +30,19 @@ export default function ProductAddToCartButton({
     setMessage,
   ] = useState("");
 
+  const isComingSoon =
+    product.price <= 0;
+
   const isOutOfStock =
+    !isComingSoon &&
     product.availableStock <= 0;
 
+  const cannotAddToCart =
+    isComingSoon ||
+    isOutOfStock;
+
   function handleAdd() {
-    if (isOutOfStock) {
+    if (cannotAddToCart) {
       return;
     }
 
@@ -64,14 +72,22 @@ export default function ProductAddToCartButton({
     <div className="mt-8">
       <button
         type="button"
-        disabled={isOutOfStock}
+        disabled={cannotAddToCart}
         onClick={handleAdd}
         className="w-full rounded-xl bg-blue-900 px-8 py-4 text-lg font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
       >
-        {isOutOfStock
-          ? "Stokta Yok"
-          : "Sepete Ekle"}
+        {isComingSoon
+          ? "Yakında Stokta"
+          : isOutOfStock
+            ? "Stokta Yok"
+            : "Sepete Ekle"}
       </button>
+
+      {isComingSoon ? (
+        <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700">
+          Fiyat ve stok bilgisi tamamlandığında siparişe açılacaktır.
+        </p>
+      ) : null}
 
       {message ? (
         <p

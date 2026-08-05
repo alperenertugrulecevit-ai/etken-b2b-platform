@@ -329,10 +329,16 @@ export default function ProductList({
                     product.vat /
                       100);
 
-                const isOutOfStock =
-                  product
-                    .availableStock <=
-                  0;
+const isComingSoon =
+  product.price <= 0;
+
+const isOutOfStock =
+  !isComingSoon &&
+  product.availableStock <= 0;
+
+const cannotAddToCart =
+  isComingSoon ||
+  isOutOfStock;
 
                 return (
                   <article
@@ -371,58 +377,71 @@ export default function ProductList({
                         }
                       </p>
 
-                      <p
-                        className={`mt-3 text-sm font-semibold ${
-                          isOutOfStock
-                            ? "text-red-600"
-                            : "text-green-700"
-                        }`}
-                      >
-                        {isOutOfStock
-                          ? "Stokta yok"
-                          : `Stok: ${product.availableStock} adet`}
-                      </p>
+<p
+  className={`mt-3 text-sm font-semibold ${
+    isComingSoon
+      ? "text-amber-700"
+      : isOutOfStock
+        ? "text-red-600"
+        : "text-green-700"
+  }`}
+>
+  {isComingSoon
+    ? "Fiyat ve stok bilgisi hazırlanıyor"
+    : isOutOfStock
+      ? "Stokta yok"
+      : `Stok: ${product.availableStock} adet`}
+</p>
 
-                      <p className="mt-3 text-lg font-black text-[#EF4B23]">
-                        {formatCurrency(
-                          product.price
-                        )}{" "}
-                        ₺
-                      </p>
+{isComingSoon ? (
+  <div className="mt-3">
+    <p className="text-lg font-black text-amber-700">
+      Yakında Stokta
+    </p>
 
-                      <p className="mt-1 text-xs text-gray-500">
-                        KDV hariç · KDV
-                        %
-                        {
-                          product.vat
-                        }
-                      </p>
+    <p className="mt-1 text-xs text-slate-500">
+      Fiyat bilgisi yakında yayınlanacaktır.
+    </p>
+  </div>
+) : (
+  <>
+    <p className="mt-3 text-lg font-black text-[#EF4B23]">
+      {formatCurrency(
+        product.price
+      )}{" "}
+      ₺
+    </p>
 
-                      <p className="mt-1 text-sm font-semibold text-slate-700">
-                        KDV dâhil:{" "}
-                        {formatCurrency(
-                          grossPrice
-                        )}{" "}
-                        ₺
-                      </p>
+    <p className="mt-1 text-xs text-gray-500">
+      KDV hariç · KDV %
+      {product.vat}
+    </p>
+
+    <p className="mt-1 text-sm font-semibold text-slate-700">
+      KDV dâhil:{" "}
+      {formatCurrency(
+        grossPrice
+      )}{" "}
+      ₺
+    </p>
+  </>
+)}
                     </Link>
 
-                    <button
-                      type="button"
-                      disabled={
-                        isOutOfStock
-                      }
-                      onClick={() =>
-                        handleAdd(
-                          product
-                        )
-                      }
-                      className="mt-3 w-full rounded-lg bg-[#202B38] py-2.5 text-sm font-bold text-white transition hover:bg-[#111923] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
-                    >
-                      {isOutOfStock
-                        ? "Stokta Yok"
-                        : "Sepete Ekle"}
-                    </button>
+<button
+  type="button"
+  disabled={cannotAddToCart}
+  onClick={() =>
+    handleAdd(product)
+  }
+  className="mt-3 w-full rounded-lg bg-[#202B38] py-2.5 text-sm font-bold text-white transition hover:bg-[#111923] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+>
+  {isComingSoon
+    ? "Yakında Stokta"
+    : isOutOfStock
+      ? "Stokta Yok"
+      : "Sepete Ekle"}
+</button>
                   </article>
                 );
               }

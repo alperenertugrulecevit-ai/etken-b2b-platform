@@ -350,10 +350,7 @@ async function upsertProduct(
          * Fiyatı sıfır veya daha düşük olan ürün,
          * mevcut durumda yanlışlıkla satışa açılmaz.
          */
-        isActive:
-          nextPrice > 0
-            ? existingProduct.isActive
-            : false,
+isActive: true,
       },
     });
 
@@ -388,8 +385,7 @@ async function upsertProduct(
        * Fiyat girilmemiş yeni ürünler taslak/pasif
        * olarak oluşturulur.
        */
-      isActive: newPrice > 0,
-    },
+isActive: true,    },
   });
 
   return "created";
