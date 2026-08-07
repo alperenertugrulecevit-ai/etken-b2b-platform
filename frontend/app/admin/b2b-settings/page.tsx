@@ -82,12 +82,12 @@ export default async function B2BSettingsPage() {
   };
 
   return (
-    <section className="p-5 sm:p-7 lg:p-10">
+    <section className="p-4 sm:p-6 lg:p-10">
       <div className="max-w-6xl">
         <p className="text-sm font-bold uppercase tracking-wide text-orange-600">
           B2B Site Yönetimi
         </p>
-        <h1 className="mt-2 text-3xl font-black text-slate-900 sm:text-4xl">
+        <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl lg:text-4xl">
           Şirket ve Ödeme Ayarları
         </h1>
         <p className="mt-3 max-w-3xl text-slate-600">
@@ -95,7 +95,7 @@ export default async function B2BSettingsPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid max-w-6xl gap-8">
+      <div className="mt-6 grid max-w-6xl gap-6 sm:mt-8 sm:gap-8">
         <B2BCompanyProfileForm profile={profileForm} />
 
         <section>
