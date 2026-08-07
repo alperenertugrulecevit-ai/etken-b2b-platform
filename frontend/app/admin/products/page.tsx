@@ -103,7 +103,7 @@ export default async function AdminProductsPage() {
       {/* STOK ÖZET KARTLARI */}
 
       <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 xl:mt-10 xl:grid-cols-4">
-        <article className="rounded-2xl bg-white p-4 shadow sm:p-6"">
+        <article className="rounded-2xl bg-white p-4 shadow sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Fiziksel Stok
           </p>
