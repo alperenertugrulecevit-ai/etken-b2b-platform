@@ -45,15 +45,15 @@ export default async function AdminRolesPage({
   ]);
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 lg:p-10">
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-10">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-wrap items-start justify-between gap-5">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
               Yetki ve Erişim
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold text-slate-950">
+            <h1 className="mt-2 text-2xl font-bold text-slate-950 sm:text-3xl">
               Rol ve Yetki Yönetimi
             </h1>
 
@@ -64,7 +64,7 @@ export default async function AdminRolesPage({
           </div>
 
           {canManageRoles && (
-            <div className="flex flex-wrap gap-3">
+            <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
               <form
                 action={
                   synchronizeAuthorizationCatalogAction
@@ -72,7 +72,7 @@ export default async function AdminRolesPage({
               >
                 <button
                   type="submit"
-                  className="rounded-xl border border-blue-300 bg-white px-5 py-3 font-bold text-blue-700 hover:bg-blue-50"
+                  className="w-full rounded-xl border border-blue-300 bg-white px-5 py-3 text-center font-bold text-blue-700 hover:bg-blue-50 sm:w-auto"
                 >
                   Yetki Kataloğunu Eşitle
                 </button>
@@ -80,7 +80,7 @@ export default async function AdminRolesPage({
 
               <Link
                 href="/admin/roles/new"
-                className="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
+                className="rounded-xl bg-blue-700 px-5 py-3 text-center font-bold text-white hover:bg-blue-800"
               >
                 + Yeni Rol
               </Link>
@@ -156,8 +156,8 @@ export default async function AdminRolesPage({
           </div>
         </section>
 
-        <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[1050px] text-left">
+        <div className="-mx-4 mt-6 overflow-x-auto border-y border-slate-200 bg-white shadow-sm sm:mx-0 sm:rounded-3xl sm:border">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="bg-slate-100 text-sm uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="px-5 py-4">

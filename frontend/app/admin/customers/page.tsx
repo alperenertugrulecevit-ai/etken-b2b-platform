@@ -31,9 +31,9 @@ export default async function AdminCustomersPage() {
     getDistrictsOfEachCity();
 
   return (
-    <section className="p-10">
+    <section className="p-4 sm:p-6 lg:p-10">
       <div>
-        <h1 className="text-4xl font-bold">
+        <h1 className="text-2xl font-bold sm:text-3xl lg:text-4xl">
           Müşteri Yönetimi
         </h1>
 
@@ -42,10 +42,10 @@ export default async function AdminCustomersPage() {
         </p>
       </div>
 
-      <div className="mt-10 grid gap-8 2xl:grid-cols-[440px_1fr]">
+      <div className="mt-6 grid gap-6 sm:mt-8 lg:gap-8 2xl:mt-10 2xl:grid-cols-[440px_minmax(0,1fr)]">
         <form
           action={createCustomer}
-          className="h-fit rounded-2xl bg-white p-6 shadow"
+          className="h-fit rounded-2xl bg-white p-4 shadow sm:p-6"
         >
           <h2 className="text-xl font-bold">
             Yeni Müşteri
@@ -224,8 +224,8 @@ export default async function AdminCustomersPage() {
           </button>
         </form>
 
-        <div className="overflow-x-auto rounded-2xl bg-white shadow">
-          <table className="w-full min-w-[1580px] text-left">
+        <div className="-mx-4 overflow-x-auto bg-white shadow sm:mx-0 sm:rounded-2xl">
+          <table className="w-full min-w-[1400px] text-left text-sm">
             <thead className="bg-blue-900 text-white">
               <tr>
                 <th className="p-4">Cari Kodu</th>

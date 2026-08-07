@@ -146,10 +146,12 @@ export default function B2BBankAccountManager({
           <div className="space-y-5">
             {accounts.map((account) => (
               <div key={account.id} className="rounded-2xl bg-white p-5 shadow">
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-lg font-black">{account.bankName}</p>
-                    <p className="mt-1 font-mono text-sm">{formatIban(account.iban)}</p>
+                    <p className="mt-1 break-all font-mono text-sm">
+  {formatIban(account.iban)}
+</p>
                   </div>
                   <form action={toggleB2BBankAccountAction}>
                     <input type="hidden" name="id" value={account.id} />
