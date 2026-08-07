@@ -49,7 +49,7 @@ export default function B2BCompanyProfileForm({
 
   return (
     <form action={formAction} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-xl font-black text-slate-900">Şirket Bilgileri</h2>
           <p className="mt-1 text-sm text-slate-500">
