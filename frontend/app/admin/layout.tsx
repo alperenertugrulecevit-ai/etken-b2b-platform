@@ -70,7 +70,110 @@ export default async function AdminLayout({
 
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-          <div className="px-4 py-3 sm:px-5 lg:px-10">
+          {/* MOBİL / TABLET KOMPAKT ÜST ALAN */}
+          <div className="lg:hidden">
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-black text-blue-800">
+                  {profile.username
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold leading-tight text-slate-950">
+                    {fullName}
+                  </p>
+
+                  <p className="truncate text-[11px] leading-tight text-slate-500">
+                    @{profile.username} ·{" "}
+                    {roleSummary}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  {profile.isAdminUser && (
+                    <span className="hidden rounded-full bg-violet-100 px-2 py-1 text-[10px] font-bold text-violet-800 min-[420px]:inline-flex">
+                      Yönetici
+                    </span>
+                  )}
+
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    aria-hidden="true"
+                    className="h-5 w-5 text-slate-500 transition-transform duration-200 group-open:rotate-180"
+                  >
+                    <path
+                      d="M5 7.5 10 12.5 15 7.5"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              </summary>
+
+              <div className="border-t border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="mb-3">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Aktif Kullanıcı
+                  </p>
+
+                  <p className="text-sm font-bold text-slate-900">
+                    {fullName}
+                  </p>
+
+                  <p className="text-xs text-slate-500">
+                    @{profile.username} ·{" "}
+                    {roleSummary}
+                  </p>
+                </div>
+
+                <div className="mb-3 min-w-0">
+                  <WmsContextSelector
+                    activeContext={
+                      wmsContextData.activeContext
+                    }
+                    companies={
+                      wmsContextData.companies
+                    }
+                    variant="admin"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {profile.isAdminUser && (
+                    <span className="rounded-full bg-violet-100 px-3 py-2 text-[11px] font-bold text-violet-800">
+                      Yönetici
+                    </span>
+                  )}
+
+                  {profile.isRfUser && (
+                    <span className="rounded-full bg-cyan-100 px-3 py-2 text-[11px] font-bold text-cyan-800">
+                      RF Erişimi
+                    </span>
+                  )}
+
+                  <Link
+                    href="/change-password?returnTo=%2Fadmin"
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Şifremi Değiştir
+                  </Link>
+
+                  <LogoutButton
+                    redirectTo="/login"
+                    label="Çıkış Yap"
+                  />
+                </div>
+              </div>
+            </details>
+          </div>
+
+          {/* MASAÜSTÜ - MEVCUT GÖRÜNÜM */}
+          <div className="hidden px-4 py-3 sm:px-5 lg:block lg:px-10">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-black text-blue-800 sm:h-11 sm:w-11 sm:text-base">
