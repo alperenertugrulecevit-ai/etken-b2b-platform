@@ -70,10 +70,10 @@ export default async function AdminProductsPage() {
   }).length;
 
   return (
-    <section className="p-10">
+    <section className="p-4 sm:p-6 lg:p-10">
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-bold">
+          <h1 className="text-2xl font-bold sm:text-3xl lg:text-4xl">
             Ürün ve Stok Yönetimi
           </h1>
 
@@ -83,27 +83,27 @@ export default async function AdminProductsPage() {
           </p>
         </div>
 
-<div className="flex flex-wrap gap-3">
-  <Link
-    href="/admin/products/import"
-    className="rounded-xl border border-blue-900 bg-white px-6 py-3 font-bold text-blue-900 hover:bg-blue-50"
-  >
-    Excel’den Ürün Yükle
-  </Link>
+<div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
+ <Link
+  href="/admin/products/import"
+  className="rounded-xl border border-blue-900 bg-white px-6 py-3 text-center font-bold text-blue-900 hover:bg-blue-50"
+>
+  Excel’den Ürün Yükle
+</Link>
 
   <Link
-    href="/admin/products/new"
-    className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
-  >
-    + Yeni Ürün Ekle
-  </Link>
+  href="/admin/products/new"
+  className="rounded-xl bg-blue-900 px-6 py-3 text-center font-bold text-white hover:bg-blue-800"
+>
+  + Yeni Ürün Ekle
+</Link>
 </div>
       </div>
 
       {/* STOK ÖZET KARTLARI */}
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-2xl bg-white p-6 shadow">
+      <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 xl:mt-10 xl:grid-cols-4">
+        <article className="rounded-2xl bg-white p-4 shadow sm:p-6"">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Fiziksel Stok
           </p>
@@ -117,7 +117,7 @@ export default async function AdminProductsPage() {
           </p>
         </article>
 
-        <article className="rounded-2xl bg-white p-6 shadow">
+        <article className="rounded-2xl bg-white p-4 shadow sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Rezerve Stok
           </p>
@@ -131,7 +131,7 @@ export default async function AdminProductsPage() {
           </p>
         </article>
 
-        <article className="rounded-2xl bg-white p-6 shadow">
+        <article className="rounded-2xl bg-white p-4 shadow sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Kullanılabilir Stok
           </p>
@@ -145,7 +145,7 @@ export default async function AdminProductsPage() {
           </p>
         </article>
 
-        <article className="rounded-2xl bg-white p-6 shadow">
+        <article className="rounded-2xl bg-white p-4 shadow sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Kritik Ürün
           </p>
@@ -162,8 +162,8 @@ export default async function AdminProductsPage() {
 
       {/* ÜRÜN TABLOSU */}
 
-      <div className="mt-10 overflow-x-auto rounded-2xl bg-white shadow">
-        <table className="w-full min-w-[1700px] text-left">
+      <div className="-mx-4 mt-6 overflow-x-auto bg-white shadow sm:mx-0 sm:mt-8 sm:rounded-2xl lg:mt-10">
+        <table className="w-full min-w-[1450px] text-left text-sm">
           <thead className="bg-blue-900 text-white">
             <tr>
               <th className="p-4">
