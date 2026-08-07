@@ -44,6 +44,17 @@ const mainMenuItems: MenuItem[] = [
 },
 
 {
+  href: "/admin/competitor-prices",
+  icon: "📈",
+  label: "Rakip Fiyat Analizi",
+
+  permissionCodes: [
+    "INVENTORY_VIEW",
+    "INVENTORY_ADJUST",
+  ],
+},
+
+{
   href: "/admin/categories",
   icon: "📁",
   label: "Kategori Yönetimi",

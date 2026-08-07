@@ -41,6 +41,7 @@ model Product {
   dispatchLines         DispatchDocumentLine[]
   inventoryCountLines   InventoryCountLine[]
   waveDistributionLines WaveDistributionLine[]
+  competitorProducts    CompetitorProduct[]
 
   @@index([tenantId, companyId, isActive])
   @@index([companyId, code])
@@ -2335,4 +2336,172 @@ model DataImportRow {
   @@unique([jobId, sheetName, rowNumber])
   @@index([jobId, status])
   @@index([externalKey])
+}
+
+enum CompetitorSourceType {
+  MANUAL
+  HTML
+  API
+  EXCEL
+}
+
+enum CompetitorStockStatus {
+  UNKNOWN
+  IN_STOCK
+  OUT_OF_STOCK
+  PREORDER
+}
+
+enum CompetitorPriceFetchStatus {
+  SUCCESS
+  PRODUCT_NOT_FOUND
+  PRICE_NOT_FOUND
+  BLOCKED
+  INVALID_RESPONSE
+  ERROR
+}
+
+enum CompetitorPriceRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+}
+
+model CompetitorSite {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  code    String
+  name    String
+  baseUrl String
+
+  sourceType CompetitorSourceType @default(MANUAL)
+
+  defaultVatRate Int?
+
+  searchEnabled     Boolean @default(false)
+  searchUrlTemplate String?
+  productUrlPattern String?
+  searchResultLimit Int     @default(10)
+
+  isActive Boolean @default(true)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competitorProducts CompetitorProduct[]
+  priceRuns          CompetitorPriceRun[]
+
+  @@unique([tenantId, companyId, code])
+  @@index([tenantId, companyId, isActive])
+  @@index([sourceType, isActive])
+  @@index([searchEnabled, isActive])
+}
+
+model CompetitorProduct {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productId        Int
+  competitorSiteId Int
+
+  competitorSku  String?
+  competitorName String?
+  productUrl     String
+
+  vatRate Int?
+
+  isActive Boolean @default(true)
+
+  lastPriceExclVat Float?
+  lastPriceInclVat Float?
+  lastCurrency     String                @default("TRY")
+  lastStockStatus  CompetitorStockStatus @default(UNKNOWN)
+
+  lastCheckedAt DateTime?
+  lastSuccessAt DateTime?
+  lastError     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  competitorSite CompetitorSite @relation(fields: [competitorSiteId], references: [id], onDelete: Cascade)
+
+  priceHistory CompetitorPriceHistory[]
+
+  @@unique([competitorSiteId, productId])
+  @@unique([competitorSiteId, productUrl])
+  @@index([tenantId, companyId, isActive])
+  @@index([productId, isActive])
+  @@index([competitorSiteId, isActive])
+  @@index([lastCheckedAt])
+}
+
+model CompetitorPriceHistory {
+  id Int @id @default(autoincrement())
+
+  competitorProductId Int
+  priceRunId          Int?
+
+  priceExclVat Float?
+  priceInclVat Float?
+
+  currency String @default("TRY")
+  vatRate  Int?
+
+  stockStatus CompetitorStockStatus      @default(UNKNOWN)
+  fetchStatus CompetitorPriceFetchStatus
+
+  rawPriceText String?
+  errorMessage String?
+
+  checkedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  competitorProduct CompetitorProduct   @relation(fields: [competitorProductId], references: [id], onDelete: Cascade)
+  priceRun          CompetitorPriceRun? @relation(fields: [priceRunId], references: [id], onDelete: SetNull)
+
+  @@index([competitorProductId, checkedAt])
+  @@index([priceRunId])
+  @@index([fetchStatus, checkedAt])
+}
+
+model CompetitorPriceRun {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  competitorSiteId Int?
+
+  status CompetitorPriceRunStatus @default(PENDING)
+
+  requestedCount Int @default(0)
+  processedCount Int @default(0)
+  successCount   Int @default(0)
+  failedCount    Int @default(0)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competitorSite CompetitorSite?          @relation(fields: [competitorSiteId], references: [id], onDelete: SetNull)
+  priceHistory   CompetitorPriceHistory[]
+
+  @@index([tenantId, companyId, createdAt])
+  @@index([competitorSiteId, createdAt])
+  @@index([status, createdAt])
 }
