@@ -608,12 +608,12 @@ export default async function AdminDashboardPage() {
     );
 
   return (
-    <section className="p-10">
+    <section className="p-4 sm:p-6 lg:p-10">
       {/* BAŞLIK */}
 
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-bold">
+          <h1 className="text-2xl font-bold sm:text-3xl lg:text-4xl">
             Yönetim Dashboard’u
           </h1>
 
@@ -623,17 +623,17 @@ export default async function AdminDashboardPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
           <Link
-            href="/admin/orders/new"
-            className="rounded-xl bg-blue-900 px-5 py-3 font-semibold text-white hover:bg-blue-800"
-          >
-            + Yeni Sipariş
-          </Link>
+  href="/admin/orders/new"
+  className="rounded-xl bg-blue-900 px-5 py-3 text-center font-semibold text-white hover:bg-blue-800"
+>
+  + Yeni Sipariş
+</Link>
 
           <Link
             href="/admin/products/new"
-            className="rounded-xl border border-blue-900 bg-white px-5 py-3 font-semibold text-blue-900 hover:bg-blue-50"
+            className="rounded-xl border border-blue-900 bg-white px-5 py-3 text-center font-semibold text-blue-900 hover:bg-blue-50"
           >
             + Yeni Ürün
           </Link>
@@ -642,10 +642,10 @@ export default async function AdminDashboardPage() {
 
       {/* WMS OPERASYON MERKEZİ */}
 
-      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow">
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow sm:mt-8 sm:p-6 lg:mt-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-xl font-bold sm:text-2xl">
               Bugünkü WMS Operasyonları
             </h2>
 
@@ -654,7 +654,7 @@ export default async function AdminDashboardPage() {
             </p>
           </div>
 
-          <div className="rounded-xl bg-slate-900 px-4 py-3 text-white">
+          <div className="w-full rounded-xl bg-slate-900 px-4 py-3 text-white sm:w-auto">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
               Toplam İşlem
             </p>
@@ -715,9 +715,9 @@ export default async function AdminDashboardPage() {
             <div className="divide-y">
               {recentWmsOperations.map((operation) => (
                 <div
-                  key={operation.id}
-                  className="flex flex-wrap items-start justify-between gap-4 px-5 py-4 hover:bg-slate-50"
-                >
+  key={operation.id}
+  className="flex flex-col gap-3 px-4 py-4 hover:bg-slate-50 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5"
+>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
@@ -788,7 +788,7 @@ export default async function AdminDashboardPage() {
                       )}
                   </div>
 
-                  <div className="whitespace-nowrap text-right">
+                  <div className="whitespace-nowrap text-left sm:text-right">
                     <p className="font-bold text-slate-700">
                       {formatTime(operation.createdAt)}
                     </p>
@@ -1059,7 +1059,7 @@ export default async function AdminDashboardPage() {
       <section className="mt-8 rounded-2xl bg-white p-6 shadow">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-xl font-bold sm:text-2xl">
               Sipariş Durumları
             </h2>
 
@@ -1153,7 +1153,7 @@ export default async function AdminDashboardPage() {
       {/* SON SİPARİŞLER */}
 
       <section className="mt-8 overflow-x-auto rounded-2xl bg-white shadow">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b p-6">
+        <div className="flex flex-col gap-4 border-b p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <h2 className="text-2xl font-bold">
               Son Siparişler
@@ -1529,7 +1529,7 @@ export default async function AdminDashboardPage() {
         </section>
       </div>
 
-      <div className="mt-8 text-right text-sm text-gray-400">
+      <div className="mt-8 text-center text-xs text-gray-400 sm:text-right sm:text-sm">
         Dashboard zamanı: {formatDate(now)}
       </div>
     </section>

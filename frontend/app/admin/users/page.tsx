@@ -169,15 +169,15 @@ export default async function AdminUsersPage({
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 lg:p-10">
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-10">
       <div className="mx-auto max-w-[1700px]">
-        <div className="flex flex-wrap items-start justify-between gap-5">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
               Yetki ve Erişim
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold text-slate-950">
+            <h1 className="mt-2 text-2xl font-bold text-slate-950 sm:text-3xl">
               Kullanıcı Yönetimi
             </h1>
 
@@ -187,11 +187,11 @@ export default async function AdminUsersPage({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
             {canManageUsers && (
               <Link
                 href="/admin/users/new"
-                className="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800"
+                className="rounded-xl bg-blue-700 px-5 py-3 text-center font-bold text-white hover:bg-blue-800"
               >
                 + Yeni Kullanıcı
               </Link>
@@ -288,10 +288,10 @@ export default async function AdminUsersPage({
             </option>
           </select>
 
-          <div className="flex gap-2">
+          <div className="grid gap-2 sm:flex">
             <button
               type="submit"
-              className="min-h-12 rounded-xl bg-blue-700 px-5 font-bold text-white hover:bg-blue-800"
+              className="min-h-12 w-full rounded-xl bg-blue-700 px-5 font-bold text-white hover:bg-blue-800 sm:w-auto"
             >
               Filtrele
             </button>
@@ -305,8 +305,8 @@ export default async function AdminUsersPage({
           </div>
         </form>
 
-        <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[1500px] text-left">
+        <div className="-mx-4 mt-6 overflow-x-auto border-y border-slate-200 bg-white shadow-sm sm:mx-0 sm:rounded-3xl sm:border">
+          <table className="w-full min-w-[1350px] text-left text-sm">
             <thead className="bg-slate-100 text-sm uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="px-5 py-4">
