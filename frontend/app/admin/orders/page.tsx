@@ -131,9 +131,9 @@ export default async function AdminOrdersPage() {
 
   return (
     <section className="p-4 sm:p-6 lg:p-10">
-      <div className="flex flex-wrap items-center justify-between gap-6">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold sm:text-4xl">
+          <h1 className="text-2xl font-bold sm:text-3xl lg:text-4xl">
             Sipariş Yönetimi
           </h1>
 
@@ -142,20 +142,20 @@ export default async function AdminOrdersPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
           <RefreshButton />
 
           <Link
             href="/admin/orders/new"
-            className="inline-flex items-center justify-center rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800 sm:w-auto"
           >
             + Yeni Sipariş
           </Link>
         </div>
       </div>
 
-      <div className="mt-10 overflow-x-auto rounded-2xl bg-white shadow">
-        <table className="w-full min-w-[1650px] text-left">
+      <div className="-mx-4 mt-6 overflow-x-auto bg-white shadow sm:mx-0 sm:mt-8 sm:rounded-2xl lg:mt-10">
+        <table className="w-full min-w-[1450px] text-left text-sm">
           <thead className="bg-blue-900 text-white">
             <tr>
               <th className="p-4">
