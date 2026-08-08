@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import ProductImage from "@/components/products/ProductImage";
 import {
   useMemo,
   useState,
 } from "react";
 
+import ProductImage from "@/components/products/ProductImage";
 import {
   useCart,
 } from "@/context/CartContext";
@@ -17,8 +17,12 @@ type Product = {
   barcode: string;
   name: string;
   brand: string;
-  category: string;
+
+  mainCategory: string;
+  subCategory: string;
+
   imageUrl: string | null;
+
   price: number;
   vat: number;
   availableStock: number;
@@ -27,30 +31,32 @@ type Product = {
 
 type Props = {
   products: Product[];
+
   initialSearch?: string;
   initialCategory?: string;
+  initialSubCategory?: string;
   initialBrand?: string;
 };
 
 function normalizeText(
-  value: string
+  value: string,
 ) {
   return value
     .toLocaleLowerCase(
-      "tr-TR"
+      "tr-TR",
     )
     .trim();
 }
 
 function formatCurrency(
-  value: number
+  value: number,
 ) {
   return value.toLocaleString(
     "tr-TR",
     {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }
+    },
   );
 }
 
@@ -58,149 +64,312 @@ export default function ProductList({
   products,
   initialSearch = "",
   initialCategory = "Tümü",
+  initialSubCategory = "Tümü",
   initialBrand = "Tümü",
 }: Props) {
   const [
     search,
     setSearch,
-  ] = useState(initialSearch);
+  ] = useState(
+    initialSearch,
+  );
 
   const [
     category,
     setCategory,
   ] = useState(
-    initialCategory
+    initialCategory,
+  );
+
+  const [
+    subCategory,
+    setSubCategory,
+  ] = useState(
+    initialSubCategory,
   );
 
   const [
     brand,
     setBrand,
-  ] = useState(initialBrand);
+  ] = useState(
+    initialBrand,
+  );
 
   const [
     addedCode,
     setAddedCode,
   ] = useState("");
 
-  const { addToCart } =
-    useCart();
+  const {
+    addToCart,
+  } = useCart();
 
   const categories =
     useMemo(
       () => [
         "Tümü",
+
         ...Array.from(
           new Set(
             products.map(
               (product) =>
-                product.category
-            )
-          )
-        ).sort((a, b) =>
-          a.localeCompare(
-            b,
-            "tr"
-          )
+                product.mainCategory,
+            ),
+          ),
+        ).sort(
+          (left, right) =>
+            left.localeCompare(
+              right,
+              "tr",
+            ),
         ),
       ],
-      [products]
+      [
+        products,
+      ],
     );
 
-  const brands = useMemo(
-    () => [
-      "Tümü",
-      ...Array.from(
-        new Set(
-          products.map(
-            (product) =>
-              product.brand
-          )
-        )
-      ).sort((a, b) =>
-        a.localeCompare(
-          b,
-          "tr"
-        )
-      ),
-    ],
-    [products]
-  );
+  const subCategories =
+    useMemo(
+      () => [
+        "Tümü",
+
+        ...Array.from(
+          new Set(
+            products
+              .filter(
+                (product) =>
+                  category ===
+                    "Tümü" ||
+                  product
+                    .mainCategory ===
+                    category,
+              )
+              .map(
+                (product) =>
+                  product
+                    .subCategory,
+              ),
+          ),
+        ).sort(
+          (left, right) =>
+            left.localeCompare(
+              right,
+              "tr",
+            ),
+        ),
+      ],
+      [
+        products,
+        category,
+      ],
+    );
+
+  const brands =
+    useMemo(
+      () => [
+        "Tümü",
+
+        ...Array.from(
+          new Set(
+            products
+              .filter(
+                (product) => {
+                  const categoryMatch =
+                    category ===
+                      "Tümü" ||
+                    product
+                      .mainCategory ===
+                      category;
+
+                  const subCategoryMatch =
+                    subCategory ===
+                      "Tümü" ||
+                    product
+                      .subCategory ===
+                      subCategory;
+
+                  return (
+                    categoryMatch &&
+                    subCategoryMatch
+                  );
+                },
+              )
+              .map(
+                (product) =>
+                  product.brand,
+              ),
+          ),
+        ).sort(
+          (left, right) =>
+            left.localeCompare(
+              right,
+              "tr",
+            ),
+        ),
+      ],
+      [
+        products,
+        category,
+        subCategory,
+      ],
+    );
 
   const filteredProducts =
-    useMemo(() => {
-      const query =
-        normalizeText(search);
-
-      return products.filter(
-        (product) => {
-          const searchMatch =
-            !query ||
-            normalizeText(
-              product.name
-            ).includes(query) ||
-            normalizeText(
-              product.brand
-            ).includes(query) ||
-            normalizeText(
-              product.code
-            ).includes(query) ||
-            normalizeText(
-              product.barcode
-            ).includes(query);
-
-          const categoryMatch =
-            category === "Tümü" ||
-            product.category ===
-              category;
-
-          const brandMatch =
-            brand === "Tümü" ||
-            product.brand ===
-              brand;
-
-          return (
-            searchMatch &&
-            categoryMatch &&
-            brandMatch
+    useMemo(
+      () => {
+        const query =
+          normalizeText(
+            search,
           );
-        }
-      );
-    }, [
-      search,
-      category,
-      brand,
-      products,
-    ]);
+
+        return products.filter(
+          (product) => {
+            const searchMatch =
+              !query ||
+              normalizeText(
+                product.name,
+              ).includes(
+                query,
+              ) ||
+              normalizeText(
+                product.brand,
+              ).includes(
+                query,
+              ) ||
+              normalizeText(
+                product.code,
+              ).includes(
+                query,
+              ) ||
+              normalizeText(
+                product.barcode,
+              ).includes(
+                query,
+              );
+
+            const categoryMatch =
+              category ===
+                "Tümü" ||
+              product
+                .mainCategory ===
+                category;
+
+            const subCategoryMatch =
+              subCategory ===
+                "Tümü" ||
+              product
+                .subCategory ===
+                subCategory;
+
+            const brandMatch =
+              brand ===
+                "Tümü" ||
+              product.brand ===
+                brand;
+
+            return (
+              searchMatch &&
+              categoryMatch &&
+              subCategoryMatch &&
+              brandMatch
+            );
+          },
+        );
+      },
+      [
+        search,
+        category,
+        subCategory,
+        brand,
+        products,
+      ],
+    );
 
   function handleAdd(
-    product: Product
+    product: Product,
   ) {
     if (
-      product.availableStock <= 0
+      product.availableStock <=
+      0
     ) {
       return;
     }
 
     addToCart({
-      productId: product.id,
-      code: product.code,
-      name: product.name,
+      productId:
+        product.id,
+
+      code:
+        product.code,
+
+      name:
+        product.name,
+
       unitPrice:
         product.price,
-      vatRate: product.vat,
+
+      vatRate:
+        product.vat,
+
       availableStock:
         product.availableStock,
+
       qty: 1,
     });
 
     setAddedCode(
-      product.code
+      product.code,
     );
 
     window.setTimeout(
       () =>
         setAddedCode(""),
-      1500
+      1500,
+    );
+  }
+
+  function handleCategoryChange(
+    value: string,
+  ) {
+    setCategory(
+      value,
+    );
+
+    setSubCategory(
+      "Tümü",
+    );
+
+    setBrand(
+      "Tümü",
+    );
+  }
+
+  function handleSubCategoryChange(
+    value: string,
+  ) {
+    setSubCategory(
+      value,
+    );
+
+    setBrand(
+      "Tümü",
+    );
+  }
+
+  function clearFilters() {
+    setSearch("");
+
+    setCategory(
+      "Tümü",
+    );
+
+    setSubCategory(
+      "Tümü",
+    );
+
+    setBrand(
+      "Tümü",
     );
   }
 
@@ -213,14 +382,20 @@ export default function ProductList({
 
         <label className="mt-4 block">
           <span className="mb-2 block text-sm font-semibold">
-            Kategori
+            Ana Kategori
           </span>
 
           <select
-            value={category}
-            onChange={(event) =>
-              setCategory(
-                event.target.value
+            value={
+              category
+            }
+            onChange={(
+              event,
+            ) =>
+              handleCategoryChange(
+                event
+                  .target
+                  .value,
               )
             }
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
@@ -228,12 +403,53 @@ export default function ProductList({
             {categories.map(
               (item) => (
                 <option
-                  key={item}
-                  value={item}
+                  key={
+                    item
+                  }
+                  value={
+                    item
+                  }
                 >
                   {item}
                 </option>
+              ),
+            )}
+          </select>
+        </label>
+
+        <label className="mt-4 block">
+          <span className="mb-2 block text-sm font-semibold">
+            Alt Kategori
+          </span>
+
+          <select
+            value={
+              subCategory
+            }
+            onChange={(
+              event,
+            ) =>
+              handleSubCategoryChange(
+                event
+                  .target
+                  .value,
               )
+            }
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
+          >
+            {subCategories.map(
+              (item) => (
+                <option
+                  key={
+                    item
+                  }
+                  value={
+                    item
+                  }
+                >
+                  {item}
+                </option>
+              ),
             )}
           </select>
         </label>
@@ -244,10 +460,16 @@ export default function ProductList({
           </span>
 
           <select
-            value={brand}
-            onChange={(event) =>
+            value={
+              brand
+            }
+            onChange={(
+              event,
+            ) =>
               setBrand(
-                event.target.value
+                event
+                  .target
+                  .value,
               )
             }
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
@@ -255,23 +477,25 @@ export default function ProductList({
             {brands.map(
               (item) => (
                 <option
-                  key={item}
-                  value={item}
+                  key={
+                    item
+                  }
+                  value={
+                    item
+                  }
                 >
                   {item}
                 </option>
-              )
+              ),
             )}
           </select>
         </label>
 
         <button
           type="button"
-          onClick={() => {
-            setSearch("");
-            setCategory("Tümü");
-            setBrand("Tümü");
-          }}
+          onClick={
+            clearFilters
+          }
           className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
           Filtreleri Temizle
@@ -280,10 +504,16 @@ export default function ProductList({
 
       <section>
         <input
-          value={search}
-          onChange={(event) =>
+          value={
+            search
+          }
+          onChange={(
+            event,
+          ) =>
             setSearch(
-              event.target.value
+              event
+                .target
+                .value,
             )
           }
           placeholder="Ürün, marka, kod veya barkod ara..."
@@ -303,8 +533,10 @@ export default function ProductList({
               role="status"
               className="rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-green-700"
             >
-              {addedCode} sepete
-              eklendi
+              {
+                addedCode
+              }{" "}
+              sepete eklendi
             </span>
           ) : null}
         </div>
@@ -318,7 +550,8 @@ export default function ProductList({
 
             <p className="mt-3 text-gray-500">
               Arama veya filtre
-              kriterlerini değiştirin.
+              kriterlerini
+              değiştirin.
             </p>
           </div>
         ) : (
@@ -327,20 +560,25 @@ export default function ProductList({
               (product) => {
                 const grossPrice =
                   product.price *
-                  (1 +
+                  (
+                    1 +
                     product.vat /
-                      100);
+                      100
+                  );
 
-const isComingSoon =
-  product.price <= 0;
+                const isComingSoon =
+                  product.price <=
+                  0;
 
-const isOutOfStock =
-  !isComingSoon &&
-  product.availableStock <= 0;
+                const isOutOfStock =
+                  !isComingSoon &&
+                  product
+                    .availableStock <=
+                    0;
 
-const cannotAddToCart =
-  isComingSoon ||
-  isOutOfStock;
+                const cannotAddToCart =
+                  isComingSoon ||
+                  isOutOfStock;
 
                 return (
                   <article
@@ -353,16 +591,26 @@ const cannotAddToCart =
                       href={`/products/${product.code}`}
                       className="flex-1"
                     >
-<ProductImage
-  imageUrl={product.imageUrl}
-  productName={product.name}
-  className="h-28 rounded-lg border border-slate-100 p-2"
-  fallbackClassName="h-28 rounded-lg text-4xl"
-/>
+                      <ProductImage
+                        imageUrl={
+                          product.imageUrl
+                        }
+                        productName={
+                          product.name
+                        }
+                        className="h-28 rounded-lg border border-slate-100 p-2"
+                        fallbackClassName="h-28 rounded-lg text-4xl"
+                      />
 
                       <p className="mt-3 text-xs font-black uppercase tracking-wide text-[#EF4B23]">
                         {
-                          product.category
+                          product.mainCategory
+                        }
+                      </p>
+
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {
+                          product.subCategory
                         }
                       </p>
 
@@ -382,74 +630,83 @@ const cannotAddToCart =
                         }
                       </p>
 
-<p
-  className={`mt-3 text-sm font-semibold ${
-    isComingSoon
-      ? "text-amber-700"
-      : isOutOfStock
-        ? "text-red-600"
-        : "text-green-700"
-  }`}
->
-  {isComingSoon
-    ? "Fiyat ve stok bilgisi hazırlanıyor"
-    : isOutOfStock
-      ? "Stokta yok"
-      : `Stok: ${product.availableStock} adet`}
-</p>
+                      <p
+                        className={`mt-3 text-sm font-semibold ${
+                          isComingSoon
+                            ? "text-amber-700"
+                            : isOutOfStock
+                              ? "text-red-600"
+                              : "text-green-700"
+                        }`}
+                      >
+                        {isComingSoon
+                          ? "Fiyat ve stok bilgisi hazırlanıyor"
+                          : isOutOfStock
+                            ? "Stokta yok"
+                            : `Stok: ${product.availableStock} adet`}
+                      </p>
 
-{isComingSoon ? (
-  <div className="mt-3">
-    <p className="text-lg font-black text-amber-700">
-      Yakında Stokta
-    </p>
+                      {isComingSoon ? (
+                        <div className="mt-3">
+                          <p className="text-lg font-black text-amber-700">
+                            Yakında Stokta
+                          </p>
 
-    <p className="mt-1 text-xs text-slate-500">
-      Fiyat bilgisi yakında yayınlanacaktır.
-    </p>
-  </div>
-) : (
-  <>
-    <p className="mt-3 text-lg font-black text-[#EF4B23]">
-      {formatCurrency(
-        product.price
-      )}{" "}
-      ₺
-    </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Fiyat bilgisi
+                            yakında
+                            yayınlanacaktır.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="mt-3 text-lg font-black text-[#EF4B23]">
+                            {formatCurrency(
+                              product.price,
+                            )}{" "}
+                            ₺
+                          </p>
 
-    <p className="mt-1 text-xs text-gray-500">
-      KDV hariç · KDV %
-      {product.vat}
-    </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            KDV hariç ·
+                            KDV %
+                            {
+                              product.vat
+                            }
+                          </p>
 
-    <p className="mt-1 text-sm font-semibold text-slate-700">
-      KDV dâhil:{" "}
-      {formatCurrency(
-        grossPrice
-      )}{" "}
-      ₺
-    </p>
-  </>
-)}
+                          <p className="mt-1 text-sm font-semibold text-slate-700">
+                            KDV dâhil:{" "}
+                            {formatCurrency(
+                              grossPrice,
+                            )}{" "}
+                            ₺
+                          </p>
+                        </>
+                      )}
                     </Link>
 
-<button
-  type="button"
-  disabled={cannotAddToCart}
-  onClick={() =>
-    handleAdd(product)
-  }
-  className="mt-3 w-full rounded-lg bg-[#202B38] py-2.5 text-sm font-bold text-white transition hover:bg-[#111923] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
->
-  {isComingSoon
-    ? "Yakında Stokta"
-    : isOutOfStock
-      ? "Stokta Yok"
-      : "Sepete Ekle"}
-</button>
+                    <button
+                      type="button"
+                      disabled={
+                        cannotAddToCart
+                      }
+                      onClick={() =>
+                        handleAdd(
+                          product,
+                        )
+                      }
+                      className="mt-3 w-full rounded-lg bg-[#202B38] py-2.5 text-sm font-bold text-white transition hover:bg-[#111923] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                    >
+                      {isComingSoon
+                        ? "Yakında Stokta"
+                        : isOutOfStock
+                          ? "Stokta Yok"
+                          : "Sepete Ekle"}
+                    </button>
                   </article>
                 );
-              }
+              },
             )}
           </div>
         )}

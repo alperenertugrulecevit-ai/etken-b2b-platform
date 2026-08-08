@@ -278,6 +278,117 @@ function effectiveCategory(
   );
 }
 
+async function resolveCategoryId(
+  row: ParsedProductImportRow
+): Promise<number> {
+  const mainCategoryName =
+    row.mainCategory.trim();
+
+  const subCategoryName =
+    row.subCategory.trim();
+
+  /*
+   * Ana kategori + alt kategori birlikte verilmişse
+   * doğrudan hiyerarşik eşleşme yapılır.
+   */
+  if (
+    mainCategoryName &&
+    subCategoryName
+  ) {
+    const category =
+      await prisma.category.findFirst({
+        where: {
+          name: subCategoryName,
+          isActive: true,
+
+          parent: {
+            name: mainCategoryName,
+            isActive: true,
+          },
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!category) {
+      throw new Error(
+        `Kategori bulunamadı: ${mainCategoryName} > ${subCategoryName}`
+      );
+    }
+
+    return category.id;
+  }
+
+  /*
+   * Sadece alt kategori verilmişse alt kategori adıyla
+   * eşleşme yapılır. Aynı isimde birden fazla aktif
+   * kategori varsa güvenli olması için import durdurulur.
+   */
+  if (subCategoryName) {
+    const categories =
+      await prisma.category.findMany({
+        where: {
+          name: subCategoryName,
+          isActive: true,
+        },
+
+        select: {
+          id: true,
+        },
+
+        take: 2,
+      });
+
+    if (categories.length === 0) {
+      throw new Error(
+        `Alt kategori bulunamadı: ${subCategoryName}`
+      );
+    }
+
+    if (categories.length > 1) {
+      throw new Error(
+        `Alt kategori birden fazla ana kategori altında bulundu: ${subCategoryName}. Excel dosyasında Ana Kategori alanını da doldurun.`
+      );
+    }
+
+    return categories[0].id;
+  }
+
+  /*
+   * Sadece ana kategori verilmişse ana kategoriye bağlanır.
+   * Normal katalog importlarında alt kategori kullanmamız
+   * tercih edilir.
+   */
+  if (mainCategoryName) {
+    const category =
+      await prisma.category.findFirst({
+        where: {
+          name: mainCategoryName,
+          parentId: null,
+          isActive: true,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!category) {
+      throw new Error(
+        `Ana kategori bulunamadı: ${mainCategoryName}`
+      );
+    }
+
+    return category.id;
+  }
+
+  throw new Error(
+    "Ürün için kategori bilgisi bulunamadı."
+  );
+}
+
 function buildImportDescription(
   row: ParsedProductImportRow
 ): string {
@@ -304,8 +415,13 @@ async function upsertProduct(
       },
     });
 
-  const category = effectiveCategory(row);
-  const description = buildImportDescription(row);
+const category = effectiveCategory(row);
+
+const categoryId =
+  await resolveCategoryId(row);
+
+const description =
+  buildImportDescription(row);
 
   /*
    * Product modelinde henüz açıklama ve ambalaj
@@ -337,11 +453,12 @@ async function upsertProduct(
         id: existingProduct.id,
       },
 
-      data: {
-        name: row.name,
-        brand: row.brand,
-        category,
-        supplier: nextSupplier,
+data: {
+  name: row.name,
+  brand: row.brand,
+  category,
+  categoryId,
+  supplier: nextSupplier,
         price: nextPrice,
         stock: nextStock,
         barcode: nextBarcode,
@@ -367,11 +484,12 @@ isActive: true,
         row.barcode ??
         temporaryBarcode(row.code),
 
-      name: row.name,
-      brand: row.brand,
-      category,
+name: row.name,
+brand: row.brand,
+category,
+categoryId,
 
-      supplier:
+supplier:
         row.supplier ??
         FALLBACK_SUPPLIER,
 
