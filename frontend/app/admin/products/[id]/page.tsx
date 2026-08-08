@@ -126,6 +126,47 @@ export default async function AdminProductDetailPage({
         where: {
           id: productId,
         },
+
+        include: {
+          productBarcodes: {
+            include: {
+              evidences: {
+                orderBy: {
+                  firstSeenAt: "asc",
+                },
+              },
+            },
+
+            orderBy: [
+              {
+                isVerified: "desc",
+              },
+              {
+                isPrimary: "desc",
+              },
+              {
+                id: "asc",
+              },
+            ],
+          },
+
+          productImageSources: {
+            orderBy: [
+              {
+                isVerified: "desc",
+              },
+              {
+                isPrimary: "desc",
+              },
+              {
+                sortOrder: "asc",
+              },
+              {
+                id: "asc",
+              },
+            ],
+          },
+        },
       }),
 
       prisma.stockMovement.findMany({
@@ -198,6 +239,47 @@ export default async function AdminProductDetailPage({
         : total,
     0
   );
+
+  const primaryBarcode =
+    product.productBarcodes.find(
+      (barcode) => barcode.isPrimary,
+    ) ??
+    product.productBarcodes.find(
+      (barcode) => barcode.isVerified,
+    ) ??
+    product.productBarcodes[0] ??
+    null;
+
+  const primaryImage =
+    product.productImageSources.find(
+      (image) =>
+        image.isPrimary &&
+        image.isVerified,
+    ) ??
+    product.productImageSources.find(
+      (image) => image.isPrimary,
+    ) ??
+    product.productImageSources.find(
+      (image) => image.isVerified,
+    ) ??
+    product.productImageSources[0] ??
+    null;
+
+  const primaryImageUrl =
+    primaryImage?.storageUrl ??
+    primaryImage?.sourceUrl ??
+    product.imageUrl ??
+    null;
+
+  const hasMasterBarcode =
+    product.productBarcodes.length > 0;
+
+  const hasProductImage =
+    product.productImageSources.length > 0 ||
+    Boolean(product.imageUrl);
+
+  const masterDataComplete =
+    hasMasterBarcode && hasProductImage;
 
   return (
     <section className="p-10">
@@ -275,7 +357,7 @@ export default async function AdminProductDetailPage({
 
             <div className="rounded-xl bg-slate-50 p-4">
               <p className="text-sm text-gray-500">
-                Barkod
+                Geçici / Eski Barkod
               </p>
 
               <p className="mt-2 font-bold">
@@ -446,6 +528,306 @@ export default async function AdminProductDetailPage({
           </p>
         </article>
       </div>
+
+      {/* ÜRÜN MASTER VERİLERİ */}
+
+      <section className="mt-8 rounded-2xl bg-white p-6 shadow">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">
+              Ürün Master Verileri
+            </h2>
+
+            <p className="mt-2 text-gray-500">
+              Üretici barkodları, doğrulama kaynakları ve
+              rakip/tedarikçi sitelerinden bulunan ürün görselleri.
+            </p>
+          </div>
+
+          <span
+            className={`rounded-full px-4 py-2 text-sm font-bold ${
+              masterDataComplete
+                ? "bg-green-100 text-green-700"
+                : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            {masterDataComplete
+              ? "✓ Veri Tam"
+              : "Veri Eksik"}
+          </span>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[360px_1fr]">
+          <article className="rounded-2xl border border-slate-200 p-5">
+            <h3 className="text-lg font-bold">
+              Ana Görsel
+            </h3>
+
+            <div className="mt-4 flex min-h-72 items-center justify-center rounded-2xl bg-slate-50 p-4">
+              {primaryImageUrl ? (
+                <img
+                  src={primaryImageUrl}
+                  alt={product.name}
+                  className="max-h-64 w-full object-contain"
+                />
+              ) : (
+                <div className="text-center text-sm font-semibold text-slate-400">
+                  Ürün görseli bulunmuyor.
+                </div>
+              )}
+            </div>
+
+            {primaryImage && (
+              <div className="mt-4 space-y-2 text-sm">
+                <p>
+                  <span className="font-semibold text-slate-700">
+                    Kaynak:
+                  </span>{" "}
+                  {primaryImage.sourceSite ??
+                    primaryImage.sourceType}
+                </p>
+
+                <p>
+                  <span className="font-semibold text-slate-700">
+                    Doğrulama:
+                  </span>{" "}
+                  {primaryImage.isVerified
+                    ? "Doğrulandı"
+                    : "Bekliyor"}
+                </p>
+
+                {primaryImage.sourcePageUrl && (
+                  <a
+                    href={primaryImage.sourcePageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block font-bold text-blue-700 hover:underline"
+                  >
+                    Kaynak ürün sayfasını aç
+                  </a>
+                )}
+              </div>
+            )}
+          </article>
+
+          <article className="rounded-2xl border border-slate-200 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold">
+                  Üretici Barkodları
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Aynı barkod farklı güvenilir kaynaklarda
+                  doğrulanırsa otomatik doğrulanmış kabul edilir.
+                </p>
+              </div>
+
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">
+                {product.productBarcodes.length} barkod
+              </span>
+            </div>
+
+            {product.productBarcodes.length > 0 ? (
+              <div className="mt-5 grid gap-4">
+                {product.productBarcodes.map((barcode) => (
+                  <div
+                    key={barcode.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="font-mono text-xl font-black text-slate-950">
+                          {barcode.barcode}
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                            {barcode.barcodeType}
+                          </span>
+
+                          {barcode.isPrimary && (
+                            <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
+                              Ana Barkod
+                            </span>
+                          )}
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold ${
+                              barcode.isVerified
+                                ? "bg-green-100 text-green-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {barcode.isVerified
+                              ? "✓ Doğrulandı"
+                              : "Doğrulama Bekliyor"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right text-sm text-slate-500">
+                        <p className="font-semibold text-slate-700">
+                          {barcode.verificationCount} bağımsız kaynak
+                        </p>
+
+                        {barcode.verifiedAt && (
+                          <p className="mt-1">
+                            {formatDate(barcode.verifiedAt)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Kaynak Kanıtları
+                      </p>
+
+                      {barcode.evidences.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {barcode.evidences.map(
+                            (evidence) => (
+                              <a
+                                key={evidence.id}
+                                href={
+                                  evidence.sourcePageUrl
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50"
+                              >
+                                {evidence.sourceSite}
+                              </a>
+                            ),
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm text-slate-400">
+                          Kaynak kanıtı bulunmuyor.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-xl border border-dashed border-red-200 bg-red-50 p-5 text-sm font-semibold text-red-700">
+                Gerçek üretici barkodu henüz bulunamadı.
+              </div>
+            )}
+
+            <div className="mt-5 rounded-xl bg-slate-100 p-4 text-sm">
+              <p className="font-semibold text-slate-700">
+                Geçici / eski barkod
+              </p>
+
+              <p className="mt-1 font-mono font-bold text-slate-900">
+                {product.barcode}
+              </p>
+            </div>
+          </article>
+        </div>
+
+        <article className="mt-6 rounded-2xl border border-slate-200 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold">
+                Ürün Görsel Galerisi
+              </h3>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Kaynak sitelerden bulunan görseller.
+                Cloud Storage aktarımı tamamlandığında
+                storage URL öncelikli kullanılacaktır.
+              </p>
+            </div>
+
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">
+              {product.productImageSources.length} görsel
+            </span>
+          </div>
+
+          {product.productImageSources.length > 0 ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              {product.productImageSources.map(
+                (image) => {
+                  const imageUrl =
+                    image.storageUrl ??
+                    image.sourceUrl;
+
+                  return (
+                    <div
+                      key={image.id}
+                      className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                    >
+                      <div className="flex h-52 items-center justify-center bg-slate-50 p-3">
+                        <img
+                          src={imageUrl}
+                          alt={product.name}
+                          className="max-h-full w-full object-contain"
+                        />
+                      </div>
+
+                      <div className="border-t p-3">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
+                            {image.sourceSite ??
+                              image.sourceType}
+                          </span>
+
+                          {image.isPrimary && (
+                            <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-bold text-violet-700">
+                              Ana
+                            </span>
+                          )}
+
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-bold ${
+                              image.isVerified
+                                ? "bg-green-100 text-green-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {image.isVerified
+                              ? "Doğrulandı"
+                              : "Bekliyor"}
+                          </span>
+                        </div>
+
+                        {image.storageUrl ? (
+                          <p className="mt-3 text-xs font-semibold text-green-700">
+                            Cloud Storage
+                          </p>
+                        ) : (
+                          <p className="mt-3 text-xs text-slate-500">
+                            Harici kaynak
+                          </p>
+                        )}
+
+                        {image.sourcePageUrl && (
+                          <a
+                            href={image.sourcePageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-block text-xs font-bold text-blue-700 hover:underline"
+                          >
+                            Kaynağı aç
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-xl border border-dashed border-violet-200 bg-violet-50 p-5 text-sm font-semibold text-violet-700">
+              Ürün görseli henüz bulunamadı.
+            </div>
+          )}
+        </article>
+      </section>
 
       {/* STOK HAREKETLERİ */}
 

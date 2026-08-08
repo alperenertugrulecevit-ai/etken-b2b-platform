@@ -4,6 +4,7 @@ import net from "node:net";
 
 import type {
   CompetitorProductSearchCandidate,
+  CompetitorProductSearchConfidence,
   CompetitorProductSearchResult,
 } from "./competitor-product-search.types";
 
@@ -143,26 +144,355 @@ function normalizeSearchText(
     .trim();
 }
 
-function tokenize(value: string): string[] {
-  const ignoredTerms = new Set([
-    "ve",
-    "ile",
-    "icin",
-    "için",
-    "adet",
-    "paket",
-    "urun",
-    "ürün",
-    "beyaz",
-  ]);
+const GENERIC_PRODUCT_TERMS = new Set([
+  "ve",
+  "ile",
+  "icin",
+  "için",
+  "adet",
+  "paket",
+  "urun",
+  "ürün",
+  "beyaz",
+  "siyah",
+  "seffaf",
+  "şeffaf",
+  "dokme",
+  "dökme",
+  "cay",
+  "çay",
+  "cayi",
+  "çayı",
+  "film",
+  "mikron",
+  "gr",
+  "gram",
+  "g",
+  "kg",
+  "ml",
+  "cl",
+  "lt",
+  "l",
+  "mm",
+  "cm",
+  "m",
+]);
 
+const UNIT_TERMS = new Set([
+  "g",
+  "gr",
+  "gram",
+  "kg",
+  "ml",
+  "cl",
+  "l",
+  "lt",
+  "mm",
+  "cm",
+  "m",
+]);
+
+type MeasurementDimension =
+  | "MASS"
+  | "VOLUME"
+  | "LENGTH"
+  | "CAPACITY_OZ";
+
+type NormalizedMeasurement = {
+  dimension: MeasurementDimension;
+  value: number;
+  raw: string;
+};
+
+function tokenize(value: string): string[] {
   return normalizeSearchText(value)
     .split(" ")
     .map((term) => term.trim())
     .filter(
       (term) =>
         term.length >= 2 &&
-        !ignoredTerms.has(term),
+        !GENERIC_PRODUCT_TERMS.has(term),
+    );
+}
+
+function isTemporaryBarcode(
+  value: string,
+): boolean {
+  const normalized =
+    value
+      .trim()
+      .toLocaleUpperCase("en-US");
+
+  return (
+    normalized === "" ||
+    normalized.startsWith("TMP-") ||
+    normalized.startsWith("TEMP-") ||
+    normalized.startsWith("TEST-")
+  );
+}
+
+function getSearchBarcode(
+  value: string,
+): string {
+  return isTemporaryBarcode(value)
+    ? ""
+    : value.trim();
+}
+
+function normalizeDecimal(
+  value: string,
+): number | null {
+  const parsed = Number(
+    value.replace(",", "."),
+  );
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
+function normalizeMeasurement(
+  numericValue: number,
+  unit: string,
+  raw: string,
+): NormalizedMeasurement | null {
+  const normalizedUnit =
+    unit
+      .toLocaleLowerCase("tr-TR")
+      .trim();
+
+  if (
+    normalizedUnit === "g" ||
+    normalizedUnit === "gr" ||
+    normalizedUnit === "gram"
+  ) {
+    return {
+      dimension: "MASS",
+      value: numericValue,
+      raw,
+    };
+  }
+
+  if (normalizedUnit === "kg") {
+    return {
+      dimension: "MASS",
+      value: numericValue * 1000,
+      raw,
+    };
+  }
+
+  if (
+  normalizedUnit === "oz"
+) {
+  return {
+    dimension: "CAPACITY_OZ",
+    value: numericValue,
+    raw,
+  };
+}
+
+  if (normalizedUnit === "ml") {
+    return {
+      dimension: "VOLUME",
+      value: numericValue,
+      raw,
+    };
+  }
+
+  if (normalizedUnit === "cl") {
+    return {
+      dimension: "VOLUME",
+      value: numericValue * 10,
+      raw,
+    };
+  }
+
+  if (
+    normalizedUnit === "l" ||
+    normalizedUnit === "lt"
+  ) {
+    return {
+      dimension: "VOLUME",
+      value: numericValue * 1000,
+      raw,
+    };
+  }
+
+  if (normalizedUnit === "mm") {
+    return {
+      dimension: "LENGTH",
+      value: numericValue,
+      raw,
+    };
+  }
+
+  if (normalizedUnit === "cm") {
+    return {
+      dimension: "LENGTH",
+      value: numericValue * 10,
+      raw,
+    };
+  }
+
+  if (normalizedUnit === "m") {
+    return {
+      dimension: "LENGTH",
+      value: numericValue * 1000,
+      raw,
+    };
+  }
+
+  return null;
+}
+
+function extractMeasurements(
+  value: string,
+): NormalizedMeasurement[] {
+  const normalized =
+    value.toLocaleLowerCase("tr-TR");
+
+const pattern =
+  /(\d+(?:[.,]\d+)?)\s*(kg|gram|gr|g|ml|cl|lt|l|mm|cm|m|oz)\b/giu;
+
+  const measurements:
+    NormalizedMeasurement[] = [];
+
+  for (
+    const match of
+    normalized.matchAll(pattern)
+  ) {
+    const numericValue =
+      normalizeDecimal(match[1]);
+
+    if (numericValue === null) {
+      continue;
+    }
+
+    const measurement =
+      normalizeMeasurement(
+        numericValue,
+        match[2],
+        match[0],
+      );
+
+    if (measurement) {
+      measurements.push(measurement);
+    }
+  }
+
+  return measurements;
+}
+
+function uniqueMeasurementValues(
+  measurements: NormalizedMeasurement[],
+  dimension: MeasurementDimension,
+): number[] {
+  return Array.from(
+    new Set(
+      measurements
+        .filter(
+          (item) =>
+            item.dimension ===
+            dimension,
+        )
+        .map(
+          (item) =>
+            Math.round(
+              item.value * 1000,
+            ) / 1000,
+        ),
+    ),
+  ).sort(
+    (left, right) =>
+      left - right,
+  );
+}
+
+function sameNumberSet(
+  left: number[],
+  right: number[],
+): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every(
+    (value, index) =>
+      Math.abs(
+        value - right[index],
+      ) < 0.001,
+  );
+}
+
+function extractPackageCount(
+  value: string,
+): number | null {
+  const normalized =
+    value
+      .toLocaleLowerCase("tr-TR")
+      .replace(/[’']/g, "'");
+
+  const patterns = [
+    /\b(\d+)\s*['-]?\s*(?:li|lı|lu|lü)\b/u,
+    /\bx\s*(\d+)\s*(?:paket|adet|koli)?\b/u,
+    /\b(\d+)\s*x\s*(?:paket|adet|koli)\b/u,
+    /\b(\d+)\s*(?:paket|adet)\b/u,
+  ];
+
+  for (const pattern of patterns) {
+    const match =
+      normalized.match(pattern);
+
+    if (!match) {
+      continue;
+    }
+
+    const count =
+      Number(match[1]);
+
+    if (
+      Number.isInteger(count) &&
+      count > 0
+    ) {
+      return count;
+    }
+  }
+
+  return null;
+}
+
+function extractIdentityTerms({
+  productName,
+  productBrand,
+}: {
+  productName: string;
+  productBrand: string;
+}): string[] {
+  const brandTerms =
+    new Set(
+      normalizeSearchText(
+        productBrand,
+      )
+        .split(" ")
+        .filter(Boolean),
+    );
+
+  return normalizeSearchText(
+    productName,
+  )
+    .split(" ")
+    .map((term) => term.trim())
+    .filter(
+      (term) =>
+        term.length >= 2 &&
+        !GENERIC_PRODUCT_TERMS.has(
+          term,
+        ) &&
+        !UNIT_TERMS.has(term) &&
+        !/^\d+(?:[.,]\d+)?$/u.test(
+          term,
+        ) &&
+        !brandTerms.has(term),
     );
 }
 
@@ -188,25 +518,26 @@ function calculateCandidateScore({
   const nameTerms = tokenize(productName);
   const brandTerms = tokenize(productBrand);
 
-  const matchedTerms = new Set<string>();
+  const matchedTerms =
+    new Set<string>();
 
   let earnedPoints = 0;
   let possiblePoints = 0;
 
   for (const term of brandTerms) {
-    possiblePoints += 20;
+    possiblePoints += 25;
 
     if (candidateText.includes(term)) {
-      earnedPoints += 20;
+      earnedPoints += 25;
       matchedTerms.add(term);
     }
   }
 
   for (const term of nameTerms) {
-    possiblePoints += 8;
+    possiblePoints += 12;
 
     if (candidateText.includes(term)) {
-      earnedPoints += 8;
+      earnedPoints += 12;
       matchedTerms.add(term);
     }
   }
@@ -214,29 +545,34 @@ function calculateCandidateScore({
   const normalizedCode =
     normalizeSearchText(productCode);
 
-  if (normalizedCode) {
-    possiblePoints += 15;
-
-    if (candidateText.includes(normalizedCode)) {
-      earnedPoints += 15;
-      matchedTerms.add(productCode);
-    }
+  if (
+    normalizedCode &&
+    candidateText.includes(
+      normalizedCode,
+    )
+  ) {
+    earnedPoints += 10;
+    possiblePoints += 10;
+    matchedTerms.add(productCode);
   }
 
+  const usableBarcode =
+    getSearchBarcode(productBarcode);
+
   const normalizedBarcode =
-    normalizeSearchText(productBarcode);
+    normalizeSearchText(
+      usableBarcode,
+    );
 
-  if (normalizedBarcode) {
-    possiblePoints += 30;
-
-    if (
-      candidateText.includes(
-        normalizedBarcode,
-      )
-    ) {
-      earnedPoints += 30;
-      matchedTerms.add(productBarcode);
-    }
+  if (
+    normalizedBarcode &&
+    candidateText.includes(
+      normalizedBarcode,
+    )
+  ) {
+    earnedPoints += 35;
+    possiblePoints += 35;
+    matchedTerms.add(usableBarcode);
   }
 
   if (possiblePoints <= 0) {
@@ -249,7 +585,8 @@ function calculateCandidateScore({
   const score = Math.min(
     100,
     Math.round(
-      (earnedPoints / possiblePoints) *
+      (earnedPoints /
+        possiblePoints) *
         100,
     ),
   );
@@ -258,6 +595,237 @@ function calculateCandidateScore({
     score,
     matchedTerms:
       Array.from(matchedTerms),
+  };
+}
+
+const PRODUCT_TYPE_CONFLICT_TERMS = [
+  "dispenser",
+  "makine",
+  "makinesi",
+  "cihaz",
+  "aparat",
+  "stand",
+  "refill",
+];
+
+function findUnexpectedProductTypeTerms({
+  productName,
+  candidateTitle,
+}: {
+  productName: string;
+  candidateTitle: string;
+}): string[] {
+  const sourceText =
+    normalizeSearchText(
+      productName,
+    );
+
+  const candidateText =
+    normalizeSearchText(
+      candidateTitle,
+    );
+
+  return PRODUCT_TYPE_CONFLICT_TERMS.filter(
+    (term) =>
+      candidateText.includes(term) &&
+      !sourceText.includes(term),
+  );
+}
+
+function evaluateVariantMatch({
+  productName,
+  productBrand,
+  candidateTitle,
+  lexicalScore,
+}: {
+  productName: string;
+  productBrand: string;
+  candidateTitle: string;
+  lexicalScore: number;
+}): {
+  confidence: CompetitorProductSearchConfidence;
+  variantMatched: boolean;
+  rejectionReasons: string[];
+  adjustedScore: number;
+} {
+  const rejectionReasons: string[] = [];
+
+  const sourceMeasurements =
+    extractMeasurements(productName);
+
+  const candidateMeasurements =
+    extractMeasurements(candidateTitle);
+
+  for (
+    const dimension of [
+      "MASS",
+      "VOLUME",
+      "LENGTH",
+      "CAPACITY_OZ",
+    ] as const
+  ) {
+    const sourceValues =
+      uniqueMeasurementValues(
+        sourceMeasurements,
+        dimension,
+      );
+
+    if (sourceValues.length === 0) {
+      continue;
+    }
+
+    const candidateValues =
+      uniqueMeasurementValues(
+        candidateMeasurements,
+        dimension,
+      );
+
+    if (candidateValues.length === 0) {
+      rejectionReasons.push(
+        `${dimension === "MASS"
+          ? "Gramaj"
+          : dimension === "VOLUME"
+            ? "Hacim"
+            : dimension === "CAPACITY_OZ"
+              ? "Oz kapasitesi"
+            : "Ölçü"} bilgisi adayda bulunamadı.`,
+      );
+      continue;
+    }
+
+    if (
+      !sameNumberSet(
+        sourceValues,
+        candidateValues,
+      )
+    ) {
+      rejectionReasons.push(
+        `${dimension === "MASS"
+          ? "Gramaj"
+          : dimension === "VOLUME"
+            ? "Hacim"
+            : dimension === "CAPACITY_OZ"
+              ? "Oz kapasitesi"
+            : "Ölçü"} uyuşmuyor.`,
+      );
+    }
+  }
+
+  const sourcePackageCount =
+    extractPackageCount(productName);
+
+  const candidatePackageCount =
+    extractPackageCount(candidateTitle);
+
+  if (sourcePackageCount !== null) {
+    if (
+      candidatePackageCount !== null &&
+      candidatePackageCount !==
+        sourcePackageCount
+    ) {
+      rejectionReasons.push(
+        `Paket adedi uyuşmuyor (${sourcePackageCount} ≠ ${candidatePackageCount}).`,
+      );
+    }
+  } else if (
+    candidatePackageCount !== null &&
+    candidatePackageCount > 1
+  ) {
+    rejectionReasons.push(
+      `Aday çoklu paket içeriyor (${candidatePackageCount} adet/paket).`,
+    );
+  }
+
+const candidateText =
+  normalizeSearchText(candidateTitle);
+
+const unexpectedProductTypeTerms =
+  findUnexpectedProductTypeTerms({
+    productName,
+    candidateTitle,
+  });
+
+if (
+  unexpectedProductTypeTerms.length >
+  0
+) {
+  rejectionReasons.push(
+    `Ürün tipi uyuşmuyor. Adayda kaynak üründe olmayan ifade var: ${unexpectedProductTypeTerms.join(
+      ", ",
+    )}.`,
+  );
+}
+
+const identityTerms =
+  extractIdentityTerms({
+    productName,
+    productBrand,
+  });
+
+  const missingIdentityTerms =
+    identityTerms.filter(
+      (term) =>
+        !candidateText.includes(term),
+    );
+
+  if (
+    identityTerms.length > 0 &&
+    missingIdentityTerms.length > 0
+  ) {
+    rejectionReasons.push(
+      `Ürün seri/model ifadesi uyuşmuyor: ${missingIdentityTerms.join(
+        ", ",
+      )}.`,
+    );
+  }
+
+const hardMismatch =
+  rejectionReasons.some(
+    (reason) =>
+      reason.includes("uyuşmuyor") ||
+      reason.includes("çoklu paket") ||
+      reason.includes(
+        "Ürün tipi uyuşmuyor",
+      ),
+  );
+
+  if (hardMismatch) {
+    return {
+      confidence: "REJECTED",
+      variantMatched: false,
+      rejectionReasons,
+      adjustedScore:
+        Math.min(lexicalScore, 25),
+    };
+  }
+
+  if (rejectionReasons.length > 0) {
+    return {
+      confidence: "REVIEW",
+      variantMatched: false,
+      rejectionReasons,
+      adjustedScore:
+        Math.min(lexicalScore, 69),
+    };
+  }
+
+  if (lexicalScore >= 80) {
+    return {
+      confidence: "HIGH",
+      variantMatched: true,
+      rejectionReasons: [],
+      adjustedScore:
+        Math.max(lexicalScore, 90),
+    };
+  }
+
+  return {
+    confidence: "REVIEW",
+    variantMatched: true,
+    rejectionReasons: [
+      "Metin benzerliği otomatik eşleştirme için yeterince yüksek değil.",
+    ],
+    adjustedScore: lexicalScore,
   };
 }
 
@@ -275,8 +843,11 @@ function buildSearchQuery({
     productName,
   ];
 
-  if (productBarcode.trim()) {
-    parts.push(productBarcode);
+  const usableBarcode =
+    getSearchBarcode(productBarcode);
+
+  if (usableBarcode) {
+    parts.push(usableBarcode);
   }
 
   return cleanText(parts.join(" "));
@@ -589,17 +1160,44 @@ export class CompetitorProductSearchService {
               normalizedUrl,
             );
 
-          const candidate = {
-            title,
-            productUrl:
-              normalizedUrl,
+          const variantResult =
+            evaluateVariantMatch({
+              productName:
+                input.productName,
 
-            score:
-              scoreResult.score,
+              productBrand:
+                input.productBrand,
 
-            matchedTerms:
-              scoreResult.matchedTerms,
-          };
+              candidateTitle:
+                title,
+
+              lexicalScore:
+                scoreResult.score,
+            });
+
+          const candidate:
+            CompetitorProductSearchCandidate =
+            {
+              title,
+
+              productUrl:
+                normalizedUrl,
+
+              score:
+                variantResult.adjustedScore,
+
+              matchedTerms:
+                scoreResult.matchedTerms,
+
+              confidence:
+                variantResult.confidence,
+
+              variantMatched:
+                variantResult.variantMatched,
+
+              rejectionReasons:
+                variantResult.rejectionReasons,
+            };
 
           if (
             !existing ||
@@ -619,9 +1217,30 @@ export class CompetitorProductSearchService {
           candidateMap.values(),
         )
           .sort(
-            (left, right) =>
-              right.score -
-              left.score,
+            (left, right) => {
+              const confidenceRank = {
+                HIGH: 3,
+                REVIEW: 2,
+                REJECTED: 1,
+              } as const;
+
+              const rankDifference =
+                confidenceRank[
+                  right.confidence
+                ] -
+                confidenceRank[
+                  left.confidence
+                ];
+
+              if (rankDifference !== 0) {
+                return rankDifference;
+              }
+
+              return (
+                right.score -
+                left.score
+              );
+            },
           )
           .slice(
             0,

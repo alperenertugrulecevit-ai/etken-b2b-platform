@@ -18,38 +18,37 @@ const mainMenuItems: MenuItem[] = [
     label: "Dashboard",
     permissionCodes: ["DASHBOARD_VIEW"],
   },
-  {
-    href: "/admin/products",
-    icon: "📦",
-    label: "Ürün Yönetimi",
-    permissionCodes: [
-      "INVENTORY_VIEW",
-      "INVENTORY_ADJUST",
-    ],
-  },
-  {
-    href: "/admin/product-images",
-    icon: "🖼️",
-    label: "Ürün Görsel Yönetimi",
-    permissionCodes: [
-      "INVENTORY_VIEW",
-      "INVENTORY_ADJUST",
-    ],
-  },
-  {
-    href: "/admin/categories",
-    icon: "📁",
-    label: "Kategori Yönetimi",
-    permissionCodes: [
-      "INVENTORY_VIEW",
-      "INVENTORY_ADJUST",
-    ],
-  },
-
 {
   href: "/admin/products",
   icon: "📦",
   label: "Ürün Yönetimi",
+  permissionCodes: [
+    "INVENTORY_VIEW",
+    "INVENTORY_ADJUST",
+  ],
+},
+{
+  href: "/admin/products/enrichment",
+  icon: "✨",
+  label: "Ürün Veri Zenginleştirme",
+  permissionCodes: [
+    "INVENTORY_VIEW",
+    "INVENTORY_ADJUST",
+  ],
+},
+{
+  href: "/admin/products/enrichment/review",
+  icon: "🔎",
+  label: "Rakip Ürün İnceleme",
+  permissionCodes: [
+    "INVENTORY_VIEW",
+    "INVENTORY_ADJUST",
+  ],
+},
+{
+  href: "/admin/products/enrichment/barcode-review",
+  icon: "🏷️",
+  label: "Barkod İnceleme",
   permissionCodes: [
     "INVENTORY_VIEW",
     "INVENTORY_ADJUST",

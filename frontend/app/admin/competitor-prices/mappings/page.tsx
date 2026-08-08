@@ -1,18 +1,12 @@
 import Link from "next/link";
 
-<div className="mt-5">
-  <Link
-    href="/admin/competitor-prices/mappings/search"
-    className="inline-block rounded-xl bg-violet-700 px-5 py-3 font-bold text-white hover:bg-violet-800"
-  >
-    🔍 Rakip Ürün Adaylarını Bul
-  </Link>
-</div>
+
 
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
 import CompetitorProductMappingForm from "@/components/admin/CompetitorProductMappingForm";
+import DeleteCompetitorMappingButton from "@/components/admin/DeleteCompetitorMappingButton";
 
 import {
   checkCompetitorPrice,
@@ -202,6 +196,16 @@ export default async function CompetitorMappingsPage({
           fiyatlarını kontrol edin.
         </p>
       </div>
+
+      <div className="mt-5">
+  <Link
+    href="/admin/competitor-prices/mappings/search"
+    className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-5 py-3 font-bold text-white transition hover:bg-violet-800"
+  >
+    <span aria-hidden="true">🔍</span>
+    Rakip Ürün Adaylarını Bul
+  </Link>
+</div>
 
       {priceCheckMessage && (
         <div
@@ -461,6 +465,10 @@ export default async function CompetitorMappingsPage({
                                 : "Aktifleştir"}
                             </button>
                           </form>
+<DeleteCompetitorMappingButton
+  mappingId={mapping.id}
+/>
+
                         </div>
                       </td>
                     </tr>

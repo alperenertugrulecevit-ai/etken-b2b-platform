@@ -44,6 +44,39 @@ function getStockLabel(availableStock: number) {
 
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
+    include: {
+      productBarcodes: {
+        orderBy: [
+          {
+            isVerified: "desc",
+          },
+          {
+            isPrimary: "desc",
+          },
+          {
+            id: "asc",
+          },
+        ],
+      },
+
+      productImageSources: {
+        orderBy: [
+          {
+            isVerified: "desc",
+          },
+          {
+            isPrimary: "desc",
+          },
+          {
+            sortOrder: "asc",
+          },
+          {
+            id: "asc",
+          },
+        ],
+      },
+    },
+
     orderBy: {
       id: "asc",
     },
@@ -51,23 +84,42 @@ export default async function AdminProductsPage() {
 
   const totalPhysicalStock = products.reduce(
     (total, product) => total + product.stock,
-    0
+    0,
   );
 
   const totalReservedStock = products.reduce(
-    (total, product) => total + product.reservedStock,
-    0
+    (total, product) =>
+      total + product.reservedStock,
+    0,
   );
 
   const totalAvailableStock =
     totalPhysicalStock - totalReservedStock;
 
-  const criticalProductCount = products.filter((product) => {
-    const availableStock =
-      product.stock - product.reservedStock;
+  const criticalProductCount = products.filter(
+    (product) => {
+      const availableStock =
+        product.stock - product.reservedStock;
 
-    return availableStock <= 20;
-  }).length;
+      return availableStock <= 20;
+    },
+  ).length;
+
+  const enrichedProductCount = products.filter(
+    (product) =>
+      product.productBarcodes.length > 0 &&
+      product.productImageSources.length > 0,
+  ).length;
+
+  const missingBarcodeCount = products.filter(
+    (product) =>
+      product.productBarcodes.length === 0,
+  ).length;
+
+  const missingImageCount = products.filter(
+    (product) =>
+      product.productImageSources.length === 0,
+  ).length;
 
   return (
     <section className="p-4 sm:p-6 lg:p-10">
@@ -78,38 +130,41 @@ export default async function AdminProductsPage() {
           </h1>
 
           <p className="mt-2 text-gray-500">
-            Ürünleri, fiziksel stokları ve sipariş
-            rezervasyonlarını yönetin.
+            Ürünleri, stokları, üretici
+            barkodlarını ve ürün görsellerini
+            yönetin.
           </p>
         </div>
 
-<div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
- <Link
-  href="/admin/products/import"
-  className="rounded-xl border border-blue-900 bg-white px-6 py-3 text-center font-bold text-blue-900 hover:bg-blue-50"
->
-  Excel’den Ürün Yükle
-</Link>
+        <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
+          <Link
+            href="/admin/products/import"
+            className="rounded-xl border border-blue-900 bg-white px-6 py-3 text-center font-bold text-blue-900 hover:bg-blue-50"
+          >
+            Excel’den Ürün Yükle
+          </Link>
 
-  <Link
-  href="/admin/products/new"
-  className="rounded-xl bg-blue-900 px-6 py-3 text-center font-bold text-white hover:bg-blue-800"
->
-  + Yeni Ürün Ekle
-</Link>
-</div>
+          <Link
+            href="/admin/products/new"
+            className="rounded-xl bg-blue-900 px-6 py-3 text-center font-bold text-white hover:bg-blue-800"
+          >
+            + Yeni Ürün Ekle
+          </Link>
+        </div>
       </div>
 
-      {/* STOK ÖZET KARTLARI */}
+      {/* STOK ÖZETİ */}
 
-      <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 xl:mt-10 xl:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl bg-white p-4 shadow sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Fiziksel Stok
           </p>
 
           <p className="mt-3 text-4xl font-bold text-blue-900">
-            {totalPhysicalStock.toLocaleString("tr-TR")}
+            {totalPhysicalStock.toLocaleString(
+              "tr-TR",
+            )}
           </p>
 
           <p className="mt-2 text-sm text-gray-500">
@@ -123,7 +178,9 @@ export default async function AdminProductsPage() {
           </p>
 
           <p className="mt-3 text-4xl font-bold text-orange-600">
-            {totalReservedStock.toLocaleString("tr-TR")}
+            {totalReservedStock.toLocaleString(
+              "tr-TR",
+            )}
           </p>
 
           <p className="mt-2 text-sm text-gray-500">
@@ -137,7 +194,9 @@ export default async function AdminProductsPage() {
           </p>
 
           <p className="mt-3 text-4xl font-bold text-green-700">
-            {totalAvailableStock.toLocaleString("tr-TR")}
+            {totalAvailableStock.toLocaleString(
+              "tr-TR",
+            )}
           </p>
 
           <p className="mt-2 text-sm text-gray-500">
@@ -151,7 +210,9 @@ export default async function AdminProductsPage() {
           </p>
 
           <p className="mt-3 text-4xl font-bold text-red-600">
-            {criticalProductCount.toLocaleString("tr-TR")}
+            {criticalProductCount.toLocaleString(
+              "tr-TR",
+            )}
           </p>
 
           <p className="mt-2 text-sm text-gray-500">
@@ -160,18 +221,90 @@ export default async function AdminProductsPage() {
         </article>
       </div>
 
+      {/* ÜRÜN VERİ KALİTESİ */}
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-2xl border border-green-200 bg-green-50 p-5">
+          <p className="text-sm font-bold uppercase text-green-700">
+            Zenginleştirilmiş Ürün
+          </p>
+
+          <p className="mt-2 text-3xl font-black text-green-800">
+            {enrichedProductCount}
+          </p>
+
+          <p className="mt-1 text-sm text-green-700">
+            Barkod ve görsel mevcut
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-bold uppercase text-amber-700">
+            Barkod Eksik
+          </p>
+
+          <p className="mt-2 text-3xl font-black text-amber-800">
+            {missingBarcodeCount}
+          </p>
+
+          <p className="mt-1 text-sm text-amber-700">
+            Üretici barkodu bulunamadı
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-violet-200 bg-violet-50 p-5">
+          <p className="text-sm font-bold uppercase text-violet-700">
+            Görsel Eksik
+          </p>
+
+          <p className="mt-2 text-3xl font-black text-violet-800">
+            {missingImageCount}
+          </p>
+
+          <p className="mt-1 text-sm text-violet-700">
+            Ürün görseli bulunamadı
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+          <p className="text-sm font-bold uppercase text-blue-700">
+            Toplam Ürün
+          </p>
+
+          <p className="mt-2 text-3xl font-black text-blue-900">
+            {products.length}
+          </p>
+
+          <p className="mt-1 text-sm text-blue-700">
+            Ürün master kaydı
+          </p>
+        </article>
+      </div>
+
       {/* ÜRÜN TABLOSU */}
 
       <div className="-mx-4 mt-6 overflow-x-auto bg-white shadow sm:mx-0 sm:mt-8 sm:rounded-2xl lg:mt-10">
-        <table className="w-full min-w-[1450px] text-left text-sm">
+        <table className="w-full min-w-[1850px] text-left text-sm">
           <thead className="bg-blue-900 text-white">
             <tr>
+              <th className="p-4">
+                Görsel
+              </th>
+
               <th className="p-4">
                 Kod
               </th>
 
               <th className="p-4">
                 Ürün
+              </th>
+
+              <th className="p-4">
+                Üretici Barkodu
+              </th>
+
+              <th className="p-4">
+                Veri Durumu
               </th>
 
               <th className="p-4">
@@ -187,7 +320,7 @@ export default async function AdminProductsPage() {
               </th>
 
               <th className="p-4">
-                Fiziksel Stok
+                Fiziksel
               </th>
 
               <th className="p-4">
@@ -211,7 +344,7 @@ export default async function AdminProductsPage() {
               </th>
 
               <th className="p-4">
-                Yayın Durumu
+                Yayın
               </th>
 
               <th className="p-4">
@@ -223,7 +356,55 @@ export default async function AdminProductsPage() {
           <tbody>
             {products.map((product) => {
               const availableStock =
-                product.stock - product.reservedStock;
+                product.stock -
+                product.reservedStock;
+
+              const primaryBarcode =
+                product.productBarcodes.find(
+                  (barcode) =>
+                    barcode.isPrimary,
+                ) ??
+                product.productBarcodes.find(
+                  (barcode) =>
+                    barcode.isVerified,
+                ) ??
+                product.productBarcodes[0] ??
+                null;
+
+              const primaryImage =
+                product.productImageSources.find(
+                  (image) =>
+                    image.isPrimary &&
+                    image.isVerified,
+                ) ??
+                product.productImageSources.find(
+                  (image) =>
+                    image.isPrimary,
+                ) ??
+                product.productImageSources.find(
+                  (image) =>
+                    image.isVerified,
+                ) ??
+                product.productImageSources[0] ??
+                null;
+
+              const imageUrl =
+                primaryImage?.storageUrl ??
+                primaryImage?.sourceUrl ??
+                product.imageUrl ??
+                null;
+
+              const hasBarcode =
+                product.productBarcodes.length >
+                0;
+
+              const hasImage =
+                product.productImageSources
+                  .length > 0 ||
+                Boolean(product.imageUrl);
+
+              const dataComplete =
+                hasBarcode && hasImage;
 
               return (
                 <tr
@@ -234,18 +415,109 @@ export default async function AdminProductsPage() {
                       : ""
                   }`}
                 >
+                  <td className="p-4">
+                    {imageUrl ? (
+                      <div>
+                        <img
+                          src={imageUrl}
+                          alt={product.name}
+                          className="h-16 w-16 rounded-xl border border-slate-200 bg-white object-contain p-1"
+                        />
+
+                        <p className="mt-1 text-center text-xs font-semibold text-slate-500">
+                          {
+                            product
+                              .productImageSources
+                              .length
+                          }{" "}
+                          görsel
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-xs font-semibold text-slate-400">
+                        Görsel
+                        <br />
+                        Yok
+                      </div>
+                    )}
+                  </td>
+
                   <td className="whitespace-nowrap p-4 font-semibold text-blue-900">
                     {product.code}
                   </td>
 
-                  <td className="p-4">
+                  <td className="min-w-[260px] p-4">
                     <p className="font-semibold">
                       {product.name}
                     </p>
 
-                    <p className="mt-1 text-sm text-gray-500">
-                      Barkod: {product.barcode}
+                    <p className="mt-1 text-xs text-gray-400">
+                      Eski barkod:{" "}
+                      {product.barcode}
                     </p>
+                  </td>
+
+                  <td className="p-4">
+                    {primaryBarcode ? (
+                      <div className="min-w-[150px]">
+                        <p className="font-mono text-base font-bold text-slate-900">
+                          {
+                            primaryBarcode.barcode
+                          }
+                        </p>
+
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {
+                            primaryBarcode.barcodeType
+                          }
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {primaryBarcode.sourceSite ??
+                            primaryBarcode.sourceType}
+                        </p>
+
+                        {primaryBarcode.isVerified ? (
+                          <span className="mt-2 inline-block rounded-full bg-green-100 px-2 py-1 text-xs font-bold text-green-700">
+                            ✓ Doğrulandı
+                          </span>
+                        ) : (
+                          <span className="mt-2 inline-block rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
+                            Doğrulama Bekliyor
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                        Barkod Yok
+                      </span>
+                    )}
+                  </td>
+
+                  <td className="p-4">
+                    {dataComplete ? (
+                      <span className="inline-block rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
+                        ✓ Veri Tam
+                      </span>
+                    ) : (
+                      <div className="space-y-2">
+                        <span className="inline-block rounded-full bg-amber-100 px-3 py-2 text-xs font-bold text-amber-700">
+                          Veri Eksik
+                        </span>
+
+                        {!hasBarcode && (
+                          <p className="text-xs font-semibold text-red-600">
+                            Barkod eksik
+                          </p>
+                        )}
+
+                        {!hasImage && (
+                          <p className="text-xs font-semibold text-violet-600">
+                            Görsel eksik
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </td>
 
                   <td className="p-4">
@@ -264,7 +536,9 @@ export default async function AdminProductsPage() {
 
                   <td className="p-4">
                     <span className="inline-block min-w-20 rounded-full bg-blue-100 px-3 py-1 text-center font-semibold text-blue-700">
-                      {product.stock.toLocaleString("tr-TR")}
+                      {product.stock.toLocaleString(
+                        "tr-TR",
+                      )}
                     </span>
                   </td>
 
@@ -277,7 +551,7 @@ export default async function AdminProductsPage() {
                       }`}
                     >
                       {product.reservedStock.toLocaleString(
-                        "tr-TR"
+                        "tr-TR",
                       )}
                     </span>
                   </td>
@@ -285,25 +559,32 @@ export default async function AdminProductsPage() {
                   <td className="p-4">
                     <span
                       className={`inline-block min-w-20 rounded-full px-3 py-1 text-center font-bold ${getStockClass(
-                        availableStock
+                        availableStock,
                       )}`}
                     >
-                      {availableStock.toLocaleString("tr-TR")}
+                      {availableStock.toLocaleString(
+                        "tr-TR",
+                      )}
                     </span>
                   </td>
 
                   <td className="p-4">
                     <span
                       className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${getStockClass(
-                        availableStock
+                        availableStock,
                       )}`}
                     >
-                      {getStockLabel(availableStock)}
+                      {getStockLabel(
+                        availableStock,
+                      )}
                     </span>
                   </td>
 
                   <td className="whitespace-nowrap p-4 font-bold text-blue-900">
-                    {formatCurrency(product.price)} ₺
+                    {formatCurrency(
+                      product.price,
+                    )}{" "}
+                    ₺
                   </td>
 
                   <td className="p-4">
@@ -327,13 +608,13 @@ export default async function AdminProductsPage() {
                   </td>
 
                   <td className="p-4">
-                    <div className="flex flex-wrap gap-2">
-<Link
-  href={`/admin/products/${product.id}`}
-  className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white hover:bg-slate-700"
->
-  Detay
-</Link>
+                    <div className="flex min-w-[190px] flex-wrap gap-2">
+                      <Link
+                        href={`/admin/products/${product.id}`}
+                        className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-white hover:bg-slate-700"
+                      >
+                        Detay
+                      </Link>
 
                       <Link
                         href={`/admin/products/${product.id}/edit`}
@@ -346,7 +627,7 @@ export default async function AdminProductsPage() {
                         action={toggleProductStatus.bind(
                           null,
                           product.id,
-                          product.isActive
+                          product.isActive,
                         )}
                       >
                         <button
@@ -371,7 +652,7 @@ export default async function AdminProductsPage() {
             {products.length === 0 && (
               <tr>
                 <td
-                  colSpan={13}
+                  colSpan={16}
                   className="p-10 text-center text-gray-500"
                 >
                   Henüz ürün bulunmuyor.

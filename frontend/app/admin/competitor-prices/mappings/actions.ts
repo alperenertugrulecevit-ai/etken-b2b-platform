@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 import { CompetitorPriceMonitorService } from "@/modules/competitor-prices/competitor-price-monitor.service";
+import { ProductEnrichmentService } from "@/modules/product-enrichment/product-enrichment.service";
+import { ProductEnrichmentPersistenceService } from "@/modules/product-enrichment/product-enrichment-persistence.service";
 
 import type {
   CompetitorMappingActionState,
@@ -73,7 +75,24 @@ function parseOptionalVatRate(
 function normalizeProductUrl(
   rawValue: string,
 ): URL {
-  const url = new URL(rawValue);
+  const normalizedRawValue =
+    rawValue.trim();
+
+  if (
+    normalizedRawValue.includes(
+      "{query}",
+    ) ||
+    normalizedRawValue
+      .toLocaleLowerCase("en-US")
+      .includes("%7bquery%7d")
+  ) {
+    throw new Error(
+      "Arama URL şablonu ürün bağlantısı olarak kullanılamaz. Rakip ürünün gerçek ürün sayfasını seçin.",
+    );
+  }
+
+  const url =
+    new URL(normalizedRawValue);
 
   if (
     url.protocol !== "http:" &&
@@ -93,7 +112,8 @@ function normalizeHost(
   value: string,
 ): string {
   return value
-    .toLocaleLowerCase("tr-TR")
+    .trim()
+    .toLocaleLowerCase("en-US")
     .replace(/^www\./, "");
 }
 
@@ -108,6 +128,18 @@ function revalidateCompetitorPaths(): void {
 
   revalidatePath(
     "/admin/competitor-prices/mappings",
+  );
+
+  revalidatePath(
+    "/admin/competitor-prices/mappings/search",
+  );
+
+  revalidatePath(
+    "/admin/products",
+  );
+
+  revalidatePath(
+    "/admin/product-images",
   );
 }
 
@@ -212,6 +244,8 @@ export async function createCompetitorMapping(
 
         select: {
           id: true,
+          tenantId: true,
+          companyId: true,
           code: true,
           name: true,
         },
@@ -232,6 +266,7 @@ export async function createCompetitorMapping(
 
         select: {
           id: true,
+          code: true,
           name: true,
           baseUrl: true,
           defaultVatRate: true,
@@ -307,14 +342,85 @@ export async function createCompetitorMapping(
       },
     });
 
-    revalidateCompetitorPaths();
+    /*
+     * Rakip eşleştirmesi başarıyla
+     * oluşturulduktan sonra ürün
+     * master verisini zenginleştir.
+     *
+     * Bu işlem başarısız olursa
+     * oluşturulan rakip eşleştirmesi
+     * korunur.
+     */
+    try {
+      const enrichment =
+        await ProductEnrichmentService.enrichFromUrl(
+          productUrl.toString(),
+        );
 
-    return {
-      status: "success",
+      if (!enrichment.success) {
+        revalidateCompetitorPaths();
 
-      message:
-        `${product.code} ürünü ${competitorSite.name} ile başarıyla eşleştirildi.`,
-    };
+        return {
+          status: "success",
+
+          message:
+            `${product.code} ürünü ${competitorSite.name} ile eşleştirildi. Ancak barkod ve görsel taraması tamamlanamadı: ${enrichment.message}`,
+        };
+      }
+
+      const persistence =
+        await ProductEnrichmentPersistenceService.persist(
+          {
+            productId:
+              product.id,
+
+            tenantId:
+              product.tenantId,
+
+            companyId:
+              product.companyId,
+
+            sourceSite:
+              competitorSite.code,
+
+            result:
+              enrichment,
+          },
+        );
+
+      revalidateCompetitorPaths();
+
+      const barcodeMessage =
+        persistence.barcodeCount > 0
+          ? `${persistence.barcodeCount} barkod`
+          : "barkod bulunamadı";
+
+      const imageMessage =
+        persistence.imageCount > 0
+          ? `${persistence.imageCount} görsel`
+          : "görsel bulunamadı";
+
+      return {
+        status: "success",
+
+        message:
+          `${product.code} ürünü ${competitorSite.name} ile başarıyla eşleştirildi. Ürün master zenginleştirmesi tamamlandı: ${barcodeMessage}, ${imageMessage}.`,
+      };
+    } catch (enrichmentError) {
+      console.error(
+        "Product enrichment after competitor mapping failed:",
+        enrichmentError,
+      );
+
+      revalidateCompetitorPaths();
+
+      return {
+        status: "success",
+
+        message:
+          `${product.code} ürünü ${competitorSite.name} ile başarıyla eşleştirildi. Ancak barkod ve görsel bilgileri kaydedilirken hata oluştu.`,
+      };
+    }
   } catch (error) {
     console.error(
       "Create competitor mapping failed:",
@@ -398,9 +504,57 @@ export async function toggleCompetitorMappingStatus(
   revalidateCompetitorPaths();
 }
 
-export async function checkCompetitorPrice(
+export async function deleteCompetitorMapping(
   mappingId: number,
 ): Promise<void> {
+  await AuthorizationService.requirePermission(
+    "INVENTORY_ADJUST",
+  );
+
+  if (
+    !Number.isInteger(mappingId) ||
+    mappingId <= 0
+  ) {
+    throw new Error(
+      "Geçersiz ürün eşleştirmesi.",
+    );
+  }
+
+  const mapping =
+    await prisma.competitorProduct.findFirst({
+      where: {
+        id: mappingId,
+
+        tenantId:
+          B2B_CONSTANTS.TENANT_ID,
+
+        companyId:
+          B2B_CONSTANTS.COMPANY_ID,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (!mapping) {
+    throw new Error(
+      "Silinecek rakip ürün eşleştirmesi bulunamadı.",
+    );
+  }
+
+  await prisma.competitorProduct.delete({
+    where: {
+      id: mapping.id,
+    },
+  });
+
+  revalidateCompetitorPaths();
+}
+
+export async function checkCompetitorPrice(
+  mappingId: number,
+): Promise<never> {
   await AuthorizationService.requirePermission(
     "INVENTORY_ADJUST",
   );
@@ -421,15 +575,16 @@ export async function checkCompetitorPrice(
 
   revalidateCompetitorPaths();
 
-  const query = new URLSearchParams({
-    priceCheck:
-      result.success
-        ? "success"
-        : "error",
+  const query =
+    new URLSearchParams({
+      priceCheck:
+        result.success
+          ? "success"
+          : "error",
 
-    message:
-      result.message,
-  });
+      message:
+        result.message,
+    });
 
   redirect(
     `/admin/competitor-prices/mappings?${query.toString()}`,

@@ -5,6 +5,8 @@ import {
   useEffect,
   useRef,
 } from "react";
+
+import { useSearchParams } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -65,11 +67,48 @@ export default function CompetitorProductMappingForm({
   const formRef =
     useRef<HTMLFormElement>(null);
 
+  const searchParams =
+    useSearchParams();
+
   const [state, formAction] =
     useActionState(
       createCompetitorMapping,
       INITIAL_COMPETITOR_MAPPING_ACTION_STATE,
     );
+
+  const requestedProductId =
+    searchParams.get("productId") ?? "";
+
+  const requestedCompetitorSiteId =
+    searchParams.get(
+      "competitorSiteId",
+    ) ?? "";
+
+  const requestedProductUrl =
+    searchParams.get("productUrl") ?? "";
+
+  const requestedCompetitorName =
+    searchParams.get(
+      "competitorName",
+    ) ?? "";
+
+  const selectedProductId =
+    products.some(
+      (product) =>
+        String(product.id) ===
+        requestedProductId,
+    )
+      ? requestedProductId
+      : "";
+
+  const selectedCompetitorSiteId =
+    competitorSites.some(
+      (site) =>
+        String(site.id) ===
+        requestedCompetitorSiteId,
+    )
+      ? requestedCompetitorSiteId
+      : "";
 
   useEffect(() => {
     if (state.status === "success") {
@@ -80,6 +119,13 @@ export default function CompetitorProductMappingForm({
   const formDisabled =
     products.length === 0 ||
     competitorSites.length === 0;
+
+  const candidateSelected =
+    Boolean(
+      selectedProductId &&
+      selectedCompetitorSiteId &&
+      requestedProductUrl,
+    );
 
   return (
     <form
@@ -99,6 +145,16 @@ export default function CompetitorProductMappingForm({
         </p>
       </div>
 
+      {candidateSelected && (
+        <div className="mt-5 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm font-semibold text-violet-800">
+          Otomatik aramada seçtiğiniz
+          rakip ürün bilgileri forma
+          aktarıldı. Bilgileri kontrol
+          ederek eşleştirmeyi
+          tamamlayabilirsiniz.
+        </div>
+      )}
+
       <div className="mt-6 grid gap-5">
         <label className="space-y-2">
           <span className="text-sm font-bold text-slate-700">
@@ -108,8 +164,12 @@ export default function CompetitorProductMappingForm({
           <select
             name="productId"
             required
-            defaultValue=""
-            disabled={products.length === 0}
+            defaultValue={
+              selectedProductId
+            }
+            disabled={
+              products.length === 0
+            }
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-700 disabled:bg-slate-100"
           >
             <option value="" disabled>
@@ -139,9 +199,12 @@ export default function CompetitorProductMappingForm({
           <select
             name="competitorSiteId"
             required
-            defaultValue=""
+            defaultValue={
+              selectedCompetitorSiteId
+            }
             disabled={
-              competitorSites.length === 0
+              competitorSites.length ===
+              0
             }
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-700 disabled:bg-slate-100"
           >
@@ -173,6 +236,9 @@ export default function CompetitorProductMappingForm({
             type="url"
             required
             maxLength={2000}
+            defaultValue={
+              requestedProductUrl
+            }
             placeholder="https://www.ofix.com/urun/..."
             className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-700"
           />
@@ -191,6 +257,9 @@ export default function CompetitorProductMappingForm({
           <input
             name="competitorName"
             maxLength={300}
+            defaultValue={
+              requestedCompetitorName
+            }
             placeholder="Örnek: Navigator Universal A3 Fotokopi Kağıdı"
             className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-700"
           />
