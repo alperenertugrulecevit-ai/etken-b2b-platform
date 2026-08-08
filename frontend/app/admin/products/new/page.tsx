@@ -1,16 +1,39 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+
+import ProductCategoryFields from "@/components/admin/ProductCategoryFields";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewProductPage() {
-  const [categories, brands, suppliers] = await Promise.all([
+  const [
+    categories,
+    brands,
+    suppliers,
+  ] = await Promise.all([
     prisma.category.findMany({
       where: {
+        parentId: null,
         isActive: true,
       },
       orderBy: {
         name: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+        children: {
+          where: {
+            isActive: true,
+          },
+          orderBy: {
+            name: "asc",
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     }),
 
@@ -33,22 +56,102 @@ export default async function NewProductPage() {
     }),
   ]);
 
-  async function createProduct(formData: FormData) {
+  async function createProduct(
+    formData: FormData,
+  ) {
     "use server";
 
-    const code = String(formData.get("code") ?? "")
+    const code = String(
+      formData.get("code") ?? "",
+    )
       .trim()
       .toUpperCase();
 
-    const barcode = String(formData.get("barcode") ?? "").trim();
-    const name = String(formData.get("name") ?? "").trim();
-    const brand = String(formData.get("brand") ?? "").trim();
-    const category = String(formData.get("category") ?? "").trim();
-    const supplier = String(formData.get("supplier") ?? "").trim();
-    const price = Number(formData.get("price"));
-    const stock = Number(formData.get("stock"));
-    const vat = Number(formData.get("vat"));
-    const ownStock = formData.get("ownStock") === "on";
+    const barcode = String(
+      formData.get("barcode") ?? "",
+    ).trim();
+
+    const name = String(
+      formData.get("name") ?? "",
+    ).trim();
+
+    const brand = String(
+      formData.get("brand") ?? "",
+    ).trim();
+
+    const supplier = String(
+      formData.get("supplier") ?? "",
+    ).trim();
+
+    const categoryId = Number(
+      formData.get("categoryId"),
+    );
+
+    const price = Number(
+      formData.get("price"),
+    );
+
+    const stock = Number(
+      formData.get("stock"),
+    );
+
+    const vat = Number(
+      formData.get("vat"),
+    );
+
+    const ownStock =
+      formData.get("ownStock") === "on";
+
+    if (!code) {
+      throw new Error(
+        "Ürün kodu zorunludur.",
+      );
+    }
+
+    if (!barcode) {
+      throw new Error(
+        "Barkod zorunludur.",
+      );
+    }
+
+    if (!name) {
+      throw new Error(
+        "Ürün adı zorunludur.",
+      );
+    }
+
+    if (
+      !Number.isInteger(categoryId) ||
+      categoryId <= 0
+    ) {
+      throw new Error(
+        "Geçerli bir alt kategori seçin.",
+      );
+    }
+
+    const category =
+      await prisma.category.findFirst({
+        where: {
+          id: categoryId,
+          isActive: true,
+          parentId: {
+            not: null,
+          },
+          parent: {
+            isActive: true,
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+    if (!category) {
+      throw new Error(
+        "Seçilen alt kategori bulunamadı veya aktif değil.",
+      );
+    }
 
     await prisma.product.create({
       data: {
@@ -56,7 +159,13 @@ export default async function NewProductPage() {
         barcode,
         name,
         brand,
-        category,
+
+        // Eski alanı geçiş süresince koruyoruz.
+        category: category.name,
+
+        // Yeni gerçek kategori ilişkisi.
+        categoryId: category.id,
+
         supplier,
         price,
         stock,
@@ -70,26 +179,34 @@ export default async function NewProductPage() {
     revalidatePath("/products");
     revalidatePath("/admin");
     revalidatePath("/admin/products");
+    revalidatePath("/admin/categories");
 
     redirect("/admin/products");
   }
 
+  const usableCategories =
+    categories.filter(
+      (category) =>
+        category.children.length > 0,
+    );
+
   const formReady =
-    categories.length > 0 &&
+    usableCategories.length > 0 &&
     brands.length > 0 &&
     suppliers.length > 0;
 
   return (
-    <section className="p-10">
+    <section className="p-4 sm:p-6 lg:p-10">
       <div className="mx-auto max-w-4xl">
-        <div className="flex items-center justify-between gap-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-4xl font-bold">
+            <h1 className="text-3xl font-black sm:text-4xl">
               Yeni Ürün Ekle
             </h1>
 
             <p className="mt-2 text-gray-500">
-              Yeni ürün bilgilerini eksiksiz doldurun.
+              Yeni ürün bilgilerini
+              eksiksiz doldurun.
             </p>
           </div>
 
@@ -101,22 +218,25 @@ export default async function NewProductPage() {
           </Link>
         </div>
 
-        {categories.length === 0 && (
+        {usableCategories.length === 0 && (
           <div className="mt-8 rounded-xl bg-orange-100 p-5 text-orange-800">
-            Aktif kategori bulunamadı. Önce{" "}
+            Kullanılabilir aktif alt
+            kategori bulunamadı. Önce{" "}
             <Link
               href="/admin/categories"
               className="font-bold underline"
             >
               Kategori Yönetimi
             </Link>{" "}
-            ekranından kategori oluşturun.
+            ekranından kategori
+            oluşturun.
           </div>
         )}
 
         {brands.length === 0 && (
           <div className="mt-4 rounded-xl bg-orange-100 p-5 text-orange-800">
-            Aktif marka bulunamadı. Önce{" "}
+            Aktif marka bulunamadı.
+            Önce{" "}
             <Link
               href="/admin/brands"
               className="font-bold underline"
@@ -129,20 +249,22 @@ export default async function NewProductPage() {
 
         {suppliers.length === 0 && (
           <div className="mt-4 rounded-xl bg-orange-100 p-5 text-orange-800">
-            Aktif tedarikçi bulunamadı. Önce{" "}
+            Aktif tedarikçi bulunamadı.
+            Önce{" "}
             <Link
               href="/admin/suppliers"
               className="font-bold underline"
             >
               Tedarikçi Yönetimi
             </Link>{" "}
-            ekranından tedarikçi oluşturun.
+            ekranından tedarikçi
+            oluşturun.
           </div>
         )}
 
         <form
           action={createProduct}
-          className="mt-10 grid grid-cols-1 gap-5 rounded-2xl bg-white p-8 shadow md:grid-cols-2"
+          className="mt-10 grid grid-cols-1 gap-5 rounded-2xl bg-white p-6 shadow md:grid-cols-2 md:p-8"
         >
           <label>
             <span className="mb-2 block text-sm font-semibold">
@@ -164,7 +286,7 @@ export default async function NewProductPage() {
 
             <input
               name="barcode"
-              placeholder="Barkod"
+              placeholder="Üretici barkodu"
               className="w-full rounded-xl border p-4"
               required
             />
@@ -194,7 +316,10 @@ export default async function NewProductPage() {
               className="w-full rounded-xl border bg-white p-4"
               required
             >
-              <option value="" disabled>
+              <option
+                value=""
+                disabled
+              >
                 Marka seçiniz
               </option>
 
@@ -209,31 +334,11 @@ export default async function NewProductPage() {
             </select>
           </label>
 
-          <label>
-            <span className="mb-2 block text-sm font-semibold">
-              Kategori
-            </span>
+          <div />
 
-            <select
-              name="category"
-              defaultValue=""
-              className="w-full rounded-xl border bg-white p-4"
-              required
-            >
-              <option value="" disabled>
-                Kategori seçiniz
-              </option>
-
-              {categories.map((category) => (
-                <option
-                  key={category.id}
-                  value={category.name}
-                >
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ProductCategoryFields
+            categories={usableCategories}
+          />
 
           <label>
             <span className="mb-2 block text-sm font-semibold">
@@ -246,18 +351,23 @@ export default async function NewProductPage() {
               className="w-full rounded-xl border bg-white p-4"
               required
             >
-              <option value="" disabled>
+              <option
+                value=""
+                disabled
+              >
                 Tedarikçi seçiniz
               </option>
 
-              {suppliers.map((supplier) => (
-                <option
-                  key={supplier.id}
-                  value={supplier.name}
-                >
-                  {supplier.name}
-                </option>
-              ))}
+              {suppliers.map(
+                (supplier) => (
+                  <option
+                    key={supplier.id}
+                    value={supplier.name}
+                  >
+                    {supplier.name}
+                  </option>
+                ),
+              )}
             </select>
           </label>
 
@@ -303,9 +413,17 @@ export default async function NewProductPage() {
               className="w-full rounded-xl border bg-white p-4"
               required
             >
-              <option value="1">%1</option>
-              <option value="10">%10</option>
-              <option value="20">%20</option>
+              <option value="1">
+                %1
+              </option>
+
+              <option value="10">
+                %10
+              </option>
+
+              <option value="20">
+                %20
+              </option>
             </select>
           </label>
 

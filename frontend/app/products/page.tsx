@@ -2,15 +2,17 @@ import Header from "@/components/layout/Header";
 import ProductList from "@/components/products/ProductList";
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
+import { getProductMainCategory } from "@/modules/products/product-category.utils";
 
 type SearchParams = {
   q?: string | string[];
   category?: string | string[];
+  subCategory?: string | string[];
   brand?: string | string[];
 };
 
 function getQueryValue(
-  value: string | string[] | undefined
+  value: string | string[] | undefined,
 ) {
   return Array.isArray(value)
     ? value[0] ?? ""
@@ -22,20 +24,20 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const query =
-    await searchParams;
+  const query = await searchParams;
 
   const products =
     await prisma.product.findMany({
       where: {
         tenantId:
-          B2B_CONSTANTS
-            .TENANT_ID,
+          B2B_CONSTANTS.TENANT_ID,
+
         companyId:
-          B2B_CONSTANTS
-            .COMPANY_ID,
+          B2B_CONSTANTS.COMPANY_ID,
+
         isActive: true,
       },
+
       orderBy: [
         {
           category: "asc",
@@ -44,6 +46,7 @@ export default async function ProductsPage({
           name: "asc",
         },
       ],
+
       select: {
         id: true,
         code: true,
@@ -64,26 +67,46 @@ export default async function ProductsPage({
     products.map(
       (product) => ({
         id: product.id,
-        code: product.code,
+
+        code:
+          product.code,
+
         barcode:
           product.barcode,
-        name: product.name,
-        brand: product.brand,
-        category:
+
+        name:
+          product.name,
+
+        brand:
+          product.brand,
+
+        mainCategory:
+          getProductMainCategory(
+            product.category,
+          ),
+
+        subCategory:
           product.category,
-        price: product.price,
-        vat: product.vat,
+
+        price:
+          product.price,
+
+        vat:
+          product.vat,
+
         ownStock:
           product.ownStock,
-          imageUrl:
-  product.imageUrl,
+
+        imageUrl:
+          product.imageUrl,
+
         availableStock:
           Math.max(
             0,
             product.stock -
-              product.reservedStock
+              product.reservedStock,
           ),
-      })
+      }),
     );
 
   return (
@@ -96,28 +119,28 @@ export default async function ProductsPage({
             Ürünler
           </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
-            Kurumsal ihtiyaçlarınız
-            için ürünleri arayın,
-            karşılaştırın ve
-            sepetinize ekleyin.
-          </p>
-
           <ProductList
             products={
               productViewModels
             }
-            initialSearch={getQueryValue(
-              query.q
-            )}
+            initialSearch={
+              getQueryValue(
+                query.q,
+              )
+            }
             initialCategory={
               getQueryValue(
-                query.category
+                query.category,
+              ) || "Tümü"
+            }
+            initialSubCategory={
+              getQueryValue(
+                query.subCategory,
               ) || "Tümü"
             }
             initialBrand={
               getQueryValue(
-                query.brand
+                query.brand,
               ) || "Tümü"
             }
           />

@@ -17,6 +17,7 @@ model Product {
   name          String
   brand         String
   category      String
+  categoryId    Int?
   supplier      String
   imageUrl      String?
   price         Float
@@ -27,8 +28,9 @@ model Product {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
 
-  tenant  WmsTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  company WmsCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  tenant      WmsTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company     WmsCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  categoryRef Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   warehouseStocks       WarehouseProductStock[]
   orderItems            OrderItem[]
@@ -53,6 +55,7 @@ model Product {
   @@index([tenantId, companyId, isActive])
   @@index([companyId, code])
   @@index([companyId, barcode])
+  @@index([categoryId])
 }
 
 enum ProductBarcodeType {
@@ -202,11 +205,22 @@ model ProductImageSource {
 
 model Category {
   id        Int      @id @default(autoincrement())
-  name      String   @unique
+  name      String
   slug      String   @unique
   isActive  Boolean  @default(true)
+  parentId  Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Category[] @relation("CategoryHierarchy")
+
+  products Product[]
+
+  @@unique([parentId, name])
+  @@index([parentId])
+  @@index([isActive])
 }
 
 model Supplier {
