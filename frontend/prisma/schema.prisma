@@ -27,8 +27,9 @@ model Product {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
 
-  tenant                WmsTenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  company               WmsCompany                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  tenant  WmsTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company WmsCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
   warehouseStocks       WarehouseProductStock[]
   orderItems            OrderItem[]
   purchaseOrderItems    PurchaseOrderItem[]
@@ -41,10 +42,162 @@ model Product {
   dispatchLines         DispatchDocumentLine[]
   inventoryCountLines   InventoryCountLine[]
   waveDistributionLines WaveDistributionLine[]
+  competitorProducts    CompetitorProduct[]
+
+  productBarcodes              ProductBarcode[]
+  productImageSources          ProductImageSource[]
+  competitorMatchAttempts      ProductCompetitorMatchAttempt[]
+  competitorCandidateDecisions ProductCompetitorCandidateDecision[]
+  barcodeRecoveryAttempts      BarcodeRecoveryAttempt[]
 
   @@index([tenantId, companyId, isActive])
   @@index([companyId, code])
   @@index([companyId, barcode])
+}
+
+enum ProductBarcodeType {
+  EAN13
+  EAN8
+  UPC
+  GTIN
+  MANUFACTURER
+  UNIT
+  PACKAGE
+  CASE
+  SUPPLIER
+  OTHER
+}
+
+enum BarcodeRecoveryStatus {
+  PENDING
+  SUCCESS
+  REVIEW
+  NO_CANDIDATE
+  NO_BARCODE
+  ERROR
+}
+
+enum ProductBarcodeSourceType {
+  LEGACY
+  COMPETITOR_SITE
+  MANUFACTURER_SITE
+  SUPPLIER
+  MANUAL
+  IMPORT
+  API
+  OTHER
+}
+
+enum ProductCompetitorCandidateDecisionType {
+  REJECTED
+}
+
+enum ProductImageSourceType {
+  LEGACY
+  COMPETITOR_SITE
+  MANUFACTURER_SITE
+  SUPPLIER
+  MANUAL
+  IMPORT
+  API
+  OTHER
+}
+
+model ProductBarcode {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productId Int
+
+  barcode     String
+  barcodeType ProductBarcodeType
+
+  sourceType ProductBarcodeSourceType @default(MANUAL)
+
+  sourceSite    String?
+  sourcePageUrl String?
+
+  isPrimary  Boolean @default(false)
+  isVerified Boolean @default(false)
+
+  verificationCount Int       @default(0)
+  verifiedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  evidences ProductBarcodeEvidence[]
+
+  @@unique([tenantId, companyId, barcode])
+  @@index([productId])
+  @@index([productId, barcodeType])
+  @@index([tenantId, companyId, productId])
+  @@index([tenantId, companyId, isVerified])
+}
+
+model ProductBarcodeEvidence {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productBarcodeId Int
+
+  sourceType ProductBarcodeSourceType
+
+  sourceSite    String
+  sourcePageUrl String
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  productBarcode ProductBarcode @relation(fields: [productBarcodeId], references: [id], onDelete: Cascade)
+
+  @@unique([productBarcodeId, sourceSite])
+  @@index([tenantId, companyId])
+  @@index([productBarcodeId])
+}
+
+model ProductImageSource {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productId Int
+
+  sourceType ProductImageSourceType @default(MANUAL)
+
+  sourceSite    String?
+  sourcePageUrl String?
+
+  sourceUrl String
+
+  storageObjectName String?
+  storageUrl        String?
+
+  isPrimary  Boolean @default(false)
+  isVerified Boolean @default(false)
+
+  verificationCount Int @default(0)
+  sortOrder         Int @default(0)
+
+  width  Int?
+  height Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sourceUrl])
+  @@index([tenantId, companyId, productId])
+  @@index([productId, isPrimary])
+  @@index([productId, isVerified])
+  @@index([productId, sortOrder])
 }
 
 model Category {
@@ -156,6 +309,21 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+enum CompetitorProductEnrichmentStatus {
+  PENDING
+  SUCCESS
+  PARTIAL
+  ERROR
+}
+
+enum ProductCompetitorMatchStatus {
+  PENDING
+  AUTO_MATCHED
+  REVIEW
+  NO_MATCH
+  SEARCH_ERROR
 }
 
 enum OrderSource {
@@ -2335,4 +2503,277 @@ model DataImportRow {
   @@unique([jobId, sheetName, rowNumber])
   @@index([jobId, status])
   @@index([externalKey])
+}
+
+enum CompetitorSourceType {
+  MANUAL
+  HTML
+  API
+  EXCEL
+}
+
+enum CompetitorStockStatus {
+  UNKNOWN
+  IN_STOCK
+  OUT_OF_STOCK
+  PREORDER
+}
+
+enum CompetitorPriceFetchStatus {
+  SUCCESS
+  PRODUCT_NOT_FOUND
+  PRICE_NOT_FOUND
+  BLOCKED
+  INVALID_RESPONSE
+  ERROR
+}
+
+enum CompetitorPriceRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+}
+
+model CompetitorSite {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  code    String
+  name    String
+  baseUrl String
+
+  sourceType CompetitorSourceType @default(MANUAL)
+
+  defaultVatRate Int?
+
+  searchEnabled     Boolean @default(false)
+  searchUrlTemplate String?
+  productUrlPattern String?
+  searchResultLimit Int     @default(10)
+
+  isActive Boolean @default(true)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competitorProducts        CompetitorProduct[]
+  priceRuns                 CompetitorPriceRun[]
+  productMatchAttempts      ProductCompetitorMatchAttempt[]
+  productCandidateDecisions ProductCompetitorCandidateDecision[]
+
+  @@unique([tenantId, companyId, code])
+  @@index([tenantId, companyId, isActive])
+  @@index([sourceType, isActive])
+  @@index([searchEnabled, isActive])
+}
+
+model ProductCompetitorCandidateDecision {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productId        Int
+  competitorSiteId Int
+
+  candidateUrl   String
+  candidateTitle String?
+
+  decision ProductCompetitorCandidateDecisionType @default(REJECTED)
+
+  reason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  competitorSite CompetitorSite @relation(fields: [competitorSiteId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, competitorSiteId, candidateUrl])
+  @@index([tenantId, companyId, decision])
+  @@index([productId, competitorSiteId])
+}
+
+model ProductCompetitorMatchAttempt {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productId        Int
+  competitorSiteId Int
+
+  status ProductCompetitorMatchStatus @default(PENDING)
+
+  candidateTitle String?
+  candidateUrl   String?
+  candidateScore Int?
+
+  highConfidenceCount Int @default(0)
+  reviewCount         Int @default(0)
+  rejectedCount       Int @default(0)
+
+  message String?
+
+  searchedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  competitorSite CompetitorSite @relation(fields: [competitorSiteId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, competitorSiteId])
+  @@index([tenantId, companyId, status])
+  @@index([productId, status])
+  @@index([competitorSiteId, status])
+  @@index([searchedAt])
+}
+
+model CompetitorProduct {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productId        Int
+  competitorSiteId Int
+
+  competitorSku  String?
+  competitorName String?
+  productUrl     String
+
+  vatRate Int?
+
+  isActive Boolean @default(true)
+
+  lastPriceExclVat Float?
+  lastPriceInclVat Float?
+  lastCurrency     String                @default("TRY")
+  lastStockStatus  CompetitorStockStatus @default(UNKNOWN)
+
+  lastCheckedAt DateTime?
+  lastSuccessAt DateTime?
+  lastError     String?
+
+  enrichmentStatus       CompetitorProductEnrichmentStatus @default(PENDING)
+  lastEnrichedAt         DateTime?
+  enrichmentMessage      String?
+  enrichmentBarcodeCount Int                               @default(0)
+  enrichmentImageCount   Int                               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  competitorSite CompetitorSite @relation(fields: [competitorSiteId], references: [id], onDelete: Cascade)
+
+  priceHistory CompetitorPriceHistory[]
+
+  @@unique([competitorSiteId, productId])
+  @@unique([competitorSiteId, productUrl])
+  @@index([tenantId, companyId, isActive])
+  @@index([productId, isActive])
+  @@index([competitorSiteId, isActive])
+  @@index([lastCheckedAt])
+  @@index([enrichmentStatus, isActive])
+}
+
+model CompetitorPriceHistory {
+  id Int @id @default(autoincrement())
+
+  competitorProductId Int
+  priceRunId          Int?
+
+  priceExclVat Float?
+  priceInclVat Float?
+
+  currency String @default("TRY")
+  vatRate  Int?
+
+  stockStatus CompetitorStockStatus      @default(UNKNOWN)
+  fetchStatus CompetitorPriceFetchStatus
+
+  rawPriceText String?
+  errorMessage String?
+
+  checkedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  competitorProduct CompetitorProduct   @relation(fields: [competitorProductId], references: [id], onDelete: Cascade)
+  priceRun          CompetitorPriceRun? @relation(fields: [priceRunId], references: [id], onDelete: SetNull)
+
+  @@index([competitorProductId, checkedAt])
+  @@index([priceRunId])
+  @@index([fetchStatus, checkedAt])
+}
+
+model CompetitorPriceRun {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  competitorSiteId Int?
+
+  status CompetitorPriceRunStatus @default(PENDING)
+
+  requestedCount Int @default(0)
+  processedCount Int @default(0)
+  successCount   Int @default(0)
+  failedCount    Int @default(0)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competitorSite CompetitorSite?          @relation(fields: [competitorSiteId], references: [id], onDelete: SetNull)
+  priceHistory   CompetitorPriceHistory[]
+
+  @@index([tenantId, companyId, createdAt])
+  @@index([competitorSiteId, createdAt])
+  @@index([status, createdAt])
+}
+
+model BarcodeRecoveryAttempt {
+  id Int @id @default(autoincrement())
+
+  tenantId  String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+
+  productId Int
+
+  sourceSite String @default("AVANSAS")
+
+  status BarcodeRecoveryStatus @default(PENDING)
+
+  candidateTitle String?
+  candidateUrl   String?
+  candidateScore Int?
+
+  barcodeCount Int @default(0)
+
+  message String?
+
+  attemptedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sourceSite])
+  @@index([tenantId, companyId, status])
+  @@index([productId, status])
+  @@index([attemptedAt])
 }
