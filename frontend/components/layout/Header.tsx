@@ -243,7 +243,7 @@ export default function Header() {
 
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
             <Link
-              href="/customer-login"
+              href="/account"
               className="hidden min-h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 transition hover:border-violet-300 hover:bg-violet-50 md:flex"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
@@ -469,7 +469,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/customer-login"
+                href="/account"
                 onClick={
                   closeMenu
                 }
