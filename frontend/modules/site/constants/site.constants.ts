@@ -18,9 +18,21 @@ export type SiteConfig = {
  * bilgileri merkezi olarak kullanır.
  */
 export const SITE_CONFIG: SiteConfig = {
-  brandName: "Etken",
+  brandName: "Etken Ofis",
+
+  /*
+   * Resmî ticari unvan kesinleştirildiğinde burada
+   * eksiksiz ticaret sicili unvanı kullanılmalıdır.
+   */
   legalName: "Etken",
-  domain: "www.etkenofis.com",
+
+  /*
+   * Google ve canonical URL'lerde tek hostname kullanıyoruz.
+   * Canlı ana adresimiz:
+   * https://etkenofis.com
+   */
+  domain: "etkenofis.com",
+
   address: null,
   taxOffice: null,
   taxNumber: null,
