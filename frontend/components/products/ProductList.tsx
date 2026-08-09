@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -103,6 +104,28 @@ export default function ProductList({
   const {
     addToCart,
   } = useCart();
+  useEffect(() => {
+  setSearch(
+    initialSearch,
+  );
+
+  setCategory(
+    initialCategory,
+  );
+
+  setSubCategory(
+    initialSubCategory,
+  );
+
+  setBrand(
+    initialBrand,
+  );
+}, [
+  initialSearch,
+  initialCategory,
+  initialSubCategory,
+  initialBrand,
+]);
 
   const categories =
     useMemo(
