@@ -6,44 +6,87 @@ import {
   useState,
 } from "react";
 
-import { useCart } from "@/context/CartContext";
+import {
+  useCart,
+} from "@/context/CartContext";
 
-const categories = [
+type CategoryIconType =
+  | "office"
+  | "cleaning"
+  | "food"
+  | "package"
+  | "safety";
+
+type CategoryItem = {
+  title: string;
+  href: string;
+  icon: CategoryIconType;
+  iconClassName: string;
+};
+
+const categories: CategoryItem[] = [
   {
     title: "Ofis Kırtasiye",
-    icon: "📄",
-  },
-  {
-    title: "Teknoloji-Hırdavat",
-    icon: "💻",
-  },
-  {
-    title: "Endüstriyel",
-    icon: "📦",
+    href:
+      "/products?category=Ofis%20K%C4%B1rtasiye",
+    icon: "office",
+    iconClassName:
+      "bg-blue-500 text-white",
   },
   {
     title: "Temizlik ve Hijyen",
-    icon: "🧼",
+    href:
+      "/products?category=Temizlik%20ve%20Hijyen",
+    icon: "cleaning",
+    iconClassName:
+      "bg-cyan-500 text-white",
   },
   {
-    title: "Gıda Ürünleri",
-    icon: "☕",
+    title: "Gıda ve Mutfak",
+    href:
+      "/products?category=G%C4%B1da%20ve%20Mutfak",
+    icon: "food",
+    iconClassName:
+      "bg-orange-500 text-white",
+  },
+  {
+    title: "Ambalaj ve Paketleme",
+    href:
+      "/products?category=Ambalaj%20ve%20Paketleme",
+    icon: "package",
+    iconClassName:
+      "bg-violet-500 text-white",
   },
   {
     title: "İş Güvenliği",
-    icon: "🦺",
+    href:
+      "/products?category=%C4%B0%C5%9F%20G%C3%BCvenli%C4%9Fi",
+    icon: "safety",
+    iconClassName:
+      "bg-green-500 text-white",
   },
 ];
 
 export default function Header() {
-  const { cart } = useCart();
-  const [isMenuOpen, setIsMenuOpen] =
-    useState(false);
+  const {
+    cart,
+  } = useCart();
 
-  const totalQty = cart.reduce(
-    (sum, item) => sum + item.qty,
-    0
-  );
+  const [
+    isMenuOpen,
+    setIsMenuOpen,
+  ] = useState(false);
+
+  const totalQty =
+    cart.reduce(
+      (
+        total,
+        item,
+      ) =>
+        total +
+        item.qty,
+      0,
+    );
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -56,113 +99,270 @@ export default function Header() {
     document.body.style.overflow =
       "hidden";
 
-    const closeOnEscape = (
-      event: KeyboardEvent
-    ) => {
-      if (event.key === "Escape") {
-        setIsMenuOpen(false);
+    function closeOnEscape(
+      event: KeyboardEvent,
+    ) {
+      if (
+        event.key ===
+        "Escape"
+      ) {
+        setIsMenuOpen(
+          false,
+        );
       }
-    };
+    }
 
     window.addEventListener(
       "keydown",
-      closeOnEscape
+      closeOnEscape,
     );
 
     return () => {
       document.body.style.overflow =
         previousOverflow;
+
       window.removeEventListener(
         "keydown",
-        closeOnEscape
+        closeOnEscape,
       );
     };
-  }, [isMenuOpen]);
+  }, [
+    isMenuOpen,
+  ]);
 
-  const closeMenu = () =>
-    setIsMenuOpen(false);
+  function closeMenu() {
+    setIsMenuOpen(
+      false,
+    );
+  }
 
   return (
     <>
-      <header className="relative z-40 border-b border-slate-200 bg-white shadow-sm">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
+      <div className="bg-[#071729] text-white">
+        <div className="mx-auto flex min-h-8 max-w-[1160px] items-center justify-between gap-4 px-4 text-[10px] font-semibold sm:px-6">
+          <div className="flex items-center gap-5">
+            <span className="flex items-center gap-1.5">
+              <StoreIcon />
+
+              Kurumsal tedarikte hızlı ve güvenilir çözüm
+            </span>
+
+            <span className="hidden items-center gap-1.5 text-slate-300 md:flex">
+              <TruckSmallIcon />
+
+              İstanbul içi hızlı teslimat
+            </span>
+          </div>
+
+          <div className="hidden items-center gap-5 sm:flex">
+            <Link
+              href="/contact"
+              className="flex items-center gap-1.5 transition hover:text-orange-300"
+            >
+              <PhoneIcon />
+              İletişim
+            </Link>
+
+            <Link
+              href="/account/orders"
+              className="flex items-center gap-1.5 transition hover:text-orange-300"
+            >
+              <OrderIcon />
+              Sipariş Takibi
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-[1160px] items-center gap-5 px-4 py-2 sm:px-6">
           <button
             type="button"
             onClick={() =>
-              setIsMenuOpen(true)
+              setIsMenuOpen(
+                true,
+              )
             }
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#202B38] shadow-sm transition hover:border-[#EF4B23] hover:text-[#EF4B23] lg:hidden"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-[#202B38] lg:hidden"
             aria-label="Menüyü aç"
-            aria-expanded={isMenuOpen}
-            aria-controls="mobile-navigation"
           >
-            <span className="text-2xl leading-none">
-              ☰
-            </span>
+            ☰
           </button>
 
-          <Link
-            href="/"
-            className="inline-flex items-center lg:mr-auto"
-            aria-label="Etken ana sayfa"
+<Link
+  href="/"
+  className="flex shrink-0 items-center gap-3"
+  aria-label="Etken Ofis Ana Sayfa"
+>
+  <img
+    src="/etken-ofis-logo.png"
+    alt="Etken Ofis"
+    width="72"
+    height="72"
+    className="h-[62px] w-[62px] shrink-0 object-contain lg:h-[68px] lg:w-[68px]"
+  />
+
+  <div className="hidden min-w-0 sm:block">
+    <div className="flex items-baseline whitespace-nowrap">
+      <span className="text-[27px] font-black leading-none tracking-[-0.04em] text-[#071729] lg:text-[31px]">
+        ETKEN
+      </span>
+
+      <span className="ml-1 text-[27px] font-black leading-none tracking-[-0.04em] text-[#EF4B23] lg:text-[31px]">
+        OFİS
+      </span>
+    </div>
+
+    <div className="mt-1 whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.30em] text-slate-700 lg:text-[10px]">
+      Kurumsal Tedarik
+    </div>
+  </div>
+</Link>
+
+          <form
+            action="/products"
+            className="hidden min-w-0 flex-1 lg:flex"
           >
-            <img
-              src="/etken-ofis-logo.png"
-              alt="Etken Ofis Tedarik Hizmetleri"
-              width="267"
-              height="210"
-              className="h-[66px] w-auto object-contain sm:h-[76px] lg:h-[84px]"
-            />
-          </Link>
+            <div className="flex w-full overflow-hidden rounded-xl border border-[#EF4B23] bg-white shadow-sm">
+              <input
+                type="search"
+                name="q"
+                placeholder="Ürün, marka, barkod veya ürün kodu ara..."
+                className="min-w-0 flex-1 px-5 py-3 text-xs text-slate-700 outline-none placeholder:text-slate-400"
+              />
 
-          <nav className="hidden items-center justify-end gap-2 text-[13px] font-bold lg:flex">
-            <Link
-              href="/"
-              className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 text-slate-700 transition hover:bg-slate-100 hover:text-[#EF4B23]"
-            >
-              Ana Sayfa
-            </Link>
+              <button
+                type="submit"
+                className="min-w-24 bg-[#EF4B23] px-5 text-xs font-black text-white transition hover:bg-[#D83D18]"
+              >
+                ARA
+              </button>
+            </div>
+          </form>
 
-            <Link
-              href="/products"
-              className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 text-slate-700 transition hover:bg-slate-100 hover:text-[#EF4B23]"
-            >
-              Ürünler
-            </Link>
-
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <Link
               href="/customer-login"
-              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#202B38] px-3.5 text-white transition hover:bg-[#111923]"
+              className="hidden min-h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 transition hover:border-violet-300 hover:bg-violet-50 md:flex"
             >
-              Kurumsal Hesabım
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                <UserIcon />
+              </span>
+
+              <span>
+                <small className="block text-[9px] font-semibold text-violet-600">
+                  Kurumsal
+                </small>
+
+                <strong className="block text-[11px] text-[#202B38]">
+                  Hesabım
+                </strong>
+              </span>
             </Link>
 
             <Link
               href="/cart"
-              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#EF4B23] px-3.5 text-white transition hover:bg-[#D83D18]"
+              className="relative flex min-h-11 items-center gap-2.5 rounded-xl bg-[#EF4B23] px-3.5 text-white shadow-sm transition hover:bg-[#D83D18]"
             >
-              Sepet ({totalQty})
+              <CartIcon />
+
+              <span className="hidden sm:block">
+                <small className="block text-[9px] font-semibold text-orange-100">
+                  Sepetim
+                </small>
+
+                <strong className="block text-[11px]">
+                  {totalQty} ürün
+                </strong>
+              </span>
+
+              {totalQty >
+                0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#202B38] px-1 text-[9px] font-black">
+                  {totalQty >
+                  99
+                    ? "99+"
+                    : totalQty}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 lg:hidden">
+          <form
+            action="/products"
+            className="mx-auto flex max-w-[1160px] px-4 py-2 sm:px-6"
+          >
+            <div className="flex w-full overflow-hidden rounded-xl border border-slate-300 bg-slate-50">
+              <input
+                type="search"
+                name="q"
+                placeholder="Ürün veya marka ara..."
+                className="min-w-0 flex-1 bg-transparent px-4 py-2 text-xs outline-none"
+              />
+
+              <button
+                type="submit"
+                className="bg-[#EF4B23] px-4 text-xs font-black text-white"
+              >
+                ARA
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div className="hidden border-t border-slate-100 bg-white lg:block">
+          <nav className="mx-auto flex max-w-[1160px] items-stretch px-4 sm:px-6">
+            <Link
+              href="/products"
+              className="mr-4 flex min-h-12 shrink-0 items-center gap-2 rounded-t-lg bg-[#071729] px-5 text-xs font-black text-white transition hover:bg-[#14283D]"
+            >
+              <MenuIcon />
+              Tüm Ürünler
+            </Link>
+
+            {categories.map(
+              (
+                category,
+              ) => (
+                <Link
+                  key={
+                    category.title
+                  }
+                  href={
+                    category.href
+                  }
+                  className="group flex min-h-12 items-center gap-2 px-3 text-[11px] font-bold text-slate-800 transition hover:text-[#EF4B23]"
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-sm transition group-hover:scale-110 ${category.iconClassName}`}
+                  >
+                    <CategoryNavIcon
+                      type={
+                        category.icon
+                      }
+                    />
+                  </span>
+
+                  <span>
+                    {
+                      category.title
+                    }
+                  </span>
+                </Link>
+              ),
+            )}
+
+            <Link
+              href="/contact"
+              className="ml-auto flex min-h-12 shrink-0 items-center gap-1.5 px-3 text-[11px] font-black text-[#EF4B23]"
+            >
+              <LockSmallIcon />
+
+              Toplu Alım
             </Link>
           </nav>
-
-          <Link
-            href="/cart"
-            className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EF4B23] text-xl text-white shadow-sm transition hover:bg-[#D83D18] lg:hidden"
-            aria-label={
-              "Sepet, " +
-              totalQty +
-              " ürün"
-            }
-          >
-            🛒
-            {totalQty > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#202B38] px-1 text-[10px] font-black text-white">
-                {totalQty > 99
-                  ? "99+"
-                  : totalQty}
-              </span>
-            )}
-          </Link>
         </div>
       </header>
 
@@ -173,118 +373,133 @@ export default function Header() {
             ? "pointer-events-auto"
             : "pointer-events-none")
         }
-        aria-hidden={!isMenuOpen}
+        aria-hidden={
+          !isMenuOpen
+        }
       >
         <button
           type="button"
-          onClick={closeMenu}
+          onClick={
+            closeMenu
+          }
           className={
-            "absolute inset-0 bg-slate-950/50 backdrop-blur-[1px] transition-opacity duration-200 " +
+            "absolute inset-0 bg-slate-950/55 transition-opacity " +
             (isMenuOpen
               ? "opacity-100"
               : "opacity-0")
           }
           aria-label="Menüyü kapat"
-          tabIndex={isMenuOpen ? 0 : -1}
         />
 
         <aside
-          id="mobile-navigation"
           className={
-            "absolute inset-y-0 left-0 flex w-[86%] max-w-[360px] flex-col bg-white shadow-2xl transition-transform duration-200 ease-out " +
+            "absolute inset-y-0 left-0 flex w-[88%] max-w-[360px] flex-col bg-white shadow-2xl transition-transform " +
             (isMenuOpen
               ? "translate-x-0"
               : "-translate-x-full")
           }
-          role="dialog"
-          aria-modal="true"
-          aria-label="Mobil menü"
         >
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
             <img
               src="/etken-ofis-logo.png"
               alt="Etken Ofis"
               width="267"
               height="210"
-              className="h-16 w-auto object-contain"
+              className="h-32 w-auto max-w-none object-contain"
             />
 
             <button
               type="button"
-              onClick={closeMenu}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-2xl text-slate-700"
+              onClick={
+                closeMenu
+              }
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-2xl"
               aria-label="Menüyü kapat"
             >
               ×
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            <nav className="grid gap-2">
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="grid gap-2">
               <Link
                 href="/"
-                onClick={closeMenu}
-                className="rounded-xl bg-slate-100 px-4 py-3.5 font-bold text-[#202B38]"
+                onClick={
+                  closeMenu
+                }
+                className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold"
               >
                 Ana Sayfa
               </Link>
 
               <Link
                 href="/products"
-                onClick={closeMenu}
-                className="rounded-xl bg-slate-100 px-4 py-3.5 font-bold text-[#202B38]"
+                onClick={
+                  closeMenu
+                }
+                className="rounded-xl bg-[#071729] px-4 py-3 text-sm font-bold text-white"
               >
                 Tüm Ürünler
               </Link>
 
               <Link
                 href="/customer-login"
-                onClick={closeMenu}
-                className="rounded-xl bg-[#202B38] px-4 py-3.5 font-bold text-white"
+                onClick={
+                  closeMenu
+                }
+                className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold"
               >
                 Kurumsal Hesabım
               </Link>
-            </nav>
+            </div>
 
-            <div className="my-5 border-t border-slate-200" />
-
-            <p className="mb-2 px-1 text-xs font-black uppercase tracking-[0.16em] text-[#EF4B23]">
+            <p className="mb-2 mt-6 text-[10px] font-black uppercase tracking-[0.18em] text-[#EF4B23]">
               Kategoriler
             </p>
 
-            <nav className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+            <div className="overflow-hidden rounded-xl border border-slate-200">
               {categories.map(
-                (category) => (
+                (
+                  category,
+                ) => (
                   <Link
-                    key={category.title}
-                    href={{
-                      pathname:
-                        "/products",
-                      query: {
-                        category:
-                          category.title,
-                      },
-                    }}
-                    onClick={closeMenu}
-                    className="flex items-center gap-3 bg-white px-4 py-3 transition hover:bg-orange-50"
+                    key={
+                      category.title
+                    }
+                    href={
+                      category.href
+                    }
+                    onClick={
+                      closeMenu
+                    }
+                    className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm font-bold text-slate-800 last:border-0 hover:bg-orange-50"
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-lg">
-                      {category.icon}
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${category.iconClassName}`}
+                    >
+                      <CategoryNavIcon
+                        type={
+                          category.icon
+                        }
+                      />
                     </span>
-                    <strong className="text-sm text-slate-900">
-                      {category.title}
-                    </strong>
+
+                    {
+                      category.title
+                    }
                   </Link>
-                )
+                ),
               )}
-            </nav>
+            </div>
           </div>
 
           <div className="border-t border-slate-200 p-4">
             <Link
               href="/cart"
-              onClick={closeMenu}
-              className="flex min-h-12 items-center justify-center rounded-xl bg-[#EF4B23] px-4 font-black text-white"
+              onClick={
+                closeMenu
+              }
+              className="flex min-h-12 items-center justify-center rounded-xl bg-[#EF4B23] text-sm font-black text-white"
             >
               Sepetim ({totalQty})
             </Link>
@@ -292,5 +507,293 @@ export default function Header() {
         </aside>
       </div>
     </>
+  );
+}
+
+function CategoryNavIcon({
+  type,
+}: {
+  type: CategoryIconType;
+}) {
+  const className =
+    "h-[18px] w-[18px]";
+
+  if (
+    type ===
+    "office"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={
+          className
+        }
+        aria-hidden="true"
+      >
+        <path d="M5 19h14" />
+        <path d="M7 3h10v14H7z" />
+        <path d="M9 6h6M9 10h6M9 14h4" />
+      </svg>
+    );
+  }
+
+  if (
+    type ===
+    "cleaning"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={
+          className
+        }
+        aria-hidden="true"
+      >
+        <path d="M10 3h4v4l3 4v10H7V11l3-4z" />
+        <path d="M8 14h8" />
+        <path d="M16 5l3-2M17 8h3" />
+      </svg>
+    );
+  }
+
+  if (
+    type ===
+    "food"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={
+          className
+        }
+        aria-hidden="true"
+      >
+        <path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z" />
+        <path d="M16 11h2a2.5 2.5 0 0 1 0 5h-2" />
+        <path d="M8 3c0 1 1 1.5 1 2.5" />
+        <path d="M12 3c0 1 1 1.5 1 2.5" />
+      </svg>
+    );
+  }
+
+  if (
+    type ===
+    "package"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={
+          className
+        }
+        aria-hidden="true"
+      >
+        <path d="M4 7l8-4 8 4-8 4z" />
+        <path d="M4 7v10l8 4 8-4V7" />
+        <path d="M12 11v10" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={
+        className
+      }
+      aria-hidden="true"
+    >
+      <path d="M12 3l7 3v5c0 4.8-2.8 8.1-7 10-4.2-1.9-7-5.2-7-10V6z" />
+      <path d="M8.5 12l2.2 2.2 4.8-5" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="8"
+        r="4"
+      />
+
+      <path d="M4 21c.8-4.2 3.5-6 8-6s7.2 1.8 8 6" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      <path d="M3 4h2l2.2 10h10.9l2-7H7" />
+
+      <circle
+        cx="9"
+        cy="19"
+        r="1.5"
+      />
+
+      <circle
+        cx="18"
+        cy="19"
+        r="1.5"
+      />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+function StoreIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-3.5 w-3.5"
+      aria-hidden="true"
+    >
+      <path d="M5 8l1-4h12l1 4" />
+      <path d="M4 8h16v12H4z" />
+      <path d="M9 20v-6h6v6" />
+    </svg>
+  );
+}
+
+function TruckSmallIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-3.5 w-3.5"
+      aria-hidden="true"
+    >
+      <path d="M3 6h11v10H3zM14 9h4l3 3v4h-7z" />
+
+      <circle
+        cx="7"
+        cy="18"
+        r="2"
+      />
+
+      <circle
+        cx="18"
+        cy="18"
+        r="2"
+      />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-3.5 w-3.5"
+      aria-hidden="true"
+    >
+      <path d="M6 3l4 4-2 3c1.4 2.7 3.3 4.6 6 6l3-2 4 4-2 3c-8 1-16-7-16-16z" />
+    </svg>
+  );
+}
+
+function OrderIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-3.5 w-3.5"
+      aria-hidden="true"
+    >
+      <path d="M5 4h14v16H5z" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </svg>
+  );
+}
+
+function LockSmallIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="h-3.5 w-3.5"
+      aria-hidden="true"
+    >
+      <rect
+        x="5"
+        y="10"
+        width="14"
+        height="10"
+        rx="2"
+      />
+
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
   );
 }

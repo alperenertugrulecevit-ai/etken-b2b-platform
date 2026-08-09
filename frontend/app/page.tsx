@@ -1,79 +1,95 @@
+import Link from "next/link";
+
 import Header from "@/components/layout/Header";
-import ProductImage from "@/components/products/ProductImage";
+
+import HomeHeroSlider from "@/components/products/HomeHeroSlider";
+
+import HomeProductCard from "@/components/products/HomeProductCard";
 
 import {
   prisma,
 } from "@/lib/prisma";
 
-import Link from "next/link";
-
 export const dynamic =
   "force-dynamic";
 
-export const revalidate = 0;
+export const revalidate =
+  0;
 
-const categories = [
-  {
-    title:
-      "Ofis Kırtasiye",
-    icon: "📄",
-    desc:
-      "Kâğıt, kalem ve dosyalama",
-  },
-  {
-    title:
-      "Temizlik ve Hijyen",
-    icon: "🧼",
-    desc:
-      "Temizlik ve hijyen ürünleri",
-  },
-  {
-    title:
-      "Gıda ve Mutfak",
-    icon: "☕",
-    desc:
-      "İçecek ve mutfak ihtiyaçları",
-  },
-  {
-    title:
-      "Ambalaj ve Paketleme",
-    icon: "📦",
-    desc:
-      "Ambalaj ve sevkiyat sarfları",
-  },
-  {
-    title:
-      "İş Güvenliği",
-    icon: "🦺",
-    desc:
-      "Koruyucu ve ikaz ürünleri",
-  },
-];
+type ProductCardModel = {
+  id: number;
+  code: string;
+  name: string;
+  brand: string;
+  imageUrl: string | null;
+  price: number;
+  vat: number;
+  availableStock: number;
+};
 
-function formatCurrency(
-  value: number,
-) {
-  return value.toLocaleString(
-    "tr-TR",
-    {
-      style:
-        "currency",
+function mapProduct(
+  product: {
+    id: number;
+    code: string;
+    name: string;
+    brand: string;
+    imageUrl: string | null;
+    price: number;
+    vat: number;
+    stock: number;
+    reservedStock: number;
+  },
+): ProductCardModel {
+  return {
+    id:
+      product.id,
 
-      currency:
-        "TRY",
+    code:
+      product.code,
 
-      minimumFractionDigits:
-        2,
+    name:
+      product.name,
 
-      maximumFractionDigits:
-        2,
-    },
-  );
+    brand:
+      product.brand,
+
+    imageUrl:
+      product.imageUrl,
+
+    price:
+      product.price,
+
+    vat:
+      product.vat,
+
+    availableStock:
+      Math.max(
+        0,
+        product.stock -
+          product.reservedStock,
+      ),
+  };
 }
+
+const productSelect = {
+  id: true,
+  code: true,
+  name: true,
+  brand: true,
+  imageUrl: true,
+  price: true,
+  vat: true,
+  stock: true,
+  reservedStock: true,
+} as const;
 
 export default async function Home() {
   const [
-    products,
+    featuredRaw,
+    newRaw,
+    officeRaw,
+    cleaningRaw,
+    foodRaw,
     productCount,
   ] =
     await Promise.all([
@@ -95,21 +111,128 @@ export default async function Home() {
           },
           {
             id:
-              "asc",
+              "desc",
           },
         ],
 
-        take: 15,
+        take:
+          10,
 
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          brand: true,
-          imageUrl: true,
-          price: true,
-          stock: true,
+        select:
+          productSelect,
+      }),
+
+      prisma.product.findMany({
+        where: {
+          isActive:
+            true,
+
+          imageUrl: {
+            not:
+              null,
+          },
         },
+
+        orderBy: {
+          id:
+            "desc",
+        },
+
+        take:
+          10,
+
+        select:
+          productSelect,
+      }),
+
+      prisma.product.findMany({
+        where: {
+          isActive:
+            true,
+
+          imageUrl: {
+            not:
+              null,
+          },
+
+          categoryRef: {
+            parent: {
+              name:
+                "Ofis Kırtasiye",
+            },
+          },
+        },
+
+        orderBy: {
+          id:
+            "desc",
+        },
+
+        take:
+          10,
+
+        select:
+          productSelect,
+      }),
+
+      prisma.product.findMany({
+        where: {
+          isActive:
+            true,
+
+          imageUrl: {
+            not:
+              null,
+          },
+
+          categoryRef: {
+            parent: {
+              name:
+                "Temizlik ve Hijyen",
+            },
+          },
+        },
+
+        orderBy: {
+          id:
+            "desc",
+        },
+
+        take:
+          10,
+
+        select:
+          productSelect,
+      }),
+
+      prisma.product.findMany({
+        where: {
+          isActive:
+            true,
+
+          imageUrl: {
+            not:
+              null,
+          },
+
+          categoryRef: {
+            parent: {
+              name:
+                "Gıda ve Mutfak",
+            },
+          },
+        },
+
+        orderBy: {
+          id:
+            "desc",
+        },
+
+        take:
+          10,
+
+        select:
+          productSelect,
       }),
 
       prisma.product.count({
@@ -120,267 +243,434 @@ export default async function Home() {
       }),
     ]);
 
+  const featured =
+    featuredRaw.map(
+      mapProduct,
+    );
+
+  const newProducts =
+    newRaw.map(
+      mapProduct,
+    );
+
+  const officeProducts =
+    officeRaw.map(
+      mapProduct,
+    );
+
+  const cleaningProducts =
+    cleaningRaw.map(
+      mapProduct,
+    );
+
+  const foodProducts =
+    foodRaw.map(
+      mapProduct,
+    );
+
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen bg-[#F7F8FA] text-slate-900">
       <Header />
 
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
-          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
-            Kurumsal Ofis
-            Tedarikinde{" "}
-            <span className="text-[#EF4B23]">
-              Yeni Nesil
-              Platform
-            </span>
-          </h1>
+      <HomeHeroSlider
+        productCount={
+          productCount
+        }
+        featuredProduct={
+          featured[0] ??
+          null
+        }
+        newestProduct={
+          newProducts[0] ??
+          null
+        }
+        officeProduct={
+          officeProducts[0] ??
+          null
+        }
+        cleaningProduct={
+          cleaningProducts[0] ??
+          null
+        }
+        foodProduct={
+          foodProducts[0] ??
+          null
+        }
+      />
 
-          <p className="mt-1.5 max-w-4xl text-sm leading-5 text-slate-600">
-            Ofis kırtasiye,
-            temizlik,
-            ambalaj,
-            iş güvenliği
-            ve gıda
-            ürünlerini tek
-            platformdan
-            yönetin.
+      <ProductSection
+        title="Sizin için seçtiklerimiz"
+        eyebrow="ÖNE ÇIKAN ÜRÜNLER"
+        description="Kurumsal müşterilerimiz için öne çıkan ürünler"
+        products={
+          featured
+        }
+        badge="Öne Çıkan"
+        compactTop
+      />
+
+      <ProductSection
+        title="Yeni Eklenenler"
+        eyebrow="YENİ ÜRÜNLER"
+        description="Kataloğa en son eklenen ürünler"
+        products={
+          newProducts
+        }
+        badge="Yeni"
+      />
+
+      <ProductSection
+        title="Ofis Kırtasiye"
+        eyebrow="OFİSİNİZ İÇİN"
+        description="Günlük ofis kullanımının temel ürünleri"
+        products={
+          officeProducts
+        }
+        href="/products?category=Ofis%20K%C4%B1rtasiye"
+      />
+
+      <ProductSection
+        title="Temizlik ve Hijyen"
+        eyebrow="PROFESYONEL HİJYEN"
+        description="İşletmeler için temizlik ve hijyen çözümleri"
+        products={
+          cleaningProducts
+        }
+        href="/products?category=Temizlik%20ve%20Hijyen"
+      />
+
+      <ProductSection
+        title="Kahve, Çay ve Mutfak"
+        eyebrow="OFİS İKRAM"
+        description="Çalışma alanlarının ikram ürünleri"
+        products={
+          foodProducts
+        }
+        href="/products?category=G%C4%B1da%20ve%20Mutfak"
+      />
+
+      <CorporateSolution />
+    </main>
+  );
+}
+
+function ProductSection({
+  title,
+  eyebrow,
+  description,
+  products,
+  badge,
+  href = "/products",
+  compactTop = false,
+}: {
+  title: string;
+  eyebrow: string;
+  description: string;
+  products: ProductCardModel[];
+  badge?: string;
+  href?: string;
+  compactTop?: boolean;
+}) {
+  if (
+    products.length ===
+    0
+  ) {
+    return null;
+  }
+
+  return (
+    <section
+      className={`mx-auto max-w-[1160px] px-4 sm:px-6 ${
+        compactTop
+          ? "pb-4 pt-1"
+          : "py-4"
+      }`}
+    >
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-[#EF4B23]">
+            {
+              eyebrow
+            }
+          </span>
+
+          <h2 className="mt-0.5 text-[19px] font-black tracking-tight text-[#071729] sm:text-[21px]">
+            {
+              title
+            }
+          </h2>
+
+          <p className="mt-0.5 text-[10px] text-slate-500">
+            {
+              description
+            }
           </p>
-
-          <form
-            action="/products"
-            className="mt-4 flex max-w-3xl shadow-sm"
-          >
-            <input
-              name="q"
-              className="min-w-0 flex-1 rounded-l-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#EF4B23]"
-              placeholder="Ürün, marka veya ürün kodu ara..."
-            />
-
-            <button
-              type="submit"
-              className="rounded-r-xl bg-[#EF4B23] px-6 text-sm font-black text-white hover:bg-[#D83D18]"
-            >
-              ARA
-            </button>
-          </form>
         </div>
-      </section>
 
-      <div className="mx-auto grid max-w-[1400px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:px-8">
-        <aside className="hidden self-start lg:sticky lg:top-4 lg:block">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="bg-[#202B38] px-4 py-2.5 text-sm font-black text-white">
-              Kategoriler
-            </div>
+        <Link
+          href={
+            href
+          }
+          className="hidden shrink-0 text-[10px] font-black text-[#202B38] transition hover:text-[#EF4B23] sm:inline-flex"
+        >
+          Tümünü Gör →
+        </Link>
+      </div>
 
-            <nav className="divide-y divide-slate-100">
-              {categories.map(
-                (
-                  category,
-                ) => (
-                  <Link
-                    key={
-                      category.title
-                    }
-                    href={`/products?category=${encodeURIComponent(
-                      category.title,
-                    )}`}
-                    className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-orange-50"
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg">
-                      {
-                        category.icon
-                      }
-                    </span>
+      <div className="mt-2.5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {products
+          .slice(
+            0,
+            5,
+          )
+          .map(
+            (
+              product,
+            ) => (
+              <HomeProductCard
+                key={
+                  product.id
+                }
+                product={
+                  product
+                }
+                badge={
+                  badge
+                }
+              />
+            ),
+          )}
+      </div>
+    </section>
+  );
+}
 
-                    <span className="min-w-0">
-                      <strong className="block text-sm text-slate-900">
-                        {
-                          category.title
-                        }
-                      </strong>
+function CorporateSolution() {
+  const benefits = [
+    {
+      title:
+        "Hızlı Teslimat",
+      description:
+        "İstanbul içi sevkiyat",
+      icon:
+        "delivery",
+      iconClassName:
+        "bg-orange-500 text-white",
+    },
+    {
+      title:
+        "Kurumsal Fatura",
+      description:
+        "İşletmelere özel süreç",
+      icon:
+        "invoice",
+      iconClassName:
+        "bg-cyan-500 text-white",
+    },
+    {
+      title:
+        "Toplu Alım",
+      description:
+        "Kurumsal sipariş desteği",
+      icon:
+        "package",
+      iconClassName:
+        "bg-violet-500 text-white",
+    },
+    {
+      title:
+        "Güvenli Sipariş",
+      description:
+        "Kontrollü B2B süreç",
+      icon:
+        "secure",
+      iconClassName:
+        "bg-lime-500 text-white",
+    },
+  ] as const;
 
-                      <small className="block truncate text-xs text-slate-500">
-                        {
-                          category.desc
-                        }
-                      </small>
-                    </span>
-                  </Link>
-                ),
-              )}
-            </nav>
-          </div>
+  return (
+    <section className="mx-auto max-w-[1160px] px-4 pb-8 pt-4 sm:px-6">
+      <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#071729] via-[#0B1F34] to-[#071729] text-white shadow-lg">
+        <div className="grid lg:grid-cols-[1fr_1.6fr]">
+          <div className="border-b border-white/10 px-6 py-5 lg:border-b-0 lg:border-r">
+            <span className="text-[9px] font-black uppercase tracking-[0.16em] text-orange-400">
+              Kurumsal Çözüm
+            </span>
 
-          <Link
-            href="/products"
-            className="mt-2 flex items-center justify-center rounded-xl border border-[#202B38] bg-white px-4 py-3 text-sm font-black text-[#202B38] hover:bg-slate-50"
-          >
-            Tüm Kategoriler
-          </Link>
-        </aside>
+            <h2 className="mt-1.5 text-[19px] font-black leading-tight sm:text-[21px]">
+              Toplu satın alma ihtiyaçlarınız için yanınızdayız.
+            </h2>
 
-        <section className="min-w-0">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wider text-[#EF4B23]">
-                Ürün Vitrini
-              </p>
-
-              <h2 className="mt-1 text-2xl font-black">
-                Öne Çıkan
-                Ürünler
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Görseli
-                bulunan aktif
-                kurumsal
-                tedarik
-                ürünleri
-              </p>
-            </div>
+            <p className="mt-2 max-w-[430px] text-[10px] leading-4 text-slate-300">
+              Düzenli tüketim,
+              yüksek hacimli sipariş
+              ve özel kurumsal
+              ihtiyaçlar için Etken
+              Ofis ile iletişime
+              geçin.
+            </p>
 
             <Link
-              href="/products"
-              className="text-sm font-black text-[#202B38] hover:text-[#EF4B23] hover:underline"
+              href="/contact"
+              className="mt-3 inline-flex min-h-9 items-center justify-center rounded-lg bg-[#EF4B23] px-5 text-[11px] font-black text-white transition hover:bg-[#D83D18]"
             >
-              Tüm ürünleri
-              görüntüle →
+              Teklif İste
             </Link>
           </div>
 
-          {products.length ===
-          0 ? (
-            <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
-              Vitrinde
-              gösterilecek
-              görselli aktif
-              ürün
-              bulunmuyor.
-            </div>
-          ) : (
-            <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {products.map(
-                (
-                  product,
-                ) => (
-                  <article
-                    key={
-                      product.id
-                    }
-                    className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+          <div className="grid grid-cols-2 lg:grid-cols-4">
+            {benefits.map(
+              (
+                benefit,
+              ) => (
+                <div
+                  key={
+                    benefit.title
+                  }
+                  className="flex items-center gap-2.5 border-b border-white/10 px-4 py-4 lg:border-b-0 lg:border-r lg:last:border-r-0"
+                >
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-md ${benefit.iconClassName}`}
                   >
-                    <Link
-                      href={
-                        "/products/" +
-                        product.code
+                    <BenefitIcon
+                      type={
+                        benefit.icon
                       }
-                      className="flex flex-1 flex-col"
-                    >
-                      <ProductImage
-                        imageUrl={
-                          product.imageUrl
-                        }
-                        productName={
-                          product.name
-                        }
-                        className="h-24 rounded-lg border border-slate-100 p-2"
-                        fallbackClassName="h-24 rounded-lg text-4xl"
-                      />
+                    />
+                  </span>
 
-                      <h3 className="mt-3 line-clamp-2 min-h-10 text-sm font-black leading-5 text-slate-900">
-                        {
-                          product.name
-                        }
-                      </h3>
-
-                      <p className="mt-1 truncate text-xs text-slate-500">
-                        {
-                          product.brand
-                        }
-                        {" · "}
-                        {
-                          product.code
-                        }
-                      </p>
-
-                      <p className="mt-2.5 text-lg font-black text-[#EF4B23]">
-                        {formatCurrency(
-                          product.price,
-                        )}
-                      </p>
-
-                      <p
-                        className={
-                          "mt-1 text-xs font-bold " +
-                          (product.stock >
-                          0
-                            ? "text-emerald-700"
-                            : "text-red-700")
-                        }
-                      >
-                        {product.stock >
-                        0
-                          ? `Stok: ${product.stock} adet`
-                          : "Stok bekleniyor"}
-                      </p>
-                    </Link>
-
-                    <Link
-                      href={
-                        "/products/" +
-                        product.code
+                  <div>
+                    <strong className="block text-[10px] font-black text-white">
+                      {
+                        benefit.title
                       }
-                      className="mt-3 rounded-lg bg-[#202B38] px-3 py-2 text-center text-xs font-black text-white hover:bg-[#111923]"
-                    >
-                      Ürünü
-                      İncele
-                    </Link>
-                  </article>
-                ),
-              )}
-            </div>
-          )}
+                    </strong>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-[#202B38] p-4 text-white shadow-sm">
-              <strong className="text-2xl">
-                {
-                  productCount
-                }
-                +
-              </strong>
-
-              <p className="mt-1 text-sm text-slate-300">
-                Kayıtlı ürün
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-[#EF4B23] p-4 text-white shadow-sm">
-              <strong className="text-2xl">
-                B2B
-              </strong>
-
-              <p className="mt-1 text-sm text-orange-100">
-                Kurumsal satın
-                alma
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-700 p-4 text-white shadow-sm">
-              <strong className="text-2xl">
-                5
-              </strong>
-
-              <p className="mt-1 text-sm text-slate-200">
-                Ana ürün
-                kategorisi
-              </p>
-            </div>
+                    <span className="mt-0.5 block text-[9px] leading-4 text-slate-300">
+                      {
+                        benefit.description
+                      }
+                    </span>
+                  </div>
+                </div>
+              ),
+            )}
           </div>
-        </section>
+        </div>
       </div>
-    </main>
+    </section>
+  );
+}
+
+function BenefitIcon({
+  type,
+}: {
+  type:
+    | "delivery"
+    | "invoice"
+    | "package"
+    | "secure";
+}) {
+  const className =
+    "h-5 w-5";
+
+  if (
+    type ===
+    "delivery"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={
+          className
+        }
+        aria-hidden="true"
+      >
+        <path d="M3 6h11v10H3z" />
+        <path d="M14 9h4l3 3v4h-7z" />
+        <circle
+          cx="7"
+          cy="18"
+          r="2"
+        />
+        <circle
+          cx="18"
+          cy="18"
+          r="2"
+        />
+      </svg>
+    );
+  }
+
+  if (
+    type ===
+    "invoice"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={
+          className
+        }
+        aria-hidden="true"
+      >
+        <path d="M6 3h9l4 4v14H6z" />
+        <path d="M15 3v5h5" />
+        <path d="M9 12h6M9 16h6" />
+      </svg>
+    );
+  }
+
+  if (
+    type ===
+    "package"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={
+          className
+        }
+        aria-hidden="true"
+      >
+        <path d="M4 7l8-4 8 4-8 4z" />
+        <path d="M4 7v10l8 4 8-4V7" />
+        <path d="M12 11v10" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={
+        className
+      }
+      aria-hidden="true"
+    >
+      <path d="M12 3l7 3v5c0 4.8-2.8 8.1-7 10-4.2-1.9-7-5.2-7-10V6z" />
+      <path d="M8.5 12l2.2 2.2 4.8-5" />
+    </svg>
   );
 }
