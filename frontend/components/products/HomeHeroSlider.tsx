@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useCallback,
   useEffect,
@@ -306,11 +307,8 @@ export default function HomeHeroSlider({
   const nextSlide =
     useCallback(() => {
       setActiveIndex(
-        (
-          current,
-        ) =>
-          (current +
-            1) %
+        (current) =>
+          (current + 1) %
           slides.length,
       );
     }, [
@@ -320,9 +318,7 @@ export default function HomeHeroSlider({
   const previousSlide =
     useCallback(() => {
       setActiveIndex(
-        (
-          current,
-        ) =>
+        (current) =>
           (current -
             1 +
             slides.length) %
@@ -332,31 +328,26 @@ export default function HomeHeroSlider({
       slides.length,
     ]);
 
-  useEffect(
-    () => {
-      if (
-        isPaused
-      ) {
-        return;
-      }
+  useEffect(() => {
+    if (isPaused) {
+      return;
+    }
 
-      const timer =
-        window.setInterval(
-          nextSlide,
-          AUTO_CHANGE_MS,
-        );
+    const timer =
+      window.setInterval(
+        nextSlide,
+        AUTO_CHANGE_MS,
+      );
 
-      return () => {
-        window.clearInterval(
-          timer,
-        );
-      };
-    },
-    [
-      isPaused,
-      nextSlide,
-    ],
-  );
+    return () => {
+      window.clearInterval(
+        timer,
+      );
+    };
+  }, [
+    isPaused,
+    nextSlide,
+  ]);
 
   const slide =
     slides[
@@ -365,7 +356,7 @@ export default function HomeHeroSlider({
 
   return (
     <section className="bg-white">
-      <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-4 lg:px-5">
+      <div className="mx-auto max-w-[1600px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
         <div className="grid items-stretch gap-4 lg:grid-cols-2">
           <div
             className="relative min-w-0"
@@ -381,42 +372,42 @@ export default function HomeHeroSlider({
             }
           >
             <div
-              className={`relative h-[270px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm xl:h-[285px]`}
+              className={`relative h-[238px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm sm:h-[270px] xl:h-[285px]`}
             >
-              <div className="grid h-full items-center gap-3 px-7 py-5 md:grid-cols-[minmax(0,1.12fr)_minmax(250px,0.88fr)] lg:px-8 xl:px-10">
-                <div className="relative z-10 max-w-[540px]">
+              <div className="relative h-full px-7 py-4 sm:grid sm:items-center sm:gap-3 sm:px-8 sm:py-5 md:grid-cols-[minmax(0,1.12fr)_minmax(250px,0.88fr)] lg:px-8 xl:px-10">
+                <div className="relative z-10 w-[62%] sm:w-auto sm:max-w-[540px]">
                   <span
-                    className={`inline-flex rounded-full bg-white/85 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] shadow-sm ${slide.eyebrowClassName}`}
+                    className={`inline-flex rounded-full bg-white/85 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.08em] shadow-sm sm:px-3 sm:text-[10px] ${slide.eyebrowClassName}`}
                   >
                     {
                       slide.eyebrow
                     }
                   </span>
 
-                  <h1 className="mt-3 text-[25px] font-black leading-[1.08] tracking-tight text-[#172435] sm:text-[29px] xl:text-[32px]">
+                  <h1 className="mt-2.5 text-[19px] font-black leading-[1.05] tracking-tight text-[#172435] sm:mt-3 sm:text-[29px] xl:text-[32px]">
                     {
                       slide.title
                     }
 
-                    <span className="mt-1 block text-[#EF4B23]">
+                    <span className="mt-0.5 block text-[#EF4B23] sm:mt-1">
                       {
                         slide.highlight
                       }
                     </span>
                   </h1>
 
-                  <p className="mt-3 max-w-[500px] text-[13px] leading-5 text-slate-600 sm:text-sm">
+                  <p className="mt-2 line-clamp-3 text-[9px] leading-[14px] text-slate-600 sm:mt-3 sm:max-w-[500px] sm:text-[13px] sm:leading-5">
                     {
                       slide.description
                     }
                   </p>
 
-                  <div className="mt-5 flex flex-wrap gap-2.5">
+                  <div className="mt-3 flex flex-wrap gap-2 sm:mt-5 sm:gap-2.5">
                     <Link
                       href={
                         slide.primaryHref
                       }
-                      className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#EF4B23] px-5 text-xs font-black text-white shadow-sm transition hover:bg-[#D83D18]"
+                      className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#EF4B23] px-3.5 text-[10px] font-black text-white shadow-sm transition hover:bg-[#D83D18] sm:min-h-10 sm:px-5 sm:text-xs"
                     >
                       {
                         slide.primaryLabel
@@ -429,7 +420,7 @@ export default function HomeHeroSlider({
                         href={
                           slide.secondaryHref
                         }
-                        className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white/85 px-5 text-xs font-black text-[#202B38] transition hover:border-[#EF4B23] hover:text-[#EF4B23]"
+                        className="hidden min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white/85 px-5 text-xs font-black text-[#202B38] transition hover:border-[#EF4B23] hover:text-[#EF4B23] sm:inline-flex"
                       >
                         {
                           slide.secondaryLabel
@@ -439,6 +430,30 @@ export default function HomeHeroSlider({
                   </div>
                 </div>
 
+                {/* MOBİL ÜRÜN GÖRSELİ */}
+                {slide.product &&
+                slide.product.imageUrl ? (
+                  <Link
+                    href={`/products/${slide.product.code}`}
+                    className="absolute bottom-8 right-4 top-11 z-[5] flex w-[34%] items-center justify-center sm:hidden"
+                    aria-label={
+                      slide.product.name
+                    }
+                  >
+                    <ProductImage
+                      imageUrl={
+                        slide.product.imageUrl
+                      }
+                      productName={
+                        slide.product.name
+                      }
+                      className="h-full max-h-[150px] w-full bg-transparent object-contain p-1"
+                      fallbackClassName="hidden"
+                    />
+                  </Link>
+                ) : null}
+
+                {/* MASAÜSTÜ ÜRÜN GÖRSELİ - MEVCUT YAPI */}
                 <div className="relative hidden h-[215px] items-center justify-center md:flex">
                   {slide.product ? (
                     <Link
@@ -501,7 +516,7 @@ export default function HomeHeroSlider({
                 previousSlide
               }
               aria-label="Önceki reklam"
-              className="absolute left-0 top-1/2 z-20 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-xl font-black text-[#202B38] shadow-lg transition hover:bg-[#202B38] hover:text-white"
+              className="absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-x-[35%] -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-black text-[#202B38] shadow-lg transition hover:bg-[#202B38] hover:text-white sm:h-10 sm:w-10 sm:-translate-x-1/2 sm:text-xl"
             >
               ‹
             </button>
@@ -512,12 +527,12 @@ export default function HomeHeroSlider({
                 nextSlide
               }
               aria-label="Sonraki reklam"
-              className="absolute right-0 top-1/2 z-20 flex h-10 w-10 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-xl font-black text-[#202B38] shadow-lg transition hover:bg-[#202B38] hover:text-white"
+              className="absolute right-0 top-1/2 z-20 flex h-9 w-9 translate-x-[35%] -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-black text-[#202B38] shadow-lg transition hover:bg-[#202B38] hover:text-white sm:h-10 sm:w-10 sm:translate-x-1/2 sm:text-xl"
             >
               ›
             </button>
 
-            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1.5 shadow-sm backdrop-blur">
+            <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/85 px-2 py-1.5 shadow-sm backdrop-blur sm:bottom-3 sm:gap-1.5 sm:px-2.5">
               {slides.map(
                 (
                   item,

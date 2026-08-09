@@ -36,13 +36,13 @@ export default async function CustomerLoginPage({
     searchParams,
   ]);
 
-  if (
-    user?.userType ===
-      UserType.CUSTOMER &&
-    user.customer?.isActive
-  ) {
-    redirect("/account");
-  }
+if (
+  user?.userType ===
+    UserType.CUSTOMER &&
+  user.customer?.isActive
+) {
+  redirect("/");
+}
 
   const successMessage =
     query.passwordReset ===
