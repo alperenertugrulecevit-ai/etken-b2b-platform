@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 import Header from "@/components/layout/Header";
 
@@ -380,7 +380,7 @@ function ProductSection({
 
   return (
     <section
-      className={`mx-auto max-w-[1160px] px-4 sm:px-6 ${
+      className={`mx-auto max-w-[1600px] px-4 sm:px-6 ${
         compactTop
           ? "pb-4 pt-1"
           : "py-4"
@@ -490,7 +490,7 @@ function CorporateSolution() {
   ] as const;
 
   return (
-    <section className="mx-auto max-w-[1160px] px-4 pb-8 pt-4 sm:px-6">
+    <section className="mx-auto max-w-[1600px] px-3 sm:px-4 lg:px-5 pb-8 pt-4 sm:px-6">
       <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#071729] via-[#0B1F34] to-[#071729] text-white shadow-lg">
         <div className="grid lg:grid-cols-[1fr_1.6fr]">
           <div className="border-b border-white/10 px-6 py-5 lg:border-b-0 lg:border-r">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
@@ -50,7 +50,8 @@ const categories: CategoryItem[] = [
       "bg-orange-500 text-white",
   },
   {
-    title: "Ambalaj ve Paketleme",
+    title:
+      "Ambalaj ve Paketleme",
     href:
       "/products?category=Ambalaj%20ve%20Paketleme",
     icon: "package",
@@ -63,7 +64,7 @@ const categories: CategoryItem[] = [
       "/products?category=%C4%B0%C5%9F%20G%C3%BCvenli%C4%9Fi",
     icon: "safety",
     iconClassName:
-      "bg-green-500 text-white",
+      "bg-emerald-500 text-white",
   },
 ];
 
@@ -139,25 +140,25 @@ export default function Header() {
   return (
     <>
       <div className="bg-[#071729] text-white">
-        <div className="mx-auto flex min-h-8 max-w-[1160px] items-center justify-between gap-4 px-4 text-[10px] font-semibold sm:px-6">
-          <div className="flex items-center gap-5">
-            <span className="flex items-center gap-1.5">
+        <div className="mx-auto flex min-h-9 max-w-[1600px] items-center justify-between gap-4 px-4 text-[11px] font-semibold sm:px-6">
+          <div className="flex items-center gap-7">
+            <span className="flex items-center gap-2">
               <StoreIcon />
 
               Kurumsal tedarikte hızlı ve güvenilir çözüm
             </span>
 
-            <span className="hidden items-center gap-1.5 text-slate-300 md:flex">
+            <span className="hidden items-center gap-2 text-slate-300 md:flex">
               <TruckSmallIcon />
 
               İstanbul içi hızlı teslimat
             </span>
           </div>
 
-          <div className="hidden items-center gap-5 sm:flex">
+          <div className="hidden items-center gap-7 sm:flex">
             <Link
               href="/contact"
-              className="flex items-center gap-1.5 transition hover:text-orange-300"
+              className="flex items-center gap-2 transition hover:text-orange-300"
             >
               <PhoneIcon />
               İletişim
@@ -165,7 +166,7 @@ export default function Header() {
 
             <Link
               href="/account/orders"
-              className="flex items-center gap-1.5 transition hover:text-orange-300"
+              className="flex items-center gap-2 transition hover:text-orange-300"
             >
               <OrderIcon />
               Sipariş Takibi
@@ -175,7 +176,7 @@ export default function Header() {
       </div>
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-[1160px] items-center gap-5 px-4 py-2 sm:px-6">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-6 px-3 py-2 sm:px-4 lg:px-5">
           <button
             type="button"
             onClick={() =>
@@ -189,35 +190,35 @@ export default function Header() {
             ☰
           </button>
 
-<Link
-  href="/"
-  className="flex shrink-0 items-center gap-3"
-  aria-label="Etken Ofis Ana Sayfa"
->
-  <img
-    src="/etken-ofis-logo.png"
-    alt="Etken Ofis"
-    width="72"
-    height="72"
-    className="h-[62px] w-[62px] shrink-0 object-contain lg:h-[68px] lg:w-[68px]"
-  />
+          <Link
+            href="/"
+            className="flex shrink-0 items-center gap-2.5 sm:gap-3"
+            aria-label="Etken Ofis Ana Sayfa"
+          >
+            <img
+              src="/etken-ofis-logo.png"
+              alt="Etken Ofis"
+              width="72"
+              height="72"
+              className="h-[46px] w-[46px] shrink-0 object-contain sm:h-[56px] sm:w-[56px] lg:h-[70px] lg:w-[70px]"
+            />
 
-  <div className="hidden min-w-0 sm:block">
-    <div className="flex items-baseline whitespace-nowrap">
-      <span className="text-[27px] font-black leading-none tracking-[-0.04em] text-[#071729] lg:text-[31px]">
-        ETKEN
-      </span>
+            <div className="min-w-0">
+              <div className="flex items-baseline whitespace-nowrap">
+                <span className="text-[16px] font-black leading-none tracking-[-0.04em] text-[#071729] sm:text-[22px] lg:text-[32px]">
+                  ETKEN
+                </span>
 
-      <span className="ml-1 text-[27px] font-black leading-none tracking-[-0.04em] text-[#EF4B23] lg:text-[31px]">
-        OFİS
-      </span>
-    </div>
+                <span className="ml-1 text-[16px] font-black leading-none tracking-[-0.04em] text-[#EF4B23] sm:text-[22px] lg:text-[32px]">
+                  OFİS
+                </span>
+              </div>
 
-    <div className="mt-1 whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.30em] text-slate-700 lg:text-[10px]">
-      Kurumsal Tedarik
-    </div>
-  </div>
-</Link>
+              <div className="mt-1 whitespace-nowrap text-[6px] font-bold uppercase tracking-[0.20em] text-slate-700 sm:text-[8px] sm:tracking-[0.25em] lg:text-[10px] lg:tracking-[0.31em]">
+                Kurumsal Tedarik
+              </div>
+            </div>
+          </Link>
 
           <form
             action="/products"
@@ -228,22 +229,22 @@ export default function Header() {
                 type="search"
                 name="q"
                 placeholder="Ürün, marka, barkod veya ürün kodu ara..."
-                className="min-w-0 flex-1 px-5 py-3 text-xs text-slate-700 outline-none placeholder:text-slate-400"
+                className="min-w-0 flex-1 px-5 py-3 text-[13px] text-slate-700 outline-none placeholder:text-slate-400"
               />
 
               <button
                 type="submit"
-                className="min-w-24 bg-[#EF4B23] px-5 text-xs font-black text-white transition hover:bg-[#D83D18]"
+                className="min-w-28 bg-[#EF4B23] px-6 text-xs font-black text-white transition hover:bg-[#D83D18]"
               >
                 ARA
               </button>
             </div>
           </form>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2.5">
             <Link
               href="/customer-login"
-              className="hidden min-h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 transition hover:border-violet-300 hover:bg-violet-50 md:flex"
+              className="hidden min-h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 transition hover:border-violet-300 hover:bg-violet-50 md:flex"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
                 <UserIcon />
@@ -254,7 +255,7 @@ export default function Header() {
                   Kurumsal
                 </small>
 
-                <strong className="block text-[11px] text-[#202B38]">
+                <strong className="block text-[12px] text-[#202B38]">
                   Hesabım
                 </strong>
               </span>
@@ -262,7 +263,7 @@ export default function Header() {
 
             <Link
               href="/cart"
-              className="relative flex min-h-11 items-center gap-2.5 rounded-xl bg-[#EF4B23] px-3.5 text-white shadow-sm transition hover:bg-[#D83D18]"
+              className="relative flex min-h-11 items-center gap-2.5 rounded-xl bg-[#EF4B23] px-4 text-white shadow-sm transition hover:bg-[#D83D18]"
             >
               <CartIcon />
 
@@ -271,7 +272,7 @@ export default function Header() {
                   Sepetim
                 </small>
 
-                <strong className="block text-[11px]">
+                <strong className="block text-[12px]">
                   {totalQty} ürün
                 </strong>
               </span>
@@ -292,7 +293,7 @@ export default function Header() {
         <div className="border-t border-slate-100 lg:hidden">
           <form
             action="/products"
-            className="mx-auto flex max-w-[1160px] px-4 py-2 sm:px-6"
+            className="mx-auto flex max-w-[1600px] px-4 py-2 sm:px-6"
           >
             <div className="flex w-full overflow-hidden rounded-xl border border-slate-300 bg-slate-50">
               <input
@@ -313,53 +314,54 @@ export default function Header() {
         </div>
 
         <div className="hidden border-t border-slate-100 bg-white lg:block">
-          <nav className="mx-auto flex max-w-[1160px] items-stretch px-4 sm:px-6">
+          <nav className="mx-auto flex min-h-14 max-w-[1600px] items-stretch px-3 sm:px-4 lg:px-5">
             <Link
               href="/products"
-              className="mr-4 flex min-h-12 shrink-0 items-center gap-2 rounded-t-lg bg-[#071729] px-5 text-xs font-black text-white transition hover:bg-[#14283D]"
+              className="mr-5 flex shrink-0 items-center gap-2.5 rounded-t-lg bg-[#071729] px-6 text-[13px] font-black text-white transition hover:bg-[#14283D]"
             >
               <MenuIcon />
               Tüm Ürünler
             </Link>
 
-            {categories.map(
-              (
-                category,
-              ) => (
-                <Link
-                  key={
-                    category.title
-                  }
-                  href={
-                    category.href
-                  }
-                  className="group flex min-h-12 items-center gap-2 px-3 text-[11px] font-bold text-slate-800 transition hover:text-[#EF4B23]"
-                >
-                  <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-sm transition group-hover:scale-110 ${category.iconClassName}`}
-                  >
-                    <CategoryNavIcon
-                      type={
-                        category.icon
-                      }
-                    />
-                  </span>
-
-                  <span>
-                    {
+            <div className="flex min-w-0 flex-1 items-stretch justify-start gap-2 xl:gap-4">
+              {categories.map(
+                (
+                  category,
+                ) => (
+                  <Link
+                    key={
                       category.title
                     }
-                  </span>
-                </Link>
-              ),
-            )}
+                    href={
+                      category.href
+                    }
+                    className="group flex min-h-14 shrink-0 items-center gap-2.5 px-3 text-[12px] font-bold text-slate-800 transition hover:text-[#EF4B23] xl:px-4 xl:text-[13px]"
+                  >
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm transition duration-200 group-hover:scale-110 ${category.iconClassName}`}
+                    >
+                      <CategoryNavIcon
+                        type={
+                          category.icon
+                        }
+                      />
+                    </span>
+
+                    <span>
+                      {
+                        category.title
+                      }
+                    </span>
+                  </Link>
+                ),
+              )}
+            </div>
 
             <Link
               href="/contact"
-              className="ml-auto flex min-h-12 shrink-0 items-center gap-1.5 px-3 text-[11px] font-black text-[#EF4B23]"
+              className="ml-auto flex min-h-14 shrink-0 items-center gap-2 px-4 text-[12px] font-black text-[#EF4B23] xl:text-[13px]"
             >
               <LockSmallIcon />
-
               Toplu Alım
             </Link>
           </nav>
@@ -393,20 +395,44 @@ export default function Header() {
 
         <aside
           className={
-            "absolute inset-y-0 left-0 flex w-[88%] max-w-[360px] flex-col bg-white shadow-2xl transition-transform " +
+            "absolute inset-y-0 left-0 flex w-[88%] max-w-[370px] flex-col bg-white shadow-2xl transition-transform " +
             (isMenuOpen
               ? "translate-x-0"
               : "-translate-x-full")
           }
         >
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
-            <img
-              src="/etken-ofis-logo.png"
-              alt="Etken Ofis"
-              width="267"
-              height="210"
-              className="h-32 w-auto max-w-none object-contain"
-            />
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <Link
+              href="/"
+              onClick={
+                closeMenu
+              }
+              className="flex items-center gap-2.5"
+            >
+              <img
+                src="/etken-ofis-logo.png"
+                alt="Etken Ofis"
+                width="56"
+                height="56"
+                className="h-12 w-12 object-contain"
+              />
+
+              <div>
+                <div className="flex items-baseline">
+                  <strong className="text-lg font-black text-[#071729]">
+                    ETKEN
+                  </strong>
+
+                  <strong className="ml-1 text-lg font-black text-[#EF4B23]">
+                    OFİS
+                  </strong>
+                </div>
+
+                <span className="block text-[7px] font-bold uppercase tracking-[0.24em] text-slate-600">
+                  Kurumsal Tedarik
+                </span>
+              </div>
+            </Link>
 
             <button
               type="button"
@@ -516,7 +542,7 @@ function CategoryNavIcon({
   type: CategoryIconType;
 }) {
   const className =
-    "h-[18px] w-[18px]";
+    "h-5 w-5";
 
   if (
     type ===

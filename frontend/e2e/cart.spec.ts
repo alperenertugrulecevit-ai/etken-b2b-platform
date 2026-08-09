@@ -128,7 +128,7 @@ async function addProductFromDetailPage(
           },
         )
         .toMatch(
-          /Sepet\s*\([1-9]\d*\)/i,
+          /Sepetim\s*[1-9]\d*\s*ürün/i,
         );
 
       return;
@@ -168,7 +168,7 @@ test.describe(
 
         const cartLink =
           page.getByRole("link", {
-            name: /Sepet\s*\([1-9]\d*\)/i,
+            name: /Sepetim\s*[1-9]\d*\s*ürün/i,
           });
 
         await expect(
@@ -200,7 +200,7 @@ test.describe(
 
         await expect(
           page.getByRole("link", {
-            name: /Sepet\s*\([1-9]\d*\)/i,
+            name: /Sepetim\s*[1-9]\d*\s*ürün/i,
           }),
         ).toBeVisible();
       },
