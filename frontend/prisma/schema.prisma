@@ -2791,3 +2791,31 @@ model BarcodeRecoveryAttempt {
   @@index([productId, status])
   @@index([attemptedAt])
 }
+
+model LoginRateLimit {
+  id String @id @default(cuid())
+
+  // Her rate-limit kapsamı için tekil anahtar.
+  // Örnek:
+  // ip:85.100.10.20
+  // ip-user:85.100.10.20:admin
+  scopeKey String @unique
+
+  ipAddress String
+  username  String?
+
+  attemptCount Int @default(0)
+
+  windowStartedAt DateTime @default(now())
+  lastAttemptAt   DateTime @default(now())
+
+  blockedUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ipAddress])
+  @@index([username])
+  @@index([blockedUntil])
+  @@index([lastAttemptAt])
+}
