@@ -1,3 +1,7 @@
+import {
+  UserStatus,
+} from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 
 type MappedPermission = {
@@ -9,7 +13,7 @@ type MappedPermission = {
 
 export class AuthRepository {
   static async findUserByUsername(
-    username: string
+    username: string,
   ) {
     return prisma.user.findUnique({
       where: {
@@ -50,7 +54,7 @@ export class AuthRepository {
   }
 
   static async updateLastLogin(
-    userId: string
+    userId: string,
   ) {
     return prisma.user.update({
       where: {
@@ -59,6 +63,7 @@ export class AuthRepository {
 
       data: {
         lastLoginAt: new Date(),
+
         failedLoginCount: 0,
         lastFailedLoginAt: null,
         lockedAt: null,
@@ -67,7 +72,7 @@ export class AuthRepository {
   }
 
   static async increaseFailedLogin(
-    userId: string
+    userId: string,
   ) {
     return prisma.user.update({
       where: {
@@ -85,8 +90,8 @@ export class AuthRepository {
     });
   }
 
-  static async lockUser(
-    userId: string
+  static async resetFailedLoginState(
+    userId: string,
   ) {
     return prisma.user.update({
       where: {
@@ -94,8 +99,40 @@ export class AuthRepository {
       },
 
       data: {
-        status: "LOCKED",
+        failedLoginCount: 0,
+        lastFailedLoginAt: null,
+      },
+    });
+  }
+
+  static async lockUser(
+    userId: string,
+  ) {
+    return prisma.user.update({
+      where: {
+        id: userId,
+      },
+
+      data: {
+        status: UserStatus.LOCKED,
         lockedAt: new Date(),
+      },
+    });
+  }
+
+  static async unlockUser(
+    userId: string,
+  ) {
+    return prisma.user.update({
+      where: {
+        id: userId,
+      },
+
+      data: {
+        status: UserStatus.ACTIVE,
+        failedLoginCount: 0,
+        lastFailedLoginAt: null,
+        lockedAt: null,
       },
     });
   }
@@ -105,11 +142,11 @@ export class AuthRepository {
       ReturnType<
         typeof AuthRepository.findUserByUsername
       >
-    >
+    >,
   ) {
     if (!user) {
       throw new Error(
-        "User not found."
+        "User not found.",
       );
     }
 
@@ -121,7 +158,7 @@ export class AuthRepository {
           name: item.role.name,
           description:
             item.role.description,
-        })
+        }),
       );
 
     const permissionMap =
@@ -150,78 +187,109 @@ export class AuthRepository {
             name: permission.name,
             module:
               permission.module,
-          }
+          },
         );
       }
     }
 
     return {
       id: user.id,
+
       employeeId:
         user.employeeId,
+
       customerId:
         user.customerId,
-      username: user.username,
-      email: user.email,
+
+      username:
+        user.username,
+
+      email:
+        user.email,
+
       fullName:
         user.fullName,
+
       customerRole:
         user.customerRole,
 
-      userType: user.userType,
-      status: user.status,
+      userType:
+        user.userType,
+
+      status:
+        user.status,
 
       mustChangePassword:
         user.mustChangePassword,
 
-      isRfUser: user.isRfUser,
+      isRfUser:
+        user.isRfUser,
+
       isAdminUser:
         user.isAdminUser,
 
-      customer: user.customer
-        ? {
-            id: user.customer.id,
-            customerCode:
-              user.customer.customerCode,
-            companyName:
-              user.customer.companyName,
-            contactName:
-              user.customer.contactName,
-            isActive:
-              user.customer.isActive,
-          }
-        : null,
+      customer:
+        user.customer
+          ? {
+              id:
+                user.customer.id,
 
-      employee: user.employee
-        ? {
-            id: user.employee.id,
+              customerCode:
+                user.customer
+                  .customerCode,
 
-            employeeCode:
-              user.employee
-                .employeeCode,
+              companyName:
+                user.customer
+                  .companyName,
 
-            firstName:
-              user.employee.firstName,
+              contactName:
+                user.customer
+                  .contactName,
 
-            lastName:
-              user.employee.lastName,
+              isActive:
+                user.customer
+                  .isActive,
+            }
+          : null,
 
-            department:
-              user.employee.department,
+      employee:
+        user.employee
+          ? {
+              id:
+                user.employee.id,
 
-            title:
-              user.employee.title,
+              employeeCode:
+                user.employee
+                  .employeeCode,
 
-            shiftCode:
-              user.employee.shiftCode,
-          }
-        : null,
+              firstName:
+                user.employee
+                  .firstName,
+
+              lastName:
+                user.employee
+                  .lastName,
+
+              department:
+                user.employee
+                  .department,
+
+              title:
+                user.employee
+                  .title,
+
+              shiftCode:
+                user.employee
+                  .shiftCode,
+            }
+          : null,
 
       roles,
 
-      permissions: Array.from(
-        permissionMap.values()
-      ),
+      permissions:
+        Array.from(
+          permissionMap.values(),
+        ),
     };
   }
 }
