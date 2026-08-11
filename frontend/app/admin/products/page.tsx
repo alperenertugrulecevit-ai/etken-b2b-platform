@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
 import { toggleProductStatus } from "./actions";
+import ProductExcelActions from "@/components/admin/ProductExcelActions";
 
 function formatCurrency(value: number) {
   return value.toLocaleString("tr-TR", {
@@ -136,21 +137,7 @@ export default async function AdminProductsPage() {
           </p>
         </div>
 
-        <div className="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap">
-          <Link
-            href="/admin/products/import"
-            className="rounded-xl border border-blue-900 bg-white px-6 py-3 text-center font-bold text-blue-900 hover:bg-blue-50"
-          >
-            Excel’den Ürün Yükle
-          </Link>
-
-          <Link
-            href="/admin/products/new"
-            className="rounded-xl bg-blue-900 px-6 py-3 text-center font-bold text-white hover:bg-blue-800"
-          >
-            + Yeni Ürün Ekle
-          </Link>
-        </div>
+<ProductExcelActions />
       </div>
 
       {/* STOK ÖZETİ */}
