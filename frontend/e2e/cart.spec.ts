@@ -1,6 +1,13 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
-async function prepareEmptyCart(page: Page): Promise<void> {
+async function prepareEmptyCart(
+  page: Page,
+): Promise<void> {
   await page.goto("/", {
     waitUntil: "domcontentloaded",
   });
@@ -11,25 +18,45 @@ async function prepareEmptyCart(page: Page): Promise<void> {
   });
 
   await page.goto("/products", {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
+  });
+
+  /*
+   * networkidle yerine gerçekten ihtiyacımız olan
+   * ürün liste ekranının hazır olmasını bekliyoruz.
+   *
+   * GitHub Actions ortamında arka plandaki API /
+   * Next.js istekleri networkidle durumunu gereksiz
+   * şekilde geciktirebilir veya timeout'a düşürebilir.
+   */
+  await expect(
+    page.locator("body"),
+  ).toBeVisible({
+    timeout: 20_000,
   });
 }
 
 async function getFirstSellableProductCard(
   page: Page,
 ): Promise<Locator> {
-  const sellableProductCard = page
-    .getByRole("article")
-    .filter({
-      has: page.getByRole("button", {
-        name: "Sepete Ekle",
-        exact: true,
-      }),
-    })
-    .first();
+  const sellableProductCard =
+    page
+      .getByRole("article")
+      .filter({
+        has: page.getByRole(
+          "button",
+          {
+            name: "Sepete Ekle",
+            exact: true,
+          },
+        ),
+      })
+      .first();
 
-  await expect(sellableProductCard).toBeVisible({
-    timeout: 20_000,
+  await expect(
+    sellableProductCard,
+  ).toBeVisible({
+    timeout: 30_000,
   });
 
   return sellableProductCard;
@@ -39,36 +66,69 @@ async function openFirstSellableProductDetail(
   page: Page,
 ): Promise<void> {
   const productCard =
-    await getFirstSellableProductCard(page);
+    await getFirstSellableProductCard(
+      page,
+    );
 
-  const productLink = productCard
-    .locator('a[href^="/products/"]')
-    .first();
+  const productLink =
+    productCard
+      .locator(
+        'a[href^="/products/"]',
+      )
+      .first();
 
-  await expect(productLink).toBeVisible({
+  await expect(
+    productLink,
+  ).toBeVisible({
     timeout: 20_000,
   });
 
   await productLink.click();
 
-  await expect(page).toHaveURL(
+  await expect(
+    page,
+  ).toHaveURL(
     /\/products\/[^/?#]+/,
     {
       timeout: 20_000,
     },
   );
 
-  await page.waitForLoadState("networkidle");
+  /*
+   * Burada da networkidle beklemiyoruz.
+   * Ürün detay sayfasındaki gerçek
+   * etkileşim öğesini bekliyoruz.
+   */
+  const addToCartButton =
+    page.getByRole(
+      "button",
+      {
+        name: "Sepete Ekle",
+        exact: true,
+      },
+    );
+
+  await expect(
+    addToCartButton,
+  ).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 async function readCartText(
   page: Page,
 ): Promise<string> {
-  const cartLink = page.getByRole("link", {
-    name: /Sepet/i,
-  });
+  const cartLink =
+    page.getByRole(
+      "link",
+      {
+        name: /Sepet/i,
+      },
+    );
 
-  await expect(cartLink).toBeVisible({
+  await expect(
+    cartLink,
+  ).toBeVisible({
     timeout: 20_000,
   });
 
@@ -80,29 +140,38 @@ async function readCartText(
 async function addProductFromDetailPage(
   page: Page,
 ): Promise<void> {
-  await openFirstSellableProductDetail(page);
-
-  const addToCartButton = page.getByRole(
-    "button",
-    {
-      name: "Sepete Ekle",
-      exact: true,
-    },
+  await openFirstSellableProductDetail(
+    page,
   );
 
-  await expect(addToCartButton).toBeVisible({
+  const addToCartButton =
+    page.getByRole(
+      "button",
+      {
+        name: "Sepete Ekle",
+        exact: true,
+      },
+    );
+
+  await expect(
+    addToCartButton,
+  ).toBeVisible({
     timeout: 20_000,
   });
 
-  await expect(addToCartButton).toBeEnabled({
+  await expect(
+    addToCartButton,
+  ).toBeEnabled({
     timeout: 20_000,
   });
 
   /*
-   * GitHub Actions ortamında sayfa görünür olsa da
-   * React tarafı ilk tıklama sırasında tamamen hazır
-   * olmayabilir. Bu nedenle sepete ekleme işlemini
-   * en fazla üç kez doğrularız.
+   * GitHub Actions ortamında sayfa görünür
+   * olsa da React hydration ilk tıklama
+   * sırasında tamamen hazır olmayabilir.
+   *
+   * Bu nedenle sepete ekleme işlemini
+   * en fazla üç kez doğruluyoruz.
    */
   for (
     let attempt = 1;
@@ -115,11 +184,15 @@ async function addProductFromDetailPage(
       await expect
         .poll(
           async () =>
-            readCartText(page),
+            readCartText(
+              page,
+            ),
           {
             message:
               `Sepet adedi ${attempt}. denemeden sonra güncellenmedi.`,
-            timeout: 7_000,
+
+            timeout: 10_000,
+
             intervals: [
               250,
               500,
@@ -133,7 +206,9 @@ async function addProductFromDetailPage(
 
       return;
     } catch {
-      if (attempt === 3) {
+      if (
+        attempt === 3
+      ) {
         throw new Error(
           "Ürün üç denemeye rağmen sepete eklenemedi.",
         );
@@ -142,6 +217,17 @@ async function addProductFromDetailPage(
       await page.waitForTimeout(
         1_000,
       );
+
+      /*
+       * Yeniden denemeden önce butonun
+       * hâlâ kullanılabilir olduğunu
+       * doğruluyoruz.
+       */
+      await expect(
+        addToCartButton,
+      ).toBeEnabled({
+        timeout: 10_000,
+      });
     }
   }
 }
@@ -155,7 +241,9 @@ test.describe(
 
     test.beforeEach(
       async ({ page }) => {
-        await prepareEmptyCart(page);
+        await prepareEmptyCart(
+          page,
+        );
       },
     );
 
@@ -167,13 +255,19 @@ test.describe(
         );
 
         const cartLink =
-          page.getByRole("link", {
-            name: /Sepetim\s*[1-9]\d*\s*ürün/i,
-          });
+          page.getByRole(
+            "link",
+            {
+              name:
+                /Sepetim\s*[1-9]\d*\s*ürün/i,
+            },
+          );
 
         await expect(
           cartLink,
-        ).toBeVisible();
+        ).toBeVisible({
+          timeout: 20_000,
+        });
 
         await cartLink.click();
 
@@ -181,10 +275,15 @@ test.describe(
           page,
         ).toHaveURL(
           /\/cart(?:\?.*)?$/,
+          {
+            timeout: 20_000,
+          },
         );
 
         await expect(
-          page.locator("body"),
+          page.locator(
+            "body",
+          ),
         ).not.toContainText(
           /sepetiniz boş|sepet boş/i,
         );
@@ -199,10 +298,16 @@ test.describe(
         );
 
         await expect(
-          page.getByRole("link", {
-            name: /Sepetim\s*[1-9]\d*\s*ürün/i,
-          }),
-        ).toBeVisible();
+          page.getByRole(
+            "link",
+            {
+              name:
+                /Sepetim\s*[1-9]\d*\s*ürün/i,
+            },
+          ),
+        ).toBeVisible({
+          timeout: 20_000,
+        });
       },
     );
   },
