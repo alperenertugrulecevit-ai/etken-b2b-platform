@@ -1417,6 +1417,48 @@ export class Ofis26SupplierSyncService {
       if (
         imageUrl
       ) {
+        /*
+         * Ürünün daha önce kalıcı GCS görseli
+         * oluşturulmuşsa bunu koruyoruz.
+         *
+         * Eski geliştirme ortamından kalan
+         * /products/... storageUrl kayıtları
+         * production görselini tekrar local
+         * URL'ye çevirmemeli.
+         */
+        const existingCloudSource =
+          await prisma
+            .productImageSource
+            .findFirst({
+              where: {
+                productId:
+                  mapping.product
+                    .id,
+
+                storageUrl: {
+                  startsWith:
+                    "https://storage.googleapis.com/",
+                },
+              },
+
+              orderBy: [
+                {
+                  isVerified:
+                    "desc",
+                },
+
+                {
+                  isPrimary:
+                    "desc",
+                },
+
+                {
+                  updatedAt:
+                    "desc",
+                },
+              ],
+            });
+
         const existingSource =
           await prisma
             .productImageSource
@@ -1430,6 +1472,122 @@ export class Ofis26SupplierSyncService {
                   imageUrl,
               },
             });
+
+        if (
+          existingCloudSource
+        ) {
+          await prisma.$transaction(
+            async (
+              tx,
+            ) => {
+              await tx
+                .productImageSource
+                .updateMany({
+                  where: {
+                    productId:
+                      mapping.product
+                        .id,
+
+                    isPrimary:
+                      true,
+
+                    id: {
+                      not:
+                        existingCloudSource.id,
+                    },
+                  },
+
+                  data: {
+                    isPrimary:
+                      false,
+                  },
+                });
+
+              if (
+                !existingCloudSource
+                  .isPrimary
+              ) {
+                await tx
+                  .productImageSource
+                  .update({
+                    where: {
+                      id:
+                        existingCloudSource.id,
+                    },
+
+                    data: {
+                      isPrimary:
+                        true,
+                    },
+                  });
+              }
+
+              if (
+                mapping.product
+                  .imageUrl !==
+                existingCloudSource
+                  .storageUrl
+              ) {
+                await tx.product.update({
+                  where: {
+                    id:
+                      mapping.product
+                        .id,
+                  },
+
+                  data: {
+                    imageUrl:
+                      existingCloudSource
+                        .storageUrl,
+                  },
+                });
+              }
+            },
+          );
+
+          imageUpdated =
+            mapping.product
+              .imageUrl !==
+            existingCloudSource
+              .storageUrl;
+
+          return {
+            success:
+              true,
+
+            productCode:
+              mapping.product
+                .code,
+
+            ofis26Price,
+
+            etkenPrice,
+
+            stockStatus:
+              effectiveStockStatus,
+
+            stock:
+              updateStock &&
+              nextStock !==
+                null
+                ? nextStock
+                : undefined,
+
+            imageUpdated,
+
+            message:
+              `${mapping.product.code} senkronize edildi. ` +
+              `Ofis26: ${ofis26Price.toLocaleString(
+                "tr-TR",
+                {
+                  minimumFractionDigits:
+                    2,
+                  maximumFractionDigits:
+                    2,
+                },
+              )} TL`,
+          };
+        }
 
         if (
           !existingSource
