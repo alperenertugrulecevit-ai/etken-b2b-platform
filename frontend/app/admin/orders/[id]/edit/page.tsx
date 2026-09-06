@@ -310,6 +310,12 @@ export default async function EditOrderPage({
                   productCode: true,
                   productName: true,
                   quantity: true,
+
+                  product: {
+                    select: {
+                      ownStock: true,
+                    },
+                  },
                 },
               },
             },
@@ -346,36 +352,23 @@ export default async function EditOrderPage({
           );
         }
 
-        const selectedProducts =
-          await tx.product.findMany({
-            where: {
-              id: {
-                in: productIds,
-              },
-
-              isActive: true,
-            },
-          });
-
-        if (
-          selectedProducts.length !==
-          productIds.length
-        ) {
-          throw new Error(
-            "Siparişte pasif veya geçersiz ürün bulunuyor."
-          );
-        }
-
         /*
          * Sipariş daha önce rezerve edilmişse
-         * eski rezervasyonu tamamen çözüyoruz.
+         * yalnızca Etken'in kendi fiziksel stoklu
+         * ürünlerinin eski rezervasyonunu çözüyoruz.
+         *
+         * ownStock=false tedarikçi ürünleri
+         * DP001 fiziksel stok rezervasyonuna dahil edilmez.
          */
         if (
           existingOrder.stockReserved
         ) {
           for (
             const item of
-            existingOrder.items
+            existingOrder.items.filter(
+              (item) =>
+                item.product.ownStock
+            )
           ) {
             await createStockMovementWithTransaction(
               tx,
@@ -406,6 +399,47 @@ export default async function EditOrderPage({
           }
         }
 
+        /*
+         * Eski rezervasyon çözüldükten sonra
+         * ürünleri yeniden okuyoruz.
+         *
+         * Böylece ownStock=true ürünlerde
+         * kullanılabilir stok hesabı güncel
+         * reservedStock değeri üzerinden yapılır.
+         */
+        const selectedProducts =
+          await tx.product.findMany({
+            where: {
+              id: {
+                in: productIds,
+              },
+
+              isActive: true,
+            },
+          });
+
+        if (
+          selectedProducts.length !==
+          productIds.length
+        ) {
+          throw new Error(
+            "Siparişte pasif veya geçersiz ürün bulunuyor."
+          );
+        }
+
+        const ownStockProductIds =
+          new Set(
+            selectedProducts
+              .filter(
+                (product) =>
+                  product.ownStock
+              )
+              .map(
+                (product) =>
+                  product.id
+              )
+          );
+
         const calculatedItems =
           selectedProducts.map(
             (product) => {
@@ -415,26 +449,33 @@ export default async function EditOrderPage({
                 ) ?? 0;
 
               /*
-               * Eski rezervasyon çözüldüğü için
-               * kullanılabilir stok doğrudan
-               * güncel fiziksel eksi rezervasyondur.
+               * Fiziksel stok yeterlilik kontrolü
+               * yalnızca ownStock=true ürünlerde yapılır.
+               *
+               * ownStock=false ürünler tedarikçi
+               * stoğudur ve DP001 fiziksel stoğuna
+               * göre bloke edilmez.
                */
-              const availableStock =
-                product.stock -
-                product.reservedStock;
-
               if (
+                product.ownStock &&
                 reservationStatuses.includes(
                   existingOrder.status
-                ) &&
-                quantity >
-                  availableStock
+                )
               ) {
-                throw new Error(
-                  `${product.name} için yeterli kullanılabilir stok yok. ` +
-                    `Kullanılabilir stok: ${availableStock}, ` +
-                    `sipariş miktarı: ${quantity}.`
-                );
+                const availableStock =
+                  product.stock -
+                  product.reservedStock;
+
+                if (
+                  quantity >
+                  availableStock
+                ) {
+                  throw new Error(
+                    `${product.name} için yeterli kullanılabilir stok yok. ` +
+                      `Kullanılabilir stok: ${availableStock}, ` +
+                      `sipariş miktarı: ${quantity}.`
+                  );
+                }
               }
 
               const lineNet =
@@ -574,19 +615,24 @@ export default async function EditOrderPage({
         });
 
         /*
-         * Sipariş güncellendikten sonra
-         * mevcut durum rezervasyon gerektiriyorsa
-         * yeni ürün ve miktarlara göre
-         * rezervasyonu tekrar oluşturuyoruz.
+         * Sipariş rezervasyon gerektiren bir
+         * durumdaysa yalnızca ownStock=true
+         * ürünleri tekrar rezerve ediyoruz.
          */
         if (
           reservationStatuses.includes(
             existingOrder.status
-          )
+          ) &&
+          ownStockProductIds.size > 0
         ) {
           for (
             const item of
-            calculatedItems
+            calculatedItems.filter(
+              (item) =>
+                ownStockProductIds.has(
+                  item.productId
+                )
+            )
           ) {
             await createStockMovementWithTransaction(
               tx,

@@ -87,14 +87,19 @@ export async function updateOrderStatus(
           },
 
           include: {
-            items: {
-              select: {
-                productId: true,
-                productCode: true,
-                productName: true,
-                quantity: true,
-              },
-            },
+items: {
+  select: {
+    productId: true,
+    productCode: true,
+    productName: true,
+    quantity: true,
+    product: {
+      select: {
+        ownStock: true,
+      },
+    },
+  },
+},
           },
         });
 
@@ -130,6 +135,11 @@ export async function updateOrderStatus(
         },
       };
 
+      const ownStockItems =
+        order.items.filter(
+          (item) => item.product.ownStock
+        );
+
       /*
        * 1. REZERVASYON OLUŞTURMA
        *
@@ -145,7 +155,9 @@ export async function updateOrderStatus(
         !order.stockReserved &&
         !order.stockDeducted
       ) {
-        for (const item of order.items) {
+        for (
+          const item of ownStockItems
+        ) {
           await createStockMovementWithTransaction(
             tx,
             {
@@ -179,11 +191,14 @@ export async function updateOrderStatus(
           data: {
             status: newStatus,
             statusHistory,
-            stockReserved: true,
+            stockReserved:
+              ownStockItems.length > 0,
 
             stockReservedAt:
-              order.stockReservedAt ??
-              new Date(),
+              ownStockItems.length > 0
+                ? order.stockReservedAt ??
+                  new Date()
+                : null,
           },
         });
 
@@ -206,7 +221,9 @@ export async function updateOrderStatus(
         ) &&
         !order.stockDeducted
       ) {
-        for (const item of order.items) {
+        for (
+          const item of ownStockItems
+        ) {
           await createStockMovementWithTransaction(
             tx,
             {
@@ -274,7 +291,7 @@ export async function updateOrderStatus(
           !order.stockDeducted
         ) {
           for (
-            const item of order.items
+            const item of ownStockItems
           ) {
             await createStockMovementWithTransaction(
               tx,
@@ -396,7 +413,9 @@ export async function updateOrderStatus(
         order.stockReserved &&
         !order.stockDeducted
       ) {
-        for (const item of order.items) {
+        for (
+          const item of ownStockItems
+        ) {
           await createStockMovementWithTransaction(
             tx,
             {
