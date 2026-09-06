@@ -918,12 +918,12 @@ function parseProductDetail(
       typeof source
         .stokAdedi ===
         "number"
-        ? Math.max(
-            0,
-            Math.floor(
-              source
-                .stokAdedi,
-            ),
+        ? (
+            source
+              .stokAdedi >
+            0
+              ? 1000
+              : 0
           )
         : null;
 

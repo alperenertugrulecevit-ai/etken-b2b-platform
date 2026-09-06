@@ -676,7 +676,9 @@ function extractOfis26StockInfo(
 
               return {
                 stockAmount:
-                  normalizedStock,
+                  normalizedStock > 0
+                    ? 1000
+                    : 0,
 
                 stockStatus:
                   normalizedStock >
@@ -749,7 +751,9 @@ function extractOfis26StockInfo(
 
       return {
         stockAmount:
-          normalizedStock,
+          normalizedStock > 0
+            ? 1000
+            : 0,
 
         stockStatus:
           normalizedStock >
