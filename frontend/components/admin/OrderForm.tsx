@@ -220,21 +220,20 @@ export default function OrderForm({
     );
   }
 
-  function addLine() {
-    setLines((currentLines) => [
-      ...currentLines,
-      {
-        rowId:
-          Date.now() +
-          Math.floor(
-            Math.random() * 1000
-          ),
-        productId:
-          products[0]?.id ?? 0,
-        quantity: 1,
-      },
-    ]);
-  }
+function addLine() {
+  setLines((currentLines) => [
+    ...currentLines,
+    {
+      rowId:
+        Date.now() +
+        Math.floor(
+          Math.random() * 1000
+        ),
+      productId: 0,
+      quantity: 1,
+    },
+  ]);
+}
 
   function removeLine(
     rowId: number
@@ -494,6 +493,9 @@ export default function OrderForm({
                         className="w-full rounded-xl border bg-white p-4"
                         required
                       >
+                        <option value={0}>
+                          Ürün seçiniz
+                        </option>
                         {products.map(
                           (
                             productOption
