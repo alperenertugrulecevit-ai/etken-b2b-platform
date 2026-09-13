@@ -2994,6 +2994,9 @@ model ManualSortingTransaction {
 
   @@unique([tenantId, companyId, warehouseId, idempotencyKey])
   @@index([tenantId, companyId, warehouseId, waveId, status])
+  @@index([tenantId, companyId, warehouseId, createdAt, status])
+  @@index([tenantId, companyId, warehouseId, operatorId, createdAt])
+  @@index([tenantId, companyId, warehouseId, distributionId, productId, status])
   @@index([waveId, productId, status])
   @@index([handlingUnitId, status])
   @@index([createdAt])

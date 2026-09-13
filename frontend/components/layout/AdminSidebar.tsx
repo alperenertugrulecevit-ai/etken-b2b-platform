@@ -13,6 +13,24 @@ type MenuItem = {
 
 const mainMenuItems: MenuItem[] = [
   {
+    href: "/admin/manual-wave/performance",
+    icon: "📊",
+    label: "Manuel Dalga Performansı",
+    permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
+  },
+  {
+    href: "/admin/manual-wave/product-query",
+    icon: "🔎",
+    label: "Manuel Dalga Ürün Sorgu",
+    permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
+  },
+  {
+    href: "/admin/manual-wave/distribution-summary",
+    icon: "🏬",
+    label: "Dalga Dağıtım Özeti",
+    permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
+  },
+  {
     href: "/admin",
     icon: "📊",
     label: "Dashboard",
