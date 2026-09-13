@@ -276,6 +276,12 @@ export const PERMISSION_CATALOG:
       description: "Manuel dalga THM hareketlerini geri alır ve birleştirir.",
     },
     {
+      code: "MANUAL_WAVE_REPORT_VIEW",
+      name: "Manuel Dalga Raporlarını Görüntüleme",
+      module: "WAVE",
+      description: "Manuel dalga performans, ürün ve dağıtım raporlarını görüntüler ve dışa aktarır.",
+    },
+    {
       code: "PTL_MANAGE",
       name: "Put-to-Light Yönetimi",
       module: "WAVE",
@@ -402,6 +408,7 @@ export const DEFAULT_ROLE_CATALOG:
         "WAVE_MANAGE",
         "WAVE_SORTING_EXECUTE",
         "THM_MANAGE",
+        "MANUAL_WAVE_REPORT_VIEW",
         "PTL_MANAGE",
         "HANDLING_UNIT_VIEW",
         "HANDLING_UNIT_MANAGE",
