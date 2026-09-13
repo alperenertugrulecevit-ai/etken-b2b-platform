@@ -122,6 +122,9 @@ function createOrder(
         productName:
           "Test Ürünü",
         quantity: 2,
+        product: {
+          ownStock: true,
+        },
       },
     ],
     ...overrides,

@@ -1,0 +1,4 @@
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
+import { prisma } from "@/lib/prisma";
+export default async function Page() { const user = await AuthorizationService.requirePermission("PTL_MANAGE"); const scope = await WmsContextService.requireActiveContext(user.id, user.isAdminUser); const assignments = await prisma.ptlTargetBinAssignment.findMany({ where: { tenantId: scope.tenantId, companyId: scope.companyId, warehouseId: scope.warehouseId }, include: { wave: true, distribution: true }, orderBy: { updatedAt: "desc" } }); return <main className="p-6"><h1 className="text-2xl font-bold">Put-to-Light Temeli</h1><p>Bu faz yalnızca Etken-yerel veri tanımlarıdır; fiziksel ağ geçidi bağlantısı yoktur.</p><ul>{assignments.map(x => <li key={x.id}>{x.wave.waveNo} — {x.distribution.distributionCode} — {x.binCode}</li>)}</ul></main>; }
