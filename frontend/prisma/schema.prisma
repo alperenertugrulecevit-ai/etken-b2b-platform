@@ -51,6 +51,9 @@ model Product {
   competitorMatchAttempts      ProductCompetitorMatchAttempt[]
   competitorCandidateDecisions ProductCompetitorCandidateDecision[]
   barcodeRecoveryAttempts      BarcodeRecoveryAttempt[]
+  manualSortingLines           ManualSortingLine[]
+  manualSortingTransactions    ManualSortingTransaction[]
+  ptlCommands                  PtlCommand[]
 
   @@index([tenantId, companyId, isActive])
   @@index([companyId, code])
@@ -204,11 +207,11 @@ model ProductImageSource {
 }
 
 model Category {
-  id        Int      @id @default(autoincrement())
-  name      String
-  slug      String   @unique
-  isActive  Boolean  @default(true)
-  parentId  Int?
+  id       Int     @id @default(autoincrement())
+  name     String
+  slug     String  @unique
+  isActive Boolean @default(true)
+  parentId Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -868,12 +871,17 @@ model HandlingUnit {
 
   items HandlingUnitItem[]
 
-  sourcePickingRecords PickingRecord[]       @relation("PickingSourceHandlingUnit")
-  targetPickingRecords PickingRecord[]       @relation("PickingTargetHandlingUnit")
-  sourcePackingRecords PackingRecord[]       @relation("PackingSourceHandlingUnit")
-  targetPackingRecords PackingRecord[]       @relation("PackingTargetHandlingUnit")
-  shippingProfile      ShippingHandlingUnit?
-  inventoryCountLines  InventoryCountLine[]
+  sourcePickingRecords        PickingRecord[]            @relation("PickingSourceHandlingUnit")
+  targetPickingRecords        PickingRecord[]            @relation("PickingTargetHandlingUnit")
+  sourcePackingRecords        PackingRecord[]            @relation("PackingSourceHandlingUnit")
+  targetPackingRecords        PackingRecord[]            @relation("PackingTargetHandlingUnit")
+  shippingProfile             ShippingHandlingUnit?
+  inventoryCountLines         InventoryCountLine[]
+  manualSortingBindings       ManualSortingThmBinding[]
+  manualSortingTransactions   ManualSortingTransaction[] @relation("CurrentSortingThm")
+  originalSortingTransactions ManualSortingTransaction[] @relation("OriginalSortingThm")
+  sourceThmOperations         ThmOperation[]             @relation("SourceThmOperation")
+  targetThmOperations         ThmOperation[]             @relation("TargetThmOperation")
 
   @@index([tenantId, companyId, warehouseId])
   @@index([companyId, barcode])
@@ -1161,12 +1169,22 @@ model Wave {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orders            WaveOrder[]
-  assignments       WaveAssignment[]
-  distributions     WaveDistribution[]
-  handlingUnits     HandlingUnit[]     @relation("AssignedWaveHandlingUnits")
-  orderFulfillments OrderFulfillment[]
-  pickingRecords    PickingRecord[]
+  orders              WaveOrder[]
+  assignments         WaveAssignment[]
+  distributions       WaveDistribution[]
+  handlingUnits       HandlingUnit[]                @relation("AssignedWaveHandlingUnits")
+  orderFulfillments   OrderFulfillment[]
+  pickingRecords      PickingRecord[]
+  pickingBarcodes     WavePickingBarcode[]
+  sortingPriorities   ManualSortingTargetPriority[]
+  sortingLines        ManualSortingLine[]
+  thmBindings         ManualSortingThmBinding[]
+  sortingTransactions ManualSortingTransaction[]
+  thmOperations       ThmOperation[]
+  ptlAssignments      PtlTargetBinAssignment[]
+  ptlSessions         PtlSession[]
+  ptlCommands         PtlCommand[]
+  ptlGatewayEvents    PtlGatewayEvent[]
 
   @@index([status, priority])
   @@index([plannedStartAt])
@@ -1333,10 +1351,16 @@ model WaveDistribution {
 
   shippingAddress CustomerAddress? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
 
-  orders         WaveDistributionOrder[]
-  lines          WaveDistributionLine[]
-  shippingUnits  ShippingHandlingUnit[]
-  packingRecords PackingRecord[]
+  orders              WaveDistributionOrder[]
+  lines               WaveDistributionLine[]
+  shippingUnits       ShippingHandlingUnit[]
+  packingRecords      PackingRecord[]
+  sortingPriorities   ManualSortingTargetPriority[]
+  sortingLines        ManualSortingLine[]
+  thmBindings         ManualSortingThmBinding[]
+  sortingTransactions ManualSortingTransaction[]
+  ptlAssignments      PtlTargetBinAssignment[]
+  ptlCommands         PtlCommand[]
 
   @@unique([waveId, sequenceNumber], name: "wave_distribution_sequence_unique")
   @@unique([waveId, groupKey], name: "wave_distribution_group_unique")
@@ -2034,13 +2058,17 @@ model User {
   wmsCompanyAccesses   UserCompanyAccess[]
   wmsWarehouseAccesses UserWarehouseAccess[]
 
-  createdInventoryCounts    InventoryCount[]         @relation("InventoryCountCreatedBy")
-  approvedInventoryCounts   InventoryCount[]         @relation("InventoryCountApprovedBy")
-  cancelledInventoryCounts  InventoryCount[]         @relation("InventoryCountCancelledBy")
-  inventoryCountAssignments InventoryCountAssignee[] @relation("InventoryCountAssigneeUser")
-  assignedInventoryCounts   InventoryCountAssignee[] @relation("InventoryCountAssigneeAssignedBy")
-  countedInventoryLocations InventoryCountLocation[] @relation("InventoryCountLocationCountedBy")
-  countedInventoryLines     InventoryCountLine[]     @relation("InventoryCountLineCountedBy")
+  createdInventoryCounts      InventoryCount[]           @relation("InventoryCountCreatedBy")
+  approvedInventoryCounts     InventoryCount[]           @relation("InventoryCountApprovedBy")
+  cancelledInventoryCounts    InventoryCount[]           @relation("InventoryCountCancelledBy")
+  inventoryCountAssignments   InventoryCountAssignee[]   @relation("InventoryCountAssigneeUser")
+  assignedInventoryCounts     InventoryCountAssignee[]   @relation("InventoryCountAssigneeAssignedBy")
+  countedInventoryLocations   InventoryCountLocation[]   @relation("InventoryCountLocationCountedBy")
+  countedInventoryLines       InventoryCountLine[]       @relation("InventoryCountLineCountedBy")
+  manualSortingTransactions   ManualSortingTransaction[] @relation("SortingOperator")
+  reversedSortingTransactions ManualSortingTransaction[] @relation("SortingReversedBy")
+  thmOperations               ThmOperation[]
+  ptlSessions                 PtlSession[]
 
   @@index([employeeId])
   @@index([customerId, status])
@@ -2818,4 +2846,271 @@ model LoginRateLimit {
   @@index([username])
   @@index([blockedUntil])
   @@index([lastAttemptAt])
+}
+
+enum ManualSortingTransactionStatus {
+  ACTIVE
+  REVERSED
+}
+
+enum ThmOperationType {
+  UNDO_DISTRIBUTION
+  MERGE
+}
+
+enum PtlSessionStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum PtlCommandStatus {
+  PENDING
+  DISPATCHED
+  ACKNOWLEDGED
+  FAILED
+  CANCELLED
+}
+
+enum PtlGatewayEventType {
+  COMMAND_ACKNOWLEDGED
+  BUTTON_PRESSED
+  GATEWAY_STATUS
+  ERROR
+}
+
+model WavePickingBarcode {
+  id                        String                     @id @default(cuid())
+  tenantId                  String
+  companyId                 String
+  warehouseId               Int
+  waveId                    String
+  barcode                   String
+  isActive                  Boolean                    @default(true)
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  wave                      Wave                       @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  manualSortingTransactions ManualSortingTransaction[]
+
+  @@unique([waveId, barcode])
+  @@index([tenantId, companyId, warehouseId, waveId])
+  @@index([tenantId, companyId, warehouseId, barcode, isActive])
+}
+
+model ManualSortingTargetPriority {
+  id              String           @id @default(cuid())
+  tenantId        String
+  companyId       String
+  warehouseId     Int
+  waveId          String
+  distributionId  String
+  targetCode      String
+  plannedQuantity Int
+  priorityRank    Int
+  createdAt       DateTime         @default(now())
+  wave            Wave             @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  distribution    WaveDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  @@unique([waveId, distributionId])
+  @@unique([waveId, priorityRank])
+  @@index([tenantId, companyId, warehouseId, waveId])
+  @@index([waveId, targetCode])
+}
+
+model ManualSortingLine {
+  id                  String                     @id @default(cuid())
+  tenantId            String
+  companyId           String
+  warehouseId         Int
+  waveId              String
+  productId           Int
+  distributionId      String
+  plannedQuantity     Int
+  distributedQuantity Int                        @default(0)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  wave                Wave                       @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  product             Product                    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  distribution        WaveDistribution           @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  transactions        ManualSortingTransaction[]
+
+  @@unique([waveId, productId, distributionId])
+  @@index([tenantId, companyId, warehouseId, waveId])
+  @@index([waveId, productId])
+  @@index([waveId, distributionId])
+}
+
+model ManualSortingThmBinding {
+  id             String           @id @default(cuid())
+  tenantId       String
+  companyId      String
+  warehouseId    Int
+  waveId         String
+  handlingUnitId Int
+  distributionId String
+  activeQuantity Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  wave           Wave             @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  handlingUnit   HandlingUnit     @relation(fields: [handlingUnitId], references: [id], onDelete: Restrict)
+  distribution   WaveDistribution @relation(fields: [distributionId], references: [id], onDelete: Restrict)
+
+  @@unique([waveId, handlingUnitId])
+  @@index([tenantId, companyId, warehouseId, waveId])
+  @@index([handlingUnitId, activeQuantity])
+  @@index([waveId, distributionId])
+}
+
+model ManualSortingTransaction {
+  id                     String                         @id @default(cuid())
+  tenantId               String
+  companyId              String
+  warehouseId            Int
+  waveId                 String
+  pickingBarcodeId       String?
+  sortingLineId          String
+  productId              Int
+  distributionId         String
+  handlingUnitId         Int
+  originalHandlingUnitId Int
+  quantity               Int
+  operatorId             String
+  terminalId             String?
+  idempotencyKey         String
+  status                 ManualSortingTransactionStatus @default(ACTIVE)
+  reversedAt             DateTime?
+  reversedById           String?
+  reversalReason         String?
+  createdAt              DateTime                       @default(now())
+  wave                   Wave                           @relation(fields: [waveId], references: [id], onDelete: Restrict)
+  pickingBarcode         WavePickingBarcode?            @relation(fields: [pickingBarcodeId], references: [id], onDelete: SetNull)
+  sortingLine            ManualSortingLine              @relation(fields: [sortingLineId], references: [id], onDelete: Restrict)
+  product                Product                        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  distribution           WaveDistribution               @relation(fields: [distributionId], references: [id], onDelete: Restrict)
+  handlingUnit           HandlingUnit                   @relation("CurrentSortingThm", fields: [handlingUnitId], references: [id], onDelete: Restrict)
+  originalHandlingUnit   HandlingUnit                   @relation("OriginalSortingThm", fields: [originalHandlingUnitId], references: [id], onDelete: Restrict)
+  operator               User                           @relation("SortingOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  reversedBy             User?                          @relation("SortingReversedBy", fields: [reversedById], references: [id], onDelete: SetNull)
+  operations             ThmOperation[]
+
+  @@unique([tenantId, companyId, warehouseId, idempotencyKey])
+  @@index([tenantId, companyId, warehouseId, waveId, status])
+  @@index([waveId, productId, status])
+  @@index([handlingUnitId, status])
+  @@index([createdAt])
+}
+
+model ThmOperation {
+  id                   String                    @id @default(cuid())
+  tenantId             String
+  companyId            String
+  warehouseId          Int
+  waveId               String
+  type                 ThmOperationType
+  sourceHandlingUnitId Int?
+  targetHandlingUnitId Int?
+  transactionId        String?
+  actorId              String
+  reason               String?
+  idempotencyKey       String
+  metadata             Json?
+  createdAt            DateTime                  @default(now())
+  wave                 Wave                      @relation(fields: [waveId], references: [id], onDelete: Restrict)
+  sourceHandlingUnit   HandlingUnit?             @relation("SourceThmOperation", fields: [sourceHandlingUnitId], references: [id], onDelete: Restrict)
+  targetHandlingUnit   HandlingUnit?             @relation("TargetThmOperation", fields: [targetHandlingUnitId], references: [id], onDelete: Restrict)
+  transaction          ManualSortingTransaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  actor                User                      @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, companyId, warehouseId, idempotencyKey])
+  @@index([tenantId, companyId, warehouseId, waveId, createdAt])
+  @@index([sourceHandlingUnitId, createdAt])
+  @@index([targetHandlingUnitId, createdAt])
+}
+
+model PtlTargetBinAssignment {
+  id             String           @id @default(cuid())
+  tenantId       String
+  companyId      String
+  warehouseId    Int
+  waveId         String
+  distributionId String
+  binCode        String
+  deviceAddress  String?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  wave           Wave             @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  distribution   WaveDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  @@unique([waveId, distributionId])
+  @@unique([waveId, binCode])
+  @@index([tenantId, companyId, warehouseId, waveId, isActive])
+}
+
+model PtlSession {
+  id          String           @id @default(cuid())
+  tenantId    String
+  companyId   String
+  warehouseId Int
+  waveId      String
+  operatorId  String
+  terminalId  String?
+  color       String
+  status      PtlSessionStatus @default(ACTIVE)
+  startedAt   DateTime         @default(now())
+  endedAt     DateTime?
+  wave        Wave             @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  operator    User             @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  commands    PtlCommand[]
+
+  @@index([tenantId, companyId, warehouseId, waveId, status])
+  @@index([operatorId, status])
+}
+
+model PtlCommand {
+  id             String            @id @default(cuid())
+  tenantId       String
+  companyId      String
+  warehouseId    Int
+  waveId         String
+  sessionId      String
+  distributionId String
+  productId      Int?
+  binCode        String
+  color          String
+  quantity       Int?
+  status         PtlCommandStatus  @default(PENDING)
+  idempotencyKey String
+  payload        Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  wave           Wave              @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  session        PtlSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  distribution   WaveDistribution  @relation(fields: [distributionId], references: [id], onDelete: Restrict)
+  product        Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  gatewayEvents  PtlGatewayEvent[]
+
+  @@unique([tenantId, companyId, warehouseId, idempotencyKey])
+  @@index([tenantId, companyId, warehouseId, waveId, status])
+  @@index([distributionId, productId])
+  @@index([createdAt])
+}
+
+model PtlGatewayEvent {
+  id             String              @id @default(cuid())
+  tenantId       String
+  companyId      String
+  warehouseId    Int
+  waveId         String
+  commandId      String?
+  eventType      PtlGatewayEventType
+  correlationKey String?
+  payload        Json?
+  occurredAt     DateTime
+  createdAt      DateTime            @default(now())
+  wave           Wave                @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  command        PtlCommand?         @relation(fields: [commandId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, companyId, warehouseId, waveId, occurredAt])
+  @@index([commandId, createdAt])
+  @@index([correlationKey])
 }
