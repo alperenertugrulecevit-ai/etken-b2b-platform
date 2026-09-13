@@ -1,0 +1,40 @@
+name: Apply Manual Wave Service Transfer
+
+on:
+  push:
+    branches:
+      - codex/implement-unified-manual-wave-sorting
+    paths:
+      - .github/workflows/apply-manual-wave-service-transfer.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/implement-unified-manual-wave-sorting
+          fetch-depth: 0
+
+      - name: Decode verified service payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d frontend/modules/manual-wave/services/manual-sorting.service.ts.b64 > frontend/modules/manual-wave/services/manual-sorting.service.ts
+          rm -f frontend/modules/manual-wave/services/manual-sorting.service.ts.b64
+          rm -f frontend/modules/manual-wave/services/manual-sorting.service.tmp
+          rm -f .github/workflows/apply-manual-wave-service-transfer.yml
+
+      - name: Commit transferred service
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: harden manual wave scope and THM lifecycle"
+          git push origin HEAD:codex/implement-unified-manual-wave-sorting
