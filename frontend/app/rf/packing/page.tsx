@@ -416,37 +416,17 @@ export default async function RFPackingPage() {
     }));
 
   return (
-    <section>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-cyan-700">
-            Manual Wave Sorting
-          </p>
-
-          <h1 className="mt-1 text-2xl font-black">
-            Paketleme ve Dağılım
-          </h1>
+    <section className="-mx-3 -my-4 sm:-mx-4">
+      <div className="bg-slate-950 px-4 py-4 text-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-black">Manual Wave Sorting</h1>
+            <p className="mt-1 text-xs text-slate-300">Dağılım${distributionOptions[0]?.waveNo ? ` - Wave ${distributionOptions[0].waveNo}` : ""}</p>
+          </div>
+          <Link href="/rf" className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white">Operasyon Paneline Dön</Link>
         </div>
-
-        <Link
-          href="/rf"
-          className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold shadow-sm"
-        >
-          ← Menü
-        </Link>
       </div>
-
-      <RFProductDrivenPackingForm
-        distributions={
-          distributionOptions
-        }
-        sourceUnits={
-          sourceOptions
-        }
-        targetUnits={
-          targetOptions
-        }
-      />
+      <RFProductDrivenPackingForm distributions={distributionOptions} sourceUnits={sourceOptions} targetUnits={targetOptions} />
     </section>
   );
 }
