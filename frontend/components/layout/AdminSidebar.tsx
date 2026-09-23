@@ -25,6 +25,12 @@ const mainMenuItems: MenuItem[] = [
     permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
   },
   {
+    href: "/admin/manual-wave/wave-summary",
+    icon: "🌊",
+    label: "Wave Dağılım Özeti",
+    permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
+  },
+  {
     href: "/admin",
     icon: "📊",
     label: "Dashboard",
