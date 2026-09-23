@@ -13,15 +13,9 @@ type MenuItem = {
 
 const mainMenuItems: MenuItem[] = [
   {
-    href: "/admin/manual-wave/performance",
-    icon: "📊",
-    label: "Saatlik Dağıtım Performansı",
-    permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
-  },
-  {
     href: "/admin/manual-wave/product-query",
     icon: "🔎",
-    label: "Manuel Dalga Ürün Sorgu",
+    label: "THM Sorgu",
     permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
   },
   {
