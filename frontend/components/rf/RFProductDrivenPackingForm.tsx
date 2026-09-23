@@ -63,7 +63,7 @@ export default function RFProductDrivenPackingForm({distributions,sourceUnits,ta
         <span>SAP Dosya Yükleme</span><span>Wave Detayı</span>
         <span className="rounded-md bg-slate-950 px-4 py-2 font-bold text-white">Dağılım</span>
         <Link href="/admin/manual-wave/product-query?mode=thm">THM Sorgu</Link>
-        <Link href="/admin/manual-wave/distribution-summary">Dağılım Performansı</Link>
+        <Link href="/rf/packing/wave-summary">Wave Dağılım Özeti</Link>\n        <Link href="/admin/manual-wave/distribution-summary">Dağılım Performansı</Link>
       </div>
     </div>
 
