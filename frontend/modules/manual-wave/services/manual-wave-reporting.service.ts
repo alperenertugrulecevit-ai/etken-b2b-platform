@@ -115,6 +115,32 @@ export class ManualWaveReportingService {
       GROUP BY p.id,p.code,p.name,l."distributionId",l."plannedQuantity" ORDER BY p.code`);
   }
 
+  static async exportPerformance(scope: ActiveWmsContext, filters: PerformanceFilters) {
+    const [summary, operators, hourly] = await Promise.all([
+      this.getPerformanceSummary(scope, filters),
+      this.getOperatorPerformance(scope, filters),
+      this.getHourlyPerformance(scope, filters),
+    ]);
+    const rows = (header: string[], values: unknown[][]) => [
+      header.map(value => ({ value, fontWeight: "bold" as const })),
+      ...values.map(row => row.map(value => ({ value: value == null ? "" : String(value) }))),
+    ];
+    return writeXlsxFile([
+      {
+        data: rows(["Dağıtılan Ürün","Farklı THM","Wave","Kullanıcı","İşlem Sayısı"], [[summary.activeQuantity,summary.uniqueHandlingUnits,summary.uniqueWaves,summary.uniqueOperators,summary.activeTransactionCount]]),
+        sheet: "Genel Performans",
+      },
+      {
+        data: rows(["Kullanıcı","Dağıtılan Ürün","Farklı THM","Wave","İşlem Sayısı"], operators.map(o => [o.operatorName,o.activeQuantity,o.uniqueHandlingUnits,o.uniqueWaves,o.activeTransactionCount])),
+        sheet: "Kullanıcı Performansı",
+      },
+      {
+        data: rows(["Yerel Saat","Aktif Miktar","Ters Miktar","Aktif İşlem","Operatör","Wave","Ürün"], hourly.map(h => [h.localHour,h.activeQuantity,h.reversedQuantity,h.activeTransactionCount,h.uniqueOperators,h.uniqueWaves,h.uniqueProducts])),
+        sheet: "Saatlik Performans",
+      },
+    ]).toBuffer();
+  }
+
   static async exportProductQuery(scope: ActiveWmsContext, filters: ProductQueryFilters) {
     const result = await this.queryProductOperations(scope, { ...filters, page: 1, pageSize: 100 });
     const exportRows = [...result.rows];
