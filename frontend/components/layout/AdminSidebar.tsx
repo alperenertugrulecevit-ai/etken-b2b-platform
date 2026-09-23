@@ -15,7 +15,7 @@ const mainMenuItems: MenuItem[] = [
   {
     href: "/admin/manual-wave/performance",
     icon: "📊",
-    label: "Manuel Dalga Performansı",
+    label: "Saatlik Dağıtım Performansı",
     permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
   },
   {
@@ -27,7 +27,7 @@ const mainMenuItems: MenuItem[] = [
   {
     href: "/admin/manual-wave/distribution-summary",
     icon: "🏬",
-    label: "Dalga Dağıtım Özeti",
+    label: "Dağıtım Performansı",
     permissionCodes: ["MANUAL_WAVE_REPORT_VIEW"],
   },
   {
