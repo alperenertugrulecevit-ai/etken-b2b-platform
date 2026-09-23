@@ -124,7 +124,9 @@ export default function RFProductDrivenPackingForm({
   const router =
     useRouter();
 
-  const formRef = useRef<HTMLFormElement>(null);\n\n  const sourceRef =
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const sourceRef =
     useRef<HTMLInputElement>(
       null
     );
@@ -469,7 +471,17 @@ export default function RFProductDrivenPackingForm({
     );
   }
 
-  useEffect(() => {\n    if (selectedSource && !productBarcode) speak("Ürün okut");\n  }, [selectedSource, productBarcode]);\n\n  useEffect(() => {\n    if (selectedDistribution && selectedSourceProduct && !targetBarcode) {\n      speak(`${selectedDistribution.sequenceNumber}. mağaza`);\n    }\n  }, [selectedDistribution, selectedSourceProduct, targetBarcode]);\n\n  function handleSourceKeyDown(
+  useEffect(() => {
+    if (selectedSource && !productBarcode) speak("Ürün okut");
+  }, [selectedSource, productBarcode]);
+
+  useEffect(() => {
+    if (selectedDistribution && selectedSourceProduct && !targetBarcode) {
+      speak(`${selectedDistribution.sequenceNumber}. mağaza`);
+    }
+  }, [selectedDistribution, selectedSourceProduct, targetBarcode]);
+
+  function handleSourceKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
     if (
