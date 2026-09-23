@@ -13,7 +13,7 @@ export type PerformanceFilters = { from: Date; to: Date; waveId?: string; operat
 export type ProductQueryFilters = { mode: "code" | "primaryBarcode" | "additionalBarcode" | "thm"; value: string; page?: number; pageSize?: number; includeReversed?: boolean };
 export type DistributionFilters = { waveId: string; distributionId?: string; productId?: number };
 
-type SummaryRow = { activeQuantity: bigint; activeTransactionCount: bigint; uniqueWaves: bigint; uniqueOperators: bigint; uniqueProducts: bigint; uniqueDistributions: bigint; firstOperation: Date | null; lastOperation: Date | null };
+type SummaryRow = { activeQuantity: bigint; activeTransactionCount: bigint; uniqueWaves: bigint; uniqueOperators: bigint; uniqueProducts: bigint; uniqueDistributions: bigint; uniqueHandlingUnits: bigint; firstOperation: Date | null; lastOperation: Date | null };
 
 const scopeSql = (scope: ActiveWmsContext) => Prisma.sql`t."tenantId" = ${scope.tenantId} AND t."companyId" = ${scope.companyId} AND t."warehouseId" = ${scope.warehouseId}`;
 const dateSql = (f: PerformanceFilters) => Prisma.sql`t."createdAt" >= ${f.from} AND t."createdAt" < ${f.to} ${f.waveId ? Prisma.sql`AND t."waveId" = ${f.waveId}` : Prisma.empty} ${f.operatorId ? Prisma.sql`AND t."operatorId" = ${f.operatorId}` : Prisma.empty}`;
@@ -27,11 +27,11 @@ export class ManualWaveReportingService {
     const [row] = await prisma.$queryRaw<SummaryRow[]>(Prisma.sql`
       SELECT COALESCE(SUM(t.quantity),0)::bigint AS "activeQuantity", COUNT(*)::bigint AS "activeTransactionCount",
         COUNT(DISTINCT t."waveId")::bigint AS "uniqueWaves", COUNT(DISTINCT t."operatorId")::bigint AS "uniqueOperators",
-        COUNT(DISTINCT t."productId")::bigint AS "uniqueProducts", COUNT(DISTINCT t."distributionId")::bigint AS "uniqueDistributions",
+        COUNT(DISTINCT t."productId")::bigint AS "uniqueProducts", COUNT(DISTINCT t."distributionId")::bigint AS "uniqueDistributions", COUNT(DISTINCT t."handlingUnitId")::bigint AS "uniqueHandlingUnits",
         MIN(t."createdAt") AS "firstOperation", MAX(t."createdAt") AS "lastOperation"
       FROM "ManualSortingTransaction" t WHERE ${scopeSql(scope)} AND ${dateSql(filters)} AND t.status = 'ACTIVE'
     `);
-    return { ...row, activeQuantity: Number(row.activeQuantity), activeTransactionCount: Number(row.activeTransactionCount), uniqueWaves: Number(row.uniqueWaves), uniqueOperators: Number(row.uniqueProducts), uniqueDistributions: Number(row.uniqueDistributions), averageUnitsPerTransaction: Number(row.activeTransactionCount) ? Number(row.activeQuantity) / Number(row.activeTransactionCount) : 0 };
+    return { ...row, activeQuantity: Number(row.activeQuantity), activeTransactionCount: Number(row.activeTransactionCount), uniqueWaves: Number(row.uniqueWaves), uniqueOperators: Number(row.uniqueOperators), uniqueProducts: Number(row.uniqueProducts), uniqueDistributions: Number(row.uniqueDistributions), uniqueHandlingUnits: Number(row.uniqueHandlingUnits), averageUnitsPerTransaction: Number(row.activeTransactionCount) ? Number(row.activeQuantity) / Number(row.activeTransactionCount) : 0 };
   }
 
   static getHourlyPerformance(scope: ActiveWmsContext, filters: PerformanceFilters) {
@@ -48,9 +48,9 @@ export class ManualWaveReportingService {
   }
 
   static getOperatorPerformance(scope: ActiveWmsContext, filters: PerformanceFilters) {
-    return prisma.$queryRaw<Array<{ operatorId: string; operatorName: string; activeQuantity: bigint; activeTransactionCount: bigint; uniqueWaves: bigint; uniqueProducts: bigint; firstOperation: Date; lastOperation: Date; elapsedSeconds: number }>>(Prisma.sql`
+    return prisma.$queryRaw<Array<{ operatorId: string; operatorName: string; activeQuantity: bigint; activeTransactionCount: bigint; uniqueWaves: bigint; uniqueProducts: bigint; uniqueHandlingUnits: bigint; firstOperation: Date; lastOperation: Date; elapsedSeconds: number }>>(Prisma.sql`
       SELECT t."operatorId", COALESCE(u."fullName",u.username) AS "operatorName", SUM(t.quantity)::bigint AS "activeQuantity", COUNT(*)::bigint AS "activeTransactionCount",
-        COUNT(DISTINCT t."waveId")::bigint AS "uniqueWaves", COUNT(DISTINCT t."productId")::bigint AS "uniqueProducts",
+        COUNT(DISTINCT t."waveId")::bigint AS "uniqueWaves", COUNT(DISTINCT t."productId")::bigint AS "uniqueProducts", COUNT(DISTINCT t."handlingUnitId")::bigint AS "uniqueHandlingUnits",
         MIN(t."createdAt") AS "firstOperation", MAX(t."createdAt") AS "lastOperation", EXTRACT(EPOCH FROM MAX(t."createdAt")-MIN(t."createdAt"))::float AS "elapsedSeconds"
       FROM "ManualSortingTransaction" t JOIN "User" u ON u.id=t."operatorId"
       WHERE ${scopeSql(scope)} AND ${dateSql(filters)} AND t.status='ACTIVE' GROUP BY t."operatorId",u."fullName",u.username ORDER BY SUM(t.quantity) DESC
