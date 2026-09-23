@@ -124,7 +124,7 @@ export default function RFProductDrivenPackingForm({
   const router =
     useRouter();
 
-  const sourceRef =
+  const formRef = useRef<HTMLFormElement>(null);\n\n  const sourceRef =
     useRef<HTMLInputElement>(
       null
     );
@@ -469,7 +469,7 @@ export default function RFProductDrivenPackingForm({
     );
   }
 
-  function handleSourceKeyDown(
+  useEffect(() => {\n    if (selectedSource && !productBarcode) speak("Ürün okut");\n  }, [selectedSource, productBarcode]);\n\n  useEffect(() => {\n    if (selectedDistribution && selectedSourceProduct && !targetBarcode) {\n      speak(`${selectedDistribution.sequenceNumber}. mağaza`);\n    }\n  }, [selectedDistribution, selectedSourceProduct, targetBarcode]);\n\n  function handleSourceKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
     if (
@@ -585,11 +585,11 @@ export default function RFProductDrivenPackingForm({
     <div className="space-y-5">
       <section className="rounded-2xl bg-gradient-to-br from-cyan-950 to-slate-950 p-5 text-white shadow-lg">
         <p className="text-xs font-black uppercase tracking-widest text-cyan-300">
-          Ürün Odaklı Wave Dağılımı
+          Manual Wave Sorting
         </p>
 
         <h2 className="mt-2 text-2xl font-black">
-          Ürünü Okut, Alıcıyı Sistem Göstersin
+          Paketleme ve Dağılım
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -704,7 +704,7 @@ export default function RFProductDrivenPackingForm({
         <div className="grid gap-5 lg:grid-cols-2">
           <label className="block lg:col-span-2">
             <span className="mb-2 block text-sm font-black text-slate-800">
-              1. Kaynak Toplama THM
+              1. Toplama Barkodu
             </span>
 
             <div className="flex gap-2">
@@ -732,7 +732,7 @@ export default function RFProductDrivenPackingForm({
                 onKeyDown={
                   handleSourceKeyDown
                 }
-                placeholder="Wave Toplama THM barkodunu okutun"
+                placeholder="Toplama barkodunu okutun"
                 autoComplete="off"
                 className="min-w-0 flex-1 rounded-xl border-2 border-violet-300 bg-violet-50 p-4 font-mono text-xl font-black uppercase"
                 required
@@ -811,7 +811,7 @@ export default function RFProductDrivenPackingForm({
 
           <label className="block lg:col-span-2">
             <span className="mb-2 block text-sm font-black text-slate-800">
-              2. Ürün Barkodu
+              2. Ürün Okut
             </span>
 
             <div className="flex gap-2">
@@ -990,7 +990,7 @@ export default function RFProductDrivenPackingForm({
 
           <label className="block lg:col-span-2">
             <span className="mb-2 block text-sm font-black text-slate-800">
-              3. Hedef Sevk THM
+              3. THM Okut
             </span>
 
             <div className="flex gap-2">
@@ -1186,7 +1186,7 @@ export default function RFProductDrivenPackingForm({
         >
           {isPending
             ? "Sevk THM'e aktarılıyor..."
-            : "Ürünü Gösterilen Alıcıya Aktar"}
+            : "Ürünü Mağazaya Dağıt"}
         </button>
       </form>
     </div>
