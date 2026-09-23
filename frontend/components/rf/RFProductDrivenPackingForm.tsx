@@ -108,6 +108,35 @@ const initialState: RFPackingState = {
   distributionCompleted: false,
 };
 
+function beep() {
+  try {
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = 220;
+    gain.gain.value = 0.08;
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.18);
+  } catch {
+    // Ses desteği olmayan terminallerde işlem akışını sürdür.
+  }
+}
+
+function speak(text: string) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "tr-TR";
+  utterance.rate = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
 function normalize(
   value: string
 ) {
@@ -123,6 +152,8 @@ export default function RFProductDrivenPackingForm({
 }: Props) {
   const router =
     useRouter();
+
+  const formRef = useRef<HTMLFormElement>(null);
 
   const sourceRef =
     useRef<HTMLInputElement>(
@@ -469,6 +500,16 @@ export default function RFProductDrivenPackingForm({
     );
   }
 
+  useEffect(() => {
+    if (selectedSource && !productBarcode) speak("Ürün okut");
+  }, [selectedSource, productBarcode]);
+
+  useEffect(() => {
+    if (selectedDistribution && selectedSourceProduct && !targetBarcode) {
+      speak(`${selectedDistribution.sequenceNumber}. mağaza`);
+    }
+  }, [selectedDistribution, selectedSourceProduct, targetBarcode]);
+
   function handleSourceKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
@@ -585,11 +626,11 @@ export default function RFProductDrivenPackingForm({
     <div className="space-y-5">
       <section className="rounded-2xl bg-gradient-to-br from-cyan-950 to-slate-950 p-5 text-white shadow-lg">
         <p className="text-xs font-black uppercase tracking-widest text-cyan-300">
-          Ürün Odaklı Wave Dağılımı
+          Manual Wave Sorting
         </p>
 
         <h2 className="mt-2 text-2xl font-black">
-          Ürünü Okut, Alıcıyı Sistem Göstersin
+          Paketleme ve Dağılım
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -704,7 +745,7 @@ export default function RFProductDrivenPackingForm({
         <div className="grid gap-5 lg:grid-cols-2">
           <label className="block lg:col-span-2">
             <span className="mb-2 block text-sm font-black text-slate-800">
-              1. Kaynak Toplama THM
+              1. Toplama Barkodu
             </span>
 
             <div className="flex gap-2">
@@ -732,7 +773,7 @@ export default function RFProductDrivenPackingForm({
                 onKeyDown={
                   handleSourceKeyDown
                 }
-                placeholder="Wave Toplama THM barkodunu okutun"
+                placeholder="Toplama barkodunu okutun"
                 autoComplete="off"
                 className="min-w-0 flex-1 rounded-xl border-2 border-violet-300 bg-violet-50 p-4 font-mono text-xl font-black uppercase"
                 required
@@ -811,7 +852,7 @@ export default function RFProductDrivenPackingForm({
 
           <label className="block lg:col-span-2">
             <span className="mb-2 block text-sm font-black text-slate-800">
-              2. Ürün Barkodu
+              2. Ürün Okut
             </span>
 
             <div className="flex gap-2">
@@ -990,7 +1031,7 @@ export default function RFProductDrivenPackingForm({
 
           <label className="block lg:col-span-2">
             <span className="mb-2 block text-sm font-black text-slate-800">
-              3. Hedef Sevk THM
+              3. THM Okut
             </span>
 
             <div className="flex gap-2">
@@ -1186,7 +1227,7 @@ export default function RFProductDrivenPackingForm({
         >
           {isPending
             ? "Sevk THM'e aktarılıyor..."
-            : "Ürünü Gösterilen Alıcıya Aktar"}
+            : "Ürünü Mağazaya Dağıt"}
         </button>
       </form>
     </div>

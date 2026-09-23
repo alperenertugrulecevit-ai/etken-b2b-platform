@@ -420,11 +420,11 @@ export default async function RFPackingPage() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-cyan-700">
-            RF Operasyonu
+            Manual Wave Sorting
           </p>
 
           <h1 className="mt-1 text-2xl font-black">
-            Wave Paketleme ve Dağılım
+            Paketleme ve Dağılım
           </h1>
         </div>
 
