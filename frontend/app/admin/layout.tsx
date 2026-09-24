@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import LogoutButton from "@/components/auth/LogoutButton";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
+import AdminTopbar from "@/components/layout/AdminTopbar";
 import WmsContextSelector from "@/components/layout/WmsContextSelector";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
@@ -172,20 +173,7 @@ export default async function AdminLayout({
             </details>
           </div>
 
-          {/* MASAÜSTÜ ÜST BAR */}
-          <div className="hidden h-[62px] items-center gap-5 px-5 lg:flex">
-            <div className="text-2xl font-black text-slate-900">☰</div>
-            <div className="flex h-10 min-w-[320px] max-w-[520px] flex-1 items-center gap-3 rounded-xl bg-slate-100 px-4 text-sm text-slate-500">
-              <span className="text-lg">⌕</span><span>Sayfa, işlem veya rapor ara...</span>
-            </div>
-            <div className="ml-auto flex items-center gap-4">
-              <span className="relative text-xl">♧<span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-1.5 text-[10px] font-black text-white">3</span></span>
-              <div className="h-8 w-px bg-slate-200" />
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-fuchsia-950 text-sm font-black text-white">{profile.username.slice(0,2).toUpperCase()}</div>
-              <div><p className="text-sm font-bold text-slate-900">{fullName}</p><p className="text-xs text-slate-500">{roleSummary}</p></div>
-              <span className="text-slate-700">⌄</span>
-            </div>
-          </div>
+          <AdminTopbar initials={profile.username.slice(0,2).toUpperCase()} fullName={fullName} roleSummary={roleSummary} />
         </header>
 
         <main className="min-w-0 overflow-x-hidden">
