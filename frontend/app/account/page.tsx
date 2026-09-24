@@ -37,7 +37,7 @@ export default async function AccountPage(){
    <div className="absolute inset-0 hidden bg-gradient-to-r from-white via-white via-40% to-transparent md:block" />
    <div className="relative z-10 max-w-[650px] p-7 sm:p-10">
     <p className="text-sm font-black uppercase tracking-wide text-[#ef4b23]">Kurumsal Hesabım</p>
-    <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-5xl">${customer.companyName}</h1>
+    <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-5xl">{customer.companyName}</h1>
     <p className="mt-3 max-w-lg text-lg leading-7 text-slate-600">Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz.</p>
    </div>
   </section>
