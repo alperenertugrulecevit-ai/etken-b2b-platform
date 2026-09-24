@@ -68,10 +68,7 @@ function SidebarContent({profile}:{profile:AuthorizationProfile}){
  const visible=groups.map(g=>({...g,items:g.items.filter(i=>canShow(profile,i))})).filter(g=>g.items.length);
  const canUseRf=Boolean(profile.isRfUser&&profile.employee?.isActive&&profile.employee.canUseRf);
  return <div className="flex min-h-[calc(100vh-3rem)] flex-col">
-  <Link href="/admin" className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm">
-   <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-900 bg-white text-2xl font-black italic text-slate-900"><span>E</span><span className="-ml-2 mt-3 text-red-500">➤</span></div>
-   <div className="leading-none"><div className="text-xl font-black tracking-tight text-slate-950">ETKEN <span className="text-red-500">OFİS</span></div><div className="mt-1 text-[9px] font-bold tracking-[.24em] text-slate-500">KURUMSAL TEDARİK</div></div>
-  </Link>
+  <Link href="/admin" className="block rounded-2xl bg-white p-2 shadow-sm"><img src="/etken-ofis-logo.svg" alt="Etken Ofis Kurumsal Tedarik" className="h-auto w-full" /></Link>
   <nav className="mt-5 space-y-1">
    <Link href="/admin" className="flex items-center gap-3 rounded-xl bg-blue-700 px-4 py-3 font-bold text-white"><span>🏠</span>Ana Sayfa</Link>
    {visible.map(g=><details key={g.title} className="group rounded-xl">
