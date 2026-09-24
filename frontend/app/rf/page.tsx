@@ -13,6 +13,30 @@ type RFMenuItem = {
 
 const menuItems: RFMenuItem[] = [
   {
+    title: "THM Sorgula",
+    description: "THM barkodunu okutarak depo, lokasyon ve THM içindeki ürün/miktar bilgisini görüntüleyin.",
+    icon: "📦",
+    href: "/rf/query/thm",
+    status: "active",
+    permissionCodes: ["INVENTORY_VIEW"],
+  },
+  {
+    title: "Ürün Sorgula",
+    description: "Ürün barkodunu okutarak bulunduğu lokasyonları, THM'leri ve miktarları görüntüleyin.",
+    icon: "🔎",
+    href: "/rf/query/product",
+    status: "active",
+    permissionCodes: ["INVENTORY_VIEW"],
+  },
+  {
+    title: "Adres Sorgula",
+    description: "Lokasyon barkodunu okutarak adresteki THM'leri ve her THM'nin toplam iç miktarını görüntüleyin.",
+    icon: "📍",
+    href: "/rf/query/address",
+    status: "active",
+    permissionCodes: ["INVENTORY_VIEW"],
+  },
+  {
     title: "Mal Kabul",
     description:
       "Satın alma ürünlerini koli veya palete kabul edin.",
