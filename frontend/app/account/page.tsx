@@ -33,22 +33,14 @@ export default async function AccountPage(){
   {title:"Şifrem",desc:"Hesap güvenliğiniz için şifrenizi değiştirin.",href:"/change-password?returnTo=%2Faccount",type:"password",tone:"text-slate-600 bg-slate-100"},
  ];
  return <><Header/><main className="mx-auto min-h-[calc(100vh-150px)] max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
-  <section className="relative min-h-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-[#f7fbff] to-[#eef7ff] shadow-sm">
+  <section className="relative min-h-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+   <img src="/account-hero-products.jpg" alt="" className="absolute inset-y-0 right-0 hidden h-full w-[58%] object-cover object-center md:block" />
+   <div className="absolute inset-0 hidden bg-gradient-to-r from-white via-white/95 via-45% to-white/5 md:block" />
    <div className="relative z-10 max-w-[650px] p-7 sm:p-10">
     <p className="text-sm font-black uppercase tracking-wide text-[#ef4b23]">Kurumsal Hesabım</p>
-    <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-5xl">{customer.companyName}</h1>
+    <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-5xl">${customer.companyName}</h1>
     <p className="mt-3 max-w-lg text-lg leading-7 text-slate-600">Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz.</p>
-    <p className="mt-5 inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">Müşteri Kodu&nbsp; <span className="text-slate-900">{customer.customerCode}</span></p>
-   </div>
-   <div className="absolute inset-y-0 right-0 hidden w-[52%] md:block">
-    <div className="absolute inset-0 bg-gradient-to-r from-[#f7fbff] via-transparent to-transparent"/>
-    <div className="absolute bottom-0 right-8 flex items-end gap-3">
-     <div className="mb-7 h-28 w-24 rounded-md bg-[#d7a76c] shadow-lg"><div className="mt-8 text-center text-4xl font-black italic text-[#17365c]">e</div></div>
-     <div className="mb-2 h-44 w-32 rounded-md bg-[#c58e50] shadow-lg"><div className="mt-12 text-center text-5xl font-black italic text-[#17365c]">e</div></div>
-     <div className="mb-4 h-36 w-16 rounded-[28px] bg-white shadow-lg"/>
-     <div className="mb-3 h-24 w-24 rounded-full border-[18px] border-[#d9b86c] bg-white shadow-lg"/>
-     <div className="h-56 w-48 -skew-x-6 rounded-t-xl border-[8px] border-slate-900 bg-white shadow-2xl"><div className="mt-16 text-center text-5xl font-black italic text-[#17365c]">e</div><div className="text-center text-sm font-black text-[#071b3b]">ETKEN<span className="text-[#ef4b23]">OFİS</span></div></div>
-    </div>
+    <p className="mt-5 inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">Müşteri Kodu&nbsp; <span className="text-slate-900">${customer.customerCode}</span></p>
    </div>
   </section>
   <div className="mt-6 flex items-end justify-between gap-4"><div><h2 className="text-3xl font-black text-[#071b3b]">Hesap Menüsü</h2><p className="mt-1 text-base text-slate-500">Yapmak istediğiniz işlemi seçin.</p></div>
