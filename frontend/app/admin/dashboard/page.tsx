@@ -609,63 +609,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <section className="p-4 sm:p-6 lg:p-10">
-      {/* REFERANS TASARIM ÜST ALANI */}
-      <section className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
-        <div className="relative min-h-[145px] overflow-hidden bg-gradient-to-r from-[#eaf3ff] via-[#eef6ff] to-[#fff3e8] p-6 sm:p-7">
-          <div className="relative z-10 max-w-2xl">
-            <p className="text-xl font-black tracking-tight text-[#0a1830]">ETKEN OFİS</p>
-            <h1 className="mt-1 text-3xl font-black leading-tight text-[#071426] sm:text-4xl">Yönetim ve WMS Merkezi</h1>
-            <p className="mt-2 text-sm font-medium text-slate-600 sm:text-base">Depo, ürün, sipariş ve iş ortakları yönetimi için merkezi kontrol paneli.</p>
-          </div>
-          <div className="absolute inset-y-0 right-0 hidden w-[46%] overflow-hidden md:block">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-100/30 to-orange-100/70" />
-            <div className="absolute right-8 top-4 rotate-[-8deg] rounded-[28px] border-[7px] border-slate-900 bg-[#0b3765] px-5 py-8 shadow-2xl">
-              <div className="rounded-xl border border-blue-300/30 bg-[#0a4f8d] px-5 py-8 text-center text-white shadow-inner">
-                <div className="text-4xl font-black italic">e</div><div className="mt-1 text-sm font-black">ETKEN OFİS</div><div className="text-[7px] tracking-[.22em]">KURUMSAL TEDARİK</div>
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-8 right-0 h-16 bg-[linear-gradient(90deg,#b8c7d8_1px,transparent_1px),linear-gradient(#b8c7d8_1px,transparent_1px)] bg-[size:26px_26px] opacity-35" />
-          </div>
-        </div>
-      </section>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["📦","Toplam Ürün",formatNumber(activeProductCount),"↗ %5,2","bg-blue-50 text-blue-700"],
-          ["🛒","Aktif Sipariş",formatNumber(activeOperationCount),"↗ %12,4","bg-emerald-50 text-emerald-700"],
-          ["👥","Aktif Müşteri",formatNumber(activeCustomerCount),"↗ %3,1","bg-orange-50 text-orange-700"],
-          ["🏬","Depo Stok",formatNumber(totalPhysicalStock),"↗ %2,7","bg-violet-50 text-violet-700"],
-        ].map(([icon,label,value,trend,tone])=><article key={label} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${tone}`}>{icon}</span>
-          <div className="min-w-0 flex-1"><p className="text-sm font-medium text-slate-500">{label}</p><p className="text-2xl font-black text-[#0a1830]">{value}</p></div>
-          <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">{trend}</span>
-        </article>)}
-      </div>
-
-      {/* YÖNETİM MODÜLLERİ */}
-      <section className="mt-3">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {[
-            {title:"Genel Yönetim",icon:"📊",head:"bg-gradient-to-r from-blue-100 to-blue-200",accent:"text-blue-700",links:[["Dashboard","/admin"],["3PL Şirket Yapısı","/admin/wms-structure"],["B2B Ödeme Ayarları","/admin/b2b-settings"]]},
-            {title:"Ürün Yönetimi",icon:"📦",head:"bg-gradient-to-r from-emerald-100 to-green-200",accent:"text-emerald-700",links:[["Ürün Yönetimi","/admin/products"],["Ürün Veri Zenginleştirme","/admin/products/enrichment"],["Rakip Ürün İnceleme","/admin/products/enrichment/review"],["Barkod İnceleme","/admin/products/enrichment/barcode-review"],["Ürün Görsel Yönetimi","/admin/product-images"],["Rakip Fiyat Analizi","/admin/competitor-prices"],["Kategori Yönetimi","/admin/categories"],["Marka Yönetimi","/admin/brands"]]},
-            {title:"Ticari Yönetim",icon:"👥",head:"bg-gradient-to-r from-orange-100 to-orange-200",accent:"text-orange-700",links:[["Tedarikçi Yönetimi","/admin/suppliers"],["Müşteri Yönetimi","/admin/customers"],["Sipariş Yönetimi","/admin/orders"],["Satın Alma","/admin/purchase-orders"]]},
-            {title:"Stok Yönetimi",icon:"🗄️",head:"bg-gradient-to-r from-violet-100 to-purple-200",accent:"text-violet-700",links:[["Barkod Yazıcıları","/admin/barcode-printers"],["Stok Hareketleri","/admin/stock/movements"],["Manuel Stok İşlemi","/admin/stock/manual"],["Lokasyon Bazlı Stok","/admin/stock/locations"],["Lokasyon Stok Haritası","/admin/stock/location-map"],["Planlı Sayımlar","/admin/inventory-counts"],["Sayım Raporları","/admin/inventory-counts/reports"]]},
-            {title:"Handling Unit",icon:"🔗",head:"bg-gradient-to-r from-rose-100 to-red-200",accent:"text-red-600",links:[["Koli / Palet Yönetimi","/admin/handling-units"],["Koli / Palet Transferi","/admin/handling-units/transfers"],["Toplu Birleştirme","/admin/handling-units/merge"],["Koli-Palet Bağlama","/admin/handling-units/pallet-link"],["Tekli Adresleme","/admin/handling-units/addressing"],["Toplu Adresleme","/admin/handling-units/addressing/bulk"],["Adres Kaldırma","/admin/handling-units/unaddressing"]]},
-            {title:"WMS Operasyonları",icon:"〽️",head:"bg-gradient-to-r from-cyan-100 to-cyan-200",accent:"text-cyan-700",links:[["WMS Dashboard","/admin/wms-dashboard"],["THM Sorgu","/admin/manual-wave/product-query"],["Dağıtım Performansı","/admin/manual-wave/distribution-summary"],["Wave Dağılım Özeti","/admin/manual-wave/wave-summary"],["Wave Yönetimi","/admin/waves"],["Yeni Wave Oluştur","/admin/waves/new"]]},
-            {title:"Depo Yönetimi",icon:"🏬",head:"bg-gradient-to-r from-blue-100 to-indigo-200",accent:"text-blue-700",links:[["3PL Şirket Yapısı","/admin/wms-structure"],["Depo Yönetimi","/admin/warehouses"]]},
-            {title:"Sistem Yönetimi",icon:"⚙️",head:"bg-gradient-to-r from-amber-100 to-yellow-200",accent:"text-amber-700",links:[["Excel Veri Aktarımı","/admin/data-imports"],["Kullanıcı Yönetimi","/admin/users"],["Rol ve Yetki Yönetimi","/admin/roles"]]},
-            {title:"RF Operasyon Merkezi",icon:"📱",head:"bg-gradient-to-r from-fuchsia-100 to-violet-200",accent:"text-violet-700",links:[["RF Operasyon Merkezi","/rf"]]},
-          ].map(group=><article key={group.title} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className={`flex items-center gap-3 px-4 py-3 ${group.head}`}><span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/80 text-xl shadow-sm">{group.icon}</span><div><h2 className={`text-base font-black ${group.accent}`}>{group.title}</h2><p className="text-xs text-slate-600">{group.title==="WMS Operasyonları"?"Wave ve depo operasyon yönetimi":group.title==="Stok Yönetimi"?"Stok hareketleri ve sayım işlemleri":group.title==="RF Operasyon Merkezi"?"El terminali operasyon ekranı":"Yönetim işlemleri"}</p></div></div>
-            <div className="divide-y divide-slate-100 px-3 py-1">{group.links.map(([label,href])=><Link key={href} href={href} className="flex items-center gap-3 px-2 py-1.5 text-sm font-medium text-slate-700 hover:text-blue-700"><span className="text-blue-600">▪</span><span className="flex-1">{label}</span><span className="text-blue-600">›</span></Link>)}</div>
-          </article>)}
-        </div>
-      </section>
-
-      <div className="mt-3 grid gap-3 xl:grid-cols-[2fr_1fr]">
-        <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><h3 className="font-black text-slate-800">☷ &nbsp; Son İşlemler</h3><div className="mt-2 overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-100 text-left text-slate-500"><tr><th className="p-2">Tarih</th><th className="p-2">İşlem Türü</th><th className="p-2">Açıklama</th><th className="p-2">Kullanıcı</th><th className="p-2">Durum</th></tr></thead><tbody>{recentWmsOperations.slice(0,3).map(o=><tr key={o.id} className="border-t"><td className="p-2">{formatDate(o.createdAt)}</td><td className="p-2">{getWmsOperationLabel(o.operationType)}</td><td className="p-2">{o.description||o.productName||o.barcode||"-"}</td><td className="p-2">{o.operatorName||"-"}</td><td className="p-2 font-bold text-emerald-600">● Başarılı</td></tr>)}</tbody></table></div></section>
-        <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"><h3 className="font-black text-slate-800">⚡ &nbsp; Hızlı Erişim</h3><div className="mt-3 grid grid-cols-2 gap-2">{[["＋","Yeni Wave Oluştur","/admin/waves/new"],["⌕","THM Sorgu","/admin/manual-wave/product-query"],["◉","Stok Hareketleri","/admin/stock/movements"],["◇","Ürün Yönetimi","/admin/products"]].map(([i,l,h])=><Link key={h} href={h} className="rounded-lg border border-blue-100 p-3 text-center text-xs font-bold text-blue-900 hover:bg-blue-50"><span className="mr-2 text-lg text-blue-600">{i}</span>{l}</Link>)}</div></section>
-      </div>
+      <div className="mb-6"><p className="text-xs font-black uppercase tracking-[.18em] text-blue-600">ETKEN OFİS</p><h1 className="mt-1 text-3xl font-black text-slate-950">Dashboard</h1><p className="mt-1 text-sm text-slate-500">Sipariş, stok, müşteri ve WMS operasyonlarının detaylı yönetim görünümü.</p></div>
 
       {/* WMS OPERASYON MERKEZİ */}
 
