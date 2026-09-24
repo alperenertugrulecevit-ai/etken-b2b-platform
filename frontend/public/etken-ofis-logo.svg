@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-label="ETKEN OFİS Kurumsal Tedarik">
+<rect width="720" height="180" rx="18" fill="#fff"/>
+<g transform="translate(28 18)">
+ <path d="M102 12C54 12 16 47 16 91s38 79 86 79c29 0 54-13 70-33l-31-20c-9 11-23 18-39 18-25 0-46-16-51-38h80l21-29H51c9-17 28-28 51-28 17 0 32 6 42 18l27-23C154 20 130 12 102 12Z" fill="#0f1d33"/>
+ <path d="M102 94h73l-20 28h-53z" fill="#ef3f2f"/>
+</g>
+<text x="215" y="92" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="900" fill="#0f1d33">ETKEN</text>
+<text x="470" y="92" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="900" fill="#ef3f2f">OFİS</text>
+<text x="222" y="137" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="700" letter-spacing="11" fill="#596274">KURUMSAL TEDARİK</text>
+</svg>
