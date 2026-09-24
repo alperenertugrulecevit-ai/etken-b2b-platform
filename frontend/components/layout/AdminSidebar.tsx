@@ -7,7 +7,7 @@ type MenuGroup={title:string;icon:string;items:MenuItem[]};
 
 const groups:MenuGroup[]=[
  {title:"Genel Yönetim",icon:"📊",items:[
-  {href:"/admin",icon:"📊",label:"Dashboard",permissionCodes:["DASHBOARD_VIEW"]},
+  {href:"/admin/dashboard",icon:"📊",label:"Dashboard",permissionCodes:["DASHBOARD_VIEW"]},
   {href:"/admin/wms-structure",icon:"🏢",label:"3PL Şirket Yapısı",permissionCodes:["WMS_COMPANY_VIEW","WMS_COMPANY_MANAGE","WMS_ACCESS_MANAGE"]},
   {href:"/admin/b2b-settings",icon:"🏦",label:"B2B Ödeme Ayarları",permissionCodes:["ORDER_MANAGE"]},
  ]},
@@ -85,6 +85,6 @@ function SidebarContent({profile}:{profile:AuthorizationProfile}){
  </div>
 }
 export default async function AdminSidebar(){const profile=await AuthorizationService.requireAdminPortalAccess();return <>
- <aside className="hidden min-h-screen w-[275px] shrink-0 bg-[#071426] p-3 text-white lg:block"><div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-1"><SidebarContent profile={profile}/></div></aside>
+ <aside id="admin-sidebar" className="hidden min-h-screen w-[275px] shrink-0 bg-[#071426] p-3 text-white lg:block"><div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-1"><SidebarContent profile={profile}/></div></aside>
  <details className="border-b border-slate-800 bg-slate-950 text-white lg:hidden"><summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4 font-bold"><span>ETKEN OFİS · Yönetim</span><span className="rounded-lg bg-slate-800 px-3 py-2">☰ Menü</span></summary><div className="max-h-[80vh] overflow-y-auto border-t border-slate-800 p-4"><SidebarContent profile={profile}/></div></details>
  </>}
