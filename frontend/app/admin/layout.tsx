@@ -172,71 +172,18 @@ export default async function AdminLayout({
             </details>
           </div>
 
-          {/* MASAÜSTÜ - MEVCUT GÖRÜNÜM */}
-          <div className="hidden px-4 py-3 sm:px-5 lg:block lg:px-10">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-black text-blue-800 sm:h-11 sm:w-11 sm:text-base">
-                  {profile.username
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
-                    Aktif Kullanıcı
-                  </p>
-
-                  <p className="truncate text-sm font-bold text-slate-950 sm:text-base">
-                    {fullName}
-                  </p>
-
-                  <p className="truncate text-[11px] text-slate-500 sm:text-xs">
-                    @{profile.username} ·{" "}
-                    {roleSummary}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex min-w-0 flex-col gap-3 xl:items-end">
-                <div className="w-full min-w-0 xl:w-auto">
-                  <WmsContextSelector
-                    activeContext={
-                      wmsContextData.activeContext
-                    }
-                    companies={
-                      wmsContextData.companies
-                    }
-                    variant="admin"
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {profile.isAdminUser && (
-                    <span className="rounded-full bg-violet-100 px-3 py-2 text-[11px] font-bold text-violet-800 sm:text-xs">
-                      Yönetici
-                    </span>
-                  )}
-
-                  {profile.isRfUser && (
-                    <span className="rounded-full bg-cyan-100 px-3 py-2 text-[11px] font-bold text-cyan-800 sm:text-xs">
-                      RF Erişimi
-                    </span>
-                  )}
-
-                  <Link
-                    href="/change-password?returnTo=%2Fadmin"
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 sm:px-4 sm:text-sm"
-                  >
-                    Şifremi Değiştir
-                  </Link>
-
-                  <LogoutButton
-                    redirectTo="/login"
-                    label="Çıkış Yap"
-                  />
-                </div>
-              </div>
+          {/* MASAÜSTÜ ÜST BAR */}
+          <div className="hidden h-[62px] items-center gap-5 px-5 lg:flex">
+            <div className="text-2xl font-black text-slate-900">☰</div>
+            <div className="flex h-10 min-w-[320px] max-w-[520px] flex-1 items-center gap-3 rounded-xl bg-slate-100 px-4 text-sm text-slate-500">
+              <span className="text-lg">⌕</span><span>Sayfa, işlem veya rapor ara...</span>
+            </div>
+            <div className="ml-auto flex items-center gap-4">
+              <span className="relative text-xl">♧<span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-1.5 text-[10px] font-black text-white">3</span></span>
+              <div className="h-8 w-px bg-slate-200" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-fuchsia-950 text-sm font-black text-white">{profile.username.slice(0,2).toUpperCase()}</div>
+              <div><p className="text-sm font-bold text-slate-900">{fullName}</p><p className="text-xs text-slate-500">{roleSummary}</p></div>
+              <span className="text-slate-700">⌄</span>
             </div>
           </div>
         </header>
