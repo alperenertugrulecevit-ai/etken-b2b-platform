@@ -640,6 +640,31 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* YÖNETİM MODÜLLERİ */}
+      <section className="mt-6">
+        <div className="rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-slate-50 p-6 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">ETKEN OFİS</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">Yönetim ve WMS Merkezi</h2>
+          <p className="mt-2 text-sm text-slate-500">Depo, ürün, sipariş ve iş ortakları yönetimi için merkezi kontrol paneli.</p>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[
+            {title:"Genel Yönetim",icon:"📊",tone:"from-blue-50 to-blue-100/60",links:[["Dashboard","/admin"],["3PL Şirket Yapısı","/admin/wms-structure"],["B2B Ödeme Ayarları","/admin/b2b-settings"]]},
+            {title:"Ürün Yönetimi",icon:"📦",tone:"from-emerald-50 to-green-100/60",links:[["Ürün Yönetimi","/admin/products"],["Ürün Veri Zenginleştirme","/admin/products/enrichment"],["Rakip Ürün İnceleme","/admin/products/enrichment/review"],["Barkod İnceleme","/admin/products/enrichment/barcode-review"],["Ürün Görsel Yönetimi","/admin/product-images"],["Rakip Fiyat Analizi","/admin/competitor-prices"],["Kategori Yönetimi","/admin/categories"],["Marka Yönetimi","/admin/brands"]]},
+            {title:"Ticari Yönetim",icon:"👥",tone:"from-orange-50 to-amber-100/60",links:[["Tedarikçi Yönetimi","/admin/suppliers"],["Müşteri Yönetimi","/admin/customers"],["Sipariş Yönetimi","/admin/orders"],["Satın Alma","/admin/purchase-orders"]]},
+            {title:"Stok Yönetimi",icon:"🗄️",tone:"from-violet-50 to-purple-100/60",links:[["Barkod Yazıcıları","/admin/barcode-printers"],["Stok Hareketleri","/admin/stock/movements"],["Manuel Stok İşlemi","/admin/stock/manual"],["Lokasyon Bazlı Stok","/admin/stock/locations"],["Lokasyon Stok Haritası","/admin/stock/location-map"],["Planlı Sayımlar","/admin/inventory-counts"],["Sayım Raporları","/admin/inventory-counts/reports"]]},
+            {title:"Handling Unit",icon:"🔗",tone:"from-rose-50 to-red-100/60",links:[["Koli / Palet Yönetimi","/admin/handling-units"],["Koli / Palet Transferi","/admin/handling-units/transfers"],["Toplu Birleştirme","/admin/handling-units/merge"],["Koli-Palet Bağlama","/admin/handling-units/pallet-link"],["Tekli Adresleme","/admin/handling-units/addressing"],["Toplu Adresleme","/admin/handling-units/addressing/bulk"],["Adres Kaldırma","/admin/handling-units/unaddressing"]]},
+            {title:"WMS Operasyonları",icon:"〽️",tone:"from-cyan-50 to-sky-100/60",links:[["WMS Dashboard","/admin/wms-dashboard"],["THM Sorgu","/admin/manual-wave/product-query"],["Dağıtım Performansı","/admin/manual-wave/distribution-summary"],["Wave Dağılım Özeti","/admin/manual-wave/wave-summary"],["Wave Yönetimi","/admin/waves"],["Yeni Wave Oluştur","/admin/waves/new"]]},
+            {title:"Depo Yönetimi",icon:"🏬",tone:"from-blue-50 to-indigo-100/60",links:[["Depo Yönetimi","/admin/warehouses"]]},
+            {title:"Sistem Yönetimi",icon:"⚙️",tone:"from-amber-50 to-yellow-100/60",links:[["Excel Veri Aktarımı","/admin/data-imports"],["Kullanıcı Yönetimi","/admin/users"],["Rol ve Yetki Yönetimi","/admin/roles"]]},
+            {title:"RF Operasyon Merkezi",icon:"📱",tone:"from-fuchsia-50 to-violet-100/60",links:[["RF Operasyon Merkezi","/rf"]]},
+          ].map((group)=><article key={group.title} className={`overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${group.tone} shadow-sm`}>
+            <div className="flex items-center gap-3 border-b border-white/70 p-4"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-2xl shadow-sm">{group.icon}</span><h3 className="text-lg font-black text-slate-900">{group.title}</h3></div>
+            <div className="bg-white/80 p-2">{group.links.map(([label,href])=><Link key={href} href={href} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white hover:text-blue-800"><span>{label}</span><span>›</span></Link>)}</div>
+          </article>)}
+        </div>
+      </section>
+
       {/* WMS OPERASYON MERKEZİ */}
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow sm:mt-8 sm:p-6 lg:mt-10">
