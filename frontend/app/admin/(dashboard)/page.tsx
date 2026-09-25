@@ -25,7 +25,7 @@ export default async function AdminHome(){
  const fmt=(n:number)=>n.toLocaleString("tr-TR");
  return <section className="p-4 sm:p-5 lg:p-6">
   <section className="relative min-h-[215px] overflow-hidden rounded-2xl bg-[#08223f] shadow-sm">
-   <img src="/account-hero-approved.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-right opacity-90" />
+   <img src="/admin-wms-hero-terminal.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-right opacity-90" />
    <div className="absolute inset-0 bg-gradient-to-r from-[#071f3b] via-[#0b3157]/95 to-[#0b3157]/10"/>
    <div className="relative z-10 max-w-2xl p-8 text-white"><p className="text-sm font-black tracking-[.25em]">ETKEN OFİS</p><h1 className="mt-3 text-3xl font-black sm:text-4xl">Yönetim ve WMS Merkezi</h1><p className="mt-4 max-w-lg text-base font-medium text-slate-100">Depo, ürün, sipariş ve iş ortakları yönetimi için merkezi kontrol paneli.</p></div>
   </section>
