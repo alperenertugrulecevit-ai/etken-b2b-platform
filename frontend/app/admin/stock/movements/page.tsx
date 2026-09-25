@@ -255,12 +255,8 @@ export default async function StockMovementsPage({
     ];
   }
 
-  if (
-    movementType &&
-    isMovementType(movementType)
-  ) {
-    where.movementType =
-      movementType;
+  if (movementTypes.length) {
+    where.movementType = { in: movementTypes };
   }
 
   if (
@@ -410,7 +406,7 @@ export default async function StockMovementsPage({
 
   const baseQuery = {
     search,
-    movementType,
+    movementType: movementTypes,
     startDate,
     endDate,
   };
@@ -586,12 +582,10 @@ export default async function StockMovementsPage({
 
             <select
               name="movementType"
-              defaultValue={movementType}
-              className="w-full rounded-xl border bg-white p-4"
+              multiple
+              defaultValue={movementTypes}
+              className="min-h-40 w-full rounded-xl border bg-white p-4"
             >
-              <option value="">
-                Tüm hareketler
-              </option>
 
               {Object.values(
                 StockMovementType
