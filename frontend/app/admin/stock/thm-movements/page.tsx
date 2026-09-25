@@ -6,6 +6,7 @@ import {
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
+import TableHeaderMultiFilter from "@/components/admin/TableHeaderMultiFilter";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
@@ -296,7 +297,7 @@ function buildPageUrl({
   page,
 }: {
   q: string;
-  operationType: string;
+  operationType: string[];
   startDate: string;
   endDate: string;
   page: number;
@@ -423,8 +424,7 @@ export default async function ThmMovementsPage({
     selectedOperationType
   ) {
     filters.push({
-      operationType:
-        selectedOperationType,
+      operationType: selectedOperationTypes,
     });
   }
 
@@ -1205,7 +1205,7 @@ export default async function ThmMovementsPage({
 
         <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-[1850px] w-full text-left text-sm">
+            <table id="thm-movements-table" className="min-w-[1850px] w-full text-left text-sm">
               <thead className="bg-blue-950 text-white">
                 <tr>
                   <th className="px-4 py-4">
@@ -1517,8 +1517,7 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:
@@ -1542,8 +1541,7 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:
