@@ -303,13 +303,10 @@ function buildPageUrl({
   operationType,
   startDate,
   endDate,
-  page,
+  page, product = "", sourceThm = "", targetThm = "", purchase = "", order = "", operator = "",
 }: {
-  q: string;
-  operationType: string[];
-  startDate: string;
-  endDate: string;
-  page: number;
+  q: string; operationType: string[]; startDate: string; endDate: string; page: number;
+  product?: string; sourceThm?: string; targetThm?: string; purchase?: string; order?: string; operator?: string;
 }) {
   const params =
     new URLSearchParams();
@@ -336,6 +333,13 @@ function buildPageUrl({
       endDate
     );
   }
+
+  if (product) params.set("product", product);
+  if (sourceThm) params.set("sourceThm", sourceThm);
+  if (targetThm) params.set("targetThm", targetThm);
+  if (purchase) params.set("purchase", purchase);
+  if (order) params.set("order", order);
+  if (operator) params.set("operator", operator);
 
   params.set(
     "page",
@@ -1527,9 +1531,9 @@ export default async function ThmMovementsPage({
                     startDateValue,
                   endDate:
                     endDateValue,
-                  page:
-                    currentPage -
-                    1,
+                  page: currentPage - 1,
+                  product: productFilter, sourceThm: sourceThmFilter, targetThm: targetThmFilter,
+                  purchase: purchaseFilter, order: orderFilter, operator: operatorFilter,
                 })}
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 hover:bg-slate-50"
               >
@@ -1551,9 +1555,9 @@ export default async function ThmMovementsPage({
                     startDateValue,
                   endDate:
                     endDateValue,
-                  page:
-                    currentPage +
-                    1,
+                  page: currentPage + 1,
+                  product: productFilter, sourceThm: sourceThmFilter, targetThm: targetThmFilter,
+                  purchase: purchaseFilter, order: orderFilter, operator: operatorFilter,
                 })}
                 className="rounded-xl bg-blue-900 px-5 py-3 font-bold text-white hover:bg-blue-800"
               >
