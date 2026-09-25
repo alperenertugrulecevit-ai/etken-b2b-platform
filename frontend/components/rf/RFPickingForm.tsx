@@ -10,6 +10,7 @@ import {
 
 import {
   rfPickOrderItem,
+  rfMarkPickingProductLost,
   type RFPickingState,
 } from "@/app/rf/picking/actions";
 
@@ -198,6 +199,9 @@ export default function RFPickingForm({
 
   const [quantity, setQuantity] =
     useState("1");
+
+  const [lostPending, setLostPending] = useState(false);
+  const [lostMessage, setLostMessage] = useState("");
 
   const [
     showMessage,
@@ -1212,6 +1216,45 @@ export default function RFPickingForm({
     }
   }
 
+  async function handleLostProduct() {
+    if (!selectedOrder || !recommendedSource || !nextOrderItem) return;
+
+    const lostQuantity = recommendedSource.product.quantity;
+    const confirmed = window.confirm(
+      `${nextOrderItem.productCode} - ${nextOrderItem.productName}\n\n` +
+      `Kaynak THM: ${recommendedSource.unit.barcode}\n` +
+      `Kayıp olacak miktar: ${lostQuantity} adet\n\n` +
+      "Bu işlem sipariş miktarını değil, bu THM içindeki ilgili ürünün TÜM fiziksel miktarını KYP001 kayıp deposuna aktarır. Devam edilsin mi?"
+    );
+    if (!confirmed) return;
+
+    setLostPending(true);
+    setLostMessage("");
+    try {
+      const data = new FormData();
+      data.set("orderNumber", selectedOrder.orderNumber);
+      data.set("sourceBarcode", recommendedSource.unit.barcode);
+      data.set("productId", String(nextOrderItem.productId));
+      const result = await rfMarkPickingProductLost(data);
+
+      setLostMessage(
+        result.shortfall > 0
+          ? `${result.productCode}: ${result.lostQuantity} adet kayıp depoya alındı. Alternatif stok sipariş ihtiyacının tamamını karşılamıyor; ${result.shortfall} adet eksik kaldı.`
+          : `${result.productCode}: ${result.lostQuantity} adet kayıp depoya alındı. Alternatif kaynak yeniden hesaplandı.`
+      );
+
+      setLocationBarcode("");
+      setSourceBarcode("");
+      setProductBarcode("");
+      setQuantity("1");
+      window.setTimeout(() => window.location.reload(), 900);
+    } catch (error) {
+      setLostMessage(error instanceof Error ? error.message : "Kayıp stok işlemi başarısız.");
+    } finally {
+      setLostPending(false);
+    }
+  }
+
   function handleQuantityKeyDown(
     event:
       React.KeyboardEvent<HTMLInputElement>
@@ -1983,6 +2026,28 @@ export default function RFPickingForm({
           )
         )}
       </div>
+
+      {lostMessage && (
+        <div className="mt-5 rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm font-bold text-orange-900">
+          {lostMessage}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleLostProduct}
+        disabled={isPending || lostPending || !selectedOrder || !recommendedSource || !nextOrderItem}
+        className="mt-6 w-full rounded-xl border-2 border-red-600 bg-red-50 py-4 text-lg font-black text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {lostPending ? "KAYIP İŞLEMİ YAPILIYOR..." : "ÜRÜN BULUNAMADI / KAYIP"}
+      </button>
+
+      {recommendedSource && nextOrderItem && (
+        <p className="mt-2 text-center text-xs font-semibold text-red-600">
+          Kayıp işleminde {recommendedSource.unit.barcode} içindeki {nextOrderItem.productCode} ürününün
+          {" "}{recommendedSource.product.quantity} adetlik tüm fiziksel miktarı kayıp depoya alınır.
+        </p>
+      )}
 
       <button
         type="submit"
