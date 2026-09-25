@@ -157,7 +157,11 @@ function createQueryString(
         value !== undefined &&
         String(value).trim() !== ""
       ) {
-        if (Array.isArray(value)) value.forEach((item) => params.append(key, item));\n        else params.set(key, String(value));
+        if (Array.isArray(value)) {
+          value.forEach((item) => params.append(key, item));
+        } else {
+          params.set(key, String(value));
+        }
       }
     }
   );
