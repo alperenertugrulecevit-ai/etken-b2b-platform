@@ -1,19 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { createWarehouseTransfer } from "./actions";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
 
 function loc(l: {code:string;section:string;level:string;bin:string}) {
   return [l.code,l.section,l.level,l.bin].filter(Boolean).join("-");
 }
 
 export default async function WarehouseTransferPage() {
+  const profile = await AuthorizationService.requirePermission("TRANSFER_EXECUTE");
+  const context = await WmsContextService.requireActiveContext(profile.id, profile.isAdminUser);
   const [warehouses, units] = await Promise.all([
     prisma.warehouse.findMany({
-      where: { isActive: true },
+      where: { isActive: true, companyId: context.companyId },
       orderBy: { code: "asc" },
       include: { locations: { where: { isActive: true }, orderBy: { sortOrder: "asc" } } },
     }),
     prisma.handlingUnit.findMany({
-      where: { purpose: "STOCK", warehouseId: { not: null }, locationId: { not: null }, status: { in: ["OPEN","CLOSED","STORED"] } },
+      where: { companyId: context.companyId, purpose: "STOCK", warehouseId: { not: null }, locationId: { not: null }, status: { in: ["OPEN","CLOSED","STORED"] } },
       orderBy: { barcode: "asc" },
       include: { warehouse: true, location: true, items: { where: { quantity: { gt: 0 } }, include: { product: true } } },
     }),
