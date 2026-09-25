@@ -144,7 +144,11 @@ async function loadTransferContext(tx: Tx, sourceBarcode: string, targetWarehous
   if (!targetLocation?.isActive || targetLocation.warehouseId !== targetWarehouse.id)
     throw new Error("Hedef lokasyon seçilen depoya ait değil veya pasif.");
   if (source.warehouseId === targetWarehouse.id) throw new Error("Depolar arası transferde kaynak ve hedef depo aynı olamaz.");
-  return { source, targetWarehouse, targetLocation };
+  return {
+    source: { ...source, warehouse: source.warehouse, location: source.location, warehouseId: source.warehouseId, locationId: source.locationId },
+    targetWarehouse,
+    targetLocation,
+  } as const;
 }
 
 export class WarehouseTransferService {
