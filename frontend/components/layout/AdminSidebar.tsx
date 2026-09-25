@@ -53,6 +53,10 @@ const groups:MenuGroup[]=[
   {href:"/admin/manual-wave/wave-summary",icon:"🌊",label:"Wave Dağılım Özeti",permissionCodes:["MANUAL_WAVE_REPORT_VIEW"]},
   {href:"/admin/waves",icon:"🌊",label:"Wave Yönetimi",permissionCodes:["WAVE_VIEW","WAVE_MANAGE"]},
   {href:"/admin/waves/new",icon:"➕",label:"Yeni Wave Oluştur",permissionCodes:["WAVE_MANAGE"]},
+  {href:"/admin/wms-reports/shipment-summary",icon:"🚚",label:"Sevk Sipariş Durum Raporu",permissionCodes:["ORDER_VIEW"]},
+  {href:"/admin/wms-reports/shipment-detail",icon:"📄",label:"Sevk Sipariş Detay Raporu",permissionCodes:["ORDER_VIEW"]},
+  {href:"/admin/wms-reports/receipt-summary",icon:"📥",label:"Giriş Sipariş Durum Raporu",permissionCodes:["RECEIVING_VIEW"]},
+  {href:"/admin/wms-reports/receipt-detail",icon:"📋",label:"Giriş Sipariş Detay Raporu",permissionCodes:["RECEIVING_VIEW"]},
  ]},
  {title:"Depo Yönetimi",icon:"🏬",items:[
   {href:"/admin/warehouses",icon:"🏬",label:"Depo Yönetimi",permissionCodes:["WAREHOUSE_VIEW","WAREHOUSE_MANAGE"]},
