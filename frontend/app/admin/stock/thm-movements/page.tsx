@@ -23,6 +23,8 @@ const THM_OPERATION_TYPES: WmsOperationType[] = [
   WmsOperationType.PALLET_UNLINK,
   WmsOperationType.ADDRESSING,
   WmsOperationType.UNADDRESSING,
+  WmsOperationType.WAREHOUSE_TRANSFER,
+  WmsOperationType.LOST_STOCK,
 ];
 
 const OPERATION_OPTIONS: Array<{
@@ -68,6 +70,14 @@ const OPERATION_OPTIONS: Array<{
   {
     value: WmsOperationType.UNADDRESSING,
     label: "Adresten Çıkarma",
+  },
+  {
+    value: WmsOperationType.WAREHOUSE_TRANSFER,
+    label: "Depolar Arası Transfer",
+  },
+  {
+    value: WmsOperationType.LOST_STOCK,
+    label: "Kayıp Stok Transferi",
   },
 ];
 
@@ -202,6 +212,7 @@ function getOperationColor(
 
     case WmsOperationType.ITEM_TRANSFER:
     case WmsOperationType.FULL_TRANSFER:
+    case WmsOperationType.WAREHOUSE_TRANSFER:
       return "bg-cyan-100 text-cyan-800";
 
     case WmsOperationType.ADDRESSING:
