@@ -148,7 +148,7 @@ function createEndDate(value: string) {
 function createQueryString(
   values: Record<
     string,
-    string | number | undefined
+    string | number | string[] | undefined
   >
 ) {
   const params = new URLSearchParams();
@@ -159,7 +159,11 @@ function createQueryString(
         value !== undefined &&
         String(value).trim() !== ""
       ) {
-        params.set(key, String(value));
+        if (Array.isArray(value)) {
+          value.forEach((item) => params.append(key, item));
+        } else {
+          params.set(key, String(value));
+        }
       }
     }
   );
@@ -422,7 +426,7 @@ export default async function StockMovementsPage({
 
   const baseQuery = {
     search,
-    movementType: movementTypes.join(","),
+    movementType: movementTypes,
     product: productFilter,
     document: documentFilter,
     description: descriptionFilter,
