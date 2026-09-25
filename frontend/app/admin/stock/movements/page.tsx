@@ -177,8 +177,7 @@ export default async function StockMovementsPage({
   const search =
     query.search?.trim() ?? "";
 
-  const movementType =
-    query.movementType?.trim() ?? "";
+  const movementTypes = (Array.isArray(query.movementType) ? query.movementType : query.movementType ? [query.movementType] : []).filter(isMovementType);
 
   const startDate =
     query.startDate?.trim() ?? "";
