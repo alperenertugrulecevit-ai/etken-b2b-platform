@@ -30,6 +30,7 @@ const groups:MenuGroup[]=[
  {title:"Stok Yönetimi",icon:"🗄️",items:[
   {href:"/admin/barcode-printers",icon:"🖨️",label:"Barkod Yazıcıları",permissionCodes:["HANDLING_UNIT_MANAGE"]},
   {href:"/admin/stock/movements",icon:"📋",label:"Stok Hareketleri",permissionCodes:["INVENTORY_VIEW"]},
+  {href:"/admin/stock/thm-movements",icon:"🔄",label:"THM Hareketleri",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/manual",icon:"📥",label:"Manuel Stok İşlemi",permissionCodes:["INVENTORY_ADJUST"]},
   {href:"/admin/stock/locations",icon:"📍",label:"Lokasyon Bazlı Stok",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/location-map",icon:"🗺️",label:"Lokasyon Stok Haritası",permissionCodes:["INVENTORY_VIEW","LOCATION_VIEW"]},
