@@ -199,6 +199,7 @@ export default async function RFPickingPage() {
 
         warehouse: {
           isActive: true,
+          code: { not: "KYP001" },
         },
 
         location: {
