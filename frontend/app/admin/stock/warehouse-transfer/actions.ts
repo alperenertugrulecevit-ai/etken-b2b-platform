@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim().toUpperCase();
@@ -12,6 +13,7 @@ function text(formData: FormData, key: string) {
 
 export async function createWarehouseTransfer(formData: FormData) {
   const user = await AuthorizationService.requirePermission("TRANSFER_EXECUTE");
+  const context = await WmsContextService.requireActiveContext(user.id, user.isAdminUser);
   const operatorName = user.employee
     ? `${user.employee.firstName} ${user.employee.lastName}`
     : user.username;
@@ -22,6 +24,13 @@ export async function createWarehouseTransfer(formData: FormData) {
 
   if (!sourceHandlingUnitBarcode || !Number.isInteger(targetWarehouseId) || !Number.isInteger(targetLocationId))
     throw new Error("Kaynak THM, hedef depo ve hedef lokasyon zorunludur.");
+
+  const [sourceUnit, targetWarehouse] = await Promise.all([
+    prisma.handlingUnit.findUnique({ where: { barcode: sourceHandlingUnitBarcode }, select: { companyId: true } }),
+    prisma.warehouse.findUnique({ where: { id: targetWarehouseId }, select: { companyId: true } }),
+  ]);
+  if (!sourceUnit || sourceUnit.companyId !== context.companyId || !targetWarehouse || targetWarehouse.companyId !== context.companyId)
+    throw new Error("Depolar arası transfer yalnız aktif şirket kapsamındaki stoklar arasında yapılabilir.");
 
   await prisma.$transaction(async (tx) => {
     if (mode === "FULL_HU") {
