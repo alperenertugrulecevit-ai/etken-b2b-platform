@@ -24,6 +24,34 @@ describe("lost stock business rules", () => {
     const warehouses = ["DP001", "KYP001", "DP002"];
     expect(warehouses.filter((code) => code !== "KYP001")).toEqual(["DP001", "DP002"]);
   });
+
+  it("uses HU quantity as physical truth when legacy warehouse ledger is lower", () => {
+    const huQuantity = 77;
+    const warehouseLedgerPhysical = 25;
+
+    const lostQuantity = huQuantity;
+    const sourceLedgerRemoval = Math.min(warehouseLedgerPhysical, lostQuantity);
+    const sourceLedgerAfter = warehouseLedgerPhysical - sourceLedgerRemoval;
+    const lostWarehouseIncrease = lostQuantity;
+
+    expect(lostQuantity).toBe(77);
+    expect(sourceLedgerRemoval).toBe(25);
+    expect(sourceLedgerAfter).toBe(0);
+    expect(sourceLedgerAfter).toBeGreaterThanOrEqual(0);
+    expect(lostWarehouseIncrease).toBe(77);
+  });
+
+  it("does not create negative location stock when legacy location ledger is lower than HU", () => {
+    const huQuantity = 77;
+    const locationLedgerQuantity = 0;
+
+    const removal = Math.min(locationLedgerQuantity, huQuantity);
+    const locationAfter = locationLedgerQuantity - removal;
+
+    expect(removal).toBe(0);
+    expect(locationAfter).toBe(0);
+    expect(locationAfter).toBeGreaterThanOrEqual(0);
+  });
 });
 
 describe("warehouse transfer business rules", () => {
