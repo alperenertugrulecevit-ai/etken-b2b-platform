@@ -57,6 +57,8 @@ function getMovementLabel(type: string) {
     COUNT_DECREASE: "Sayım Eksiği",
     TRANSFER_IN: "Transfer Girişi",
     TRANSFER_OUT: "Transfer Çıkışı",
+    LOST_STOCK_IN: "Kayıp Stok Girişi",
+    LOST_STOCK_OUT: "Kayıp Stok Çıkışı",
   };
 
   return labels[type] ?? type;
@@ -99,6 +101,12 @@ function getMovementClass(type: string) {
 
     TRANSFER_OUT:
       "bg-violet-100 text-violet-700",
+
+    LOST_STOCK_IN:
+      "bg-amber-100 text-amber-800",
+
+    LOST_STOCK_OUT:
+      "bg-red-100 text-red-800",
   };
 
   return (
