@@ -11,7 +11,7 @@ function text(formData: FormData, key: string) {
 }
 
 export async function createWarehouseTransfer(formData: FormData) {
-  const user = await AuthorizationService.requireAdminAccess();
+  const user = await AuthorizationService.requirePermission("TRANSFER_EXECUTE");
   const operatorName = user.employee
     ? `${user.employee.firstName} ${user.employee.lastName}`
     : user.username;
