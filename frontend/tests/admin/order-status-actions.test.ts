@@ -20,6 +20,12 @@ const mocks = vi.hoisted(
   () => ({
     requirePermission:
       vi.fn(),
+    requireActiveContext:
+      vi.fn(),
+    getWmsPickableStock:
+      vi.fn(),
+    stockMovementFindMany:
+      vi.fn(),
     transaction:
       vi.fn(),
     orderFindUnique:
@@ -52,6 +58,10 @@ const transactionClient = {
     create:
       mocks.accountCreate,
   },
+  stockMovement: {
+    findMany:
+      mocks.stockMovementFindMany,
+  },
 };
 
 vi.mock(
@@ -61,6 +71,24 @@ vi.mock(
       requirePermission:
         mocks.requirePermission,
     },
+  })
+);
+
+vi.mock(
+  "@/modules/wms-context/services/wms-context.service",
+  () => ({
+    WmsContextService: {
+      requireActiveContext:
+        mocks.requireActiveContext,
+    },
+  })
+);
+
+vi.mock(
+  "@/lib/stock/wms-pickable-stock",
+  () => ({
+    getWmsPickableStock:
+      mocks.getWmsPickableStock,
   })
 );
 
@@ -158,7 +186,37 @@ describe(
 
       mocks.requirePermission.mockResolvedValue({
         id: "admin-user",
+        isAdminUser: true,
       });
+
+      mocks.requireActiveContext.mockResolvedValue({
+        tenantId: "tenant-test",
+        companyId: "company-test",
+        warehouseId: 1,
+      });
+
+      mocks.getWmsPickableStock.mockResolvedValue({
+        productId: 1,
+        physicalQuantity: 10,
+        reservedQuantity: 0,
+        availableQuantity: 10,
+        warehouses: [
+          {
+            warehouseId: 1,
+            warehouseCode: "DP001",
+            physicalQuantity: 10,
+            reservedQuantity: 0,
+            availableQuantity: 10,
+          },
+        ],
+      });
+
+      mocks.stockMovementFindMany.mockResolvedValue([
+        {
+          warehouseId: 1,
+          reservedChange: 2,
+        },
+      ]);
 
       mocks.transaction.mockImplementation(
         async (
@@ -394,6 +452,190 @@ describe(
       expect(
         mocks.orderUpdate
       ).not.toHaveBeenCalled();
+    });
+
+    it("tedarikçi ürünü gerçek WMS stoğu varsa rezerve eder", async () => {
+      mocks.orderFindUnique.mockResolvedValue(
+        createOrder({
+          items: [
+            {
+              productId: 1263,
+              productCode: "ETK-KRT-1279",
+              productName: "Tedarikçi Ürünü",
+              quantity: 3,
+              product: {
+                ownStock: false,
+              },
+            },
+          ],
+        })
+      );
+
+      mocks.getWmsPickableStock.mockResolvedValue({
+        productId: 1263,
+        physicalQuantity: 77,
+        reservedQuantity: 0,
+        availableQuantity: 77,
+        warehouses: [
+          {
+            warehouseId: 1,
+            warehouseCode: "DP001",
+            physicalQuantity: 77,
+            reservedQuantity: 0,
+            availableQuantity: 77,
+          },
+        ],
+      });
+
+      await updateOrderStatus(
+        501,
+        createStatusForm(
+          OrderStatus.APPROVED
+        )
+      );
+
+      expect(
+        mocks.stockMovement
+      ).toHaveBeenCalledWith(
+        transactionClient,
+        expect.objectContaining({
+          productId: 1263,
+          orderId: 501,
+          warehouseId: 1,
+          movementType:
+            StockMovementType.RESERVATION_CREATE,
+          physicalChange: 0,
+          reservedChange: 3,
+        })
+      );
+
+      expect(
+        mocks.orderUpdate
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data:
+            expect.objectContaining({
+              status:
+                OrderStatus.APPROVED,
+              stockReserved: true,
+            }),
+        })
+      );
+    });
+
+    it("tedarikçi katalog stoğu olsa bile WMS stoğu yoksa rezervasyonu reddeder", async () => {
+      mocks.orderFindUnique.mockResolvedValue(
+        createOrder({
+          items: [
+            {
+              productId: 1263,
+              productCode: "ETK-KRT-1279",
+              productName: "Tedarikçi Ürünü",
+              quantity: 3,
+              product: {
+                ownStock: false,
+              },
+            },
+          ],
+        })
+      );
+
+      mocks.getWmsPickableStock.mockResolvedValue({
+        productId: 1263,
+        physicalQuantity: 0,
+        reservedQuantity: 0,
+        availableQuantity: 0,
+        warehouses: [],
+      });
+
+      await expect(
+        updateOrderStatus(
+          501,
+          createStatusForm(
+            OrderStatus.APPROVED
+          )
+        )
+      ).rejects.toThrow(
+        "WMS'de yeterli toplanabilir stok bulunmuyor"
+      );
+
+      expect(
+        mocks.stockMovement
+      ).not.toHaveBeenCalled();
+
+      expect(
+        mocks.orderUpdate
+      ).not.toHaveBeenCalled();
+    });
+
+    it("onaylı fakat rezervasyonsuz siparişin rezervasyonunu aynı durumdan onarır", async () => {
+      mocks.orderFindUnique.mockResolvedValue(
+        createOrder({
+          status:
+            OrderStatus.APPROVED,
+          stockReserved: false,
+          items: [
+            {
+              productId: 1263,
+              productCode: "ETK-KRT-1279",
+              productName: "Tedarikçi Ürünü",
+              quantity: 3,
+              product: {
+                ownStock: false,
+              },
+            },
+          ],
+        })
+      );
+
+      mocks.getWmsPickableStock.mockResolvedValue({
+        productId: 1263,
+        physicalQuantity: 77,
+        reservedQuantity: 0,
+        availableQuantity: 77,
+        warehouses: [
+          {
+            warehouseId: 1,
+            warehouseCode: "DP001",
+            physicalQuantity: 77,
+            reservedQuantity: 0,
+            availableQuantity: 77,
+          },
+        ],
+      });
+
+      await updateOrderStatus(
+        501,
+        createStatusForm(
+          OrderStatus.APPROVED
+        )
+      );
+
+      expect(
+        mocks.stockMovement
+      ).toHaveBeenCalledWith(
+        transactionClient,
+        expect.objectContaining({
+          productId: 1263,
+          warehouseId: 1,
+          movementType:
+            StockMovementType.RESERVATION_CREATE,
+          reservedChange: 3,
+        })
+      );
+
+      expect(
+        mocks.orderUpdate
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data:
+            expect.objectContaining({
+              status:
+                OrderStatus.APPROVED,
+              stockReserved: true,
+            }),
+        })
+      );
     });
 
     it("iptal edilmiş siparişin yeniden açılmasını reddeder", async () => {
