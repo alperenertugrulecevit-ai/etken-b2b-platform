@@ -57,6 +57,8 @@ const groups:MenuGroup[]=[
   {href:"/admin/wms-reports/shipment-detail",icon:"📄",label:"Sevk Sipariş Detay Raporu",permissionCodes:["ORDER_VIEW"]},
   {href:"/admin/wms-reports/receipt-summary",icon:"📥",label:"Giriş Sipariş Durum Raporu",permissionCodes:["RECEIVING_VIEW"]},
   {href:"/admin/wms-reports/receipt-detail",icon:"📋",label:"Giriş Sipariş Detay Raporu",permissionCodes:["RECEIVING_VIEW"]},
+  {href:"/admin/wms-reports/receiving-tracking",icon:"📥",label:"Giriş Takip Raporu",permissionCodes:["RECEIVING_VIEW"]},
+  {href:"/admin/wms-reports/picking-detail",icon:"🧺",label:"Yapılan Toplama Detay Raporu",permissionCodes:["ORDER_VIEW"]},
  ]},
  {title:"Depo Yönetimi",icon:"🏬",items:[
   {href:"/admin/warehouses",icon:"🏬",label:"Depo Yönetimi",permissionCodes:["WAREHOUSE_VIEW","WAREHOUSE_MANAGE"]},
