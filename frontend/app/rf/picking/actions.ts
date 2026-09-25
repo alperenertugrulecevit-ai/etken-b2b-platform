@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
+import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
 
 export type RFPickingState = {
   success: boolean;
@@ -151,6 +152,135 @@ function canUseTargetStatus(status: HandlingUnitStatus) {
     status === HandlingUnitStatus.EMPTY ||
     status === HandlingUnitStatus.STORED
   );
+}
+
+
+export async function rfMarkPickingProductLost(formData: FormData) {
+  const currentUser =
+    await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+
+  const operatorName = currentUser.employee
+    ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+    : currentUser.username;
+
+  const orderNumber = normalizeValue(formData.get("orderNumber"));
+  const sourceBarcode = normalizeValue(formData.get("sourceBarcode"));
+  const productId = Number(formData.get("productId"));
+
+  if (!orderNumber || !sourceBarcode || !Number.isInteger(productId) || productId <= 0) {
+    throw new Error("Kayıp işlemi için sipariş, kaynak THM ve ürün bilgisi zorunludur.");
+  }
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { orderNumber },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          stockReserved: true,
+          stockDeducted: true,
+          items: {
+            where: { productId },
+            orderBy: { id: "asc" },
+            select: {
+              id: true,
+              productId: true,
+              productCode: true,
+              productName: true,
+              quantity: true,
+              pickedQuantity: true,
+            },
+          },
+        },
+      });
+
+      if (!order) throw new Error(`${orderNumber} numaralı sipariş bulunamadı.`);
+      if (!canPickOrder(order.status) || !order.stockReserved || order.stockDeducted)
+        throw new Error("Sipariş kayıp stok işlemine uygun durumda değildir.");
+
+      const orderItem = order.items.find((item) => item.pickedQuantity < item.quantity);
+      if (!orderItem) throw new Error("Bu ürün için siparişte kalan toplama miktarı yok.");
+
+      const lost = await WarehouseTransferService.markProductLost(tx, {
+        sourceHandlingUnitBarcode: sourceBarcode,
+        productId,
+        orderId: order.id,
+        orderItemId: orderItem.id,
+        actor: {
+          operatorId: currentUser.id,
+          operatorName,
+        },
+      });
+
+      /*
+       * Kayıp depoya alınan fiziksel stok sipariş rezervasyonunu karşılayamaz.
+       * Global rezervasyon, alternatif normal stok varsa aynı miktarda korunur;
+       * yoksa karşılanamayan bölüm serbest bırakılır. Kaynak önerisi RF sayfasının
+       * yeniden sorgulanmasıyla KYP001 hariç normal stok THM'lerinden hesaplanır.
+       */
+      const remainingNeed = Math.max(0, orderItem.quantity - orderItem.pickedQuantity);
+      const alternatives = await tx.handlingUnitItem.findMany({
+        where: {
+          productId,
+          quantity: { gt: 0 },
+          handlingUnit: {
+            id: { not: lost.record.sourceHandlingUnitId },
+            purpose: HandlingUnitPurpose.STOCK,
+            assignedOrderId: null,
+            assignedWaveId: null,
+            warehouse: { isActive: true, code: { not: "KYP001" } },
+            location: { isActive: true },
+            status: { in: [HandlingUnitStatus.OPEN, HandlingUnitStatus.CLOSED, HandlingUnitStatus.STORED] },
+          },
+        },
+        select: { quantity: true, reservedStock: true },
+      });
+
+      const alternativeAvailable = alternatives.reduce(
+        (sum, item) => sum + Math.max(0, item.quantity - item.reservedStock),
+        0,
+      );
+      const reallocatable = Math.min(remainingNeed, alternativeAvailable);
+      const shortfall = Math.max(0, remainingNeed - reallocatable);
+
+      if (shortfall > 0) {
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+          select: { reservedStock: true },
+        });
+        const release = Math.min(shortfall, product?.reservedStock ?? 0);
+        if (release > 0) {
+          await tx.product.update({
+            where: { id: productId },
+            data: { reservedStock: { decrement: release } },
+          });
+        }
+      }
+
+      return {
+        lostQuantity: lost.quantity,
+        productCode: orderItem.productCode,
+        orderNumber: order.orderNumber,
+        alternativeAvailable,
+        reallocatable,
+        shortfall,
+      };
+    },
+    {
+      maxWait: 10000,
+      timeout: 30000,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    },
+  );
+
+  revalidatePath("/rf/picking");
+  revalidatePath("/admin/stock-movements");
+  revalidatePath("/admin/thm-movements");
+  revalidatePath("/admin/lost-stock");
+
+  return result;
 }
 
 export async function rfPickOrderItem(
