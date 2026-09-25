@@ -312,12 +312,7 @@ function buildPageUrl({
     );
   }
 
-  if (operationType) {
-    params.set(
-      "operationType",
-      operationType
-    );
-  }
+  operationType.forEach((value) => params.append("operationType", value));
 
   if (startDate) {
     params.set(
