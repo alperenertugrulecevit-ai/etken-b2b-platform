@@ -4,6 +4,7 @@ import {
   CustomerAccountEntryDirection,
   CustomerAccountEntryType,
   OrderStatus,
+  Prisma,
   StockMovementType,
 } from "@prisma/client";
 
@@ -17,6 +18,9 @@ import {
 } from "@/lib/stock/stock-service";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
+
+import { getWmsPickableStock } from "@/lib/stock/wms-pickable-stock";
 
 const reservationStatuses: OrderStatus[] = [
   OrderStatus.APPROVED,
@@ -31,13 +35,74 @@ const shipmentStatuses: OrderStatus[] = [
   OrderStatus.DELIVERED,
 ];
 
+async function getOrderReservationWarehouseIds(
+  tx: Prisma.TransactionClient,
+  orderId: number,
+  productId: number
+) {
+  const movements =
+    await tx.stockMovement.findMany({
+      where: {
+        orderId,
+        productId,
+        movementType: {
+          in: [
+            StockMovementType.RESERVATION_CREATE,
+            StockMovementType.RESERVATION_RELEASE,
+          ],
+        },
+        warehouseId: {
+          not: null,
+        },
+      },
+      select: {
+        warehouseId: true,
+        reservedChange: true,
+      },
+    });
+
+  const reservationByWarehouse =
+    new Map<number, number>();
+
+  for (const movement of movements) {
+    if (movement.warehouseId === null) {
+      continue;
+    }
+
+    reservationByWarehouse.set(
+      movement.warehouseId,
+      (
+        reservationByWarehouse.get(
+          movement.warehouseId
+        ) ?? 0
+      ) + movement.reservedChange
+    );
+  }
+
+  return Array.from(
+    reservationByWarehouse.entries()
+  )
+    .filter(
+      ([, reservedQuantity]) =>
+        reservedQuantity > 0
+    )
+    .map(([warehouseId]) => warehouseId);
+}
+
 export async function updateOrderStatus(
   orderId: number,
   formData: FormData
 ) {
-  await AuthorizationService.requirePermission(
-    "ORDER_MANAGE"
-  );
+  const user =
+    await AuthorizationService.requirePermission(
+      "ORDER_MANAGE"
+    );
+
+  const context =
+    await WmsContextService.requireActiveContext(
+      user.id,
+      user.isAdminUser
+    );
 
   const statusValue = String(
     formData.get("status") ?? ""
@@ -110,10 +175,23 @@ items: {
       }
 
       /*
-       * Aynı durum yeniden seçildiyse
-       * stok hareketi üretmeden işlemi bitir.
+       * Aynı durum yeniden seçilmiş olsa bile,
+       * rezervasyon durumundaki fakat henüz
+       * rezerve edilmemiş sipariş için stok
+       * rezervasyonu tekrar denenebilir.
        */
-      if (order.status === newStatus) {
+      const shouldRepairReservation =
+        order.status === newStatus &&
+        reservationStatuses.includes(
+          newStatus
+        ) &&
+        !order.stockReserved &&
+        !order.stockDeducted;
+
+      if (
+        order.status === newStatus &&
+        !shouldRepairReservation
+      ) {
         return;
       }
 
@@ -135,10 +213,7 @@ items: {
         },
       };
 
-      const ownStockItems =
-        order.items.filter(
-          (item) => item.product.ownStock
-        );
+
 
       /*
        * 1. REZERVASYON OLUŞTURMA
@@ -155,9 +230,63 @@ items: {
         !order.stockReserved &&
         !order.stockDeducted
       ) {
-        for (
-          const item of ownStockItems
+      const reservableItems = [];
+
+      for (const item of order.items) {
+        const wmsStock =
+          await getWmsPickableStock(
+            tx,
+            {
+              tenantId:
+                context.tenantId,
+              companyId:
+                context.companyId,
+              productId:
+                item.productId,
+            }
+          );
+
+        if (
+          wmsStock.availableQuantity <
+          item.quantity
         ) {
+          throw new Error(
+            `${item.productCode} - ${item.productName} için ` +
+              `WMS'de yeterli toplanabilir stok bulunmuyor. ` +
+              `Sipariş miktarı: ${item.quantity}, ` +
+              `toplanabilir stok: ${wmsStock.availableQuantity}.`
+          );
+        }
+
+        const reservationWarehouse =
+          wmsStock.warehouses.find(
+            (warehouse) =>
+              warehouse.availableQuantity >=
+              item.quantity
+          );
+
+        if (!reservationWarehouse) {
+          throw new Error(
+            `${item.productCode} - ${item.productName} için ` +
+              `sipariş miktarını tek depodan karşılayacak yeterli WMS stoğu bulunmuyor.`
+          );
+        }
+
+        reservableItems.push({
+          item,
+          warehouseId:
+            reservationWarehouse.warehouseId,
+          warehouseCode:
+            reservationWarehouse.warehouseCode,
+        });
+      }
+
+        for (
+          const reservation of reservableItems
+        ) {
+          const item =
+            reservation.item;
+
           await createStockMovementWithTransaction(
             tx,
             {
@@ -165,6 +294,9 @@ items: {
                 item.productId,
 
               orderId: order.id,
+
+              warehouseId:
+                reservation.warehouseId,
 
               movementType:
                 StockMovementType.RESERVATION_CREATE,
@@ -178,7 +310,7 @@ items: {
                 order.orderNumber,
 
               description:
-                `${order.orderNumber} numaralı sipariş için stok rezervasyonu oluşturuldu.`,
+                `${order.orderNumber} numaralı sipariş için ${reservation.warehouseCode} deposunda stok rezervasyonu oluşturuldu.`,
             }
           );
         }
@@ -192,10 +324,10 @@ items: {
             status: newStatus,
             statusHistory,
             stockReserved:
-              ownStockItems.length > 0,
+              reservableItems.length > 0,
 
             stockReservedAt:
-              ownStockItems.length > 0
+              reservableItems.length > 0
                 ? order.stockReservedAt ??
                   new Date()
                 : null,
@@ -221,9 +353,23 @@ items: {
         ) &&
         !order.stockDeducted
       ) {
-        for (
-          const item of ownStockItems
-        ) {
+        for (const item of order.items) {
+          const warehouseIds =
+            await getOrderReservationWarehouseIds(
+              tx,
+              order.id,
+              item.productId
+            );
+
+          if (
+            order.stockReserved &&
+            warehouseIds.length !== 1
+          ) {
+            throw new Error(
+              `${item.productCode} için rezervasyon deposu tekil olarak belirlenemedi.`
+            );
+          }
+
           await createStockMovementWithTransaction(
             tx,
             {
@@ -231,6 +377,10 @@ items: {
                 item.productId,
 
               orderId: order.id,
+
+              warehouseId:
+                warehouseIds[0] ??
+                context.warehouseId,
 
               movementType:
                 StockMovementType.SALE_SHIPMENT,
@@ -290,9 +440,20 @@ items: {
           order.stockReserved &&
           !order.stockDeducted
         ) {
-          for (
-            const item of ownStockItems
-          ) {
+          for (const item of order.items) {
+            const warehouseIds =
+              await getOrderReservationWarehouseIds(
+                tx,
+                order.id,
+                item.productId
+              );
+
+            if (warehouseIds.length !== 1) {
+              throw new Error(
+                `${item.productCode} için rezervasyon deposu tekil olarak belirlenemedi.`
+              );
+            }
+
             await createStockMovementWithTransaction(
               tx,
               {
@@ -300,6 +461,9 @@ items: {
                   item.productId,
 
                 orderId: order.id,
+
+                warehouseId:
+                  warehouseIds[0],
 
                 movementType:
                   StockMovementType.RESERVATION_RELEASE,
@@ -413,9 +577,20 @@ items: {
         order.stockReserved &&
         !order.stockDeducted
       ) {
-        for (
-          const item of ownStockItems
-        ) {
+        for (const item of order.items) {
+          const warehouseIds =
+            await getOrderReservationWarehouseIds(
+              tx,
+              order.id,
+              item.productId
+            );
+
+          if (warehouseIds.length !== 1) {
+            throw new Error(
+              `${item.productCode} için rezervasyon deposu tekil olarak belirlenemedi.`
+            );
+          }
+
           await createStockMovementWithTransaction(
             tx,
             {
@@ -423,6 +598,9 @@ items: {
                 item.productId,
 
               orderId: order.id,
+
+              warehouseId:
+                warehouseIds[0],
 
               movementType:
                 StockMovementType.RESERVATION_RELEASE,
