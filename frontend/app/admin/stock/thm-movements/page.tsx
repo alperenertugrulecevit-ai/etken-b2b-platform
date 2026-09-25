@@ -359,17 +359,7 @@ export default async function ThmMovementsPage({
       query.q
     );
 
-  const requestedOperationType =
-    normalizeSearchValue(
-      query.operationType
-    );
-
-  const selectedOperationType =
-    isOperationType(
-      requestedOperationType
-    )
-      ? requestedOperationType
-      : "";
+  const selectedOperationTypes = (Array.isArray(query.operationType) ? query.operationType : query.operationType ? [query.operationType] : []).filter(isOperationType);
 
   const startDateValue =
     normalizeSearchValue(
@@ -420,12 +410,8 @@ export default async function ThmMovementsPage({
     ],
   });
 
-  if (
-    selectedOperationType
-  ) {
-    filters.push({
-      operationType: selectedOperationTypes,
-    });
+  if (selectedOperationTypes.length) {
+    filters.push({ operationType: { in: selectedOperationTypes } });
   }
 
   if (
@@ -1127,14 +1113,10 @@ export default async function ThmMovementsPage({
 
               <select
                 name="operationType"
-                defaultValue={
-                  selectedOperationType
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
+                multiple
+                defaultValue={selectedOperationTypes}
+                className="min-h-40 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
               >
-                <option value="">
-                  Tüm İşlemler
-                </option>
 
                 {OPERATION_OPTIONS.map(
                   (option) => (
