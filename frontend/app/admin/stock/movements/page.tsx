@@ -5,10 +5,11 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import TableHeaderMultiFilter from "@/components/admin/TableHeaderMultiFilter";
 
 type SearchParams = Promise<{
   search?: string;
-  movementType?: string;
+  movementType?: string | string[];
   startDate?: string;
   endDate?: string;
   page?: string;
@@ -145,7 +146,7 @@ function createEndDate(value: string) {
 function createQueryString(
   values: Record<
     string,
-    string | number | undefined
+    string | string[] | number | undefined
   >
 ) {
   const params = new URLSearchParams();
@@ -156,7 +157,7 @@ function createQueryString(
         value !== undefined &&
         String(value).trim() !== ""
       ) {
-        params.set(key, String(value));
+        if (Array.isArray(value)) value.forEach((item) => params.append(key, item));\n        else params.set(key, String(value));
       }
     }
   );
@@ -649,7 +650,7 @@ export default async function StockMovementsPage({
       {/* HAREKET TABLOSU */}
 
       <div className="mt-8 overflow-x-auto rounded-2xl bg-white shadow">
-        <table className="w-full min-w-[1850px] text-left">
+        <table id="stock-movements-table" className="w-full min-w-[1850px] text-left">
           <thead className="bg-blue-900 text-white">
             <tr>
               <th className="p-4">
