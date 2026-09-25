@@ -8,7 +8,10 @@ import { prisma } from "@/lib/prisma";
 
 type SearchParams = Promise<{
   search?: string;
-  movementType?: string;
+  movementType?: string | string[];
+  product?: string;
+  document?: string;
+  description?: string;
   startDate?: string;
   endDate?: string;
   page?: string;
@@ -172,8 +175,10 @@ export default async function StockMovementsPage({
   const search =
     query.search?.trim() ?? "";
 
-  const movementType =
-    query.movementType?.trim() ?? "";
+  const movementTypes = (Array.isArray(query.movementType) ? query.movementType : query.movementType ? [query.movementType] : []).filter(isMovementType);
+  const productFilter = query.product?.trim() ?? "";
+  const documentFilter = query.document?.trim() ?? "";
+  const descriptionFilter = query.description?.trim() ?? "";
 
   const startDate =
     query.startDate?.trim() ?? "";
@@ -251,12 +256,23 @@ export default async function StockMovementsPage({
     ];
   }
 
-  if (
-    movementType &&
-    isMovementType(movementType)
-  ) {
-    where.movementType =
-      movementType;
+  if (movementTypes.length) {
+    where.movementType = { in: movementTypes };
+  }
+  if (productFilter) {
+    where.product = { is: { OR: [
+      { code: { contains: productFilter, mode: "insensitive" } },
+      { name: { contains: productFilter, mode: "insensitive" } },
+    ] } };
+  }
+  if (documentFilter) {
+    where.OR = [
+      { documentNumber: { contains: documentFilter, mode: "insensitive" } },
+      { order: { is: { orderNumber: { contains: documentFilter, mode: "insensitive" } } } },
+    ];
+  }
+  if (descriptionFilter) {
+    where.description = { contains: descriptionFilter, mode: "insensitive" };
   }
 
   if (
@@ -406,7 +422,10 @@ export default async function StockMovementsPage({
 
   const baseQuery = {
     search,
-    movementType,
+    movementType: movementTypes.join(","),
+    product: productFilter,
+    document: documentFilter,
+    description: descriptionFilter,
     startDate,
     endDate,
   };
@@ -466,13 +485,6 @@ export default async function StockMovementsPage({
           >
             📊 CSV İndir
           </a>
-
-          <Link
-            href="/admin/stock/thm-movements"
-            className="rounded-xl bg-cyan-800 px-5 py-3 font-semibold text-white hover:bg-cyan-700"
-          >
-            🔄 THM Hareketleri
-          </Link>
 
           <Link
             href="/admin/stock/manual"
@@ -582,12 +594,11 @@ export default async function StockMovementsPage({
 
             <select
               name="movementType"
-              defaultValue={movementType}
-              className="w-full rounded-xl border bg-white p-4"
+              multiple
+              defaultValue={movementTypes}
+              size={5}
+              className="w-full rounded-xl border bg-white p-3"
             >
-              <option value="">
-                Tüm hareketler
-              </option>
 
               {Object.values(
                 StockMovementType
@@ -646,26 +657,39 @@ export default async function StockMovementsPage({
         </div>
       </form>
 
+      {/* Sütun filtreleri tablo başlıklarındaki alanları bu GET formuna bağlar. */}
+      <form id="stock-column-filters" method="get">
+        {movementTypes.map((type) => <input key={type} type="hidden" name="movementType" value={type} />)}
+        <input type="hidden" name="search" value={search} />
+        <input type="hidden" name="startDate" value={startDate} />
+        <input type="hidden" name="endDate" value={endDate} />
+        <button type="submit" className="mt-6 rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-bold text-white">Sütun Filtrelerini Uygula</button>
+      </form>
+
       {/* HAREKET TABLOSU */}
 
       <div className="mt-8 overflow-x-auto rounded-2xl bg-white shadow">
         <table className="w-full min-w-[1850px] text-left">
           <thead className="bg-blue-900 text-white">
             <tr>
-              <th className="p-4">
+              <th className="p-4 align-top">
                 Tarih
+                <div className="mt-2 text-xs font-normal text-blue-100">↑ Üst tarih filtresi</div>
               </th>
 
-              <th className="p-4">
+              <th className="p-4 align-top">
                 Ürün
+                <input name="product" form="stock-column-filters" defaultValue={productFilter} placeholder="Filtrele..." className="mt-2 w-44 rounded bg-white px-2 py-1.5 text-xs text-slate-900" />
               </th>
 
-              <th className="p-4">
+              <th className="p-4 align-top">
                 Hareket Tipi
+                <div className="mt-2 text-xs font-normal text-blue-100">↑ Çoklu seçim</div>
               </th>
 
-              <th className="p-4">
+              <th className="p-4 align-top">
                 Belge / Sipariş
+                <input name="document" form="stock-column-filters" defaultValue={documentFilter} placeholder="Filtrele..." className="mt-2 w-40 rounded bg-white px-2 py-1.5 text-xs text-slate-900" />
               </th>
 
               <th className="p-4">
@@ -688,8 +712,9 @@ export default async function StockMovementsPage({
                 Kullanılabilir Bakiye
               </th>
 
-              <th className="p-4">
+              <th className="p-4 align-top">
                 Açıklama
+                <input name="description" form="stock-column-filters" defaultValue={descriptionFilter} placeholder="Filtrele..." className="mt-2 w-44 rounded bg-white px-2 py-1.5 text-xs text-slate-900" />
               </th>
 
               <th className="p-4">
