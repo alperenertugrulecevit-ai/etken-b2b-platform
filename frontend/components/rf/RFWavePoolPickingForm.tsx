@@ -10,6 +10,7 @@ import {
 
 import {
   rfWavePoolPickAction,
+  rfWavePoolMarkProductLost,
   type RFWavePoolPickingState,
 } from "@/app/rf/wave-picking/actions";
 
@@ -743,6 +744,12 @@ export default function RFWavePoolPickingForm({
           }
         />
 
+        <input
+          type="hidden"
+          name="productId"
+          value={selectedTask?.productId ?? ""}
+        />
+
         <div className="grid gap-5 lg:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-black text-slate-800">
@@ -1148,28 +1155,44 @@ export default function RFWavePoolPickingForm({
           </label>
         </div>
 
-        <button
-          type="submit"
-          disabled={
-            isPending ||
-            !selectedWave ||
-            !targetBarcode.trim() ||
-            !sourceBarcode.trim() ||
-            !productBarcode.trim() ||
-            !selectedTask ||
-            selectedTask.remainingQuantity ===
-              0
-          }
-          className={`mt-6 w-full rounded-xl py-4 text-lg font-black text-white ${
-            isPending
-              ? "cursor-not-allowed bg-slate-400"
-              : "bg-blue-900 hover:bg-blue-800"
-          }`}
-        >
-          {isPending
-            ? "Havuz toplama kaydediliyor..."
-            : "Wave Havuz Toplamayı Kaydet"}
-        </button>
+        <div className="mt-6 grid gap-3">
+          <button
+            type="submit"
+            formAction={rfWavePoolMarkProductLost}
+            formNoValidate
+            disabled={!selectedWave || !sourceBarcode.trim() || !selectedTask}
+            className="w-full rounded-xl bg-red-700 py-4 text-lg font-black text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            KAYIP
+          </button>
+
+          <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-900">
+            Kayıp işlemi, seçili ürünün kaynak THM içindeki tüm fiziksel miktarını KYP001 / KY-01-01-01 kayıp stoğuna taşır. Wave ihtiyacı tamamlanmış sayılmaz.
+          </p>
+
+          <button
+            type="submit"
+            disabled={
+              isPending ||
+              !selectedWave ||
+              !targetBarcode.trim() ||
+              !sourceBarcode.trim() ||
+              !productBarcode.trim() ||
+              !selectedTask ||
+              selectedTask.remainingQuantity ===
+                0
+            }
+            className={`w-full rounded-xl py-4 text-lg font-black text-white ${
+              isPending
+                ? "cursor-not-allowed bg-slate-400"
+                : "bg-blue-900 hover:bg-blue-800"
+            }`}
+          >
+            {isPending
+              ? "Havuz toplama kaydediliyor..."
+              : "Wave Havuz Toplamayı Kaydet"}
+          </button>
+        </div>
       </form>
     </div>
   );

@@ -228,6 +228,17 @@ export default async function RFWavePickingPage() {
             null,
         },
 
+        warehouse: {
+          isActive: true,
+          code: {
+            not: "KYP001",
+          },
+        },
+
+        location: {
+          isActive: true,
+        },
+
         items: {
           some: {
             quantity: {

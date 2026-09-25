@@ -36,7 +36,6 @@ const groups:MenuGroup[]=[
   {href:"/admin/stock/location-map",icon:"🗺️",label:"Lokasyon Stok Haritası",permissionCodes:["INVENTORY_VIEW","LOCATION_VIEW"]},
   {href:"/admin/inventory-counts",icon:"🧮",label:"Planlı Sayımlar",permissionCodes:["INVENTORY_COUNT_VIEW","INVENTORY_COUNT_MANAGE","INVENTORY_COUNT_APPROVE"]},
   {href:"/admin/inventory-counts/reports",icon:"📊",label:"Sayım Raporları",permissionCodes:["INVENTORY_COUNT_VIEW","INVENTORY_COUNT_APPROVE"]},
-  {href:"/admin/stock/warehouse-transfer",icon:"🚛",label:"Depolar Arası Transfer",permissionCodes:["TRANSFER_EXECUTE"]},
  ]},
  {title:"Handling Unit",icon:"🔗",items:[
   {href:"/admin/handling-units",icon:"🧱",label:"Koli / Palet Yönetimi",permissionCodes:["HANDLING_UNIT_VIEW","HANDLING_UNIT_MANAGE"]},

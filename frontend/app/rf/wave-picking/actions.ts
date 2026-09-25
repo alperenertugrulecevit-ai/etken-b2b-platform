@@ -9,6 +9,8 @@ import {
 } from "next/cache";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { prisma } from "@/lib/prisma";
+import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
 
 import { WavePoolPickingService } from "@/modules/fulfillment/services/wave-pool-picking.service";
 
@@ -80,6 +82,57 @@ function readBarcode(
     formData,
     fieldName
   ).toUpperCase();
+}
+
+export async function rfWavePoolMarkProductLost(formData: FormData) {
+  const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+  const waveId = readText(formData, "waveId");
+  const sourceBarcode = readBarcode(formData, "sourceBarcode");
+  const productId = Number(formData.get("productId"));
+  const terminalCode = readText(formData, "terminalCode").toUpperCase();
+
+  if (!waveId || !sourceBarcode || !Number.isInteger(productId) || productId <= 0) {
+    throw new Error("Kayıp işlemi için Wave, kaynak THM ve ürün zorunludur.");
+  }
+
+  const operatorName = currentUser.employee
+    ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+    : currentUser.username;
+
+  await prisma.$transaction(async (tx) => {
+    const wave = await tx.wave.findUnique({
+      where: { id: waveId },
+      select: {
+        distributions: {
+          where: { status: { not: "CANCELLED" } },
+          select: { lines: { where: { productId }, select: { productId: true } } },
+        },
+      },
+    });
+
+    if (!wave || !wave.distributions.some((distribution) => distribution.lines.length > 0)) {
+      throw new Error("Seçilen ürün bu Wave'in aktif toplama planında bulunmuyor.");
+    }
+
+    await WarehouseTransferService.markProductLost(tx, {
+      sourceHandlingUnitBarcode: sourceBarcode,
+      productId,
+      actor: {
+        operatorId: currentUser.id,
+        operatorName,
+        terminalCode: terminalCode || null,
+      },
+    });
+  }, {
+    maxWait: 10000,
+    timeout: 30000,
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  });
+
+  revalidatePath("/rf/wave-picking");
+  revalidatePath("/admin/stock/movements");
+  revalidatePath("/admin/stock/thm-movements");
+  revalidatePath("/admin/wms-reports/lost-stock");
 }
 
 export async function rfWavePoolPickAction(
