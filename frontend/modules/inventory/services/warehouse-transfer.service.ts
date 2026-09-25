@@ -93,6 +93,139 @@ async function moveLocationStock(
   });
 }
 
+async function moveLostStockLedgers(
+  tx: Tx,
+  args: {
+    productId: number;
+    quantity: number;
+    sourceWarehouseId: number;
+    targetWarehouseId: number;
+    sourceLocationId: number;
+    targetLocationId: number;
+    tenantId: string;
+    companyId: string;
+    reservedToRelease: number;
+  },
+) {
+  const {
+    productId,
+    quantity,
+    sourceWarehouseId,
+    targetWarehouseId,
+    sourceLocationId,
+    targetLocationId,
+    tenantId,
+    companyId,
+    reservedToRelease,
+  } = args;
+
+  // KAYIP işleminde fiziksel gerçeklik kaynak THM'dir.
+  // Warehouse/location özet tabloları geçmiş işlemler nedeniyle THM'den düşük
+  // olabilir. Bu nedenle bu özetleri negatife düşürmeden mevcut miktar kadar
+  // azaltır, KYP001 tarafına ise THM'de kayıp bulunan miktarın tamamını ekleriz.
+  const sourceWarehouse = await tx.warehouseProductStock.findUnique({
+    where: {
+      warehouse_product_stock_unique: {
+        warehouseId: sourceWarehouseId,
+        productId,
+      },
+    },
+    select: { physicalStock: true, reservedStock: true },
+  });
+
+  const warehousePhysicalToRemove = Math.min(
+    sourceWarehouse?.physicalStock ?? 0,
+    quantity,
+  );
+  const warehouseReservedToRelease = Math.min(
+    sourceWarehouse?.reservedStock ?? 0,
+    reservedToRelease,
+  );
+
+  if (sourceWarehouse) {
+    await tx.warehouseProductStock.update({
+      where: {
+        warehouse_product_stock_unique: {
+          warehouseId: sourceWarehouseId,
+          productId,
+        },
+      },
+      data: {
+        physicalStock: { decrement: warehousePhysicalToRemove },
+        reservedStock: { decrement: warehouseReservedToRelease },
+      },
+    });
+  }
+
+  await tx.warehouseProductStock.upsert({
+    where: {
+      warehouse_product_stock_unique: {
+        warehouseId: targetWarehouseId,
+        productId,
+      },
+    },
+    update: { physicalStock: { increment: quantity } },
+    create: {
+      tenantId,
+      companyId,
+      warehouseId: targetWarehouseId,
+      productId,
+      physicalStock: quantity,
+      reservedStock: 0,
+    },
+  });
+
+  const sourceLocation = await tx.warehouseLocationStock.findUnique({
+    where: {
+      location_product_unique: {
+        locationId: sourceLocationId,
+        productId,
+      },
+    },
+    select: { quantity: true, reservedStock: true },
+  });
+
+  const locationPhysicalToRemove = Math.min(
+    sourceLocation?.quantity ?? 0,
+    quantity,
+  );
+  const locationReservedToRelease = Math.min(
+    sourceLocation?.reservedStock ?? 0,
+    reservedToRelease,
+  );
+
+  if (sourceLocation) {
+    await tx.warehouseLocationStock.update({
+      where: {
+        location_product_unique: {
+          locationId: sourceLocationId,
+          productId,
+        },
+      },
+      data: {
+        quantity: { decrement: locationPhysicalToRemove },
+        reservedStock: { decrement: locationReservedToRelease },
+      },
+    });
+  }
+
+  await tx.warehouseLocationStock.upsert({
+    where: {
+      location_product_unique: {
+        locationId: targetLocationId,
+        productId,
+      },
+    },
+    update: { quantity: { increment: quantity } },
+    create: {
+      locationId: targetLocationId,
+      productId,
+      quantity,
+      reservedStock: 0,
+    },
+  });
+}
+
 async function writeStockPair(
   tx: Tx,
   args: {
@@ -360,29 +493,21 @@ export class WarehouseTransferService {
     const doc = transferNo("KYP");
     const sourceLoc = fullLocationCode(source.location);
 
-    // Kayıp ürün fiziksel toplamdan silinmez; KYP001'e yeniden sınıflandırılır.
-    await moveWarehouseStock(tx, {
-      productId: item.productId, quantity,
-      sourceWarehouseId: source.warehouseId, targetWarehouseId: lostWarehouse.id,
-      tenantId: source.tenantId, companyId: source.companyId,
-    });
-
-    // Kayıp olayında bu SKU'nun kaynak rezervasyonu serbest bırakılır.
+    // Kayıp olayında bu SKU'nun kaynak THM rezervasyonu serbest bırakılır.
     const reservedToRelease = item.reservedStock;
-    if (reservedToRelease > 0) {
-      await tx.warehouseProductStock.update({
-        where: { warehouse_product_stock_unique: { warehouseId: source.warehouseId, productId: item.productId } },
-        data: { reservedStock: { decrement: reservedToRelease } },
-      });
-      await tx.warehouseLocationStock.update({
-        where: { location_product_unique: { locationId: source.locationId, productId: item.productId } },
-        data: { reservedStock: { decrement: reservedToRelease } },
-      });
-    }
 
-    await moveLocationStock(tx, {
-      productId: item.productId, quantity,
-      sourceLocationId: source.locationId, targetLocationId: lostLocation.id,
+    // Kayıp fiziksel miktarının kaynağı THM'dir. Eski warehouse/location
+    // özetleri THM'den düşük olsa bile işlem negatife düşmeden uzlaştırılır.
+    await moveLostStockLedgers(tx, {
+      productId: item.productId,
+      quantity,
+      sourceWarehouseId: source.warehouseId,
+      targetWarehouseId: lostWarehouse.id,
+      sourceLocationId: source.locationId,
+      targetLocationId: lostLocation.id,
+      tenantId: source.tenantId,
+      companyId: source.companyId,
+      reservedToRelease,
     });
     await tx.handlingUnitItem.delete({ where: { id: item.id } });
 
