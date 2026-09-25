@@ -6,6 +6,7 @@ import {
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
+import TableHeaderMultiFilter from "@/components/admin/TableHeaderMultiFilter";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
@@ -296,7 +297,7 @@ function buildPageUrl({
   page,
 }: {
   q: string;
-  operationType: string;
+  operationType: string[];
   startDate: string;
   endDate: string;
   page: number;
@@ -311,12 +312,7 @@ function buildPageUrl({
     );
   }
 
-  if (operationType) {
-    params.set(
-      "operationType",
-      operationType
-    );
-  }
+  operationType.forEach((value) => params.append("operationType", value));
 
   if (startDate) {
     params.set(
@@ -358,17 +354,7 @@ export default async function ThmMovementsPage({
       query.q
     );
 
-  const requestedOperationType =
-    normalizeSearchValue(
-      query.operationType
-    );
-
-  const selectedOperationType =
-    isOperationType(
-      requestedOperationType
-    )
-      ? requestedOperationType
-      : "";
+  const selectedOperationTypes = (Array.isArray(query.operationType) ? query.operationType : query.operationType ? [query.operationType] : []).filter(isOperationType);
 
   const startDateValue =
     normalizeSearchValue(
@@ -419,13 +405,8 @@ export default async function ThmMovementsPage({
     ],
   });
 
-  if (
-    selectedOperationType
-  ) {
-    filters.push({
-      operationType:
-        selectedOperationType,
-    });
+  if (selectedOperationTypes.length) {
+    filters.push({ operationType: { in: selectedOperationTypes } });
   }
 
   if (
@@ -1127,14 +1108,10 @@ export default async function ThmMovementsPage({
 
               <select
                 name="operationType"
-                defaultValue={
-                  selectedOperationType
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
+                multiple
+                defaultValue={selectedOperationTypes}
+                className="min-h-40 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
               >
-                <option value="">
-                  Tüm İşlemler
-                </option>
 
                 {OPERATION_OPTIONS.map(
                   (option) => (
@@ -1205,7 +1182,7 @@ export default async function ThmMovementsPage({
 
         <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-[1850px] w-full text-left text-sm">
+            <table id="thm-movements-table" className="min-w-[1850px] w-full text-left text-sm">
               <thead className="bg-blue-950 text-white">
                 <tr>
                   <th className="px-4 py-4">
@@ -1517,8 +1494,7 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:
@@ -1542,8 +1518,7 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:

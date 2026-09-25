@@ -5,10 +5,11 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import TableHeaderMultiFilter from "@/components/admin/TableHeaderMultiFilter";
 
 type SearchParams = Promise<{
   search?: string;
-  movementType?: string;
+  movementType?: string | string[];
   startDate?: string;
   endDate?: string;
   page?: string;
@@ -145,7 +146,7 @@ function createEndDate(value: string) {
 function createQueryString(
   values: Record<
     string,
-    string | number | undefined
+    string | string[] | number | undefined
   >
 ) {
   const params = new URLSearchParams();
@@ -156,7 +157,11 @@ function createQueryString(
         value !== undefined &&
         String(value).trim() !== ""
       ) {
-        params.set(key, String(value));
+        if (Array.isArray(value)) {
+          value.forEach((item) => params.append(key, item));
+        } else {
+          params.set(key, String(value));
+        }
       }
     }
   );
@@ -172,8 +177,7 @@ export default async function StockMovementsPage({
   const search =
     query.search?.trim() ?? "";
 
-  const movementType =
-    query.movementType?.trim() ?? "";
+  const movementTypes = (Array.isArray(query.movementType) ? query.movementType : query.movementType ? [query.movementType] : []).filter(isMovementType);
 
   const startDate =
     query.startDate?.trim() ?? "";
@@ -251,12 +255,8 @@ export default async function StockMovementsPage({
     ];
   }
 
-  if (
-    movementType &&
-    isMovementType(movementType)
-  ) {
-    where.movementType =
-      movementType;
+  if (movementTypes.length) {
+    where.movementType = { in: movementTypes };
   }
 
   if (
@@ -406,7 +406,7 @@ export default async function StockMovementsPage({
 
   const baseQuery = {
     search,
-    movementType,
+    movementType: movementTypes,
     startDate,
     endDate,
   };
@@ -582,12 +582,10 @@ export default async function StockMovementsPage({
 
             <select
               name="movementType"
-              defaultValue={movementType}
-              className="w-full rounded-xl border bg-white p-4"
+              multiple
+              defaultValue={movementTypes}
+              className="min-h-40 w-full rounded-xl border bg-white p-4"
             >
-              <option value="">
-                Tüm hareketler
-              </option>
 
               {Object.values(
                 StockMovementType
@@ -649,7 +647,7 @@ export default async function StockMovementsPage({
       {/* HAREKET TABLOSU */}
 
       <div className="mt-8 overflow-x-auto rounded-2xl bg-white shadow">
-        <table className="w-full min-w-[1850px] text-left">
+        <table id="stock-movements-table" className="w-full min-w-[1850px] text-left">
           <thead className="bg-blue-900 text-white">
             <tr>
               <th className="p-4">
