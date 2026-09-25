@@ -661,6 +661,8 @@ enum StockMovementType {
   COUNT_DECREASE
   TRANSFER_IN
   TRANSFER_OUT
+  LOST_STOCK_IN
+  LOST_STOCK_OUT
 }
 
 model StockMovement {
@@ -970,6 +972,8 @@ enum WmsOperationType {
   COUNT
   STOCK_IN
   STOCK_OUT
+  LOST_STOCK
+  WAREHOUSE_TRANSFER
   OTHER
 }
 
@@ -3116,4 +3120,107 @@ model PtlGatewayEvent {
   @@index([tenantId, companyId, warehouseId, waveId, occurredAt])
   @@index([commandId, createdAt])
   @@index([correlationKey])
+}
+
+
+enum WarehouseTransferType {
+  PRODUCT
+  FULL_HU
+}
+
+enum WarehouseTransferStatus {
+  COMPLETED
+  CANCELLED
+}
+
+model WarehouseTransfer {
+  id                    String                  @id @default(cuid())
+  transferNumber        String                  @unique
+  transferType          WarehouseTransferType
+  status                WarehouseTransferStatus @default(COMPLETED)
+  tenantId              String
+  companyId             String
+  sourceWarehouseId     Int
+  sourceWarehouseCode   String
+  targetWarehouseId     Int
+  targetWarehouseCode   String
+  sourceHandlingUnitId  Int?
+  sourceHandlingUnitBarcode String?
+  targetHandlingUnitId  Int?
+  targetHandlingUnitBarcode String?
+  operatorId            String?
+  operatorName          String?
+  terminalCode          String?
+  description           String?
+  createdAt             DateTime                @default(now())
+  completedAt           DateTime?
+
+  lines WarehouseTransferLine[]
+
+  @@index([tenantId, companyId, createdAt])
+  @@index([sourceWarehouseId, createdAt])
+  @@index([targetWarehouseId, createdAt])
+  @@index([sourceHandlingUnitId, createdAt])
+  @@index([targetHandlingUnitId, createdAt])
+}
+
+model WarehouseTransferLine {
+  id                        String            @id @default(cuid())
+  transferId                String
+  productId                 Int
+  productCode               String
+  productName               String
+  quantity                  Int
+  sourceLocationId          Int?
+  sourceLocationCode        String?
+  sourceHandlingUnitId      Int?
+  sourceHandlingUnitBarcode String?
+  targetLocationId          Int?
+  targetLocationCode        String?
+  targetHandlingUnitId      Int?
+  targetHandlingUnitBarcode String?
+  createdAt                 DateTime          @default(now())
+
+  transfer WarehouseTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  @@index([transferId])
+  @@index([productId, createdAt])
+  @@index([sourceHandlingUnitId, createdAt])
+  @@index([targetHandlingUnitId, createdAt])
+}
+
+model LostStockRecord {
+  id                        String   @id @default(cuid())
+  tenantId                  String
+  companyId                 String
+  productId                 Int
+  productCode               String
+  productName               String
+  quantity                  Int
+  sourceWarehouseId         Int
+  sourceWarehouseCode       String
+  sourceLocationId          Int
+  sourceLocationCode        String
+  sourceHandlingUnitId      Int
+  sourceHandlingUnitBarcode String
+  lostWarehouseId           Int
+  lostWarehouseCode         String
+  lostLocationId            Int
+  lostLocationCode          String
+  lostHandlingUnitId        Int?
+  lostHandlingUnitBarcode   String?
+  orderId                   Int?
+  orderItemId               Int?
+  operatorId                String?
+  operatorName              String?
+  terminalCode              String?
+  stockMovementDocumentNo   String?
+  createdAt                 DateTime @default(now())
+
+  @@index([tenantId, companyId, createdAt])
+  @@index([productId, createdAt])
+  @@index([sourceWarehouseId, createdAt])
+  @@index([lostWarehouseId, createdAt])
+  @@index([sourceHandlingUnitId, createdAt])
+  @@index([orderId, createdAt])
 }
