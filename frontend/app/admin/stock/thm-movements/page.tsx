@@ -77,6 +77,12 @@ type Props = {
     startDate?: string | string[];
     endDate?: string | string[];
     page?: string | string[];
+    product?: string | string[];
+    sourceThm?: string | string[];
+    targetThm?: string | string[];
+    purchase?: string | string[];
+    order?: string | string[];
+    operator?: string | string[];
   }>;
 };
 
@@ -90,10 +96,14 @@ function getFirstValue(
   return value ?? "";
 }
 
-function normalizeSearchValue(
-  value: string | string[] | undefined
-) {
+function normalizeSearchValue(value: string | string[] | undefined) {
   return getFirstValue(value).trim();
+}
+
+function normalizeMultiValue(value: string | string[] | undefined) {
+  return (Array.isArray(value) ? value : value ? [value] : [])
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function parsePage(
@@ -293,13 +303,10 @@ function buildPageUrl({
   operationType,
   startDate,
   endDate,
-  page,
+  page, product = "", sourceThm = "", targetThm = "", purchase = "", order = "", operator = "",
 }: {
-  q: string;
-  operationType: string;
-  startDate: string;
-  endDate: string;
-  page: number;
+  q: string; operationType: string[]; startDate: string; endDate: string; page: number;
+  product?: string; sourceThm?: string; targetThm?: string; purchase?: string; order?: string; operator?: string;
 }) {
   const params =
     new URLSearchParams();
@@ -311,12 +318,7 @@ function buildPageUrl({
     );
   }
 
-  if (operationType) {
-    params.set(
-      "operationType",
-      operationType
-    );
-  }
+  operationType.forEach((type) => params.append("operationType", type));
 
   if (startDate) {
     params.set(
@@ -331,6 +333,13 @@ function buildPageUrl({
       endDate
     );
   }
+
+  if (product) params.set("product", product);
+  if (sourceThm) params.set("sourceThm", sourceThm);
+  if (targetThm) params.set("targetThm", targetThm);
+  if (purchase) params.set("purchase", purchase);
+  if (order) params.set("order", order);
+  if (operator) params.set("operator", operator);
 
   params.set(
     "page",
@@ -358,17 +367,8 @@ export default async function ThmMovementsPage({
       query.q
     );
 
-  const requestedOperationType =
-    normalizeSearchValue(
-      query.operationType
-    );
-
-  const selectedOperationType =
-    isOperationType(
-      requestedOperationType
-    )
-      ? requestedOperationType
-      : "";
+  const selectedOperationTypes = normalizeMultiValue(query.operationType)
+    .filter(isOperationType);
 
   const startDateValue =
     normalizeSearchValue(
@@ -379,6 +379,13 @@ export default async function ThmMovementsPage({
     normalizeSearchValue(
       query.endDate
     );
+
+  const productFilter = normalizeSearchValue(query.product);
+  const sourceThmFilter = normalizeSearchValue(query.sourceThm);
+  const targetThmFilter = normalizeSearchValue(query.targetThm);
+  const purchaseFilter = normalizeSearchValue(query.purchase);
+  const orderFilter = normalizeSearchValue(query.order);
+  const operatorFilter = normalizeSearchValue(query.operator);
 
   const requestedPage =
     parsePage(
@@ -419,12 +426,9 @@ export default async function ThmMovementsPage({
     ],
   });
 
-  if (
-    selectedOperationType
-  ) {
+  if (selectedOperationTypes.length) {
     filters.push({
-      operationType:
-        selectedOperationType,
+      operationType: { in: selectedOperationTypes },
     });
   }
 
@@ -448,6 +452,16 @@ export default async function ThmMovementsPage({
       },
     });
   }
+
+  if (productFilter) filters.push({ OR: [
+    { productCode: { contains: productFilter, mode: "insensitive" } },
+    { productName: { contains: productFilter, mode: "insensitive" } },
+  ]});
+  if (sourceThmFilter) filters.push({ sourceBarcode: { contains: sourceThmFilter, mode: "insensitive" } });
+  if (targetThmFilter) filters.push({ targetBarcode: { contains: targetThmFilter, mode: "insensitive" } });
+  if (purchaseFilter) filters.push({ purchaseNumber: { contains: purchaseFilter, mode: "insensitive" } });
+  if (orderFilter) filters.push({ orderNumber: { contains: orderFilter, mode: "insensitive" } });
+  if (operatorFilter) filters.push({ operatorName: { contains: operatorFilter, mode: "insensitive" } });
 
   if (search) {
     filters.push({
@@ -1127,14 +1141,11 @@ export default async function ThmMovementsPage({
 
               <select
                 name="operationType"
-                defaultValue={
-                  selectedOperationType
-                }
+                multiple
+                size={5}
+                defaultValue={selectedOperationTypes}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
               >
-                <option value="">
-                  Tüm İşlemler
-                </option>
 
                 {OPERATION_OPTIONS.map(
                   (option) => (
@@ -1203,30 +1214,34 @@ export default async function ThmMovementsPage({
           </div>
         </form>
 
-        <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+        <form id="thm-column-filters" method="get" className="mt-5">
+          {selectedOperationTypes.map((type) => <input key={type} type="hidden" name="operationType" value={type} />)}
+          <input type="hidden" name="q" value={search} />
+          <input type="hidden" name="startDate" value={startDateValue} />
+          <input type="hidden" name="endDate" value={endDateValue} />
+          <button type="submit" className="rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-black text-white hover:bg-slate-700">Sütun Filtrelerini Uygula</button>
+        </form>
+
+        <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-[1850px] w-full text-left text-sm">
               <thead className="bg-blue-950 text-white">
                 <tr>
-                  <th className="px-4 py-4">
+                  <th className="px-4 py-4 align-top">
                     Tarih
+                    <div className="mt-2 text-xs font-normal text-blue-200">↑ Tarih aralığı filtresi</div>
                   </th>
 
-                  <th className="px-4 py-4">
+                  <th className="px-4 py-4 align-top">
                     İşlem
+                    <div className="mt-2 text-xs font-normal text-blue-200">↑ Çoklu seçim filtresi</div>
                   </th>
 
-                  <th className="px-4 py-4">
-                    Ürün
-                  </th>
+                  <th className="px-4 py-4 align-top">Ürün <input name="product" form="thm-column-filters" defaultValue={productFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
-                  <th className="px-4 py-4">
-                    Kaynak THM
-                  </th>
+                  <th className="px-4 py-4 align-top">Kaynak THM <input name="sourceThm" form="thm-column-filters" defaultValue={sourceThmFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
-                  <th className="px-4 py-4">
-                    Hedef / İşlem THM
-                  </th>
+                  <th className="px-4 py-4 align-top">Hedef / İşlem THM <input name="targetThm" form="thm-column-filters" defaultValue={targetThmFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Miktar
@@ -1236,25 +1251,19 @@ export default async function ThmMovementsPage({
                     Tedarikçi
                   </th>
 
-                  <th className="px-4 py-4">
-                    Satın Alma Sipariş No
-                  </th>
+                  <th className="px-4 py-4 align-top">Satın Alma Sipariş No <input name="purchase" form="thm-column-filters" defaultValue={purchaseFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Müşteri / Alıcı
                   </th>
 
-                  <th className="px-4 py-4">
-                    Sevk Sipariş No
-                  </th>
+                  <th className="px-4 py-4 align-top">Sevk Sipariş No <input name="order" form="thm-column-filters" defaultValue={orderFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Wave / Dağılım
                   </th>
 
-                  <th className="px-4 py-4">
-                    Personel
-                  </th>
+                  <th className="px-4 py-4 align-top">Personel <input name="operator" form="thm-column-filters" defaultValue={operatorFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Açıklama
@@ -1517,15 +1526,14 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:
                     endDateValue,
-                  page:
-                    currentPage -
-                    1,
+                  page: currentPage - 1,
+                  product: productFilter, sourceThm: sourceThmFilter, targetThm: targetThmFilter,
+                  purchase: purchaseFilter, order: orderFilter, operator: operatorFilter,
                 })}
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 hover:bg-slate-50"
               >
@@ -1542,15 +1550,14 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:
                     endDateValue,
-                  page:
-                    currentPage +
-                    1,
+                  page: currentPage + 1,
+                  product: productFilter, sourceThm: sourceThmFilter, targetThm: targetThmFilter,
+                  purchase: purchaseFilter, order: orderFilter, operator: operatorFilter,
                 })}
                 className="rounded-xl bg-blue-900 px-5 py-3 font-bold text-white hover:bg-blue-800"
               >
