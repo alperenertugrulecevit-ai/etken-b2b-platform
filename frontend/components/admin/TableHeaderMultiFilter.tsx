@@ -34,7 +34,7 @@ export default function TableHeaderMultiFilter({ tableId, columnIndex, label, va
   }
 
   return (
-    <details className="relative mt-2 text-slate-900" data-column-filter={columnIndex} data-selected={selected.join("\u001f")}>
+    <details id={`${tableId}-filter-${columnIndex}`} className="relative mt-2 text-slate-900" data-column-filter={columnIndex} data-selected={selected.join("\u001f")}>
       <summary className="cursor-pointer list-none rounded-lg bg-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/25">Filtre ▾</summary>
       <div className="absolute left-0 z-30 mt-1 max-h-72 min-w-56 overflow-auto rounded-xl border bg-white p-3 shadow-xl">
         <div className="mb-2 flex items-center justify-between gap-3">
