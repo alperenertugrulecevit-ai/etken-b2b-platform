@@ -77,6 +77,12 @@ type Props = {
     startDate?: string | string[];
     endDate?: string | string[];
     page?: string | string[];
+    product?: string | string[];
+    sourceThm?: string | string[];
+    targetThm?: string | string[];
+    purchase?: string | string[];
+    order?: string | string[];
+    operator?: string | string[];
   }>;
 };
 
@@ -370,6 +376,13 @@ export default async function ThmMovementsPage({
       query.endDate
     );
 
+  const productFilter = normalizeSearchValue(query.product);
+  const sourceThmFilter = normalizeSearchValue(query.sourceThm);
+  const targetThmFilter = normalizeSearchValue(query.targetThm);
+  const purchaseFilter = normalizeSearchValue(query.purchase);
+  const orderFilter = normalizeSearchValue(query.order);
+  const operatorFilter = normalizeSearchValue(query.operator);
+
   const requestedPage =
     parsePage(
       query.page
@@ -435,6 +448,16 @@ export default async function ThmMovementsPage({
       },
     });
   }
+
+  if (productFilter) filters.push({ OR: [
+    { productCode: { contains: productFilter, mode: "insensitive" } },
+    { productName: { contains: productFilter, mode: "insensitive" } },
+  ]});
+  if (sourceThmFilter) filters.push({ sourceBarcode: { contains: sourceThmFilter, mode: "insensitive" } });
+  if (targetThmFilter) filters.push({ targetBarcode: { contains: targetThmFilter, mode: "insensitive" } });
+  if (purchaseFilter) filters.push({ purchaseNumber: { contains: purchaseFilter, mode: "insensitive" } });
+  if (orderFilter) filters.push({ orderNumber: { contains: orderFilter, mode: "insensitive" } });
+  if (operatorFilter) filters.push({ operatorName: { contains: operatorFilter, mode: "insensitive" } });
 
   if (search) {
     filters.push({
@@ -1187,7 +1210,15 @@ export default async function ThmMovementsPage({
           </div>
         </form>
 
-        <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+        <form id="thm-column-filters" method="get" className="mt-5">
+          {selectedOperationTypes.map((type) => <input key={type} type="hidden" name="operationType" value={type} />)}
+          <input type="hidden" name="q" value={search} />
+          <input type="hidden" name="startDate" value={startDateValue} />
+          <input type="hidden" name="endDate" value={endDateValue} />
+          <button type="submit" className="rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-black text-white hover:bg-slate-700">Sütun Filtrelerini Uygula</button>
+        </form>
+
+        <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-[1850px] w-full text-left text-sm">
               <thead className="bg-blue-950 text-white">
@@ -1202,17 +1233,11 @@ export default async function ThmMovementsPage({
                     <div className="mt-2 text-xs font-normal text-blue-200">↑ Çoklu seçim filtresi</div>
                   </th>
 
-                  <th className="px-4 py-4">
-                    Ürün
-                  </th>
+                  <th className="px-4 py-4 align-top">Ürün <input name="product" form="thm-column-filters" defaultValue={productFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
-                  <th className="px-4 py-4">
-                    Kaynak THM
-                  </th>
+                  <th className="px-4 py-4 align-top">Kaynak THM <input name="sourceThm" form="thm-column-filters" defaultValue={sourceThmFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
-                  <th className="px-4 py-4">
-                    Hedef / İşlem THM
-                  </th>
+                  <th className="px-4 py-4 align-top">Hedef / İşlem THM <input name="targetThm" form="thm-column-filters" defaultValue={targetThmFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Miktar
@@ -1222,25 +1247,19 @@ export default async function ThmMovementsPage({
                     Tedarikçi
                   </th>
 
-                  <th className="px-4 py-4">
-                    Satın Alma Sipariş No
-                  </th>
+                  <th className="px-4 py-4 align-top">Satın Alma Sipariş No <input name="purchase" form="thm-column-filters" defaultValue={purchaseFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Müşteri / Alıcı
                   </th>
 
-                  <th className="px-4 py-4">
-                    Sevk Sipariş No
-                  </th>
+                  <th className="px-4 py-4 align-top">Sevk Sipariş No <input name="order" form="thm-column-filters" defaultValue={orderFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Wave / Dağılım
                   </th>
 
-                  <th className="px-4 py-4">
-                    Personel
-                  </th>
+                  <th className="px-4 py-4 align-top">Personel <input name="operator" form="thm-column-filters" defaultValue={operatorFilter} placeholder="Filtrele..." className="mt-2 w-36 rounded bg-white px-2 py-1.5 text-xs font-normal text-slate-900" /></th>
 
                   <th className="px-4 py-4">
                     Açıklama
