@@ -90,10 +90,14 @@ function getFirstValue(
   return value ?? "";
 }
 
-function normalizeSearchValue(
-  value: string | string[] | undefined
-) {
+function normalizeSearchValue(value: string | string[] | undefined) {
   return getFirstValue(value).trim();
+}
+
+function normalizeMultiValue(value: string | string[] | undefined) {
+  return (Array.isArray(value) ? value : value ? [value] : [])
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function parsePage(
@@ -296,7 +300,7 @@ function buildPageUrl({
   page,
 }: {
   q: string;
-  operationType: string;
+  operationType: string[];
   startDate: string;
   endDate: string;
   page: number;
@@ -311,12 +315,7 @@ function buildPageUrl({
     );
   }
 
-  if (operationType) {
-    params.set(
-      "operationType",
-      operationType
-    );
-  }
+  operationType.forEach((type) => params.append("operationType", type));
 
   if (startDate) {
     params.set(
@@ -358,17 +357,8 @@ export default async function ThmMovementsPage({
       query.q
     );
 
-  const requestedOperationType =
-    normalizeSearchValue(
-      query.operationType
-    );
-
-  const selectedOperationType =
-    isOperationType(
-      requestedOperationType
-    )
-      ? requestedOperationType
-      : "";
+  const selectedOperationTypes = normalizeMultiValue(query.operationType)
+    .filter(isOperationType);
 
   const startDateValue =
     normalizeSearchValue(
@@ -419,12 +409,9 @@ export default async function ThmMovementsPage({
     ],
   });
 
-  if (
-    selectedOperationType
-  ) {
+  if (selectedOperationTypes.length) {
     filters.push({
-      operationType:
-        selectedOperationType,
+      operationType: { in: selectedOperationTypes },
     });
   }
 
@@ -1127,14 +1114,11 @@ export default async function ThmMovementsPage({
 
               <select
                 name="operationType"
-                defaultValue={
-                  selectedOperationType
-                }
+                multiple
+                size={5}
+                defaultValue={selectedOperationTypes}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
               >
-                <option value="">
-                  Tüm İşlemler
-                </option>
 
                 {OPERATION_OPTIONS.map(
                   (option) => (
@@ -1208,12 +1192,14 @@ export default async function ThmMovementsPage({
             <table className="min-w-[1850px] w-full text-left text-sm">
               <thead className="bg-blue-950 text-white">
                 <tr>
-                  <th className="px-4 py-4">
+                  <th className="px-4 py-4 align-top">
                     Tarih
+                    <div className="mt-2 text-xs font-normal text-blue-200">↑ Tarih aralığı filtresi</div>
                   </th>
 
-                  <th className="px-4 py-4">
+                  <th className="px-4 py-4 align-top">
                     İşlem
+                    <div className="mt-2 text-xs font-normal text-blue-200">↑ Çoklu seçim filtresi</div>
                   </th>
 
                   <th className="px-4 py-4">
@@ -1517,8 +1503,7 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:
@@ -1542,8 +1527,7 @@ export default async function ThmMovementsPage({
               <Link
                 href={buildPageUrl({
                   q: search,
-                  operationType:
-                    selectedOperationType,
+                  operationType: selectedOperationTypes,
                   startDate:
                     startDateValue,
                   endDate:
