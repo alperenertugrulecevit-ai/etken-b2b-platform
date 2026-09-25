@@ -46,6 +46,9 @@ function getOperationLabel(
     COUNT: "Sayım",
     STOCK_IN: "Stok Girişi",
     STOCK_OUT: "Stok Çıkışı",
+    LOST_STOCK: "Kayıp Stok",
+    WAREHOUSE_TRANSFER:
+      "Depolar Arası Transfer",
     OTHER: "Diğer İşlem",
   };
 
