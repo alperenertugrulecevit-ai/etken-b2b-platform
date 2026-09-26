@@ -74,6 +74,7 @@ const groups:MenuGroup[]=[
  {title:"Depo Yönetimi",icon:"🏬",items:[
   {href:"/admin/warehouses",icon:"🏬",label:"Depo Yönetimi",permissionCodes:["WAREHOUSE_VIEW","WAREHOUSE_MANAGE"]},
   {href:"/admin/zones",icon:"🗺️",label:"Zone Yönetimi",permissionCodes:["WAREHOUSE_VIEW","WAREHOUSE_MANAGE"]},
+  {href:"/admin/consolidation-points",icon:"🧩",label:"Konsolidasyon Noktaları",permissionCodes:["WAREHOUSE_VIEW","WAREHOUSE_MANAGE"]},
  ]},
  {title:"Sistem Yönetimi",icon:"⚙️",items:[
   {href:"/admin/data-imports",icon:"📥",label:"Excel Veri Aktarımı",permissionCodes:["DATA_IMPORT_VIEW","DATA_IMPORT_MANAGE"]},
