@@ -105,6 +105,29 @@ export class ShipmentPlanningService {
     throw new Error("Sevkiyat numarası oluşturulamadı. İşlemi tekrar deneyin.");
   }
 
+  static async bulkRouteUnits(input:{shipmentId:string;routeId:string;shippingHandlingUnitIds:string[];actor:ShipmentActor}){
+    const unitIds=[...new Set(input.shippingHandlingUnitIds.map(x=>x.trim()).filter(Boolean))];
+    if(!unitIds.length) throw new Error("En az bir sevke hazır THM seçin.");
+    return prisma.$transaction(async tx=>{
+      const shipment=await tx.shipment.findFirst({where:{id:input.shipmentId,tenantId:TENANT_ID,companyId:COMPANY_ID},include:{routes:true}});
+      if(!shipment) throw new Error("Sevkiyat bulunamadı.");
+      if(shipment.status===ShipmentStatus.SHIPPED || shipment.status===ShipmentStatus.LOADING || shipment.status===ShipmentStatus.LOADED) throw new Error("Bu sevkiyata yeni THM planlanamaz.");
+      if(!shipment.routes.some(x=>x.routeId===input.routeId)) throw new Error("Seçilen rota bu sevkiyata bağlı değil.");
+      const units=await tx.shippingHandlingUnit.findMany({where:{id:{in:unitIds},status:ShippingHandlingUnitStatus.READY_TO_SHIP,packingListPrintedAt:{not:null}},include:{handlingUnit:{select:{id:true,barcode:true}},shipmentHandlingUnit:true}});
+      if(units.length!==unitIds.length) throw new Error("Seçilen THM'lerden biri sevke hazır değil veya çeki listesi basılmamış.");
+      for(const unit of units){
+        if(unit.shipmentHandlingUnit) throw new Error(`${unit.handlingUnit.barcode} THM zaten bir sevkiyata bağlı.`);
+      }
+      const now=new Date();
+      for(const unit of units){
+        await tx.shipmentHandlingUnit.create({data:{shipmentId:shipment.id,shippingHandlingUnitId:unit.id,routeId:input.routeId,status:ShipmentHandlingUnitStatus.ROUTED,routedAt:now,routedById:input.actor.userId,routedByName:input.actor.displayName}});
+        await tx.shipmentHandlingUnitEvent.create({data:{shipmentId:shipment.id,shippingHandlingUnitId:unit.id,eventType:ShipmentHandlingUnitEventType.ROUTED,newRouteId:input.routeId,operatorId:input.actor.userId,operatorName:input.actor.displayName,metadata:{shipmentNumber:shipment.shipmentNumber,source:"ADMIN_BULK_PLANNING"}}});
+      }
+      await tx.shipment.update({where:{id:shipment.id},data:{status:ShipmentStatus.ROUTING,routingStartedAt:shipment.routingStartedAt??now,routingCompletedAt:null}});
+      return {shipmentNumber:shipment.shipmentNumber,count:units.length};
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+  }
+
   static async routeUnit(input:{shipmentNumber:string;thmBarcode:string;routeNumber:string;actor:ShipmentActor}){
     const thmBarcode=barcode(input.thmBarcode), routeNumber=barcode(input.routeNumber);
     return prisma.$transaction(async tx=>{

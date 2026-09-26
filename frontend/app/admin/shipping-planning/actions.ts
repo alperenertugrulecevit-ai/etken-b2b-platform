@@ -15,3 +15,11 @@ export async function createShipmentAction(_:ShippingAdminState,f:FormData):Prom
 export async function setCarrierActiveAction(f:FormData){await auth();await ShipmentPlanningService.setCarrierActive(v(f,"id"),v(f,"active")==="true");revalidatePath("/admin/shipping-planning/carriers");}
 export async function setVehicleActiveAction(f:FormData){await auth();await ShipmentPlanningService.setVehicleActive(v(f,"id"),v(f,"active")==="true");revalidatePath("/admin/shipping-planning/vehicles");}
 export async function setRouteActiveAction(f:FormData){await auth();await ShipmentPlanningService.setRouteActive(v(f,"id"),v(f,"active")==="true");revalidatePath("/admin/shipping-planning/routes");}
+
+export async function bulkPlanShipmentAction(f:FormData){
+ const a=await auth();
+ const shipmentId=v(f,"shipmentId"),routeId=v(f,"routeId"),shippingHandlingUnitIds=f.getAll("shippingHandlingUnitIds").map(String);
+ await ShipmentPlanningService.bulkRouteUnits({shipmentId,routeId,shippingHandlingUnitIds,actor:a});
+ revalidatePath("/admin/shipping-planning");
+ revalidatePath("/admin/shipping-reports/ready");
+}
