@@ -119,6 +119,8 @@ export class ShipmentPlanningService {
     if(!shipment) throw new Error("Sevkiyat bulunamadı.");
     if(!shipment._count.handlingUnits) throw new Error("Rotalanmış THM bulunmuyor.");
     if(shipment.status===ShipmentStatus.SHIPPED) throw new Error("Sevkiyat daha önce sevk edilmiş.");
+    if(shipment.status===ShipmentStatus.LOADING || shipment.status===ShipmentStatus.LOADED) throw new Error("Araç yükleme başlamış sevkiyatın rotalaması yeniden tamamlanamaz.");
+    if(shipment.status===ShipmentStatus.ROUTED) throw new Error("Bu sevkiyatın rotalaması zaten tamamlanmış.");
     return prisma.shipment.update({where:{id:shipment.id},data:{status:ShipmentStatus.ROUTED,routingCompletedAt:new Date()}});
   }
 
