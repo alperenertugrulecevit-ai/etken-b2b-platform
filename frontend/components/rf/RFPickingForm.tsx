@@ -160,9 +160,6 @@ export default function RFPickingForm({
   const productInputRef =
     useRef<HTMLInputElement>(null);
 
-  const quantityInputRef =
-    useRef<HTMLInputElement>(null);
-
   const lastHandledResultRef =
     useRef("");
 
@@ -197,8 +194,6 @@ export default function RFPickingForm({
     setProductBarcode,
   ] = useState("");
 
-  const [quantity, setQuantity] =
-    useState("1");
 
   const [lostPending, setLostPending] = useState(false);
   const [lostMessage, setLostMessage] = useState("");
@@ -621,9 +616,6 @@ export default function RFPickingForm({
         ?.availableQuantity ?? 0
     );
 
-  const numericQuantity =
-    Number(quantity);
-
   const locationMatches =
     Boolean(expectedLocationCode) &&
     normalizedLocationBarcode ===
@@ -663,12 +655,7 @@ export default function RFPickingForm({
     productMatches &&
     normalizedSourceBarcode !==
       normalizedTargetBarcode &&
-    Number.isInteger(
-      numericQuantity
-    ) &&
-    numericQuantity > 0 &&
-    numericQuantity <=
-      maximumPickQuantity;
+    maximumPickQuantity > 0;
 
   useEffect(() => {
     orderInputRef.current?.focus();
@@ -884,7 +871,6 @@ export default function RFPickingForm({
      * bulunduğu yere göre karar verir.
      */
     setProductBarcode("");
-    setQuantity("1");
   }, [
     state.success,
     state.message,
@@ -929,8 +915,7 @@ export default function RFPickingForm({
       setLocationBarcode("");
       setSourceBarcode("");
       setProductBarcode("");
-      setQuantity("1");
-
+  
       window.setTimeout(() => {
         orderInputRef.current?.focus();
       }, 100);
@@ -981,8 +966,7 @@ export default function RFPickingForm({
       );
 
       setProductBarcode("");
-      setQuantity("1");
-
+  
       window.setTimeout(() => {
         productInputRef.current?.focus();
       }, 100);
@@ -1014,8 +998,7 @@ export default function RFPickingForm({
 
       setSourceBarcode("");
       setProductBarcode("");
-      setQuantity("1");
-
+  
       window.setTimeout(() => {
         sourceInputRef.current?.focus();
       }, 100);
@@ -1033,7 +1016,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     window.setTimeout(() => {
       locationInputRef.current?.focus();
@@ -1057,7 +1039,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     setSessionPickCount(0);
     setSessionPickedQuantity(0);
@@ -1081,7 +1062,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     setShowMessage(false);
 
@@ -1093,7 +1073,6 @@ export default function RFPickingForm({
   function changeTarget() {
     setTargetBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     setShowMessage(false);
 
@@ -1119,7 +1098,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
   }
 
   function handleOrderKeyDown(
@@ -1210,9 +1188,8 @@ export default function RFPickingForm({
 
     event.preventDefault();
 
-    if (productMatches) {
-      quantityInputRef.current?.focus();
-      quantityInputRef.current?.select();
+    if (productMatches && !isPending && canSubmit) {
+      event.currentTarget.form?.requestSubmit();
     }
   }
 
@@ -1246,28 +1223,11 @@ export default function RFPickingForm({
       setLocationBarcode("");
       setSourceBarcode("");
       setProductBarcode("");
-      setQuantity("1");
-      window.setTimeout(() => window.location.reload(), 900);
+        window.setTimeout(() => window.location.reload(), 900);
     } catch (error) {
       setLostMessage(error instanceof Error ? error.message : "Kayıp stok işlemi başarısız.");
     } finally {
       setLostPending(false);
-    }
-  }
-
-  function handleQuantityKeyDown(
-    event:
-      React.KeyboardEvent<HTMLInputElement>
-  ) {
-    if (event.key !== "Enter") {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (canSubmit) {
-      event.currentTarget.form
-        ?.requestSubmit();
     }
   }
 
@@ -1287,7 +1247,7 @@ export default function RFPickingForm({
 
           <p className="mt-1 text-xs text-slate-500">
             Sipariş → {targetPurposeLabel} → Lokasyon
-            → Kaynak THM → Ürün → Miktar
+            → Kaynak THM → Ürünü tek tek okut
           </p>
         </div>
 
@@ -1959,73 +1919,11 @@ export default function RFPickingForm({
             )}
         </label>
 
-        <label className="block">
-          <span className="mb-2 block text-sm font-black">
-            6. Toplama Miktarı
-          </span>
-
-          <input
-            ref={quantityInputRef}
-            name="quantity"
-            type="number"
-            min="1"
-            max={maximumPickQuantity}
-            step="1"
-            value={quantity}
-            onChange={(event) =>
-              setQuantity(
-                event.target.value
-              )
-            }
-            onKeyDown={
-              handleQuantityKeyDown
-            }
-            className="w-full rounded-xl border-2 border-slate-300 p-4 text-2xl font-black focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-            disabled={
-              isPending ||
-              !productMatches
-            }
-            required
-          />
-
-          {productMatches && (
-            <p className="mt-2 text-sm font-bold text-slate-600">
-              En fazla{" "}
-              {maximumPickQuantity} adet
-              toplanabilir.
-            </p>
-          )}
-        </label>
-      </div>
-
-      <div className="mt-5 grid grid-cols-4 gap-2">
-        {[1, 5, 10, 24].map(
-          (quickQuantity) => (
-            <button
-              key={quickQuantity}
-              type="button"
-              onClick={() =>
-                setQuantity(
-                  String(
-                    Math.min(
-                      quickQuantity,
-                      maximumPickQuantity
-                    )
-                  )
-                )
-              }
-              disabled={
-                isPending ||
-                !productMatches ||
-                maximumPickQuantity <= 0
-              }
-              className="rounded-xl border border-slate-300 bg-white py-3 font-black disabled:opacity-40"
-            >
-              {quickQuantity}
-            </button>
-          )
-        )}
-      </div>
+        <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-black text-blue-950">6. Tekil Ürün Okutma</p>
+          <p className="mt-1 text-sm text-blue-800">Her barkod okuması <b>1 adet</b> toplar. Elle miktar girişi kapalıdır. Kalan: <b>{maximumPickQuantity}</b></p>
+          <input type="hidden" name="quantity" value="1" />
+        </div>
 
       {lostMessage && (
         <div className="mt-5 rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm font-bold text-orange-900">
@@ -2062,7 +1960,7 @@ export default function RFPickingForm({
       >
         {isPending
           ? "ÜRÜN TOPLANIYOR..."
-          : "TOPLAMAYI KAYDET"}
+          : "ÜRÜN BARKODUNU OKUT"}
       </button>
 
       <p className="mt-4 text-center text-xs font-semibold text-slate-400">
