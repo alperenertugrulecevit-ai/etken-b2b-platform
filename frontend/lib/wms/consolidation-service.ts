@@ -21,7 +21,7 @@ export class ConsolidationService {
 
   static async complete(tx: Tx, orderId:number) {
     const task=await tx.consolidationTask.findUnique({where:{orderId}});
-    if(!task || task.status!==ConsolidationTaskStatus.READY) throw new Error("Konsolidasyon görevi tamamlanmaya hazır değil.");
+    if(!task || ![ConsolidationTaskStatus.READY, ConsolidationTaskStatus.IN_PROGRESS].includes(task.status)) throw new Error("Konsolidasyon görevi tamamlanmaya hazır değil.");
     await tx.consolidationTask.update({where:{id:task.id},data:{status:ConsolidationTaskStatus.COMPLETED,startedAt:task.startedAt??new Date(),completedAt:new Date()}});
   }
 }
