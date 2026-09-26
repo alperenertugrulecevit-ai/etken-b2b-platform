@@ -117,12 +117,14 @@ export class ShipmentPlanningService {
         tenantId:TENANT_ID,companyId:COMPANY_ID,
         ...(input?.dateFrom||input?.dateTo?{shipmentDate:{...(input.dateFrom?{gte:input.dateFrom}:{}),...(input.dateTo?{lte:input.dateTo}:{})}}:{}),
         ...(input?.shipmentNumber?{shipmentNumber:{contains:input.shipmentNumber,mode:"insensitive"}}:{}),
-        ...(input?.thm?{handlingUnits:{some:{shippingHandlingUnit:{handlingUnit:{barcode:{contains:input.thm,mode:"insensitive"}}}}}}:{}),
-        ...(input?.company?{handlingUnits:{some:{shippingHandlingUnit:{OR:[
-          {customerCode:{contains:input.company,mode:"insensitive"}},
-          {customerName:{contains:input.company,mode:"insensitive"}}
-        ]}}}}:{}),
-        ...(warehouseIds.length?{handlingUnits:{some:{shippingHandlingUnit:{orders:{some:{order:{fulfillmentWarehouseId:{in:warehouseIds}}}}}}}}:{}),
+        AND:[
+          ...(input?.thm?[{handlingUnits:{some:{shippingHandlingUnit:{handlingUnit:{barcode:{contains:input.thm,mode:"insensitive" as const}}}}}}]:[]),
+          ...(input?.company?[{handlingUnits:{some:{shippingHandlingUnit:{OR:[
+            {customerCode:{contains:input.company,mode:"insensitive" as const}},
+            {customerName:{contains:input.company,mode:"insensitive" as const}}
+          ]}}}}]:[]),
+          ...(warehouseIds.length?[{handlingUnits:{some:{shippingHandlingUnit:{orders:{some:{order:{fulfillmentWarehouseId:{in:warehouseIds}}}}}}}}]:[]),
+        ],
       },
       include:{
         carrier:true,vehicle:true,routes:{include:{route:true}},
