@@ -1448,7 +1448,7 @@ export default function RFPickingForm({
               </button>
             </div>
           )}
-          {!lockedOrderNumber && null}</>
+          </>}
         </label>
 
         <label className="block">
