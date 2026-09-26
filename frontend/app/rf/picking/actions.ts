@@ -941,7 +941,6 @@ export async function rfPickOrderItem(
           });
         }
 
-        if (zoneTask) await ConsolidationService.syncOrder(tx, order.id);
 
         const remainingZoneTasks = await tx.zonePickTask.count({
           where: { orderId: order.id, status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] }, ...(zoneTask ? { id: { not: zoneTask.id } } : {}) },
@@ -956,12 +955,6 @@ export async function rfPickOrderItem(
             ? OrderStatus.PACKING
             : OrderStatus.READY_TO_SHIP
           : OrderStatus.PICKING;
-
-        await FulfillmentService.refreshOrderProgress(tx, {
-          orderId: order.id,
-          flowType: pickingFlow.flowType,
-          waveId: pickingFlow.waveId,
-        });
 
         const pickingRecord = await tx.pickingRecord.create({
           data: {
@@ -989,6 +982,14 @@ export async function rfPickOrderItem(
             id: true,
             createdAt: true,
           },
+        });
+
+        if (zoneTask) await ConsolidationService.syncOrder(tx, order.id);
+
+        await FulfillmentService.refreshOrderProgress(tx, {
+          orderId: order.id,
+          flowType: pickingFlow.flowType,
+          waveId: pickingFlow.waveId,
         });
 
         const targetTypeLabel = isWavePicking ? "Toplama THM" : "Sevk THM";
