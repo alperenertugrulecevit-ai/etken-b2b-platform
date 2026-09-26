@@ -427,7 +427,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
       where: {
         status: ZonePickTaskStatus.OPEN,
         claimedByUserId: null,
-        order: { status: { in: [OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
+        order: { status: { in: [OrderStatus.APPROVED, OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
       },
       select: {
         id: true,
