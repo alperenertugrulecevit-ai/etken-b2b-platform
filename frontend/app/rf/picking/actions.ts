@@ -496,7 +496,6 @@ export async function rfPickOrderItem(
                   id: true,
                   code: true,
                   isActive: true,
-                  zoneId: true,
                 },
               },
 
