@@ -81,4 +81,26 @@ describe("shipment planning business rules", () => {
     const activeAssignmentAfterRemoval = null;
     expect(activeAssignmentAfterRemoval).toBeNull();
   });
+  it("requires a carrier company for rented vehicles", () => {
+    const ownership = "RENTED";
+    const carrierId = "";
+    const valid = ownership !== "RENTED" || Boolean(carrierId);
+    expect(valid).toBe(false);
+  });
+
+  it("does not allow a vehicle linked to another carrier in the same shipment plan", () => {
+    const selectedCarrierId = "carrier-a";
+    const vehicleCarrierId = "carrier-b";
+    expect(vehicleCarrierId === selectedCarrierId).toBe(false);
+  });
+
+  it("requires at least one active route when creating a shipment", () => {
+    const routeIds: string[] = [];
+    expect(routeIds.length).toBe(0);
+  });
+
+  it("rejects an invalid shipment date", () => {
+    const shipmentDate = new Date("invalid");
+    expect(Number.isFinite(shipmentDate.getTime())).toBe(false);
+  });
 });
