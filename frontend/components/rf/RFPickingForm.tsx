@@ -103,6 +103,7 @@ type Props = {
   orders: OrderOption[];
   sourceUnits: SourceUnitOption[];
   targetUnits: TargetUnitOption[];
+  lockedOrderNumber?: string;
 };
 
 const initialState: RFPickingState = {
@@ -144,6 +145,7 @@ export default function RFPickingForm({
   orders,
   sourceUnits,
   targetUnits,
+  lockedOrderNumber,
 }: Props) {
   const orderInputRef =
     useRef<HTMLInputElement>(null);
@@ -172,7 +174,7 @@ export default function RFPickingForm({
   const [
     orderNumber,
     setOrderNumber,
-  ] = useState("");
+] = useState(() => lockedOrderNumber?.toUpperCase() ?? "");
 
   const [
     targetBarcode,
@@ -658,8 +660,9 @@ export default function RFPickingForm({
     maximumPickQuantity > 0;
 
   useEffect(() => {
-    orderInputRef.current?.focus();
-  }, []);
+    if (lockedOrderNumber) targetInputRef.current?.focus();
+    else orderInputRef.current?.focus();
+  }, [lockedOrderNumber]);
 
   useEffect(() => {
     setCurrentOrderItems(
@@ -1367,8 +1370,10 @@ export default function RFPickingForm({
       <div className="mt-5 space-y-5">
         <label className="block">
           <span className="mb-2 block text-sm font-black">
-            1. Sipariş Numarası
+            1. Sipariş
           </span>
+          {lockedOrderNumber && selectedOrder ? <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4"><p className="text-xs font-black uppercase text-blue-700">Görev Siparişi</p><p className="mt-1 text-xl font-black">{selectedOrder.orderNumber} · {selectedOrder.customerName}</p><input type="hidden" name="orderNumber" value={selectedOrder.orderNumber}/></div> : null}
+          {!lockedOrderNumber && <>
 
           <input
             ref={orderInputRef}
@@ -1443,6 +1448,7 @@ export default function RFPickingForm({
               </button>
             </div>
           )}
+          {!lockedOrderNumber && null}</>
         </label>
 
         <label className="block">
