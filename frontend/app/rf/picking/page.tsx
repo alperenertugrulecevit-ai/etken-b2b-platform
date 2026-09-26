@@ -90,9 +90,9 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
     },
   }) : null;
   if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bulunamadı veya bu kullanıcıya ait değil.");
-  const plannedSourceUnitIds = zoneTask
-    ? Array.from(new Set(zoneTask.lines.filter(line => line.pickedQuantity < line.plannedQuantity).map(line => line.handlingUnitItem.handlingUnitId)))
-    : [];
+  const activeTaskLines = zoneTask ? zoneTask.lines.filter(line => line.pickedQuantity < line.plannedQuantity) : [];
+  const plannedSourceUnitIds = Array.from(new Set(activeTaskLines.map(line => line.handlingUnitItem.handlingUnitId)));
+  const plannedSourceItemIds = new Set(activeTaskLines.map(line => line.handlingUnitItemId));
 
   const [
     orders,
@@ -584,7 +584,9 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           ),
 
         products:
-          unit.items.map(
+          unit.items
+            .filter(item => !zoneTask || plannedSourceItemIds.has(item.id))
+            .map(
             (item) => ({
               itemId: item.id,
               productId:
