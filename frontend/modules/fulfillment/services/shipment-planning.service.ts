@@ -10,6 +10,7 @@ import {
   WmsOperationType,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { ShippingService } from "@/modules/fulfillment/services/shipping.service";
 
 const TENANT_ID = "tenant_etken";
 const COMPANY_ID = "company_etken_office";
@@ -160,6 +161,44 @@ export class ShipmentPlanningService {
       return {shipmentNumber:row.shipment.shipmentNumber,thmBarcode:code};
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
+  static async dispatchShipment(input:{shipmentNumber:string;actor:ShipmentActor}){
+    const shipmentNumber=input.shipmentNumber.trim().toUpperCase();
+    if(!shipmentNumber) throw new Error("Sevkiyat numarası seçin.");
+    return prisma.$transaction(async tx=>{
+      const shipment=await tx.shipment.findFirst({
+        where:{tenantId:TENANT_ID,companyId:COMPANY_ID,shipmentNumber},
+        include:{carrier:true,vehicle:true,handlingUnits:{include:{shippingHandlingUnit:{include:{handlingUnit:{select:{barcode:true}}}}}}}
+      });
+      if(!shipment) throw new Error("Sevkiyat bulunamadı.");
+      if(shipment.status===ShipmentStatus.SHIPPED) throw new Error("Bu sevkiyat daha önce SEVK EDİLDİ.");
+      if(shipment.status!==ShipmentStatus.LOADED) throw new Error("Sevk Et için sevkiyattaki tüm THM'lerin araç yüklemesi tamamlanmış olmalıdır.");
+      if(!shipment.handlingUnits.length) throw new Error("Sevkiyata bağlı THM bulunmuyor.");
+      const incomplete=shipment.handlingUnits.find(x=>x.status!==ShipmentHandlingUnitStatus.LOADED);
+      if(incomplete) throw new Error(`${incomplete.shippingHandlingUnit.handlingUnit.barcode} THM araç yüklemesi tamamlanmamış.`);
+      const now=new Date(), results=[];
+      for(const row of shipment.handlingUnits){
+        const result=await ShippingService.shipWithTransaction(tx,{
+          barcode:row.shippingHandlingUnit.handlingUnit.barcode,
+          carrierName:shipment.carrier?.name,
+          vehiclePlate:shipment.vehicle?.plate,
+          driverName:shipment.driverName??shipment.vehicle?.driverName??undefined,
+          driverIdentityNumber:shipment.driverIdentityNo??shipment.vehicle?.driverIdentityNo??undefined,
+          notes:`Sevkiyat No: ${shipment.shipmentNumber}`,
+          operatorId:input.actor.userId,
+          operatorName:input.actor.displayName,
+        });
+        results.push(result);
+        await tx.shipmentHandlingUnitEvent.create({data:{
+          shipmentId:shipment.id,shippingHandlingUnitId:row.shippingHandlingUnitId,eventType:ShipmentHandlingUnitEventType.SHIPPED,
+          previousRouteId:row.routeId,newRouteId:row.routeId,operatorId:input.actor.userId,operatorName:input.actor.displayName,
+          terminalCode:clean(input.actor.terminalCode),metadata:{shipmentNumber:shipment.shipmentNumber,dispatchNumber:result.dispatchNumber}
+        }});
+      }
+      await tx.shipment.update({where:{id:shipment.id},data:{status:ShipmentStatus.SHIPPED,shippedAt:now,shippedById:input.actor.userId,shippedByName:input.actor.displayName,shippedTerminalCode:clean(input.actor.terminalCode)}});
+      return {shipmentNumber:shipment.shipmentNumber,thmCount:shipment.handlingUnits.length,totalQuantity:results.reduce((n,x)=>n+x.totalQuantity,0),dispatchNumbers:results.map(x=>x.dispatchNumber)};
+    },{maxWait:10000,timeout:120000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+  }
+
   static async shippingControlReport(){
     return prisma.shipmentHandlingUnit.findMany({where:{status:ShipmentHandlingUnitStatus.ROUTED},include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{routedAt:"desc"},take:1000});
   }
