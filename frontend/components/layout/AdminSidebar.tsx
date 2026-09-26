@@ -61,6 +61,15 @@ const groups:MenuGroup[]=[
   {href:"/admin/wms-reports/picking-detail",icon:"🧺",label:"Yapılan Toplama Detay Raporu",permissionCodes:["ORDER_VIEW"]},
   {href:"/admin/wms-reports/lost-stock",icon:"⚠️",label:"Kayıp Stok Raporu",permissionCodes:["INVENTORY_VIEW"]},
  ]},
+ {title:"Sevkiyat Planlama",icon:"🚚",items:[
+  {href:"/admin/shipping-planning",icon:"🗓️",label:"Sevkiyat Planlama",permissionCodes:["SHIPPING_EXECUTE"]},
+  {href:"/admin/shipping-planning/carriers",icon:"🏢",label:"Taşıyıcı Tanımlama",permissionCodes:["SHIPPING_EXECUTE"]},
+  {href:"/admin/shipping-planning/vehicles",icon:"🚛",label:"Araç Tanımlama",permissionCodes:["SHIPPING_EXECUTE"]},
+  {href:"/admin/shipping-planning/routes",icon:"🧭",label:"Rota Tanımlama",permissionCodes:["SHIPPING_EXECUTE"]},
+  {href:"/admin/shipping-reports/control",icon:"⚠️",label:"Sevkiyat Kontrol Raporu",permissionCodes:["ORDER_VIEW","SHIPPING_EXECUTE"]},
+  {href:"/admin/shipping-reports/loading",icon:"📋",label:"Sevkiyat Yükleme Raporu",permissionCodes:["ORDER_VIEW","SHIPPING_EXECUTE"]},
+  {href:"/admin/shipping-reports/ready",icon:"📦",label:"Sevke Hazır Bekleyen THM Raporu",permissionCodes:["ORDER_VIEW","SHIPPING_EXECUTE"]},
+ ]},
  {title:"Depo Yönetimi",icon:"🏬",items:[
   {href:"/admin/warehouses",icon:"🏬",label:"Depo Yönetimi",permissionCodes:["WAREHOUSE_VIEW","WAREHOUSE_MANAGE"]},
  ]},
