@@ -36,7 +36,7 @@ async function recalc(tx:Prisma.TransactionClient,shipmentId:string){
   const shipment=await tx.shipment.findUnique({where:{id:shipmentId},select:{status:true}});
   if(!shipment || shipment.status===ShipmentStatus.SHIPPED) return;
   const rows=await tx.shipmentHandlingUnit.findMany({where:{shipmentId},select:{status:true}});
-  let status=ShipmentStatus.CREATED;
+  let status: ShipmentStatus = ShipmentStatus.CREATED;
   if(rows.length){
     const loaded=rows.filter(x=>x.status===ShipmentHandlingUnitStatus.LOADED).length;
     if(loaded===rows.length) status=ShipmentStatus.LOADED;
@@ -126,7 +126,7 @@ export class ShipmentPlanningService {
     return prisma.$transaction(async tx=>{
       const shipment=await tx.shipment.findFirst({where:{tenantId:TENANT_ID,companyId:COMPANY_ID,shipmentNumber:input.shipmentNumber}});
       if(!shipment) throw new Error("Sevkiyat bulunamadı.");
-      if(![ShipmentStatus.ROUTED,ShipmentStatus.LOADING].includes(shipment.status)) throw new Error("Araç yükleme için önce rotalamayı tamamlayın.");
+      if(shipment.status!==ShipmentStatus.ROUTED && shipment.status!==ShipmentStatus.LOADING) throw new Error("Araç yükleme için önce rotalamayı tamamlayın.");
       const row=await tx.shipmentHandlingUnit.findFirst({where:{shipmentId:shipment.id,shippingHandlingUnit:{handlingUnit:{barcode:thmBarcode}}},include:{shippingHandlingUnit:{include:{handlingUnit:{select:{id:true,barcode:true}}}}}});
       if(!row) throw new Error("THM seçilen sevkiyata rotalanmamış.");
       if(row.status===ShipmentHandlingUnitStatus.LOADED) throw new Error("THM daha önce araca yüklenmiş.");
