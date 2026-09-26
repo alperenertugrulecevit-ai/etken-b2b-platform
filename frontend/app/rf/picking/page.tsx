@@ -724,6 +724,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           targetUnitOptions
         }
         lockedOrderNumber={zoneTask?.order.orderNumber}
+        zoneTaskId={zoneTask?.id}
       />
 
       <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-900">
