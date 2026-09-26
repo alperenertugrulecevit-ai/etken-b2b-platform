@@ -146,7 +146,16 @@ export async function createWaveAction(formData: FormData) {
         data: { status: OrderStatus.PREPARING },
       });
     } catch (error) {
-      await prisma.wave.delete({ where: { id: wave.id } }).catch(() => undefined);
+      await prisma.$transaction(async tx => {
+        await ZonePickingService.releaseWavePlan(tx, wave.id);
+        for (const order of orders) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: { fulfillmentWarehouseId: order.fulfillmentWarehouseId },
+          });
+        }
+        await tx.wave.delete({ where: { id: wave.id } });
+      }).catch(() => undefined);
       throw error;
     }
 
