@@ -1,6 +1,7 @@
 "use server";
 import { ShippingVehicleOwnershipType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { ShipmentPlanningService } from "@/modules/fulfillment/services/shipment-planning.service";
 export type ShippingAdminState={success:boolean;message:string}; 
@@ -25,19 +26,24 @@ export async function bulkPlanShipmentAction(f:FormData){
 }
 
 export async function updateShipmentAction(f:FormData){
- const a=await auth();
- void a;
- const rawDate=v(f,"shipmentDate");
- await ShipmentPlanningService.updateShipment({
-  shipmentId:v(f,"shipmentId"),
-  shipmentDate:new Date(rawDate+"T12:00:00"),
-  carrierId:v(f,"carrierId"),
-  vehicleId:v(f,"vehicleId"),
-  driverName:v(f,"driverName"),
-  driverPhone:v(f,"driverPhone"),
-  driverIdentityNo:v(f,"driverIdentityNo"),
-  notes:v(f,"notes"),
- });
- revalidatePath("/admin/shipping-planning");
- revalidatePath("/admin/shipping-planning/tracking");
+ try{
+  await auth();
+  const rawDate=v(f,"shipmentDate");
+  await ShipmentPlanningService.updateShipment({
+   shipmentId:v(f,"shipmentId"),
+   shipmentDate:new Date(rawDate+"T12:00:00"),
+   carrierId:v(f,"carrierId"),
+   vehicleId:v(f,"vehicleId"),
+   driverName:v(f,"driverName"),
+   driverPhone:v(f,"driverPhone"),
+   driverIdentityNo:v(f,"driverIdentityNo"),
+   notes:v(f,"notes"),
+  });
+  revalidatePath("/admin/shipping-planning");
+  revalidatePath("/admin/shipping-planning/tracking");
+ }catch(e){
+  const message=e instanceof Error?e.message:"Sevkiyat güncellenemedi.";
+  redirect("/admin/shipping-planning?updateError="+encodeURIComponent(message));
+ }
+ redirect("/admin/shipping-planning?updated=1");
 }
