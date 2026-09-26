@@ -1,5 +1,5 @@
-import { HandlingUnitPurpose, HandlingUnitStatus, Prisma, ZonePickTaskStatus } from "@prisma/client";
-type Tx = Prisma.TransactionClient;
+import { HandlingUnitPurpose, HandlingUnitStatus, Prisma, PrismaClient, ZonePickTaskStatus } from "@prisma/client";
+type Tx = Prisma.TransactionClient | PrismaClient;
 const SOURCE_STATUSES: HandlingUnitStatus[]=[HandlingUnitStatus.OPEN,HandlingUnitStatus.CLOSED,HandlingUnitStatus.STORED];
 
 export class ZonePickingService {
