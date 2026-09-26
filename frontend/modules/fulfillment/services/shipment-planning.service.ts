@@ -219,10 +219,10 @@ export class ShipmentPlanningService {
   }
 
   static async shippingControlReport(){
-    return prisma.shipmentHandlingUnit.findMany({where:{status:ShipmentHandlingUnitStatus.ROUTED},include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{routedAt:"desc"},take:1000});
+    return prisma.shipmentHandlingUnit.findMany({where:{status:ShipmentHandlingUnitStatus.ROUTED,shipment:{tenantId:TENANT_ID,companyId:COMPANY_ID}},include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{routedAt:"desc"},take:1000});
   }
   static async shippingLoadingReport(){
-    return prisma.shipmentHandlingUnit.findMany({include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{updatedAt:"desc"},take:1000});
+    return prisma.shipmentHandlingUnit.findMany({where:{shipment:{tenantId:TENANT_ID,companyId:COMPANY_ID}},include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{updatedAt:"desc"},take:1000});
   }
   static async readyWaitingReport(){
     return prisma.shippingHandlingUnit.findMany({where:{status:ShippingHandlingUnitStatus.READY_TO_SHIP,packingListPrintedAt:{not:null},shipmentHandlingUnit:null},include:{handlingUnit:true,customer:true},orderBy:{readyAt:"asc"},take:1000});
