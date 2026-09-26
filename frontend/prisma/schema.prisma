@@ -755,6 +755,7 @@ model Warehouse {
   userAccesses    UserWarehouseAccess[]
   fulfillmentOrders Order[] @relation("OrderFulfillmentWarehouse")
   pickingAssignments OrderPickingAssignment[]
+  waves Wave[] @relation("WaveWarehouse")
 
   @@index([tenantId])
   @@index([companyId])
@@ -1158,6 +1159,7 @@ model Wave {
   type     WaveType     @default(MIXED)
   status   WaveStatus   @default(DRAFT)
   priority WavePriority @default(NORMAL)
+  warehouseId Int?
 
   plannedStartAt  DateTime?
   plannedFinishAt DateTime?
@@ -1188,6 +1190,7 @@ model Wave {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  warehouse           Warehouse? @relation("WaveWarehouse", fields: [warehouseId], references: [id], onDelete: SetNull)
   orders              WaveOrder[]
   assignments         WaveAssignment[]
   distributions       WaveDistribution[]
@@ -1206,6 +1209,7 @@ model Wave {
   ptlGatewayEvents    PtlGatewayEvent[]
 
   @@index([status, priority])
+  @@index([warehouseId, status])
   @@index([plannedStartAt])
   @@index([createdAt])
 }
