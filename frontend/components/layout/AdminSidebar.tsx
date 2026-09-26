@@ -51,6 +51,7 @@ const groups:MenuGroup[]=[
   {href:"/admin/manual-wave/product-query",icon:"🔎",label:"THM Sorgu",permissionCodes:["MANUAL_WAVE_REPORT_VIEW"]},
   {href:"/admin/manual-wave/distribution-summary",icon:"📊",label:"Dağıtım Performansı",permissionCodes:["MANUAL_WAVE_REPORT_VIEW"]},
   {href:"/admin/manual-wave/wave-summary",icon:"🌊",label:"Wave Dağılım Özeti",permissionCodes:["MANUAL_WAVE_REPORT_VIEW"]},
+  {href:"/admin/order-grouping",icon:"🧺",label:"Sipariş Gruplama",permissionCodes:["WAVE_MANAGE"]},
   {href:"/admin/waves",icon:"🌊",label:"Wave Yönetimi",permissionCodes:["WAVE_VIEW","WAVE_MANAGE"]},
   {href:"/admin/waves/new",icon:"➕",label:"Yeni Wave Oluştur",permissionCodes:["WAVE_MANAGE"]},
   {href:"/admin/wms-reports/shipment-summary",icon:"🚚",label:"Sevk Sipariş Durum Raporu",permissionCodes:["ORDER_VIEW"]},

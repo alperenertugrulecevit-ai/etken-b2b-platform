@@ -350,6 +350,13 @@ enum OrderSource {
   API
 }
 
+enum OrderType {
+  ECOMMERCE
+  STORE
+  CUSTOMER
+  OTHER
+}
+
 enum B2BPaymentMethod {
   BANK_TRANSFER
   CURRENT_ACCOUNT
@@ -399,6 +406,8 @@ model Order {
   shippingAddressId Int?
   status            OrderStatus       @default(PENDING)
   source            OrderSource       @default(ADMIN)
+  orderType         OrderType         @default(CUSTOMER)
+  fulfillmentWarehouseId Int?
   paymentMethod     B2BPaymentMethod?
   placedByUserId    String?
   placedByUsername  String?
@@ -422,6 +431,7 @@ model Order {
   customer                   Customer                    @relation(fields: [customerId], references: [id])
   shippingAddress            CustomerAddress?            @relation(fields: [shippingAddressId], references: [id])
   placedByUser               User?                       @relation("OrderPlacedByUser", fields: [placedByUserId], references: [id], onDelete: SetNull)
+  fulfillmentWarehouse       Warehouse?                  @relation("OrderFulfillmentWarehouse", fields: [fulfillmentWarehouseId], references: [id], onDelete: SetNull)
   items                      OrderItem[]
   statusHistory              OrderStatusHistory[]
   accountEntries             CustomerAccountEntry[]
@@ -436,11 +446,14 @@ model Order {
   shippingHandlingUnitItems  ShippingHandlingUnitItem[]
   packingRecords             PackingRecord[]
   dispatchLines              DispatchDocumentLine[]
+  pickingAssignment          OrderPickingAssignment?
 
   @@index([customerId])
   @@index([shippingAddressId])
   @@index([placedByUserId])
   @@index([source, status])
+  @@index([orderType, status])
+  @@index([fulfillmentWarehouseId, status])
   @@index([status])
   @@index([orderDate])
 }
@@ -740,6 +753,9 @@ model Warehouse {
   stockMovements  StockMovement[]
   inventoryCounts InventoryCount[]
   userAccesses    UserWarehouseAccess[]
+  fulfillmentOrders Order[] @relation("OrderFulfillmentWarehouse")
+  pickingAssignments OrderPickingAssignment[]
+  waves Wave[] @relation("WaveWarehouse")
 
   @@index([tenantId])
   @@index([companyId])
@@ -1143,6 +1159,7 @@ model Wave {
   type     WaveType     @default(MIXED)
   status   WaveStatus   @default(DRAFT)
   priority WavePriority @default(NORMAL)
+  warehouseId Int?
 
   plannedStartAt  DateTime?
   plannedFinishAt DateTime?
@@ -1173,6 +1190,7 @@ model Wave {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  warehouse           Warehouse? @relation("WaveWarehouse", fields: [warehouseId], references: [id], onDelete: SetNull)
   orders              WaveOrder[]
   assignments         WaveAssignment[]
   distributions       WaveDistribution[]
@@ -1191,6 +1209,7 @@ model Wave {
   ptlGatewayEvents    PtlGatewayEvent[]
 
   @@index([status, priority])
+  @@index([warehouseId, status])
   @@index([plannedStartAt])
   @@index([createdAt])
 }
@@ -1266,6 +1285,28 @@ enum DispatchDocumentStatus {
   READY
   ISSUED
   CANCELLED
+}
+
+model OrderPickingAssignment {
+  id          String   @id @default(cuid())
+  orderId     Int      @unique
+  userId      String
+  warehouseId Int
+  assignedById String?
+  assignedAt  DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user        User      @relation("OrderPickingAssignee", fields: [userId], references: [id], onDelete: Restrict)
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  assignedBy  User?     @relation("OrderPickingAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, completedAt, cancelledAt])
+  @@index([warehouseId, completedAt, cancelledAt])
 }
 
 model OrderFulfillment {
@@ -2056,6 +2097,8 @@ model User {
   authSessions        AuthSession[]
   passwordResetTokens PasswordResetToken[]
   placedOrders        Order[]              @relation("OrderPlacedByUser")
+  pickingAssignments  OrderPickingAssignment[] @relation("OrderPickingAssignee")
+  createdPickingAssignments OrderPickingAssignment[] @relation("OrderPickingAssignedBy")
 
   customerAddressAccesses         CustomerUserAddressAccess[] @relation("CustomerUserAddressAccessUser")
   assignedCustomerAddressAccesses CustomerUserAddressAccess[] @relation("CustomerUserAddressAccessAssignedBy")

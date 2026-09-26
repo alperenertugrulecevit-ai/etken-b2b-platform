@@ -331,6 +331,10 @@ items: {
                 ? order.stockReservedAt ??
                   new Date()
                 : null,
+            fulfillmentWarehouseId:
+              new Set(reservableItems.map((reservation) => reservation.warehouseId)).size === 1
+                ? reservableItems[0]?.warehouseId ?? null
+                : null,
           },
         });
 

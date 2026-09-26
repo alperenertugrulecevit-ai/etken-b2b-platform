@@ -72,7 +72,7 @@ function createLocationCode({
 }
 
 export default async function RFWavePickingPage() {
-  await AuthorizationService.requireRfAccess(
+  const currentUser = await AuthorizationService.requireRfAccess(
     "PICKING_EXECUTE"
   );
 
@@ -88,6 +88,14 @@ export default async function RFWavePickingPage() {
             WaveStatus.RELEASED,
             WaveStatus.IN_PROGRESS,
           ],
+        },
+
+        assignments: {
+          some: {
+            userId: currentUser.id,
+            operationType: "PICKING",
+            status: { in: ["ASSIGNED", "ACTIVE", "WAITING"] },
+          },
         },
 
         distributions: {
