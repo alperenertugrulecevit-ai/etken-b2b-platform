@@ -178,6 +178,7 @@ export default async function AdminLayout({
         </header>
 
         <main className="min-w-0 overflow-x-hidden">
+          <AdminTableEnhancer />
           {children}
         </main>
       </div>
