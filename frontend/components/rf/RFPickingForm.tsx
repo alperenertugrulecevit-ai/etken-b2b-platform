@@ -1209,6 +1209,10 @@ export default function RFPickingForm({
 
   async function handleLostProduct() {
     if (!selectedOrder || !recommendedSource || !nextOrderItem) return;
+    if (zoneTaskId) {
+      setLostMessage("Zone görevinde eksik/kayıp stok otomatik olarak düşülmez. Görev planını bozmamak için yönetici istisna işlemi gerekir.");
+      return;
+    }
 
     const lostQuantity = recommendedSource.product.quantity;
     const confirmed = window.confirm(
@@ -1919,10 +1923,10 @@ export default function RFPickingForm({
       <button
         type="button"
         onClick={handleLostProduct}
-        disabled={isPending || lostPending || !selectedOrder || !recommendedSource || !nextOrderItem}
+        disabled={isPending || lostPending || Boolean(zoneTaskId) || !selectedOrder || !recommendedSource || !nextOrderItem}
         className="mt-6 w-full rounded-xl border-2 border-red-600 bg-red-50 py-4 text-lg font-black text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {lostPending ? "KAYIP İŞLEMİ YAPILIYOR..." : "ÜRÜN BULUNAMADI / KAYIP"}
+        {lostPending ? "KAYIP İŞLEMİ YAPILIYOR..." : zoneTaskId ? "EKSİK STOK — YÖNETİCİ İŞLEMİ GEREKİR" : "ÜRÜN BULUNAMADI / KAYIP"}
       </button>
 
       {recommendedSource && nextOrderItem && (
