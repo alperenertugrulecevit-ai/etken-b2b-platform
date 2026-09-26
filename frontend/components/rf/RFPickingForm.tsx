@@ -104,6 +104,7 @@ type Props = {
   sourceUnits: SourceUnitOption[];
   targetUnits: TargetUnitOption[];
   lockedOrderNumber?: string;
+  zoneTaskId?: string;
 };
 
 const initialState: RFPickingState = {
@@ -146,6 +147,7 @@ export default function RFPickingForm({
   sourceUnits,
   targetUnits,
   lockedOrderNumber,
+  zoneTaskId,
 }: Props) {
   const orderInputRef =
     useRef<HTMLInputElement>(null);
@@ -1163,6 +1165,9 @@ export default function RFPickingForm({
 
     if (locationMatches) {
       sourceInputRef.current?.focus();
+    } else {
+      setLocationBarcode("");
+      window.setTimeout(() => locationInputRef.current?.focus(), 50);
     }
   }
 
@@ -1178,6 +1183,9 @@ export default function RFPickingForm({
 
     if (sourceMatches) {
       productInputRef.current?.focus();
+    } else {
+      setSourceBarcode("");
+      window.setTimeout(() => sourceInputRef.current?.focus(), 50);
     }
   }
 
@@ -1193,6 +1201,9 @@ export default function RFPickingForm({
 
     if (productMatches && !isPending && canSubmit) {
       event.currentTarget.form?.requestSubmit();
+    } else if (!productMatches) {
+      setProductBarcode("");
+      window.setTimeout(() => productInputRef.current?.focus(), 50);
     }
   }
 
@@ -1242,6 +1253,7 @@ export default function RFPickingForm({
       }
       className="rounded-2xl bg-white p-4 shadow md:p-6"
     >
+      {zoneTaskId && <input type="hidden" name="zoneTaskId" value={zoneTaskId} />}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-black">
