@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
 import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
+import { ConsolidationService } from "@/lib/wms/consolidation-service";
 
 export type RFPickingState = {
   success: boolean;
@@ -918,6 +919,8 @@ export async function rfPickOrderItem(
           const zoneCompleted = nextZonePicked >= zoneTask.plannedQuantity;
           await tx.zonePickTask.update({ where: { id: zoneTask.id }, data: { pickedQuantity: nextZonePicked, status: zoneCompleted ? "COMPLETED" : "IN_PROGRESS", startedAt: zoneTask.status === "CLAIMED" ? new Date() : undefined, completedAt: zoneCompleted ? new Date() : null } });
         }
+
+        if (zoneTask) await ConsolidationService.syncOrder(tx, order.id);
 
         const remainingZoneTasks = await tx.zonePickTask.count({
           where: { orderId: order.id, status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] }, ...(zoneTask ? { id: { not: zoneTask.id } } : {}) },
