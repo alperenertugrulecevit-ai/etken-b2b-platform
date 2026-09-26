@@ -27,3 +27,8 @@ export async function removeShipmentAction(_:RfShipmentState,fd:FormData):Promis
  try{const r=await ShipmentPlanningService.removeUnit({thmBarcode:value(fd,"thmBarcode"),actor:await actor()}); return {ok:true,message:`${r.thmBarcode}, ${r.shipmentNumber} sevkiyatından çıkartıldı ve yeniden rotalanabilir.`};}
  catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevkiyat bozma tamamlanamadı."};}
 }
+
+export async function dispatchShipmentAction(_:RfShipmentState,fd:FormData):Promise<RfShipmentState>{
+ try{const r=await ShipmentPlanningService.dispatchShipment({shipmentNumber:value(fd,"shipmentNumber"),actor:await actor()});return {ok:true,message:`${r.shipmentNumber} SEVK EDİLDİ. ${r.thmCount} THM, toplam ${r.totalQuantity} adet ürün stoktan çıkıldı.`};}
+ catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevk işlemi tamamlanamadı."};}
+}
