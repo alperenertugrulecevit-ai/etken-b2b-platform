@@ -76,8 +76,16 @@ function createFullLocationCode({
     .join("-");
 }
 
-export default async function RFPickingPage() {
+export default async function RFPickingPage({ searchParams }: { searchParams: Promise<{ zoneTaskId?: string }> }) {
   const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+  const query = await searchParams;
+  const zoneTaskId = String(query.zoneTaskId ?? "").trim();
+  const zoneTask = zoneTaskId ? await prisma.zonePickTask.findFirst({
+    where: { id: zoneTaskId, claimedByUserId: currentUser.id, status: { in: ["CLAIMED", "IN_PROGRESS"] } },
+    include: { zone: true, order: { select: { id: true, orderNumber: true } }, warehouse: { select: { id: true, code: true } } },
+  }) : null;
+  if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bulunamadı veya bu kullanıcıya ait değil.");
+
   const [
     orders,
     sourceUnits,
@@ -85,6 +93,7 @@ export default async function RFPickingPage() {
   ] = await Promise.all([
     prisma.order.findMany({
       where: {
+        ...(zoneTask ? { id: zoneTask.orderId } : {}),
         status: {
           in: [
             OrderStatus.APPROVED,
@@ -95,10 +104,10 @@ export default async function RFPickingPage() {
 
         stockReserved: true,
         stockDeducted: false,
-        OR: [
+        ...(zoneTask ? {} : { OR: [
           { pickingAssignment: { is: { userId: currentUser.id, completedAt: null, cancelledAt: null } } },
           { waveOrders: { some: { wave: { assignments: { some: { userId: currentUser.id, operationType: "PICKING", status: { in: ["ASSIGNED", "ACTIVE", "WAITING"] } } } } } } },
-        ],
+        ] }),
       },
 
       orderBy: [
@@ -210,6 +219,7 @@ export default async function RFPickingPage() {
 
         location: {
           isActive: true,
+          ...(zoneTask ? { zoneId: zoneTask.zoneId } : {}),
         },
 
         status: {
@@ -267,6 +277,7 @@ export default async function RFPickingPage() {
             level: true,
             bin: true,
             sortOrder: true,
+            zoneId: true,
           },
         },
 
@@ -690,7 +701,7 @@ export default async function RFPickingPage() {
           </p>
 
           <h1 className="mt-1 text-2xl font-black">
-            Sipariş Toplama
+            {zoneTask ? `${zoneTask.zone.code} · ${zoneTask.zone.name} Toplama` : "Sipariş Toplama"}
           </h1>
         </div>
 
@@ -701,6 +712,8 @@ export default async function RFPickingPage() {
           ← Menü
         </Link>
       </div>
+
+      {zoneTask && <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950"><b>Aktif Zone Görevi:</b> {zoneTask.zone.code} · {zoneTask.zone.name} · {zoneTask.order.orderNumber}. Yalnızca bu Zone içindeki kaynak lokasyonlardan toplama yapılabilir.</div>}
 
       <RFPickingForm
         orders={orderOptions}
