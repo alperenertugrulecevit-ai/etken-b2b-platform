@@ -46,7 +46,7 @@ export class ZonePickingService {
     const delta=line.quantity-(previous?.plannedQuantity??0);
     if(delta>0) await tx.handlingUnitItem.update({where:{id:line.handlingUnitItemId},data:{reservedStock:{increment:delta}}});
     if(delta<0) await tx.handlingUnitItem.update({where:{id:line.handlingUnitItemId},data:{reservedStock:{decrement:-delta}}});
-    await tx.zonePickTaskLine.upsert({where:{zone_task_order_item_source_unique:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId}},create:{taskId:task.id,...line,plannedQuantity:line.quantity},update:{plannedQuantity:line.quantity,sequence:line.sequence}});
+    await tx.zonePickTaskLine.upsert({where:{zone_task_order_item_source_unique:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId}},create:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId,plannedQuantity:line.quantity,sequence:line.sequence},update:{plannedQuantity:line.quantity,sequence:line.sequence}});
    }
   }
   return {taskCount:plans.size,zoneCount:new Set([...plans.values()].map(p=>p.zoneId)).size};
