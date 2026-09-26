@@ -762,7 +762,13 @@ export class FulfillmentService {
         totals.picked >= totals.planned &&
         totals.planned > 0
       ) {
-        nextStatus = OrderStatus.PACKING;
+        const consolidation = await tx.consolidationTask.findUnique({
+          where: { orderId: input.orderId },
+          select: { status: true },
+        });
+        nextStatus = consolidation && consolidation.status !== "COMPLETED"
+          ? OrderStatus.PICKING
+          : OrderStatus.PACKING;
       } else if (totals.picked > 0) {
         nextStatus = OrderStatus.PICKING;
       }
