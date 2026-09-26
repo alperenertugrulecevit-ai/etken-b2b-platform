@@ -755,7 +755,6 @@ model Warehouse {
   zonePickTasks   ZonePickTask[]
   consolidationPoints ConsolidationPoint[]
   consolidationTasks ConsolidationTask[]
-  consolidationTaskUnits ConsolidationTaskUnit[]
   zoneHistory     WarehouseLocationZoneHistory[]
   handlingUnits   HandlingUnit[]
   productStocks   WarehouseProductStock[]
