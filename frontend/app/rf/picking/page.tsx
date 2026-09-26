@@ -10,7 +10,8 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
-import RFPickingForm from "@/components/rf/RFPickingForm";\nimport { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import RFPickingForm from "@/components/rf/RFPickingForm";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 function getOrderStatusLabel(
   status: string
