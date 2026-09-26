@@ -31,20 +31,22 @@ export async function startDirectPickingAction(formData: FormData) {
     ? `${user.employee.firstName} ${user.employee.lastName}`
     : user.username;
 
+  let result: Awaited<ReturnType<typeof OrderGroupingService.startDirectPicking>>;
   try {
-    const result = await OrderGroupingService.startDirectPicking({
+    result = await OrderGroupingService.startDirectPicking({
       orderIds,
       warehouseId,
       pickerUserId,
       assignedById: user.id,
       assignedByName: displayName,
     });
-    revalidatePath("/admin/order-grouping");
-    revalidatePath("/rf/picking");
-    redirect(`/admin/order-grouping?success=${encodeURIComponent(`${result.count} sipariş için toplama emri RF terminaline gönderildi.`)}`);
   } catch (error) {
     redirect(errorUrl(error instanceof Error ? error.message : "Toplama başlatılamadı."));
   }
+
+  revalidatePath("/admin/order-grouping");
+  revalidatePath("/rf/picking");
+  redirect(`/admin/order-grouping?success=${encodeURIComponent(`${result.count} sipariş için toplama emri RF terminaline gönderildi.`)}`);
 }
 
 export async function prepareWavePickingAction(formData: FormData) {
