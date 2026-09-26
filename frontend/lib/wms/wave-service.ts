@@ -29,6 +29,7 @@ export type CreateWaveData = {
   plannedFinishAt?: Date | null;
   notes?: string | null;
   createdBy?: string | null;
+  warehouseId?: number | null;
   orders?: CreateWaveOrderData[];
 };
 
@@ -179,6 +180,7 @@ export async function createWave(data: CreateWaveData) {
         plannedFinishAt: data.plannedFinishAt ?? null,
         notes: normalizeOptionalText(data.notes),
         createdBy: normalizeOptionalText(data.createdBy),
+        warehouseId: data.warehouseId ?? null,
 
         plannedOrderCount: waveOrders.length,
 
