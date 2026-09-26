@@ -163,7 +163,7 @@ export async function createWaveAction(formData: FormData) {
     plannedStartAt,
     plannedFinishAt,
     notes: optionalText(formData.get("notes")),
-    createdBy: optionalText(formData.get("createdBy")) ?? displayName,
+    createdBy: displayName,
   });
 
   revalidatePath("/admin");
