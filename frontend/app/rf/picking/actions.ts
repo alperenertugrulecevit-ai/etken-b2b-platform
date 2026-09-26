@@ -956,12 +956,6 @@ export async function rfPickOrderItem(
           (item) => item.pickedQuantity >= item.quantity,
         ) && remainingZoneTasks === 0 && currentZoneWillComplete;
 
-        const nextOrderStatus = pickingCompleted
-          ? isWavePicking
-            ? OrderStatus.PACKING
-            : OrderStatus.READY_TO_SHIP
-          : OrderStatus.PICKING;
-
         const pickingRecord = await tx.pickingRecord.create({
           data: {
             orderId: order.id,
@@ -997,6 +991,11 @@ export async function rfPickOrderItem(
           flowType: pickingFlow.flowType,
           waveId: pickingFlow.waveId,
         });
+        const refreshedOrder = await tx.order.findUnique({
+          where: { id: order.id },
+          select: { status: true },
+        });
+        const nextOrderStatus = refreshedOrder?.status ?? order.status;
 
         const targetTypeLabel = isWavePicking ? "Toplama THM" : "Sevk THM";
 
