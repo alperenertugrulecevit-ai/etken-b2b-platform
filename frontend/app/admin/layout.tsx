@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import LogoutButton from "@/components/auth/LogoutButton";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
+import AdminTableEnhancer from "@/components/admin/AdminTableEnhancer";
 import AdminTopbar from "@/components/layout/AdminTopbar";
 import WmsContextSelector from "@/components/layout/WmsContextSelector";
 
