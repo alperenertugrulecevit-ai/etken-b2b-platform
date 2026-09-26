@@ -62,8 +62,14 @@ export class ShipmentPlanningService {
   static createCarrier(input:{code:string;name:string;taxNumber?:string;phone?:string;email?:string;address?:string;contactName?:string;notes?:string}){
     return prisma.shippingCarrier.create({data:{tenantId:TENANT_ID,companyId:COMPANY_ID,code:input.code.trim().toUpperCase(),name:input.name.trim(),taxNumber:clean(input.taxNumber),phone:clean(input.phone),email:clean(input.email),address:clean(input.address),contactName:clean(input.contactName),notes:clean(input.notes)}});
   }
-  static createVehicle(input:{code:string;plate:string;vehicleType:string;ownershipType:ShippingVehicleOwnershipType;carrierId?:string;registrationNo?:string;driverName?:string;driverPhone?:string;driverIdentityNo?:string;notes?:string}){
-    return prisma.shippingVehicle.create({data:{tenantId:TENANT_ID,companyId:COMPANY_ID,code:input.code.trim().toUpperCase(),plate:input.plate.trim().toUpperCase(),vehicleType:input.vehicleType.trim(),ownershipType:input.ownershipType,carrierId:clean(input.carrierId),registrationNo:clean(input.registrationNo),driverName:clean(input.driverName),driverPhone:clean(input.driverPhone),driverIdentityNo:clean(input.driverIdentityNo),notes:clean(input.notes)}});
+  static async createVehicle(input:{code:string;plate:string;vehicleType:string;ownershipType:ShippingVehicleOwnershipType;carrierId?:string;registrationNo?:string;driverName?:string;driverPhone?:string;driverIdentityNo?:string;notes?:string}){
+    const carrierId=clean(input.carrierId);
+    if(input.ownershipType===ShippingVehicleOwnershipType.RENTED && !carrierId) throw new Error("Kiralık araç için taşıyıcı/kiralayan firma seçilmelidir.");
+    if(carrierId){
+      const carrier=await prisma.shippingCarrier.findFirst({where:{id:carrierId,tenantId:TENANT_ID,companyId:COMPANY_ID,isActive:true},select:{id:true}});
+      if(!carrier) throw new Error("Seçilen taşıyıcı bulunamadı veya pasif.");
+    }
+    return prisma.shippingVehicle.create({data:{tenantId:TENANT_ID,companyId:COMPANY_ID,code:input.code.trim().toUpperCase(),plate:input.plate.trim().toUpperCase(),vehicleType:input.vehicleType.trim(),ownershipType:input.ownershipType,carrierId,registrationNo:clean(input.registrationNo),driverName:clean(input.driverName),driverPhone:clean(input.driverPhone),driverIdentityNo:clean(input.driverIdentityNo),notes:clean(input.notes)}});
   }
   static createRoute(input:{routeNumber:string;name:string;description?:string}){
     return prisma.shippingRoute.create({data:{tenantId:TENANT_ID,companyId:COMPANY_ID,routeNumber:input.routeNumber.trim().toUpperCase(),name:input.name.trim(),description:clean(input.description)}});
@@ -71,14 +77,25 @@ export class ShipmentPlanningService {
 
   static async createShipment(input:CreateShipmentInput){
     const routeIds=[...new Set(input.routeIds.map(x=>x.trim()).filter(Boolean))];
+    if(!Number.isFinite(input.shipmentDate.getTime())) throw new Error("Geçerli bir sevkiyat tarihi seçin.");
     if(!routeIds.length) throw new Error("Sevkiyat için en az bir rota seçilmelidir.");
     for(let attempt=0;attempt<5;attempt++){
       try{
         return await prisma.$transaction(async tx=>{
           const routes=await tx.shippingRoute.findMany({where:{id:{in:routeIds},tenantId:TENANT_ID,companyId:COMPANY_ID,isActive:true},select:{id:true}});
           if(routes.length!==routeIds.length) throw new Error("Seçilen rotalardan biri bulunamadı veya pasif.");
+          const carrierId=clean(input.carrierId), vehicleId=clean(input.vehicleId);
+          if(carrierId){
+            const carrier=await tx.shippingCarrier.findFirst({where:{id:carrierId,tenantId:TENANT_ID,companyId:COMPANY_ID,isActive:true},select:{id:true}});
+            if(!carrier) throw new Error("Seçilen taşıyıcı bulunamadı veya pasif.");
+          }
+          if(vehicleId){
+            const vehicle=await tx.shippingVehicle.findFirst({where:{id:vehicleId,tenantId:TENANT_ID,companyId:COMPANY_ID,isActive:true},select:{id:true,carrierId:true}});
+            if(!vehicle) throw new Error("Seçilen araç bulunamadı veya pasif.");
+            if(carrierId && vehicle.carrierId && vehicle.carrierId!==carrierId) throw new Error("Seçilen araç farklı bir taşıyıcı firmaya bağlı.");
+          }
           const shipmentNumber=await nextNumber(tx,input.shipmentDate);
-          return tx.shipment.create({data:{tenantId:TENANT_ID,companyId:COMPANY_ID,shipmentNumber,shipmentDate:input.shipmentDate,status:ShipmentStatus.CREATED,carrierId:clean(input.carrierId),vehicleId:clean(input.vehicleId),driverName:clean(input.driverName),driverPhone:clean(input.driverPhone),driverIdentityNo:clean(input.driverIdentityNo),notes:clean(input.notes),createdById:input.actor.userId,createdByName:input.actor.displayName,routes:{create:routeIds.map(routeId=>({routeId}))}},include:{carrier:true,vehicle:true,routes:{include:{route:true}}}});
+          return tx.shipment.create({data:{tenantId:TENANT_ID,companyId:COMPANY_ID,shipmentNumber,shipmentDate:input.shipmentDate,status:ShipmentStatus.CREATED,carrierId,vehicleId,driverName:clean(input.driverName),driverPhone:clean(input.driverPhone),driverIdentityNo:clean(input.driverIdentityNo),notes:clean(input.notes),createdById:input.actor.userId,createdByName:input.actor.displayName,routes:{create:routeIds.map(routeId=>({routeId}))}},include:{carrier:true,vehicle:true,routes:{include:{route:true}}}});
         },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
       }catch(e){ if(uniqueError(e)&&attempt<4) continue; throw e; }
     }
