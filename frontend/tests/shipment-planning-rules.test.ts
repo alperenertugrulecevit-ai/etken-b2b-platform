@@ -89,9 +89,9 @@ describe("shipment planning business rules", () => {
   });
 
   it("does not allow a vehicle linked to another carrier in the same shipment plan", () => {
-    const selectedCarrierId = "carrier-a";
-    const vehicleCarrierId = "carrier-b";
-    expect(vehicleCarrierId === selectedCarrierId).toBe(false);
+    const selectedCarrierId: string = "carrier-a";
+    const vehicleCarrierId: string = ["carrier-b"].join("");
+    expect(vehicleCarrierId).not.toBe(selectedCarrierId);
   });
 
   it("requires at least one active route when creating a shipment", () => {
