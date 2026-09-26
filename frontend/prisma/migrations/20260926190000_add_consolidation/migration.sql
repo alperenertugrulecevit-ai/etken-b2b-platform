@@ -1,0 +1,15 @@
+CREATE TYPE "ConsolidationTaskStatus" AS ENUM ('WAITING','READY','IN_PROGRESS','COMPLETED','CANCELLED');
+CREATE TABLE "ConsolidationPoint" ("id" TEXT NOT NULL,"warehouseId" INTEGER NOT NULL,"code" TEXT NOT NULL,"name" TEXT NOT NULL,"locationId" INTEGER,"isActive" BOOLEAN NOT NULL DEFAULT true,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "ConsolidationPoint_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "ConsolidationTask" ("id" TEXT NOT NULL,"warehouseId" INTEGER NOT NULL,"orderId" INTEGER NOT NULL,"waveId" TEXT,"consolidationPointId" TEXT,"status" "ConsolidationTaskStatus" NOT NULL DEFAULT 'WAITING',"requiredZoneCount" INTEGER NOT NULL DEFAULT 0,"completedZoneCount" INTEGER NOT NULL DEFAULT 0,"startedAt" TIMESTAMP(3),"completedAt" TIMESTAMP(3),"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "ConsolidationTask_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "warehouse_consolidation_code_unique" ON "ConsolidationPoint"("warehouseId","code");
+CREATE INDEX "ConsolidationPoint_warehouseId_isActive_idx" ON "ConsolidationPoint"("warehouseId","isActive");
+CREATE UNIQUE INDEX "ConsolidationTask_orderId_key" ON "ConsolidationTask"("orderId");
+CREATE INDEX "ConsolidationTask_warehouseId_status_idx" ON "ConsolidationTask"("warehouseId","status");
+CREATE INDEX "ConsolidationTask_waveId_status_idx" ON "ConsolidationTask"("waveId","status");
+CREATE INDEX "ConsolidationTask_consolidationPointId_status_idx" ON "ConsolidationTask"("consolidationPointId","status");
+ALTER TABLE "ConsolidationPoint" ADD CONSTRAINT "ConsolidationPoint_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ConsolidationPoint" ADD CONSTRAINT "ConsolidationPoint_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "WarehouseLocation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ConsolidationTask" ADD CONSTRAINT "ConsolidationTask_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ConsolidationTask" ADD CONSTRAINT "ConsolidationTask_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ConsolidationTask" ADD CONSTRAINT "ConsolidationTask_waveId_fkey" FOREIGN KEY ("waveId") REFERENCES "Wave"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ConsolidationTask" ADD CONSTRAINT "ConsolidationTask_consolidationPointId_fkey" FOREIGN KEY ("consolidationPointId") REFERENCES "ConsolidationPoint"("id") ON DELETE SET NULL ON UPDATE CASCADE;
