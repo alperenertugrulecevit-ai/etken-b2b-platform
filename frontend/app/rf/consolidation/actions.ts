@@ -16,41 +16,51 @@ export async function completeConsolidation(formData: FormData) {
   const result=await prisma.$transaction(async tx=>{
     const task=await tx.consolidationTask.findUnique({
       where:{id:taskId},
-      include:{order:{select:{id:true,orderNumber:true}},consolidationPoint:true},
+      include:{order:{select:{id:true,orderNumber:true}}},
     });
     if(!task) throw new Error("Konsolidasyon görevi bulunamadı.");
-    if(task.status!=="READY") throw new Error("Tüm Zone görevleri tamamlanmadan konsolidasyon kapatılamaz.");
+    if(!["READY","IN_PROGRESS"].includes(task.status)) throw new Error("Tüm Zone görevleri tamamlanmadan konsolidasyon başlatılamaz.");
 
     const point=await tx.consolidationPoint.findFirst({
       where:{code:pointBarcode,warehouseId:task.warehouseId,isActive:true},
     });
     if(!point) throw new Error("Okutulan konsolidasyon noktası aktif değil veya farklı depoya ait.");
+    if(task.consolidationPointId && task.consolidationPointId!==point.id) throw new Error("Bu görev başka bir konsolidasyon noktasında başlatılmış.");
 
-    const hu=await tx.handlingUnit.findFirst({
+    const unit=await tx.consolidationTaskUnit.findFirst({
       where:{
-        barcode:thmBarcode,
-        status:{in:["OPEN","STORED","CLOSED"]},
-        ...(task.waveId ? {assignedWaveId:task.waveId} : {assignedOrderId:task.orderId}),
-        targetPickingRecords:{some:{orderId:task.orderId}},
+        taskId:task.id,
+        handlingUnit:{barcode:thmBarcode,status:{in:["OPEN","STORED","CLOSED"]}},
       },
-      select:{id:true,barcode:true},
+      include:{handlingUnit:{select:{barcode:true}}},
     });
-    if(!hu) throw new Error("Okutulan THM bu siparişin toplanmış ürünlerini içermiyor veya farklı sipariş/Wave'e ait.");
+    if(!unit) throw new Error("Okutulan THM bu siparişin konsolidasyon listesinde bulunmuyor.");
 
+    await tx.consolidationTaskUnit.update({
+      where:{id:unit.id},
+      data:{verifiedAt:unit.verifiedAt??new Date()},
+    });
     await tx.consolidationTask.update({
       where:{id:task.id},
-      data:{consolidationPointId:point.id,status:"IN_PROGRESS",startedAt:new Date()},
+      data:{consolidationPointId:point.id,status:"IN_PROGRESS",startedAt:task.startedAt??new Date()},
     });
-    await ConsolidationService.complete(tx,task.orderId);
-    await tx.order.updateMany({
-      where:{id:task.orderId,status:{in:["PREPARING","PICKING"]}},
-      data:{status:"PACKING"},
-    });
-    return {orderNumber:task.order.orderNumber};
+
+    const remaining=await tx.consolidationTaskUnit.count({where:{taskId:task.id,verifiedAt:null}});
+    if(remaining===0){
+      await ConsolidationService.complete(tx,task.orderId);
+      await tx.order.updateMany({
+        where:{id:task.orderId,status:{in:["PREPARING","PICKING"]}},
+        data:{status:"PACKING"},
+      });
+    }
+    return {orderNumber:task.order.orderNumber,remaining,barcode:unit.handlingUnit.barcode};
   });
 
   revalidatePath("/rf/consolidation");
   revalidatePath("/rf/packing");
   revalidatePath("/admin/orders");
+  if(result.remaining>0){
+    redirect(`/rf/consolidation?scanned=${encodeURIComponent(result.barcode)}&remaining=${result.remaining}`);
+  }
   redirect(`/rf/consolidation?done=${encodeURIComponent(result.orderNumber)}`);
 }
