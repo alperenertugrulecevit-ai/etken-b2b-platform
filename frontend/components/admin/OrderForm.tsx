@@ -376,6 +376,18 @@ function addLine() {
 
             <label>
               <span className="mb-2 block text-sm font-semibold">
+                Sipariş Tipi
+              </span>
+              <select name="orderType" defaultValue="CUSTOMER" className="w-full rounded-xl border bg-white p-4">
+                <option value="CUSTOMER">Müşteri</option>
+                <option value="ECOMMERCE">E-Ticaret</option>
+                <option value="STORE">Mağaza</option>
+                <option value="OTHER">Diğer</option>
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
                 Talep Edilen Teslim
                 Tarihi
               </span>
