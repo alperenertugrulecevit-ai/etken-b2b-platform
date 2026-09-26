@@ -3,6 +3,7 @@
 import {
   CustomerAccountEntryDirection,
   CustomerAccountEntryType,
+  OrderType,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -55,6 +56,11 @@ export async function createOrder(
         "shippingAddressId"
       ) ?? ""
     ).trim();
+
+  const orderTypeValue = String(formData.get("orderType") ?? "CUSTOMER").trim();
+  const orderType = Object.values(OrderType).includes(orderTypeValue as OrderType)
+    ? (orderTypeValue as OrderType)
+    : OrderType.CUSTOMER;
 
   const requestedDateValue = String(
     formData.get("requestedDate") ?? ""
@@ -328,6 +334,7 @@ export async function createOrder(
       customerId,
       shippingAddressId,
       status: "PENDING",
+      orderType,
       requestedDate,
 
       paymentTermDays:
