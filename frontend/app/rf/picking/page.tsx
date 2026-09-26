@@ -10,7 +10,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
-import RFPickingForm from "@/components/rf/RFPickingForm";
+import RFPickingForm from "@/components/rf/RFPickingForm";\nimport { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 function getOrderStatusLabel(
   status: string
@@ -76,6 +76,7 @@ function createFullLocationCode({
 }
 
 export default async function RFPickingPage() {
+  const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
   const [
     orders,
     sourceUnits,
@@ -93,6 +94,10 @@ export default async function RFPickingPage() {
 
         stockReserved: true,
         stockDeducted: false,
+        OR: [
+          { pickingAssignment: { is: { userId: currentUser.id, completedAt: null, cancelledAt: null } } },
+          { waveOrders: { some: { wave: { assignments: { some: { userId: currentUser.id, operationType: "PICKING", status: { in: ["ASSIGNED", "ACTIVE", "WAITING"] } } } } } } },
+        ],
       },
 
       orderBy: [
