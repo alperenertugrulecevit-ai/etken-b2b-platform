@@ -21,11 +21,14 @@ export type OrderGroupingFilter = {
   warehouseId?: number | null;
   orderType?: OrderType | null;
   search?: string;
+  productCode?: string;
+  lineCount?: number | null;
 };
 
 export class OrderGroupingService {
   static async getScreenData(filters: OrderGroupingFilter = {}) {
     const search = filters.search?.trim() ?? "";
+    const productCode = filters.productCode?.trim() ?? "";
 
     const [orders, warehouses] = await Promise.all([
       prisma.order.findMany({
@@ -41,6 +44,7 @@ export class OrderGroupingService {
             ? { fulfillmentWarehouseId: filters.warehouseId }
             : {}),
           ...(filters.orderType ? { orderType: filters.orderType } : {}),
+          ...(productCode ? { items: { some: { productCode: { contains: productCode, mode: "insensitive" } } } } : {}),
           ...(search
             ? {
                 OR: [
@@ -86,10 +90,12 @@ export class OrderGroupingService {
     ]);
 
     return {
-      orders: orders.map((order) => ({
-        ...order,
-        plannedQuantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
-      })),
+      orders: orders
+        .filter((order) => !filters.lineCount || order._count.items === filters.lineCount)
+        .map((order) => ({
+          ...order,
+          plannedQuantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+        })),
       warehouses,
     };
   }

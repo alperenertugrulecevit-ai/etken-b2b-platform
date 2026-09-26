@@ -19,11 +19,15 @@ export default async function OrderGroupingPage({ searchParams }: Props) {
     ? (typeValue as OrderType)
     : null;
   const search = typeof query.search === "string" ? query.search : "";
+  const productCode = typeof query.productCode === "string" ? query.productCode : "";
+  const lineCount = Number(typeof query.lineCount === "string" ? query.lineCount : "");
 
   const data = await OrderGroupingService.getScreenData({
     warehouseId: Number.isInteger(warehouseId) && warehouseId > 0 ? warehouseId : null,
     orderType,
     search,
+    productCode,
+    lineCount: Number.isInteger(lineCount) && lineCount > 0 ? lineCount : null,
   });
 
   const serializedOrders = data.orders.map((order) => ({
@@ -49,7 +53,7 @@ export default async function OrderGroupingPage({ searchParams }: Props) {
         <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-bold text-red-800">⚠ {query.error}</div>
       )}
 
-      <form className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-4">
+      <form className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-6">
         <label className="text-sm font-bold text-slate-700">
           Depo Filtresi
           <select name="warehouseId" defaultValue={Number.isInteger(warehouseId) && warehouseId > 0 ? String(warehouseId) : ""} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3">
@@ -67,6 +71,14 @@ export default async function OrderGroupingPage({ searchParams }: Props) {
         <label className="text-sm font-bold text-slate-700">
           Sipariş / Müşteri Ara
           <input name="search" defaultValue={search} placeholder="Sipariş no, müşteri..." className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
+        </label>
+        <label className="text-sm font-bold text-slate-700">
+          Ürün Kodu
+          <input name="productCode" defaultValue={productCode} placeholder="Ürün kodu..." className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
+        </label>
+        <label className="text-sm font-bold text-slate-700">
+          Sipariş Kalem Sayısı
+          <input name="lineCount" type="number" min="1" defaultValue={Number.isInteger(lineCount) && lineCount > 0 ? lineCount : ""} placeholder="Örn. 3" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
         </label>
         <div className="flex items-end">
           <button className="w-full rounded-xl bg-slate-900 px-5 py-3 font-black text-white hover:bg-slate-800">Filtrele</button>
