@@ -40,7 +40,7 @@ export class ConsolidationService {
 
   static async complete(tx: Tx, orderId:number) {
     const task=await tx.consolidationTask.findUnique({where:{orderId}});
-    if(!task || ![ConsolidationTaskStatus.READY, ConsolidationTaskStatus.IN_PROGRESS].includes(task.status)) throw new Error("Konsolidasyon görevi tamamlanmaya hazır değil.");
+    if(!task || (task.status !== ConsolidationTaskStatus.READY && task.status !== ConsolidationTaskStatus.IN_PROGRESS)) throw new Error("Konsolidasyon görevi tamamlanmaya hazır değil.");
     const unverified=await tx.consolidationTaskUnit.count({where:{taskId:task.id,verifiedAt:null}});
     if(unverified>0) throw new Error(`Konsolidasyon tamamlanamaz. ${unverified} THM daha okutulmalıdır.`);
     await tx.consolidationTask.update({
