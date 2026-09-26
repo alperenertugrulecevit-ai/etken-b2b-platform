@@ -1,0 +1,25 @@
+"use client";
+import { useMemo, useState } from "react";
+
+type Detail={shipmentNumber:string;thm:string;orderNumber:string;companyCode:string;companyName:string;city:string;district:string;orderType:string;quantity:number;warehouseCode:string};
+type Row={id:string;shipmentNumber:string;date:string;carrier:string;route:string;vehicle:string;driver:string;status:string;details:Detail[]};
+
+export default function ShipmentTrackingTable({rows}:{rows:Row[]}){
+ const[selected,setSelected]=useState<string[]>([]);
+ const chosen=useMemo(()=>rows.filter(r=>selected.includes(r.id)),[rows,selected]);
+ const toggle=(id:string)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+ return <div className="space-y-5">
+  <div className="overflow-x-auto rounded-2xl border bg-white shadow-sm">
+   <table className="w-full min-w-[1100px] text-sm"><thead className="bg-slate-100"><tr><th className="p-3">Seç</th><th className="p-3">Aç</th><th className="p-3 text-left">Depo Kodu</th><th className="p-3">Tarih</th><th className="p-3 text-left">Sevkiyat No</th><th className="p-3 text-left">Taşıyıcı</th><th className="p-3 text-left">Rota</th><th className="p-3 text-left">Araç</th><th className="p-3 text-left">Sürücü</th><th className="p-3">Koli Sayısı</th><th className="p-3">Durum</th></tr></thead>
+   <tbody>{rows.map(r=><>
+    <tr key={r.id} className="border-t font-semibold"><td className="p-3 text-center"><input type="checkbox" checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} className="h-5 w-5"/></td><td className="p-3 text-center"><details><summary className="cursor-pointer text-xl font-black">+</summary><div className="fixed inset-x-4 z-20 mt-2 max-h-[60vh] overflow-auto rounded-xl border bg-white p-3 shadow-2xl"><table className="w-full min-w-[1050px] text-xs"><thead className="bg-slate-100"><tr><th>Sevkiyat No</th><th>Sevk THM No</th><th>Sipariş Numarası</th><th>Firma Kodu</th><th>Firma Ünvanı</th><th>İl</th><th>İlçe</th><th>Sipariş Tipi</th><th>Sipariş Miktarı</th></tr></thead><tbody>{r.details.map((d,i)=><tr key={i} className="border-t"><td className="p-2 font-black">{d.shipmentNumber}</td><td className="p-2">{d.thm}</td><td className="p-2">{d.orderNumber}</td><td className="p-2">{d.companyCode}</td><td className="p-2">{d.companyName}</td><td className="p-2">{d.city}</td><td className="p-2">{d.district}</td><td className="p-2">{d.orderType}</td><td className="p-2 text-right">{d.quantity}</td></tr>)}</tbody></table></div></details></td><td className="p-3">{[...new Set(r.details.map(d=>d.warehouseCode).filter(Boolean))].join(", ")||"-"}</td><td className="p-3 text-center">{r.date}</td><td className="p-3 font-black">{r.shipmentNumber}</td><td className="p-3">{r.carrier}</td><td className="p-3">{r.route}</td><td className="p-3">{r.vehicle}</td><td className="p-3">{r.driver}</td><td className="p-3 text-center">{r.details.length}</td><td className="p-3 text-center">{r.status}</td></tr>
+   </>)}</tbody></table>
+   {!rows.length&&<p className="p-8 text-center font-bold text-slate-500">Filtreye uygun sevkiyat bulunamadı.</p>}
+  </div>
+  <section className="rounded-2xl border bg-white p-5 shadow-sm">
+   <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">Toplu Taşıma Listesi</h2><p className="text-sm text-slate-600">Yukarıdaki kutulardan bir veya daha fazla sevkiyat seçin.</p></div><button type="button" disabled={!chosen.length} onClick={()=>window.print()} className="rounded-xl bg-blue-950 px-5 py-3 font-black text-white disabled:opacity-40">SEÇİLENLERİ YAZDIR</button></div>
+   <div id="bulk-transport-print" className="mt-4">{chosen.map(r=><article key={r.id} className="mb-6 break-inside-avoid border-b pb-5"><div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4"><p><b>Sevkiyat No:</b> {r.shipmentNumber}</p><p><b>Taşıyıcı:</b> {r.carrier}</p><p><b>Araç:</b> {r.vehicle}</p><p><b>Şoför:</b> {r.driver}</p></div><table className="mt-3 w-full text-xs"><thead><tr className="border-b"><th className="text-left">Sevkiyat No</th><th className="text-left">THM</th><th className="text-left">Sipariş</th><th className="text-left">Firma</th><th className="text-left">İl / İlçe</th><th className="text-right">Miktar</th></tr></thead><tbody>{r.details.map((d,i)=><tr key={i} className="border-b"><td>{d.shipmentNumber}</td><td>{d.thm}</td><td>{d.orderNumber}</td><td>{d.companyCode} · {d.companyName}</td><td>{d.city} / {d.district}</td><td className="text-right">{d.quantity}</td></tr>)}</tbody></table></article>)}</div>
+  </section>
+  <style jsx global>{`@media print { body * { visibility:hidden!important; } #bulk-transport-print, #bulk-transport-print * { visibility:visible!important; } #bulk-transport-print { position:absolute; left:0; top:0; width:100%; padding:12mm; } }`}</style>
+ </div>
+}
