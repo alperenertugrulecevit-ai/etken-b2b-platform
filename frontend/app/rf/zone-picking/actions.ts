@@ -67,3 +67,29 @@ export async function releaseZoneTask(formData: FormData) {
   if (result.count !== 1) throw new Error("Toplaması başlamış görev personel tarafından bırakılamaz.");
   revalidatePath("/rf/zone-picking");
 }
+
+
+export async function claimZoneTaskById(formData: FormData) {
+  const user = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+  const taskId = String(formData.get("taskId") ?? "").trim();
+  if (!taskId) throw new Error("Toplama görevi seçilemedi.");
+
+  const active = await prisma.zonePickTask.findFirst({
+    where: { claimedByUserId: user.id, status: { in: [ZonePickTaskStatus.CLAIMED, ZonePickTaskStatus.IN_PROGRESS] } },
+    select: { id: true },
+  });
+  if (active && active.id !== taskId) {
+    throw new Error("Önce üzerinizdeki aktif toplama görevini tamamlayın veya bırakın.");
+  }
+  if (active?.id === taskId) redirect(`/rf/picking?zoneTaskId=${encodeURIComponent(taskId)}`);
+
+  const result = await prisma.zonePickTask.updateMany({
+    where: { id: taskId, status: ZonePickTaskStatus.OPEN, claimedByUserId: null },
+    data: { status: ZonePickTaskStatus.CLAIMED, claimedByUserId: user.id, claimedAt: new Date() },
+  });
+  if (result.count !== 1) throw new Error("Seçilen sipariş görevi artık alınabilir durumda değil.");
+
+  revalidatePath("/rf/picking");
+  revalidatePath("/rf/zone-picking");
+  redirect(`/rf/picking?zoneTaskId=${encodeURIComponent(taskId)}`);
+}

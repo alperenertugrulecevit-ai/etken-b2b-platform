@@ -8,10 +8,12 @@ import {
   WaveStatus,
 } from "@prisma/client";
 
+import { ZonePickTaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import RFPickingForm from "@/components/rf/RFPickingForm";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { claimZoneTaskById } from "@/app/rf/zone-picking/actions";
 
 function getOrderStatusLabel(
   status: string
@@ -116,6 +118,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
     orders,
     sourceUnits,
     targetUnits,
+    openTasks,
   ] = await Promise.all([
     prisma.order.findMany({
       where: {
@@ -420,6 +423,24 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
         },
       },
     }),
+    prisma.zonePickTask.findMany({
+      where: {
+        status: ZonePickTaskStatus.OPEN,
+        claimedByUserId: null,
+        order: { status: { in: [OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
+      },
+      select: {
+        id: true,
+        plannedLineCount: true,
+        plannedQuantity: true,
+        createdAt: true,
+        warehouse: { select: { code: true, name: true } },
+        zone: { select: { code: true, name: true, pickSequence: true } },
+        order: { select: { orderNumber: true, customer: { select: { customerCode: true, companyName: true } } } },
+        wave: { select: { waveNo: true } },
+      },
+      orderBy: [{ createdAt: "asc" }],
+    })
   ]);
 
   const orderOptions = orders
@@ -739,6 +760,27 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           ← Menü
         </Link>
       </div>
+
+      {!zoneTask && openTasks.length > 0 && (
+        <div className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div><h2 className="text-lg font-black">Bekleyen Siparişler</h2><p className="mt-1 text-sm text-slate-600">Toplamak istediğiniz siparişi seçin. Görev size atanıp toplama ekranı açılır.</p></div>
+            <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-black text-blue-900">{openTasks.length} görev</span>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {openTasks.map((task) => (
+              <form key={task.id} action={claimZoneTaskById} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+                <input type="hidden" name="taskId" value={task.id} />
+                <div>
+                  <div className="font-black">{task.order.orderNumber} · {task.order.customer.companyName}</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-500">{task.warehouse.code} · {task.zone.code} {task.zone.name} · {task.plannedLineCount} kalem · {task.plannedQuantity} adet{task.wave ? ` · Wave ${task.wave.waveNo}` : " · Sipariş Bazlı"}</div>
+                </div>
+                <button className="shrink-0 rounded-xl bg-blue-900 px-4 py-3 font-black text-white">SEÇ</button>
+              </form>
+            ))}
+          </div>
+        </div>
+      )}
 
       {zoneTask && <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950"><b>Aktif Zone Görevi:</b> {zoneTask.zone.code} · {zoneTask.zone.name} · {zoneTask.order.orderNumber}. Yalnızca bu Zone içindeki kaynak lokasyonlardan toplama yapılabilir.</div>}
 
