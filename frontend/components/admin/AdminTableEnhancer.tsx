@@ -29,6 +29,11 @@ export default function AdminTableEnhancer(){
     });rows.forEach(r=>body.appendChild(r));};
     th.addEventListener("click",click); cleanups.push(()=>th.removeEventListener("click",click));
    });
+   const dateIndex=cells.findIndex(th=>/^(tarih|oluşturma tarihi|sevkiyat tarihi)$/i.test(th.textContent?.trim()||""));
+   if(dateIndex>=0){
+    const start=new Date(); start.setHours(0,0,0,0);
+    [...body.rows].forEach(row=>{const d=dateValue(row.cells[dateIndex]?.textContent||"");if(d!==null&&d<start.getTime())row.style.display="none";});
+   }
    const filterRow=document.createElement("tr"); filterRow.dataset.adminFilter="1"; filterRow.className="bg-slate-50";
    cells.forEach((th,index)=>{
     const td=document.createElement("th");td.className="p-1";
@@ -36,7 +41,7 @@ export default function AdminTableEnhancer(){
     if(title&&!["Aç","Seç","İşlem"].includes(title)){
       const input=document.createElement("input");input.placeholder="Filtre";input.className="w-full min-w-[70px] rounded border bg-white px-2 py-1 text-xs font-normal";
       input.addEventListener("click",e=>e.stopPropagation());
-      const apply=()=>{const filters=[...filterRow.querySelectorAll<HTMLInputElement>("input")];[...body.rows].forEach(row=>{row.style.display=filters.every((f,i)=>!f.value||norm(row.cells[i]?.textContent||"").includes(norm(f.value)))?"":"none";});};
+      const apply=()=>{const filters=[...filterRow.querySelectorAll<HTMLInputElement>("input")];const dateIndex=cells.findIndex(th=>/^(tarih|oluşturma tarihi|sevkiyat tarihi)$/i.test(th.textContent?.trim()||""));const start=new Date();start.setHours(0,0,0,0);[...body.rows].forEach(row=>{const columnOk=filters.every((f,i)=>!f.value||norm(row.cells[i]?.textContent||"").includes(norm(f.value)));const d=dateIndex>=0?dateValue(row.cells[dateIndex]?.textContent||""):null;const dateOk=dateIndex<0||d===null||d>=start.getTime();row.style.display=columnOk&&dateOk?"":"none";});};
       input.addEventListener("input",apply);td.appendChild(input);
     }
     filterRow.appendChild(td);
