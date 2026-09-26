@@ -923,16 +923,22 @@ export async function rfPickOrderItem(
         );
 
         if (plannedTaskLine) {
-          await tx.zonePickTaskLine.update({
-            where: { id: plannedTaskLine.id },
+          const lineAdvance = await tx.zonePickTaskLine.updateMany({
+            where: { id: plannedTaskLine.id, pickedQuantity: { lt: plannedTaskLine.plannedQuantity } },
             data: { pickedQuantity: { increment: 1 } },
           });
+          if (lineAdvance.count !== 1) throw new Error("Bu görev satırı başka bir işlemde tamamlandı. Ekranı yenileyip devam edin.");
         }
 
         if (zoneTask) {
+          const taskLinesAfter = await tx.zonePickTaskLine.findMany({ where: { taskId: zoneTask.id }, select: { plannedQuantity: true, pickedQuantity: true } });
+          const remainingPlannedLines = taskLinesAfter.filter(line => line.pickedQuantity < line.plannedQuantity).length;
           const nextZonePicked = Math.min(zoneTask.plannedQuantity, zoneTask.pickedQuantity + quantity);
-          const zoneCompleted = nextZonePicked >= zoneTask.plannedQuantity;
-          await tx.zonePickTask.update({ where: { id: zoneTask.id }, data: { pickedQuantity: nextZonePicked, status: zoneCompleted ? "COMPLETED" : "IN_PROGRESS", startedAt: zoneTask.status === "CLAIMED" ? new Date() : undefined, completedAt: zoneCompleted ? new Date() : null } });
+          const zoneCompleted = remainingPlannedLines === 0;
+          await tx.zonePickTask.update({
+            where: { id: zoneTask.id },
+            data: { pickedQuantity: nextZonePicked, status: zoneCompleted ? "COMPLETED" : "IN_PROGRESS", startedAt: zoneTask.status === "CLAIMED" ? new Date() : undefined, completedAt: zoneCompleted ? new Date() : null },
+          });
         }
 
         if (zoneTask) await ConsolidationService.syncOrder(tx, order.id);
