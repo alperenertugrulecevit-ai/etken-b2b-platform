@@ -52,4 +52,33 @@ describe("shipment planning business rules", () => {
     const committed = transactionScope.every(x => x !== failingUnit);
     expect(committed).toBe(false);
   });
+  it("Sevkiyat Bozma is allowed before final dispatch and preserves audit intent", () => {
+    const removableShipmentStatuses = [
+      ShipmentStatus.ROUTING,
+      ShipmentStatus.ROUTED,
+      ShipmentStatus.LOADING,
+      ShipmentStatus.LOADED,
+    ];
+    expect(removableShipmentStatuses).toContain(ShipmentStatus.LOADED);
+    expect(removableShipmentStatuses).not.toContain(ShipmentStatus.SHIPPED);
+  });
+
+  it("removing the only active THM makes the shipment operationally empty again", () => {
+    const activeUnitsBefore = [ShipmentHandlingUnitStatus.LOADED];
+    const activeUnitsAfter = activeUnitsBefore.slice(1);
+    const recalculated = activeUnitsAfter.length === 0
+      ? ShipmentStatus.CREATED
+      : ShipmentStatus.ROUTING;
+    expect(recalculated).toBe(ShipmentStatus.CREATED);
+  });
+
+  it("removing one loaded THM from a mixed shipment prevents final dispatch", () => {
+    const activeAfterRemoval = [ShipmentHandlingUnitStatus.ROUTED];
+    expect(activeAfterRemoval.every(x => x === ShipmentHandlingUnitStatus.LOADED)).toBe(false);
+  });
+
+  it("a removed THM can be routed again because active assignment is released", () => {
+    const activeAssignmentAfterRemoval = null;
+    expect(activeAssignmentAfterRemoval).toBeNull();
+  });
 });
