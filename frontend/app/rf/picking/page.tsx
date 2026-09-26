@@ -421,7 +421,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           },
         },
       },
-    }),,
+    }),
     prisma.zonePickTask.findMany({
       where: {
         status: ZonePickTaskStatus.OPEN,
