@@ -51,4 +51,23 @@ export class ZonePickingService {
   }
   return {taskCount:plans.size,zoneCount:new Set([...plans.values()].map(p=>p.zoneId)).size};
  }
+ static async releaseWavePlan(tx:Tx,waveId:string){
+  const tasks=await tx.zonePickTask.findMany({
+    where:{waveId},
+    select:{id:true,lines:{select:{handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}}},
+  });
+  for(const task of tasks){
+    for(const line of task.lines){
+      const remaining=Math.max(0,line.plannedQuantity-line.pickedQuantity);
+      if(remaining>0){
+        await tx.handlingUnitItem.updateMany({
+          where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},
+          data:{reservedStock:{decrement:remaining}},
+        });
+      }
+    }
+  }
+  await tx.zonePickTask.deleteMany({where:{waveId}});
+ }
+
 }
