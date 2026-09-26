@@ -160,4 +160,14 @@ export class ShipmentPlanningService {
       return {shipmentNumber:row.shipment.shipmentNumber,thmBarcode:code};
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
+  static async shippingControlReport(){
+    return prisma.shipmentHandlingUnit.findMany({where:{status:ShipmentHandlingUnitStatus.ROUTED},include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{routedAt:"desc"},take:1000});
+  }
+  static async shippingLoadingReport(){
+    return prisma.shipmentHandlingUnit.findMany({include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{updatedAt:"desc"},take:1000});
+  }
+  static async readyWaitingReport(){
+    return prisma.shippingHandlingUnit.findMany({where:{status:ShippingHandlingUnitStatus.READY_TO_SHIP,packingListPrintedAt:{not:null},shipmentHandlingUnit:null},include:{handlingUnit:true,customer:true},orderBy:{readyAt:"asc"},take:1000});
+  }
+
 }
