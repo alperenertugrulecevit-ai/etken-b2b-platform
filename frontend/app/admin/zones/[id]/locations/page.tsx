@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import ZoneLocationSelectAll from "@/components/admin/ZoneLocationSelectAll";
 import { assignLocationsToZone, removeLocationsFromZone } from "../../actions";
 
 export default async function ZoneLocationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aisle?: string; scope?: string; q?: string; updated?: string }> }) {
@@ -47,7 +48,7 @@ export default async function ZoneLocationsPage({ params, searchParams }: { para
 
     <form action={assignLocationsToZone.bind(null,zoneId)} className="mt-6 overflow-hidden rounded-2xl bg-white shadow">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><p className="text-sm text-slate-600">En fazla 1000 sonuç gösterilir. Başlık kutusu ile görünen kayıtların tümünü seçebilirsiniz.</p><div className="flex gap-2"><button formAction={removeLocationsFromZone.bind(null,zoneId)} className="rounded-xl border border-red-300 px-4 py-2 font-bold text-red-700">Seçilenleri Zone&apos;dan Çıkar</button><button className="rounded-xl bg-blue-900 px-4 py-2 font-bold text-white">Seçilenleri {zone.code}&apos;e Ata</button></div></div>
-      <div className="overflow-x-auto"><table className="w-full min-w-[950px] text-left"><thead className="bg-slate-900 text-white"><tr><th className="p-4"><input type="checkbox" onChange={undefined} aria-label="Tümünü seç" /></th><th className="p-4">Adres</th><th className="p-4">Koridor</th><th className="p-4">Bölüm</th><th className="p-4">Seviye</th><th className="p-4">Göz</th><th className="p-4">Mevcut Zone</th></tr></thead>
+      <div className="overflow-x-auto"><table className="w-full min-w-[950px] text-left"><thead className="bg-slate-900 text-white"><tr><th className="p-4"><ZoneLocationSelectAll /></th><th className="p-4">Adres</th><th className="p-4">Koridor</th><th className="p-4">Bölüm</th><th className="p-4">Seviye</th><th className="p-4">Göz</th><th className="p-4">Mevcut Zone</th></tr></thead>
       <tbody>{locations.map(l=><tr key={l.id} className="border-b hover:bg-slate-50"><td className="p-4"><input type="checkbox" name="locationId" value={l.id} /></td><td className="p-4 font-bold">{l.code}</td><td className="p-4">{l.aisle||"-"}</td><td className="p-4">{l.section||"-"}</td><td className="p-4">{l.level||"-"}</td><td className="p-4">{l.bin||"-"}</td><td className="p-4">{l.zone?<span className={`rounded-full px-3 py-1 text-sm font-semibold ${l.zone.id===zoneId?"bg-blue-100 text-blue-800":"bg-amber-100 text-amber-800"}`}>{l.zone.code} - {l.zone.name}</span>:<span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">Atanmamış</span>}</td></tr>)}
       {!locations.length&&<tr><td colSpan={7} className="p-12 text-center text-slate-500">Filtreye uygun lokasyon bulunamadı.</td></tr>}</tbody></table></div>
     </form>
