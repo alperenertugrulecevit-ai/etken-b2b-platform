@@ -589,6 +589,7 @@ model OrderItem {
   order                     Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product                   Product                    @relation(fields: [productId], references: [id])
   pickingRecords            PickingRecord[]
+  zonePickTaskLines         ZonePickTaskLine[]
   waveDistributionLines     WaveDistributionLine[]
   shippingHandlingUnitItems ShippingHandlingUnitItem[]
   packingRecords            PackingRecord[]
@@ -910,12 +911,35 @@ model ZonePickTask {
   order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   wave      Wave?         @relation(fields: [waveId], references: [id], onDelete: Cascade)
   claimedBy User?         @relation("ZonePickTaskClaimedBy", fields: [claimedByUserId], references: [id], onDelete: SetNull)
+  lines     ZonePickTaskLine[]
 
   @@unique([orderId, zoneId, waveId], name: "order_zone_wave_task_unique")
   @@index([warehouseId, zoneId, status])
   @@index([claimedByUserId, status])
   @@index([waveId, status])
   @@index([orderId, status])
+}
+
+
+model ZonePickTaskLine {
+  id                 String @id @default(cuid())
+  taskId             String
+  orderItemId        Int
+  handlingUnitItemId Int
+  plannedQuantity    Int
+  pickedQuantity     Int    @default(0)
+  sequence           Int    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  task             ZonePickTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  orderItem        OrderItem        @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  handlingUnitItem HandlingUnitItem @relation(fields: [handlingUnitItemId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, orderItemId, handlingUnitItemId], name: "zone_task_order_item_source_unique")
+  @@index([taskId, sequence])
+  @@index([orderItemId])
+  @@index([handlingUnitItemId])
 }
 
 model WarehouseLocationZoneHistory {
@@ -1069,6 +1093,7 @@ model HandlingUnitItem {
 
   handlingUnit HandlingUnit @relation(fields: [handlingUnitId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  zonePickTaskLines ZonePickTaskLine[]
 
   @@unique([handlingUnitId, productId], name: "handling_unit_product_unique")
   @@index([handlingUnitId])
