@@ -747,8 +747,11 @@ export async function rfPickOrderItem(
          * ayrılmış miktar varsa kullanılabilir
          * miktardan düşülür.
          */
+        const taskOwnedReservation = plannedTaskLine
+          ? Math.max(0, plannedTaskLine.plannedQuantity - plannedTaskLine.pickedQuantity)
+          : 0;
         const sourceAvailableQuantity =
-          sourceItem.quantity - sourceItem.reservedStock;
+          sourceItem.quantity - sourceItem.reservedStock + taskOwnedReservation;
 
         if (sourceAvailableQuantity <= 0) {
           throw new Error(
@@ -772,7 +775,10 @@ export async function rfPickOrderItem(
         } else {
           await tx.handlingUnitItem.update({
             where: { id: sourceItem.id },
-            data: { quantity: sourceQuantityAfter },
+            data: {
+              quantity: sourceQuantityAfter,
+              ...(plannedTaskLine ? { reservedStock: { decrement: 1 } } : {}),
+            },
           });
         }
 
