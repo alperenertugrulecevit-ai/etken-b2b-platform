@@ -47,7 +47,18 @@ const wavePriorityOptions = [
   },
 ];
 
-export default function NewWavePage() {
+type NewWavePageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function NewWavePage({ searchParams }: NewWavePageProps) {
+  const query = await searchParams;
+  const orderIds = typeof query.orderIds === "string" ? query.orderIds : "";
+  const warehouseId = typeof query.warehouseId === "string" ? query.warehouseId : "";
+  const pickerUserId = typeof query.pickerUserId === "string" ? query.pickerUserId : "";
+  const groupedFlow = query.source === "order-grouping" && orderIds.length > 0;
+  const selectedCount = orderIds ? orderIds.split(",").filter(Boolean).length : 0;
+
   return (
     <section className="p-10">
       <div className="mx-auto max-w-5xl">
@@ -76,10 +87,24 @@ export default function NewWavePage() {
           </Link>
         </div>
 
+        {groupedFlow && (
+          <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 p-5 text-violet-950">
+            <p className="font-black">Sipariş Gruplama → Wave Toplama</p>
+            <p className="mt-1 text-sm">{selectedCount} sipariş seçildi. Wave Oluştur dediğinizde dağılım planı hazırlanacak, toplama personeli atanacak ve Wave RF terminaline serbest bırakılacak.</p>
+          </div>
+        )}
+
         <form
           action={createWaveAction}
           className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow"
         >
+          {groupedFlow && (
+            <>
+              <input type="hidden" name="orderIds" value={orderIds} />
+              <input type="hidden" name="warehouseId" value={warehouseId} />
+              <input type="hidden" name="pickerUserId" value={pickerUserId} />
+            </>
+          )}
           <div className="border-b border-slate-200 bg-slate-50 px-7 py-5">
             <h2 className="text-xl font-bold text-slate-900">
               Wave Bilgileri
@@ -238,7 +263,7 @@ export default function NewWavePage() {
               type="submit"
               className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white transition hover:bg-blue-800"
             >
-              Wave Oluştur
+              {groupedFlow ? "Wave Oluştur ve Toplamaya Gönder" : "Wave Oluştur"}
             </button>
           </div>
         </form>
