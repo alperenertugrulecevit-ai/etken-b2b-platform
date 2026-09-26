@@ -8,6 +8,7 @@ import {
   WaveStatus,
 } from "@prisma/client";
 
+import { ZonePickTaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import RFPickingForm from "@/components/rf/RFPickingForm";
