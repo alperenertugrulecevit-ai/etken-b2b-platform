@@ -46,7 +46,7 @@ async function recalc(tx:Prisma.TransactionClient,shipmentId:string){
   await tx.shipment.update({where:{id:shipmentId},data:{
     status,
     routingStartedAt: rows.length ? new Date() : null,
-    routingCompletedAt: status===ShipmentStatus.ROUTED || status===ShipmentStatus.LOADING || status===ShipmentStatus.LOADED ? undefined : null,
+    routingCompletedAt: status===ShipmentStatus.LOADING || status===ShipmentStatus.LOADED ? undefined : null,
     loadingStartedAt: status===ShipmentStatus.LOADING || status===ShipmentStatus.LOADED ? new Date() : null,
     loadingCompletedAt: status===ShipmentStatus.LOADED ? new Date() : null,
   }});
