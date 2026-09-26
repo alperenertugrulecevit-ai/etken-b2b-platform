@@ -39,9 +39,9 @@ export default function AdminTableEnhancer(){
     const td=document.createElement("th");td.className="p-1";
     const title=th.textContent?.trim()||"";
     if(title&&!["Aç","Seç","İşlem"].includes(title)){
-      const input=document.createElement("input");input.placeholder="Filtre";input.className="w-full min-w-[70px] rounded border bg-white px-2 py-1 text-xs font-normal";
+      const input=document.createElement("input");input.dataset.column=String(index);input.placeholder="Filtre";input.className="w-full min-w-[70px] rounded border bg-white px-2 py-1 text-xs font-normal";
       input.addEventListener("click",e=>e.stopPropagation());
-      const apply=()=>{const filters=[...filterRow.querySelectorAll<HTMLInputElement>("input")];const dateIndex=cells.findIndex(th=>/^(tarih|oluşturma tarihi|sevkiyat tarihi)$/i.test(th.textContent?.trim()||""));const start=new Date();start.setHours(0,0,0,0);[...body.rows].forEach(row=>{const columnOk=filters.every((f,i)=>!f.value||norm(row.cells[i]?.textContent||"").includes(norm(f.value)));const d=dateIndex>=0?dateValue(row.cells[dateIndex]?.textContent||""):null;const dateOk=dateIndex<0||d===null||d>=start.getTime();row.style.display=columnOk&&dateOk?"":"none";});};
+      const apply=()=>{const filters=[...filterRow.querySelectorAll<HTMLInputElement>("input")];const dateIndex=cells.findIndex(th=>/^(tarih|oluşturma tarihi|sevkiyat tarihi)$/i.test(th.textContent?.trim()||""));const start=new Date();start.setHours(0,0,0,0);[...body.rows].forEach(row=>{const columnOk=filters.every(f=>{const i=Number(f.dataset.column);return !f.value||norm(row.cells[i]?.textContent||"").includes(norm(f.value));});const d=dateIndex>=0?dateValue(row.cells[dateIndex]?.textContent||""):null;const dateOk=dateIndex<0||d===null||d>=start.getTime();row.style.display=columnOk&&dateOk?"":"none";});};
       input.addEventListener("input",apply);td.appendChild(input);
     }
     filterRow.appendChild(td);
