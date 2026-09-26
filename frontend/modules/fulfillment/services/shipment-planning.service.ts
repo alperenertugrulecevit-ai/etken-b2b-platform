@@ -265,6 +265,27 @@ export class ShipmentPlanningService {
     },{maxWait:10000,timeout:120000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
+  static async operationsDashboard(){
+    const [shipments,readyWaiting]=await Promise.all([
+      prisma.shipment.findMany({
+        where:{tenantId:TENANT_ID,companyId:COMPANY_ID},
+        include:{carrier:true,vehicle:true,routes:{include:{route:true}},handlingUnits:{select:{status:true}}},
+        orderBy:{shipmentDate:"desc"},take:100
+      }),
+      prisma.shippingHandlingUnit.count({where:{status:ShippingHandlingUnitStatus.READY_TO_SHIP,packingListPrintedAt:{not:null},shipmentHandlingUnit:null}})
+    ]);
+    const totals={shipments:shipments.length,readyWaiting,routed:0,loaded:0,shipped:0,loadingShipments:0};
+    const rows=shipments.map(x=>{
+      const routed=x.handlingUnits.filter(h=>h.status===ShipmentHandlingUnitStatus.ROUTED).length;
+      const loaded=x.handlingUnits.filter(h=>h.status===ShipmentHandlingUnitStatus.LOADED).length;
+      totals.routed+=routed; totals.loaded+=loaded;
+      if(x.status===ShipmentStatus.SHIPPED) totals.shipped+=x.handlingUnits.length;
+      if(x.status===ShipmentStatus.LOADING) totals.loadingShipments++;
+      return {id:x.id,shipmentNumber:x.shipmentNumber,shipmentDate:x.shipmentDate,status:x.status,carrier:x.carrier?.name??"-",vehicle:x.vehicle?.plate??"-",routes:x.routes.map(r=>r.route.routeNumber),total:x.handlingUnits.length,routed,loaded,shipped:x.status===ShipmentStatus.SHIPPED?x.handlingUnits.length:0};
+    });
+    return {totals,rows};
+  }
+
   static async shippingControlReport(){
     return prisma.shipmentHandlingUnit.findMany({where:{status:ShipmentHandlingUnitStatus.ROUTED,shipment:{tenantId:TENANT_ID,companyId:COMPANY_ID}},include:{shipment:{include:{carrier:true,vehicle:true}},route:true,shippingHandlingUnit:{include:{handlingUnit:true}}},orderBy:{routedAt:"desc"},take:1000});
   }
