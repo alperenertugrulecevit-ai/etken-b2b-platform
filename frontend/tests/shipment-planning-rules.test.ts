@@ -73,8 +73,8 @@ describe("shipment planning business rules", () => {
   });
 
   it("removing one loaded THM from a mixed shipment prevents final dispatch", () => {
-    const activeAfterRemoval = [ShipmentHandlingUnitStatus.ROUTED];
-    expect(activeAfterRemoval.every(x => x === ShipmentHandlingUnitStatus.LOADED)).toBe(false);
+    const activeAfterRemoval: ShipmentHandlingUnitStatus[] = [ShipmentHandlingUnitStatus.ROUTED];
+    expect(activeAfterRemoval).not.toEqual([ShipmentHandlingUnitStatus.LOADED]);
   });
 
   it("a removed THM can be routed again because active assignment is released", () => {
