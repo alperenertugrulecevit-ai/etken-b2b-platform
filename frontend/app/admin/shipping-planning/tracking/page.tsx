@@ -10,7 +10,8 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
  const p=await searchParams;
  const one=(v:string|string[]|undefined)=>Array.isArray(v)?v[0]??"":v??"";
  const warehouseRaw=p.warehouseId; const warehouseIds=(Array.isArray(warehouseRaw)?warehouseRaw:warehouseRaw?[warehouseRaw]:[]).map(Number).filter(Number.isInteger);
- const from=one(p.dateFrom),to=one(p.dateTo);
+ const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Istanbul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+ const from=one(p.dateFrom)||today,to=one(p.dateTo);
  const [warehouses,shipments]=await Promise.all([
   prisma.warehouse.findMany({where:{isActive:true},select:{id:true,code:true,name:true},orderBy:{code:"asc"}}),
   ShipmentPlanningService.shipmentTracking({
@@ -40,7 +41,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
    <label className="text-xs font-bold">Firma<input name="company" defaultValue={one(p.company)} placeholder="Kod / Ünvan" className="mt-1 w-full rounded-xl border p-3"/></label>
    <label className="text-xs font-bold">Sevk No<input name="shipmentNumber" defaultValue={one(p.shipmentNumber)} placeholder="SVP..." className="mt-1 w-full rounded-xl border p-3 uppercase"/></label>
    <label className="text-xs font-bold">Depo (çoklu)<select name="warehouseId" multiple defaultValue={warehouseIds.map(String)} className="mt-1 h-[76px] w-full rounded-xl border p-2">{warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}</select></label>
-  </div><div className="mt-3 flex gap-2"><button className="rounded-xl bg-blue-950 px-6 py-3 font-black text-white">FİLTRELE</button><Link href="/admin/shipping-planning/tracking" className="rounded-xl border px-6 py-3 font-bold">Temizle</Link></div></form>
+  </div><div className="mt-3 flex gap-2"><button className="rounded-xl bg-blue-950 px-6 py-3 font-black text-white">FİLTRELE</button><Link href="/admin/shipping-planning/tracking" className="rounded-xl border px-6 py-3 font-bold">Bugüne Dön</Link></div></form>
   <ShipmentTrackingTable rows={rows}/>
  </main>;
 }
