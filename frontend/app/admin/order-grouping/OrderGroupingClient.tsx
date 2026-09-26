@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { prepareWavePickingAction, startDirectPickingAction } from "./actions";
 
 type OrderRow = {
@@ -133,7 +133,7 @@ export default function OrderGroupingClient({
           </thead>
           <tbody>
             {orders.map((order) => (
-              <tbody key={order.id} className="contents"><tr key={order.id} className={`border-b ${selected.includes(order.id) ? "bg-blue-50" : "hover:bg-slate-50"}`}>
+              <Fragment key={order.id}><tr className={`border-b ${selected.includes(order.id) ? "bg-blue-50" : "hover:bg-slate-50"}`}>
                 <td className="p-4">
                   <button type="button" onClick={() => setExpanded((current) => current.includes(order.id) ? current.filter((id) => id !== order.id) : [...current, order.id])} className="font-black text-slate-700" aria-label="Sipariş detayını aç/kapat">
                     {expanded.includes(order.id) ? "−" : "+"}
@@ -186,7 +186,7 @@ export default function OrderGroupingClient({
                   </td>
                 </tr>
               )}
-            </tbody>
+            </Fragment>
             ))}
             {orders.length === 0 && (
               <tr><td colSpan={11} className="p-12 text-center text-slate-500">Filtrelere uygun, toplamaya hazır onaylı sipariş bulunmuyor.</td></tr>
