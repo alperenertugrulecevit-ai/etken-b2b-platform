@@ -82,9 +82,17 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
   const zoneTaskId = String(query.zoneTaskId ?? "").trim();
   const zoneTask = zoneTaskId ? await prisma.zonePickTask.findFirst({
     where: { id: zoneTaskId, claimedByUserId: currentUser.id, status: { in: ["CLAIMED", "IN_PROGRESS"] } },
-    include: { zone: true, order: { select: { id: true, orderNumber: true } }, warehouse: { select: { id: true, code: true } } },
+    include: {
+      zone: true,
+      order: { select: { id: true, orderNumber: true } },
+      warehouse: { select: { id: true, code: true } },
+      lines: { orderBy: { sequence: "asc" }, include: { handlingUnitItem: { select: { handlingUnitId: true } } } },
+    },
   }) : null;
   if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bulunamadı veya bu kullanıcıya ait değil.");
+  const plannedSourceUnitIds = zoneTask
+    ? Array.from(new Set(zoneTask.lines.filter(line => line.pickedQuantity < line.plannedQuantity).map(line => line.handlingUnitItem.handlingUnitId)))
+    : [];
 
   const [
     orders,
@@ -199,6 +207,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
      */
     prisma.handlingUnit.findMany({
       where: {
+        ...(zoneTask ? { id: { in: plannedSourceUnitIds } } : {}),
         purpose:
           HandlingUnitPurpose.STOCK,
 
