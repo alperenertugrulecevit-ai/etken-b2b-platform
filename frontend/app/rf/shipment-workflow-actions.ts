@@ -32,3 +32,8 @@ export async function dispatchShipmentAction(_:RfShipmentState,fd:FormData):Prom
  try{const r=await ShipmentPlanningService.dispatchShipment({shipmentNumber:value(fd,"shipmentNumber"),actor:await actor()});return {ok:true,message:`${r.shipmentNumber} SEVK EDİLDİ. ${r.thmCount} THM, toplam ${r.totalQuantity} adet ürün stoktan çıkıldı.`};}
  catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevk işlemi tamamlanamadı."};}
 }
+
+export async function lookupShipmentRemovalAction(_:RfShipmentState,fd:FormData):Promise<RfShipmentState & {detail?:{thmBarcode:string;shipmentNumber:string;routeNumber:string;carrier:string;vehicle:string;status:string;loadedAt:string;loadedBy:string}}>{
+ try{await AuthorizationService.requireRfAccess("SHIPPING_EXECUTE");const r=await ShipmentPlanningService.lookupRemoval(value(fd,"thmBarcode"));return {ok:true,message:"THM sevkiyat bilgileri bulundu.",detail:{thmBarcode:r.shippingHandlingUnit.handlingUnit.barcode,shipmentNumber:r.shipment.shipmentNumber,routeNumber:r.route.routeNumber,carrier:r.shipment.carrier?.name??"-",vehicle:r.shipment.vehicle?.plate??"-",status:r.status==="LOADED"?"YÜKLENDİ":"ROTALANDI",loadedAt:r.loadedAt?.toLocaleString("tr-TR")??"-",loadedBy:r.loadedByName??"-"}};}
+ catch(e){return {ok:false,message:e instanceof Error?e.message:"THM sevkiyat bilgisi bulunamadı."};}
+}
