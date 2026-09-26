@@ -1,0 +1,1 @@
+import RfShipmentRemovalForm from "@/components/rf/shipping/RfShipmentRemovalForm";export default function Page(){return <RfShipmentRemovalForm/>}

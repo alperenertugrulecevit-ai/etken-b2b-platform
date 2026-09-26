@@ -1,0 +1,1 @@
+import RfRoutingForm from "@/components/rf/shipping/RfRoutingForm";export default function Page(){return <RfRoutingForm/>}

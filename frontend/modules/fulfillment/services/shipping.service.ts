@@ -382,20 +382,13 @@ export class ShippingService {
     return detail;
   }
 
-  static async ship(
+  static async shipWithTransaction(
+    tx: Prisma.TransactionClient,
     input: ShipHandlingUnitInput
   ): Promise<ShipHandlingUnitResult> {
-    const barcode =
-      normalizeBarcode(input.barcode);
+    const barcode = normalizeBarcode(input.barcode);
+    if (!barcode) throw new Error("Sevk THM barkodunu okutun.");
 
-    if (!barcode) {
-      throw new Error(
-        "Sevk THM barkodunu okutun."
-      );
-    }
-
-    return prisma.$transaction(
-      async (tx) => {
         const shippingUnit =
           await tx.shippingHandlingUnit.findFirst({
             where: {
@@ -1187,14 +1180,12 @@ export class ShippingService {
           totalQuantity,
           orderNumbers,
         };
-      },
-      {
-        maxWait: 10000,
-        timeout: 30000,
-        isolationLevel:
-          Prisma.TransactionIsolationLevel
-            .Serializable,
-      }
+  }
+
+  static async ship(input: ShipHandlingUnitInput): Promise<ShipHandlingUnitResult> {
+    return prisma.$transaction(
+      (tx) => ShippingService.shipWithTransaction(tx, input),
+      { maxWait: 10000, timeout: 30000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
   }
 }

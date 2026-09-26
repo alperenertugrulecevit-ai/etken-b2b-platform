@@ -1539,6 +1539,8 @@ model ShippingHandlingUnit {
   dispatchDocument DispatchDocument?
 
   stockMovements StockMovement[]
+  shipmentHandlingUnit ShipmentHandlingUnit?
+  shipmentHandlingUnitEvents ShipmentHandlingUnitEvent[]
 
   @@unique([waveDistributionId, packageSequence], name: "wave_distribution_package_sequence_unique")
   @@index([status])
@@ -3223,4 +3225,186 @@ model LostStockRecord {
   @@index([lostWarehouseId, createdAt])
   @@index([sourceHandlingUnitId, createdAt])
   @@index([orderId, createdAt])
+}
+
+
+enum ShipmentStatus {
+  CREATED
+  ROUTING
+  ROUTED
+  LOADING
+  LOADED
+  SHIPPED
+}
+enum ShipmentHandlingUnitStatus {
+  ROUTED
+  LOADED
+}
+enum ShipmentHandlingUnitEventType {
+  ROUTED
+  REROUTED
+  LOADED
+  SHIPMENT_REMOVED
+  SHIPPED
+}
+enum ShippingVehicleOwnershipType {
+  OWNED
+  RENTED
+}
+
+model ShippingCarrier {
+  id String @id @default(cuid())
+  tenantId String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+  code String
+  name String
+  taxNumber String?
+  phone String?
+  email String?
+  address String?
+  contactName String?
+  isActive Boolean @default(true)
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  vehicles ShippingVehicle[]
+  shipments Shipment[]
+  @@unique([tenantId, companyId, code])
+  @@index([tenantId, companyId, name])
+  @@index([tenantId, companyId, isActive])
+}
+
+model ShippingVehicle {
+  id String @id @default(cuid())
+  tenantId String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+  code String
+  plate String
+  vehicleType String
+  ownershipType ShippingVehicleOwnershipType
+  carrierId String?
+  registrationNo String?
+  driverName String?
+  driverPhone String?
+  driverIdentityNo String?
+  isActive Boolean @default(true)
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  carrier ShippingCarrier? @relation(fields: [carrierId], references: [id], onDelete: SetNull)
+  shipments Shipment[]
+  @@unique([tenantId, companyId, code])
+  @@unique([tenantId, companyId, plate])
+  @@index([tenantId, companyId, carrierId])
+  @@index([tenantId, companyId, isActive])
+}
+
+model ShippingRoute {
+  id String @id @default(cuid())
+  tenantId String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+  routeNumber String
+  name String
+  description String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shipmentRoutes ShipmentRoute[]
+  shipmentHandlingUnits ShipmentHandlingUnit[]
+  @@unique([tenantId, companyId, routeNumber])
+  @@index([tenantId, companyId, name])
+  @@index([tenantId, companyId, isActive])
+}
+
+model Shipment {
+  id String @id @default(cuid())
+  tenantId String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+  shipmentNumber String
+  shipmentDate DateTime
+  status ShipmentStatus @default(CREATED)
+  carrierId String?
+  vehicleId String?
+  driverName String?
+  driverPhone String?
+  driverIdentityNo String?
+  createdById String?
+  createdByName String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  routingStartedAt DateTime?
+  routingCompletedAt DateTime?
+  loadingStartedAt DateTime?
+  loadingCompletedAt DateTime?
+  shippedAt DateTime?
+  shippedById String?
+  shippedByName String?
+  shippedTerminalCode String?
+  notes String?
+  carrier ShippingCarrier? @relation(fields: [carrierId], references: [id], onDelete: SetNull)
+  vehicle ShippingVehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  routes ShipmentRoute[]
+  handlingUnits ShipmentHandlingUnit[]
+  events ShipmentHandlingUnitEvent[]
+  @@unique([tenantId, companyId, shipmentNumber])
+  @@index([tenantId, companyId, shipmentDate])
+  @@index([tenantId, companyId, status])
+  @@index([carrierId])
+  @@index([vehicleId])
+}
+
+model ShipmentRoute {
+  id String @id @default(cuid())
+  shipmentId String
+  routeId String
+  createdAt DateTime @default(now())
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  route ShippingRoute @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  @@unique([shipmentId, routeId])
+  @@index([routeId])
+}
+
+model ShipmentHandlingUnit {
+  id String @id @default(cuid())
+  shipmentId String
+  shippingHandlingUnitId String @unique
+  routeId String
+  status ShipmentHandlingUnitStatus @default(ROUTED)
+  routedAt DateTime @default(now())
+  routedById String?
+  routedByName String?
+  routedTerminalCode String?
+  loadedAt DateTime?
+  loadedById String?
+  loadedByName String?
+  loadedTerminalCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  route ShippingRoute @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  shippingHandlingUnit ShippingHandlingUnit @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: Restrict)
+  @@index([shipmentId, status])
+  @@index([routeId])
+  @@index([routedAt])
+  @@index([loadedAt])
+}
+
+model ShipmentHandlingUnitEvent {
+  id String @id @default(cuid())
+  shipmentId String?
+  shippingHandlingUnitId String
+  eventType ShipmentHandlingUnitEventType
+  previousRouteId String?
+  newRouteId String?
+  operatorId String?
+  operatorName String?
+  terminalCode String?
+  notes String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  shipment Shipment? @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  shippingHandlingUnit ShippingHandlingUnit @relation(fields: [shippingHandlingUnitId], references: [id], onDelete: Restrict)
+  @@index([shipmentId, createdAt])
+  @@index([shippingHandlingUnitId, createdAt])
+  @@index([eventType, createdAt])
 }
