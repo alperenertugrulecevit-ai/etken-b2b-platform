@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 
 const ACTIVE_WAVE_STATUSES: WaveStatus[] = [
   WaveStatus.DRAFT,
@@ -28,7 +29,7 @@ export class OrderGroupingService {
   static async getScreenData(filters: OrderGroupingFilter = {}) {
     const search = filters.search?.trim() ?? "";
 
-    const [orders, warehouses, pickers] = await Promise.all([
+    const [orders, warehouses] = await Promise.all([
       prisma.order.findMany({
         where: {
           status: OrderStatus.APPROVED,
@@ -73,20 +74,7 @@ export class OrderGroupingService {
         orderBy: { code: "asc" },
         select: { id: true, code: true, name: true },
       }),
-      prisma.user.findMany({
-        where: {
-          status: UserStatus.ACTIVE,
-          isRfUser: true,
-          employee: { is: { isActive: true, canUseRf: true } },
-        },
-        orderBy: [{ fullName: "asc" }, { username: "asc" }],
-        select: {
-          id: true,
-          username: true,
-          fullName: true,
-          employee: { select: { firstName: true, lastName: true, employeeCode: true } },
-        },
-      }),
+
     ]);
 
     return {
@@ -95,14 +83,12 @@ export class OrderGroupingService {
         plannedQuantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       })),
       warehouses,
-      pickers,
     };
   }
 
   static async startDirectPicking(input: {
     orderIds: number[];
     warehouseId: number;
-    pickerUserId: string;
     assignedById: string;
     assignedByName: string;
   }) {
@@ -114,15 +100,6 @@ export class OrderGroupingService {
         tx.warehouse.findFirst({
           where: { id: input.warehouseId, isActive: true, code: { not: "KYP001" } },
           select: { id: true, code: true, name: true },
-        }),
-        tx.user.findFirst({
-          where: {
-            id: input.pickerUserId,
-            status: UserStatus.ACTIVE,
-            isRfUser: true,
-            employee: { is: { isActive: true, canUseRf: true } },
-          },
-          select: { id: true },
         }),
         tx.order.findMany({
           where: { id: { in: orderIds } },
@@ -142,7 +119,6 @@ export class OrderGroupingService {
       ]);
 
       if (!warehouse) throw new Error("Seçilen depo aktif değil veya kullanılamıyor.");
-      if (!picker) throw new Error("Seçilen toplama personeli aktif bir RF kullanıcısı değil.");
       if (orders.length !== orderIds.length) throw new Error("Seçilen siparişlerden biri bulunamadı.");
 
       for (const order of orders) {
@@ -162,16 +138,6 @@ export class OrderGroupingService {
 
       for (const order of orders) {
         const plannedQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
-
-        await tx.orderPickingAssignment.create({
-          data: {
-            orderId: order.id,
-            userId: input.pickerUserId,
-            warehouseId: warehouse.id,
-            assignedById: input.assignedById,
-            startedAt: new Date(),
-          },
-        });
 
         await tx.orderFulfillment.upsert({
           where: { orderId: order.id },
@@ -209,7 +175,8 @@ export class OrderGroupingService {
         });
       }
 
-      return { count: orders.length, warehouseCode: warehouse.code };
+      const zonePlan = await ZonePickingService.buildTasksForOrders(tx, { orderIds, warehouseId: warehouse.id });
+      return { count: orders.length, warehouseCode: warehouse.code, ...zonePlan };
     });
   }
 }
