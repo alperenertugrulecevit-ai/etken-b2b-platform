@@ -441,8 +441,11 @@ export default function RFPickingForm({
                 product.productId ===
                   nextOrderItem.productId &&
                 product.quantity > 0 &&
-                product.availableQuantity >
-                  0 &&
+                (
+                  zoneTaskId
+                    ? product.reservedStock > 0
+                    : product.availableQuantity > 0
+                ) &&
                 product.isActive
             );
 
@@ -617,8 +620,12 @@ export default function RFPickingForm({
       nextOrderItem
         ?.remainingQuantity ?? 0,
 
-      selectedSourceProduct
-        ?.availableQuantity ?? 0
+      zoneTaskId
+        ? Math.min(
+            selectedSourceProduct?.quantity ?? 0,
+            selectedSourceProduct?.reservedStock ?? 0
+          )
+        : selectedSourceProduct?.availableQuantity ?? 0
     );
 
   const locationMatches =
