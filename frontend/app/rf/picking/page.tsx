@@ -100,11 +100,13 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
       (plannedRemainingBySourceItem.get(line.handlingUnitItemId) ?? 0) + Math.max(0, line.plannedQuantity - line.pickedQuantity),
     );
   }
-  const taskLineByOrderItem = new Map<number, { remaining: number; sequence: number }>();
+  const taskLineByOrderItem = new Map<number, { planned: number; picked: number; remaining: number; sequence: number }>();
   for (const line of activeTaskLines) {
     const current = taskLineByOrderItem.get(line.orderItemId);
     const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
     taskLineByOrderItem.set(line.orderItemId, {
+      planned: (current?.planned ?? 0) + line.plannedQuantity,
+      picked: (current?.picked ?? 0) + Math.min(line.pickedQuantity, line.plannedQuantity),
       remaining: (current?.remaining ?? 0) + remaining,
       sequence: Math.min(current?.sequence ?? Number.MAX_SAFE_INTEGER, line.sequence),
     });
@@ -444,7 +446,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           .map((item) => {
             const taskPlan = taskLineByOrderItem.get(item.id);
             const taskRemaining = taskPlan?.remaining ?? Math.max(0, item.quantity - item.pickedQuantity);
-            const taskPlanned = zoneTask ? taskRemaining : item.quantity;
+            const taskPlanned = zoneTask ? (taskPlan?.planned ?? taskRemaining) : item.quantity;
             return ({
           id: item.id,
           productId:
@@ -460,7 +462,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
             item.productName,
 
           orderedQuantity: taskPlanned,
-          pickedQuantity: zoneTask ? 0 : item.pickedQuantity,
+          pickedQuantity: zoneTask ? (taskPlan?.picked ?? 0) : item.pickedQuantity,
           remainingQuantity: taskRemaining,
           isActive: item.product.isActive,
         });
