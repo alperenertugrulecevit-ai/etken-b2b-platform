@@ -64,6 +64,7 @@ const groups:MenuGroup[]=[
  ]},
  {title:"Sevkiyat Planlama",icon:"🚚",items:[
   {href:"/admin/shipping-planning",icon:"🗓️",label:"Sevkiyat Planlama",permissionCodes:["SHIPPING_EXECUTE"]},
+  {href:"/admin/shipping-planning/tracking",icon:"🔎",label:"Sevk Takip",permissionCodes:["SHIPPING_EXECUTE"]},
   {href:"/admin/shipping-planning/carriers",icon:"🏢",label:"Taşıyıcı Tanımlama",permissionCodes:["SHIPPING_EXECUTE"]},
   {href:"/admin/shipping-planning/vehicles",icon:"🚛",label:"Araç Tanımlama",permissionCodes:["SHIPPING_EXECUTE"]},
   {href:"/admin/shipping-planning/routes",icon:"🧭",label:"Rota Tanımlama",permissionCodes:["SHIPPING_EXECUTE"]},

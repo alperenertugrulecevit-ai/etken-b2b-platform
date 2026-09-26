@@ -62,6 +62,92 @@ export class ShipmentPlanningService {
   static async setRouteActive(id:string,isActive:boolean){const row=await prisma.shippingRoute.findFirst({where:{id,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});if(!row)throw new Error("Rota bulunamadı.");return prisma.shippingRoute.update({where:{id:row.id},data:{isActive}});}
   static listShipments(){ return prisma.shipment.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},include:{carrier:true,vehicle:true,routes:{include:{route:true}},_count:{select:{handlingUnits:true}}},orderBy:[{shipmentDate:"desc"},{createdAt:"desc"}],take:200}); }
 
+  static listActiveShipmentsForRf() {
+    return prisma.shipment.findMany({
+      where: {
+        tenantId: TENANT_ID,
+        companyId: COMPANY_ID,
+        status: { not: ShipmentStatus.SHIPPED },
+      },
+      select: {
+        id: true,
+        shipmentNumber: true,
+        shipmentDate: true,
+        status: true,
+        carrier: { select: { name: true } },
+        vehicle: { select: { plate: true } },
+        _count: { select: { handlingUnits: true } },
+      },
+      orderBy: [{ shipmentDate: "desc" }, { shipmentNumber: "desc" }],
+      take: 100,
+    });
+  }
+
+  static async updateShipment(input:{
+    shipmentId:string; shipmentDate:Date; carrierId?:string|null; vehicleId?:string|null;
+    driverName?:string|null; driverPhone?:string|null; driverIdentityNo?:string|null; notes?:string|null;
+  }) {
+    const shipment=await prisma.shipment.findFirst({where:{id:input.shipmentId,tenantId:TENANT_ID,companyId:COMPANY_ID}});
+    if(!shipment) throw new Error("Sevkiyat bulunamadı.");
+    if(shipment.status===ShipmentStatus.SHIPPED) throw new Error("Sevk edilmiş sevkiyat değiştirilemez.");
+    if(!Number.isFinite(input.shipmentDate.getTime())) throw new Error("Geçerli bir sevkiyat tarihi seçin.");
+    const carrierId=clean(input.carrierId),vehicleId=clean(input.vehicleId);
+    if(carrierId){
+      const carrier=await prisma.shippingCarrier.findFirst({where:{id:carrierId,tenantId:TENANT_ID,companyId:COMPANY_ID,isActive:true},select:{id:true}});
+      if(!carrier) throw new Error("Taşıyıcı bulunamadı veya pasif.");
+    }
+    if(vehicleId){
+      const vehicle=await prisma.shippingVehicle.findFirst({where:{id:vehicleId,tenantId:TENANT_ID,companyId:COMPANY_ID,isActive:true},select:{id:true,carrierId:true}});
+      if(!vehicle) throw new Error("Araç bulunamadı veya pasif.");
+      if(carrierId&&vehicle.carrierId&&vehicle.carrierId!==carrierId) throw new Error("Araç farklı bir taşıyıcıya bağlı.");
+    }
+    return prisma.shipment.update({where:{id:shipment.id},data:{
+      shipmentDate:input.shipmentDate,carrierId,vehicleId,
+      driverName:clean(input.driverName),driverPhone:clean(input.driverPhone),
+      driverIdentityNo:clean(input.driverIdentityNo),notes:clean(input.notes),
+    }});
+  }
+
+  static async shipmentTracking(input?:{
+    dateFrom?:Date|null;dateTo?:Date|null;thm?:string;company?:string;shipmentNumber?:string;warehouseIds?:number[];
+  }) {
+    const warehouseIds=input?.warehouseIds?.filter(Number.isInteger)??[];
+    return prisma.shipment.findMany({
+      where:{
+        tenantId:TENANT_ID,companyId:COMPANY_ID,
+        ...(input?.dateFrom||input?.dateTo?{shipmentDate:{...(input.dateFrom?{gte:input.dateFrom}:{}),...(input.dateTo?{lte:input.dateTo}:{})}}:{}),
+        ...(input?.shipmentNumber?{shipmentNumber:{contains:input.shipmentNumber,mode:"insensitive"}}:{}),
+        AND:[
+          ...(input?.thm?[{handlingUnits:{some:{shippingHandlingUnit:{handlingUnit:{barcode:{contains:input.thm,mode:"insensitive" as const}}}}}}]:[]),
+          ...(input?.company?[{handlingUnits:{some:{shippingHandlingUnit:{OR:[
+            {customerCode:{contains:input.company,mode:"insensitive" as const}},
+            {customerName:{contains:input.company,mode:"insensitive" as const}}
+          ]}}}}]:[]),
+          ...(warehouseIds.length?[{handlingUnits:{some:{shippingHandlingUnit:{orders:{some:{order:{fulfillmentWarehouseId:{in:warehouseIds}}}}}}}}]:[]),
+        ],
+      },
+      include:{
+        carrier:true,vehicle:true,routes:{include:{route:true}},
+        handlingUnits:{
+          include:{
+            route:true,
+            shippingHandlingUnit:{
+              include:{
+                handlingUnit:{select:{barcode:true}},
+                orders:{include:{order:{select:{
+                  orderNumber:true,orderType:true,fulfillmentWarehouse:{select:{id:true,code:true,name:true}}
+                }}}},
+              },
+            },
+          },
+          orderBy:{createdAt:"asc"},
+        },
+      },
+      orderBy:[{shipmentDate:"desc"},{shipmentNumber:"desc"}],
+      take:500,
+    });
+  }
+
   static createCarrier(input:{code:string;name:string;taxNumber?:string;phone?:string;email?:string;address?:string;contactName?:string;notes?:string}){
     return prisma.shippingCarrier.create({data:{tenantId:TENANT_ID,companyId:COMPANY_ID,code:input.code.trim().toUpperCase(),name:input.name.trim(),taxNumber:clean(input.taxNumber),phone:clean(input.phone),email:clean(input.email),address:clean(input.address),contactName:clean(input.contactName),notes:clean(input.notes)}});
   }

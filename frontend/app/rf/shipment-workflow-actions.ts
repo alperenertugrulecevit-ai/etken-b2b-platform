@@ -35,7 +35,7 @@ export async function preDispatchCheckAction(_:RfShipmentState,fd:FormData):Prom
 }
 
 export async function dispatchShipmentAction(_:RfShipmentState,fd:FormData):Promise<RfShipmentState>{
- try{const r=await ShipmentPlanningService.dispatchShipment({shipmentNumber:value(fd,"shipmentNumber"),actor:await actor()});return {ok:true,message:`${r.shipmentNumber} SEVK EDİLDİ. ${r.thmCount} THM, toplam ${r.totalQuantity} adet ürün stoktan çıkıldı.`};}
+ try{const r=await ShipmentPlanningService.dispatchShipment({shipmentNumber:value(fd,"shipmentNumber"),actor:await actor()});revalidatePath("/rf/shipment-dispatch");revalidatePath("/rf/shipment-routing");revalidatePath("/rf/shipment-loading");revalidatePath("/admin/shipping-planning");revalidatePath("/admin/shipping-planning/tracking");return {ok:true,message:`${r.shipmentNumber} SEVK EDİLDİ. ${r.thmCount} THM, toplam ${r.totalQuantity} adet ürün stoktan çıkıldı.`};}
  catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevk işlemi tamamlanamadı."};}
 }
 
