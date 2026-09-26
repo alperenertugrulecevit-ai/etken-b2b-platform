@@ -50,6 +50,7 @@ export type RFPickingState = {
   progressPercentage: number;
 
   pickingCompleted: boolean;
+  taskCompleted: boolean;
 };
 
 const emptyState: RFPickingState = {
@@ -85,6 +86,7 @@ const emptyState: RFPickingState = {
   progressPercentage: 0,
 
   pickingCompleted: false,
+  taskCompleted: false,
 };
 
 function createErrorState(message: string): RFPickingState {
@@ -935,11 +937,13 @@ export async function rfPickOrderItem(
           taskOrderItemProgress = { planned, picked, remaining: Math.max(0, planned - picked) };
         }
 
+        let taskCompleted = false;
         if (zoneTask) {
           const taskLinesAfter = await tx.zonePickTaskLine.findMany({ where: { taskId: zoneTask.id }, select: { plannedQuantity: true, pickedQuantity: true } });
           const remainingPlannedLines = taskLinesAfter.filter(line => line.pickedQuantity < line.plannedQuantity).length;
           const nextZonePicked = Math.min(zoneTask.plannedQuantity, zoneTask.pickedQuantity + quantity);
           const zoneCompleted = remainingPlannedLines === 0;
+          taskCompleted = zoneCompleted;
           await tx.zonePickTask.update({
             where: { id: zoneTask.id },
             data: { pickedQuantity: nextZonePicked, status: zoneCompleted ? "COMPLETED" : "IN_PROGRESS", startedAt: zoneTask.status === "CLAIMED" ? new Date() : undefined, completedAt: zoneCompleted ? new Date() : null },
@@ -1154,6 +1158,7 @@ export async function rfPickOrderItem(
           orderRemainingQuantity,
           progressPercentage,
           pickingCompleted,
+          taskCompleted,
         };
       },
       {
@@ -1233,6 +1238,7 @@ export async function rfPickOrderItem(
       progressPercentage: result.progressPercentage,
 
       pickingCompleted: result.pickingCompleted,
+      taskCompleted: result.taskCompleted,
     };
   } catch (error) {
     console.error("RF sipariş toplama hatası:", error);
