@@ -755,6 +755,7 @@ model Warehouse {
   zonePickTasks   ZonePickTask[]
   consolidationPoints ConsolidationPoint[]
   consolidationTasks ConsolidationTask[]
+  consolidationTaskUnits ConsolidationTaskUnit[]
   zoneHistory     WarehouseLocationZoneHistory[]
   handlingUnits   HandlingUnit[]
   productStocks   WarehouseProductStock[]
@@ -883,11 +884,27 @@ model ConsolidationTask {
   order              Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   wave               Wave?               @relation(fields: [waveId], references: [id], onDelete: SetNull)
   consolidationPoint ConsolidationPoint? @relation(fields: [consolidationPointId], references: [id], onDelete: SetNull)
+  units ConsolidationTaskUnit[]
 
   @@index([warehouseId, status])
   @@index([waveId, status])
   @@index([consolidationPointId, status])
 }
+model ConsolidationTaskUnit {
+  id             String   @id @default(cuid())
+  taskId         String
+  handlingUnitId Int
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  task         ConsolidationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  handlingUnit HandlingUnit      @relation(fields: [handlingUnitId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, handlingUnitId], name: "consolidation_task_unit_unique")
+  @@index([taskId, verifiedAt])
+  @@index([handlingUnitId])
+}
+
 
 model ZonePickTask {
   id              String             @id @default(cuid())
@@ -1059,6 +1076,7 @@ model HandlingUnit {
 
   sourcePickingRecords        PickingRecord[]            @relation("PickingSourceHandlingUnit")
   targetPickingRecords        PickingRecord[]            @relation("PickingTargetHandlingUnit")
+  consolidationTaskUnits      ConsolidationTaskUnit[]
   sourcePackingRecords        PackingRecord[]            @relation("PackingSourceHandlingUnit")
   targetPackingRecords        PackingRecord[]            @relation("PackingTargetHandlingUnit")
   shippingProfile             ShippingHandlingUnit?
