@@ -295,6 +295,7 @@ export async function rfPickOrderItem(
     : currentUser.username;
 
   const orderNumber = normalizeValue(formData.get("orderNumber"));
+  const zoneTaskId = String(formData.get("zoneTaskId") ?? "").trim();
 
   const targetBarcode = normalizeValue(formData.get("targetBarcode"));
 
@@ -389,6 +390,12 @@ export async function rfPickOrderItem(
         if (!order) {
           throw new Error(`${orderNumber} numaralı sipariş bulunamadı.`);
         }
+
+        const zoneTask = zoneTaskId ? await tx.zonePickTask.findFirst({
+          where: { id: zoneTaskId, orderId: order.id, claimedByUserId: currentUser.id, status: { in: ["CLAIMED", "IN_PROGRESS"] } },
+          select: { id: true, zoneId: true, status: true, plannedQuantity: true, pickedQuantity: true },
+        }) : null;
+        if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bu kullanıcıya ait değil veya artık aktif değil.");
 
         if (!canPickOrder(order.status)) {
           throw new Error(
@@ -493,6 +500,7 @@ export async function rfPickOrderItem(
                   id: true,
                   code: true,
                   isActive: true,
+                  zoneId: true,
                 },
               },
 
@@ -634,6 +642,10 @@ export async function rfPickOrderItem(
           throw new Error(
             `${sourceUnit.barcode} pasif bir lokasyonda bulunmaktadır.`,
           );
+        }
+
+        if (zoneTask && sourceUnit.location.zoneId !== zoneTask.zoneId) {
+          throw new Error("Okutulan kaynak lokasyon bu Zone görevine ait değildir.");
         }
 
         const expectedLocationCode = createFullLocationCode({
@@ -901,9 +913,19 @@ export async function rfPickOrderItem(
           orderTotalQuantity - orderPickedQuantity,
         );
 
+        if (zoneTask) {
+          const nextZonePicked = Math.min(zoneTask.plannedQuantity, zoneTask.pickedQuantity + quantity);
+          const zoneCompleted = nextZonePicked >= zoneTask.plannedQuantity;
+          await tx.zonePickTask.update({ where: { id: zoneTask.id }, data: { pickedQuantity: nextZonePicked, status: zoneCompleted ? "COMPLETED" : "IN_PROGRESS", startedAt: zoneTask.status === "CLAIMED" ? new Date() : undefined, completedAt: zoneCompleted ? new Date() : null } });
+        }
+
+        const remainingZoneTasks = await tx.zonePickTask.count({
+          where: { orderId: order.id, status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] }, ...(zoneTask ? { id: { not: zoneTask.id } } : {}) },
+        });
+        const currentZoneWillComplete = !zoneTask || zoneTask.pickedQuantity + quantity >= zoneTask.plannedQuantity;
         const pickingCompleted = updatedOrderItems.every(
           (item) => item.pickedQuantity >= item.quantity,
-        );
+        ) && remainingZoneTasks === 0 && currentZoneWillComplete;
 
         const nextOrderStatus = pickingCompleted
           ? isWavePicking
@@ -1115,6 +1137,7 @@ export async function rfPickOrderItem(
 
     revalidatePath("/rf");
     revalidatePath("/rf/picking");
+    revalidatePath("/rf/zone-picking");
 
     revalidatePath("/admin/orders");
 
