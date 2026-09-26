@@ -4,6 +4,9 @@ ALTER TABLE "Order"
   ADD COLUMN "orderType" "OrderType" NOT NULL DEFAULT 'CUSTOMER',
   ADD COLUMN "fulfillmentWarehouseId" INTEGER;
 
+ALTER TABLE "Wave"
+  ADD COLUMN "warehouseId" INTEGER;
+
 CREATE TABLE "OrderPickingAssignment" (
   "id" TEXT NOT NULL,
   "orderId" INTEGER NOT NULL,
