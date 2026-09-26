@@ -140,6 +140,7 @@ const initialState: RFPickingState = {
   progressPercentage: 0,
 
   pickingCompleted: false,
+  taskCompleted: false,
 };
 
 export default function RFPickingForm({
@@ -1382,6 +1383,14 @@ export default function RFPickingForm({
             )}
           </div>
         )}
+
+      {zoneTaskId && state.success && state.taskCompleted && (
+        <div className="mt-4 rounded-2xl border-2 border-green-300 bg-green-50 p-4 text-green-950">
+          <p className="text-lg font-black">✓ Görev Toplaması Tamamlandı</p>
+          <p className="mt-1 text-sm font-semibold">Onayladığınızda bu görev bekleyen sipariş listesinden kalkar ve sıradaki görevi seçebilirsiniz.</p>
+          <a href="/rf/picking" className="mt-3 block w-full rounded-xl bg-green-700 px-4 py-4 text-center text-lg font-black text-white">TOPLAMAYI ONAYLA · LİSTEYE DÖN</a>
+        </div>
+      )}
 
       <div className="mt-5 space-y-5">
         <label className="block">
