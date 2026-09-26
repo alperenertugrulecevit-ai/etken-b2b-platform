@@ -1364,49 +1364,6 @@ export default function RFPickingForm({
           </div>
         )}
 
-      <datalist id="rf-picking-order-options">
-        {orders.map((order) => (
-          <option
-            key={order.id}
-            value={order.orderNumber}
-          >
-            {order.flowType ===
-            "WAVE"
-              ? `Wave ${order.waveNo ?? ""}`
-              : "Doğrudan"}
-            {" — "}
-            {order.customerCode}
-            {" — "}
-            {order.customerName}
-            {" — Kalan: "}
-            {order.remainingQuantity}
-          </option>
-        ))}
-      </datalist>
-
-      <datalist id="rf-picking-target-options">
-        {availableTargetUnits.map(
-  (unit) => (
-          <option
-            key={unit.id}
-            value={unit.barcode}
-          >
-            {unit.unitType}
-            {" — "}
-            {unit.purpose ===
-            "SHIPPING"
-              ? "Sevk THM"
-              : "Toplama THM"}
-            {" — "}
-            {unit.status}
-            {" — Stok: "}
-            {currentTargetQuantities[
-              unit.barcode.toUpperCase()
-            ] ?? unit.totalQuantity}
-          </option>
-        ))}
-      </datalist>
-
       <div className="mt-5 space-y-5">
         <label className="block">
           <span className="mb-2 block text-sm font-black">
@@ -1416,7 +1373,6 @@ export default function RFPickingForm({
           <input
             ref={orderInputRef}
             name="orderNumber"
-            list="rf-picking-order-options"
             value={orderNumber}
             onChange={(event) =>
               handleOrderChange(
@@ -1497,7 +1453,6 @@ export default function RFPickingForm({
           <input
             ref={targetInputRef}
             name="targetBarcode"
-            list="rf-picking-target-options"
             value={targetBarcode}
             onChange={(event) =>
               setTargetBarcode(
@@ -1862,9 +1817,21 @@ export default function RFPickingForm({
             )}
         </label>
 
+        {nextOrderItem && recommendedSource && <div className="rounded-2xl border-2 border-blue-700 bg-blue-50 p-5">
+          <p className="text-xs font-black uppercase tracking-wider text-blue-700">Toplanacak Ürün</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{nextOrderItem.productCode} · {nextOrderItem.productName}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Barkod</p><p className="mt-1 font-mono font-black">{nextOrderItem.productBarcode}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Kalan Adet</p><p className="mt-1 text-2xl font-black">{nextOrderItem.remainingQuantity}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Git / Adres</p><p className="mt-1 text-xl font-black text-blue-900">{recommendedSource.unit.locationCode}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Kaynak THM</p><p className="mt-1 font-mono text-xl font-black text-blue-900">{recommendedSource.unit.barcode}</p></div>
+          </div>
+          <p className="mt-4 rounded-xl bg-blue-900 p-3 text-center font-black text-white">ÜRÜNÜ SEÇMEYİN · EKRANDAKİ ÜRÜNÜ OKUTUN · HER OKUTMA 1 ADET</p>
+        </div>
+
         <label className="block">
           <span className="mb-2 block text-sm font-black">
-            5. Ürün Barkodu
+            5. Ürün Barkodu — Ekrandaki Ürünü Okut
           </span>
 
           <input
