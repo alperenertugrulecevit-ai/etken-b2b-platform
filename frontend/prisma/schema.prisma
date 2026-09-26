@@ -2209,6 +2209,7 @@ model User {
   reversedSortingTransactions ManualSortingTransaction[] @relation("SortingReversedBy")
   thmOperations               ThmOperation[]
   ptlSessions                 PtlSession[]
+  claimedZonePickTasks        ZonePickTask[] @relation("ZonePickTaskClaimedBy")
 
   @@index([employeeId])
   @@index([customerId, status])
