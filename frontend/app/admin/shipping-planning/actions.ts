@@ -23,3 +23,21 @@ export async function bulkPlanShipmentAction(f:FormData){
  revalidatePath("/admin/shipping-planning");
  revalidatePath("/admin/shipping-reports/ready");
 }
+
+export async function updateShipmentAction(f:FormData){
+ const a=await auth();
+ void a;
+ const rawDate=v(f,"shipmentDate");
+ await ShipmentPlanningService.updateShipment({
+  shipmentId:v(f,"shipmentId"),
+  shipmentDate:new Date(rawDate+"T12:00:00"),
+  carrierId:v(f,"carrierId"),
+  vehicleId:v(f,"vehicleId"),
+  driverName:v(f,"driverName"),
+  driverPhone:v(f,"driverPhone"),
+  driverIdentityNo:v(f,"driverIdentityNo"),
+  notes:v(f,"notes"),
+ });
+ revalidatePath("/admin/shipping-planning");
+ revalidatePath("/admin/shipping-planning/tracking");
+}
