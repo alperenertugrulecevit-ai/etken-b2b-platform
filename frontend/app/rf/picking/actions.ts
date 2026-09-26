@@ -716,6 +716,19 @@ export async function rfPickOrderItem(
 
         const sourceItem = sourceUnit.items[0];
 
+        const plannedTaskLine = zoneTask ? await tx.zonePickTaskLine.findFirst({
+          where: {
+            taskId: zoneTask.id,
+            orderItemId: orderItem.id,
+            handlingUnitItemId: sourceItem?.id ?? -1,
+          },
+          select: { id: true, plannedQuantity: true, pickedQuantity: true },
+        }) : null;
+
+        if (zoneTask && (!plannedTaskLine || plannedTaskLine.pickedQuantity >= plannedTaskLine.plannedQuantity)) {
+          throw new Error("Bu ürün ve kaynak THM aktif Zone görevinin planlı toplama satırında bulunmuyor.");
+        }
+
         if (!sourceItem) {
           throw new Error(
             `${orderItem.productCode} - ${orderItem.productName} ürünü ` +
@@ -908,6 +921,13 @@ export async function rfPickOrderItem(
           0,
           orderTotalQuantity - orderPickedQuantity,
         );
+
+        if (plannedTaskLine) {
+          await tx.zonePickTaskLine.update({
+            where: { id: plannedTaskLine.id },
+            data: { pickedQuantity: { increment: 1 } },
+          });
+        }
 
         if (zoneTask) {
           const nextZonePicked = Math.min(zoneTask.plannedQuantity, zoneTask.pickedQuantity + quantity);
