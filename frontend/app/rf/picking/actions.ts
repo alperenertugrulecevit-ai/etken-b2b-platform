@@ -507,6 +507,7 @@ export async function rfPickOrderItem(
                   section: true,
                   level: true,
                   bin: true,
+                  zoneId: true,
                   isActive: true,
                 },
               },
@@ -766,21 +767,12 @@ export async function rfPickOrderItem(
 
         const sourceQuantityAfter = sourceItem.quantity - quantity;
 
-        if (sourceQuantityAfter === 0 && sourceItem.reservedStock === 0) {
-          await tx.handlingUnitItem.delete({
-            where: {
-              id: sourceItem.id,
-            },
-          });
+        if (sourceQuantityAfter === 0 && sourceItem.reservedStock === 0 && !plannedTaskLine) {
+          await tx.handlingUnitItem.delete({ where: { id: sourceItem.id } });
         } else {
           await tx.handlingUnitItem.update({
-            where: {
-              id: sourceItem.id,
-            },
-
-            data: {
-              quantity: sourceQuantityAfter,
-            },
+            where: { id: sourceItem.id },
+            data: { quantity: sourceQuantityAfter },
           });
         }
 
@@ -922,12 +914,20 @@ export async function rfPickOrderItem(
           orderTotalQuantity - orderPickedQuantity,
         );
 
+        let taskOrderItemProgress: { planned: number; picked: number; remaining: number } | null = null;
         if (plannedTaskLine) {
           const lineAdvance = await tx.zonePickTaskLine.updateMany({
             where: { id: plannedTaskLine.id, pickedQuantity: { lt: plannedTaskLine.plannedQuantity } },
             data: { pickedQuantity: { increment: 1 } },
           });
           if (lineAdvance.count !== 1) throw new Error("Bu görev satırı başka bir işlemde tamamlandı. Ekranı yenileyip devam edin.");
+          const relatedLines = await tx.zonePickTaskLine.findMany({
+            where: { taskId: zoneTask!.id, orderItemId: orderItem.id },
+            select: { plannedQuantity: true, pickedQuantity: true },
+          });
+          const planned = relatedLines.reduce((n, line) => n + line.plannedQuantity, 0);
+          const picked = relatedLines.reduce((n, line) => n + Math.min(line.pickedQuantity, line.plannedQuantity), 0);
+          taskOrderItemProgress = { planned, picked, remaining: Math.max(0, planned - picked) };
         }
 
         if (zoneTask) {
@@ -1137,9 +1137,9 @@ export async function rfPickOrderItem(
 
           pickedQuantity: quantity,
 
-          linePickedQuantity: updatedOrderItem.pickedQuantity,
+          linePickedQuantity: taskOrderItemProgress?.picked ?? updatedOrderItem.pickedQuantity,
 
-          lineRemainingQuantity: Math.max(
+          lineRemainingQuantity: taskOrderItemProgress?.remaining ?? Math.max(
             0,
             updatedOrderItem.quantity - updatedOrderItem.pickedQuantity,
           ),
