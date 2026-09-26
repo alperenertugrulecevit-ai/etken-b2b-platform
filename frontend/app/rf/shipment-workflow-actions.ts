@@ -4,7 +4,7 @@ import { AuthorizationService } from "@/modules/authorization/services/authoriza
 import { ShipmentPlanningService } from "@/modules/fulfillment/services/shipment-planning.service";
 
 export type RfShipmentState={ok:boolean;message:string};
-export const initialRfShipmentState: RfShipmentState={ok:false,message:""};
+
 
 async function actor(){
  const p=await AuthorizationService.requireRfAccess("SHIPPING_EXECUTE");
