@@ -72,7 +72,7 @@ function createLocationCode({
 }
 
 export default async function RFWavePickingPage() {
-  await AuthorizationService.requireRfAccess(
+  const currentUser = await AuthorizationService.requireRfAccess(
     "PICKING_EXECUTE"
   );
 
