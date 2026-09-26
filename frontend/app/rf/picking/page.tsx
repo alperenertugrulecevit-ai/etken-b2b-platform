@@ -93,6 +93,15 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
   const activeTaskLines = zoneTask ? zoneTask.lines.filter(line => line.pickedQuantity < line.plannedQuantity) : [];
   const plannedSourceUnitIds = Array.from(new Set(activeTaskLines.map(line => line.handlingUnitItem.handlingUnitId)));
   const plannedSourceItemIds = new Set(activeTaskLines.map(line => line.handlingUnitItemId));
+  const taskLineByOrderItem = new Map<number, { remaining: number; sequence: number }>();
+  for (const line of activeTaskLines) {
+    const current = taskLineByOrderItem.get(line.orderItemId);
+    const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
+    taskLineByOrderItem.set(line.orderItemId, {
+      remaining: (current?.remaining ?? 0) + remaining,
+      sequence: Math.min(current?.sequence ?? Number.MAX_SAFE_INTEGER, line.sequence),
+    });
+  }
 
   const [
     orders,
@@ -420,7 +429,16 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           WaveStatus.IN_PROGRESS;
 
       const items =
-        order.items.map((item) => ({
+        order.items
+          .filter(item => !zoneTask || taskLineByOrderItem.has(item.id))
+          .sort((a, b) => zoneTask
+            ? (taskLineByOrderItem.get(a.id)?.sequence ?? 0) - (taskLineByOrderItem.get(b.id)?.sequence ?? 0)
+            : a.id - b.id)
+          .map((item) => {
+            const taskPlan = taskLineByOrderItem.get(item.id);
+            const taskRemaining = taskPlan?.remaining ?? Math.max(0, item.quantity - item.pickedQuantity);
+            const taskPlanned = zoneTask ? taskRemaining : item.quantity;
+            return ({
           id: item.id,
           productId:
             item.productId,
@@ -434,22 +452,12 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           productName:
             item.productName,
 
-          orderedQuantity:
-            item.quantity,
-
-          pickedQuantity:
-            item.pickedQuantity,
-
-          remainingQuantity:
-            Math.max(
-              0,
-              item.quantity -
-                item.pickedQuantity
-            ),
-
-          isActive:
-            item.product.isActive,
-        }));
+          orderedQuantity: taskPlanned,
+          pickedQuantity: zoneTask ? 0 : item.pickedQuantity,
+          remainingQuantity: taskRemaining,
+          isActive: item.product.isActive,
+        });
+          });
 
       const totalQuantity =
         items.reduce(
