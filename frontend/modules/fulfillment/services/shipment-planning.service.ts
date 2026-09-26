@@ -57,6 +57,9 @@ export class ShipmentPlanningService {
   static listCarriers(){ return prisma.shippingCarrier.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},orderBy:[{isActive:"desc"},{name:"asc"}]}); }
   static listVehicles(){ return prisma.shippingVehicle.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},include:{carrier:true},orderBy:[{isActive:"desc"},{plate:"asc"}]}); }
   static listRoutes(){ return prisma.shippingRoute.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},orderBy:[{isActive:"desc"},{routeNumber:"asc"}]}); }
+  static async setCarrierActive(id:string,isActive:boolean){const row=await prisma.shippingCarrier.findFirst({where:{id,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});if(!row)throw new Error("Taşıyıcı bulunamadı.");return prisma.shippingCarrier.update({where:{id:row.id},data:{isActive}});}
+  static async setVehicleActive(id:string,isActive:boolean){const row=await prisma.shippingVehicle.findFirst({where:{id,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});if(!row)throw new Error("Araç bulunamadı.");return prisma.shippingVehicle.update({where:{id:row.id},data:{isActive}});}
+  static async setRouteActive(id:string,isActive:boolean){const row=await prisma.shippingRoute.findFirst({where:{id,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});if(!row)throw new Error("Rota bulunamadı.");return prisma.shippingRoute.update({where:{id:row.id},data:{isActive}});}
   static listShipments(){ return prisma.shipment.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},include:{carrier:true,vehicle:true,routes:{include:{route:true}},_count:{select:{handlingUnits:true}}},orderBy:[{shipmentDate:"desc"},{createdAt:"desc"}],take:200}); }
 
   static createCarrier(input:{code:string;name:string;taxNumber?:string;phone?:string;email?:string;address?:string;contactName?:string;notes?:string}){
