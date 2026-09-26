@@ -94,7 +94,11 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
   }) : null;
   if (zoneTaskId && !requestedZoneTask) throw new Error("Zone görevi bulunamadı veya bu kullanıcıya ait değil.");
   if (requestedZoneTask?.status === ZonePickTaskStatus.COMPLETED) redirect("/rf/picking");
-  if (requestedZoneTask && ![ZonePickTaskStatus.CLAIMED, ZonePickTaskStatus.IN_PROGRESS].includes(requestedZoneTask.status)) {
+  if (
+    requestedZoneTask &&
+    requestedZoneTask.status !== ZonePickTaskStatus.CLAIMED &&
+    requestedZoneTask.status !== ZonePickTaskStatus.IN_PROGRESS
+  ) {
     redirect("/rf/picking");
   }
   const zoneTask = requestedZoneTask;
