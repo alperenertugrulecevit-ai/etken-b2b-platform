@@ -618,8 +618,6 @@ model PurchaseOrder {
   supplier       Supplier            @relation(fields: [supplierId], references: [id])
   items          PurchaseOrderItem[]
   stockMovements StockMovement[]
-  shipmentHandlingUnit ShipmentHandlingUnit?
-  shipmentHandlingUnitEvents ShipmentHandlingUnitEvent[]
 
   @@index([supplierId])
   @@index([status])
@@ -1541,6 +1539,8 @@ model ShippingHandlingUnit {
   dispatchDocument DispatchDocument?
 
   stockMovements StockMovement[]
+  shipmentHandlingUnit ShipmentHandlingUnit?
+  shipmentHandlingUnitEvents ShipmentHandlingUnitEvent[]
 
   @@unique([waveDistributionId, packageSequence], name: "wave_distribution_package_sequence_unique")
   @@index([status])
