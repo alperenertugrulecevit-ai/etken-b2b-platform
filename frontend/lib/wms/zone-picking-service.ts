@@ -32,8 +32,22 @@ export class ZonePickingService {
    const existing=await tx.zonePickTask.findFirst({where:{orderId:p.orderId,zoneId:p.zoneId,waveId:input.waveId??null}});
    const data={warehouseId:input.warehouseId,zoneId:p.zoneId,orderId:p.orderId,waveId:input.waveId??null,status:ZonePickTaskStatus.OPEN,plannedLineCount:p.lines.length,plannedQuantity:p.lines.reduce((n,l)=>n+l.quantity,0)};
    const task=existing?await tx.zonePickTask.update({where:{id:existing.id},data:{plannedLineCount:data.plannedLineCount,plannedQuantity:data.plannedQuantity}}):await tx.zonePickTask.create({data});
-   await tx.zonePickTaskLine.deleteMany({where:{taskId:task.id,pickedQuantity:0}});
-   for(const line of p.lines) await tx.zonePickTaskLine.upsert({where:{zone_task_order_item_source_unique:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId}},create:{taskId:task.id,...line,plannedQuantity:line.quantity},update:{plannedQuantity:line.quantity,sequence:line.sequence}});
+   const existingLines=await tx.zonePickTaskLine.findMany({where:{taskId:task.id},select:{id:true,orderItemId:true,handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}});
+   if(existingLines.some(line=>line.pickedQuantity>0)) throw new Error("Toplaması başlamış Zone görevi yeniden planlanamaz.");
+   for(const oldLine of existingLines){
+    const replacement=p.lines.find(line=>line.orderItemId===oldLine.orderItemId&&line.handlingUnitItemId===oldLine.handlingUnitItemId);
+    if(!replacement){
+      if(oldLine.plannedQuantity>0) await tx.handlingUnitItem.update({where:{id:oldLine.handlingUnitItemId},data:{reservedStock:{decrement:oldLine.plannedQuantity}}});
+      await tx.zonePickTaskLine.delete({where:{id:oldLine.id}});
+    }
+   }
+   for(const line of p.lines){
+    const previous=existingLines.find(old=>old.orderItemId===line.orderItemId&&old.handlingUnitItemId===line.handlingUnitItemId);
+    const delta=line.quantity-(previous?.plannedQuantity??0);
+    if(delta>0) await tx.handlingUnitItem.update({where:{id:line.handlingUnitItemId},data:{reservedStock:{increment:delta}}});
+    if(delta<0) await tx.handlingUnitItem.update({where:{id:line.handlingUnitItemId},data:{reservedStock:{decrement:-delta}}});
+    await tx.zonePickTaskLine.upsert({where:{zone_task_order_item_source_unique:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId}},create:{taskId:task.id,...line,plannedQuantity:line.quantity},update:{plannedQuantity:line.quantity,sequence:line.sequence}});
+   }
   }
   return {taskCount:plans.size,zoneCount:new Set([...plans.values()].map(p=>p.zoneId)).size};
  }
