@@ -126,7 +126,7 @@ export default function OrderGroupingClient({
               <th className="p-4">Müşteri</th>
               <th className="p-4">Sipariş Tarihi</th>
               <th className="p-4">Talep Tarihi</th>
-              <th className="p-4">Satır</th>
+              <th className="p-4">Kalem Sayısı</th>
               <th className="p-4">Toplam Adet</th>
               <th className="p-4">Tutar</th>
             </tr>
