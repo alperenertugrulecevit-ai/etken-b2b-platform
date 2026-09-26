@@ -55,7 +55,6 @@ export default async function NewWavePage({ searchParams }: NewWavePageProps) {
   const query = await searchParams;
   const orderIds = typeof query.orderIds === "string" ? query.orderIds : "";
   const warehouseId = typeof query.warehouseId === "string" ? query.warehouseId : "";
-  const pickerUserId = typeof query.pickerUserId === "string" ? query.pickerUserId : "";
   const groupedFlow = query.source === "order-grouping" && orderIds.length > 0;
   const selectedCount = orderIds ? orderIds.split(",").filter(Boolean).length : 0;
 
@@ -90,7 +89,7 @@ export default async function NewWavePage({ searchParams }: NewWavePageProps) {
         {groupedFlow && (
           <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 p-5 text-violet-950">
             <p className="font-black">Sipariş Gruplama → Wave Toplama</p>
-            <p className="mt-1 text-sm">{selectedCount} sipariş seçildi. Wave Oluştur dediğinizde dağılım planı hazırlanacak, toplama personeli atanacak ve Wave RF terminaline serbest bırakılacak.</p>
+            <p className="mt-1 text-sm">{selectedCount} sipariş seçildi. Wave Oluştur dediğinizde siparişler stok lokasyonlarına göre Zone görevlerine bölünecek ve ortak RF görev havuzuna serbest bırakılacak.</p>
           </div>
         )}
 
@@ -102,7 +101,6 @@ export default async function NewWavePage({ searchParams }: NewWavePageProps) {
             <>
               <input type="hidden" name="orderIds" value={orderIds} />
               <input type="hidden" name="warehouseId" value={warehouseId} />
-              <input type="hidden" name="pickerUserId" value={pickerUserId} />
             </>
           )}
           <div className="border-b border-slate-200 bg-slate-50 px-7 py-5">

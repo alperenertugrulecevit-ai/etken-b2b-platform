@@ -103,6 +103,8 @@ type Props = {
   orders: OrderOption[];
   sourceUnits: SourceUnitOption[];
   targetUnits: TargetUnitOption[];
+  lockedOrderNumber?: string;
+  zoneTaskId?: string;
 };
 
 const initialState: RFPickingState = {
@@ -144,6 +146,8 @@ export default function RFPickingForm({
   orders,
   sourceUnits,
   targetUnits,
+  lockedOrderNumber,
+  zoneTaskId,
 }: Props) {
   const orderInputRef =
     useRef<HTMLInputElement>(null);
@@ -160,9 +164,6 @@ export default function RFPickingForm({
   const productInputRef =
     useRef<HTMLInputElement>(null);
 
-  const quantityInputRef =
-    useRef<HTMLInputElement>(null);
-
   const lastHandledResultRef =
     useRef("");
 
@@ -175,7 +176,7 @@ export default function RFPickingForm({
   const [
     orderNumber,
     setOrderNumber,
-  ] = useState("");
+] = useState(() => lockedOrderNumber?.toUpperCase() ?? "");
 
   const [
     targetBarcode,
@@ -197,8 +198,6 @@ export default function RFPickingForm({
     setProductBarcode,
   ] = useState("");
 
-  const [quantity, setQuantity] =
-    useState("1");
 
   const [lostPending, setLostPending] = useState(false);
   const [lostMessage, setLostMessage] = useState("");
@@ -621,9 +620,6 @@ export default function RFPickingForm({
         ?.availableQuantity ?? 0
     );
 
-  const numericQuantity =
-    Number(quantity);
-
   const locationMatches =
     Boolean(expectedLocationCode) &&
     normalizedLocationBarcode ===
@@ -663,16 +659,12 @@ export default function RFPickingForm({
     productMatches &&
     normalizedSourceBarcode !==
       normalizedTargetBarcode &&
-    Number.isInteger(
-      numericQuantity
-    ) &&
-    numericQuantity > 0 &&
-    numericQuantity <=
-      maximumPickQuantity;
+    maximumPickQuantity > 0;
 
   useEffect(() => {
-    orderInputRef.current?.focus();
-  }, []);
+    if (lockedOrderNumber) targetInputRef.current?.focus();
+    else orderInputRef.current?.focus();
+  }, [lockedOrderNumber]);
 
   useEffect(() => {
     setCurrentOrderItems(
@@ -884,7 +876,6 @@ export default function RFPickingForm({
      * bulunduğu yere göre karar verir.
      */
     setProductBarcode("");
-    setQuantity("1");
   }, [
     state.success,
     state.message,
@@ -929,8 +920,7 @@ export default function RFPickingForm({
       setLocationBarcode("");
       setSourceBarcode("");
       setProductBarcode("");
-      setQuantity("1");
-
+  
       window.setTimeout(() => {
         orderInputRef.current?.focus();
       }, 100);
@@ -981,8 +971,7 @@ export default function RFPickingForm({
       );
 
       setProductBarcode("");
-      setQuantity("1");
-
+  
       window.setTimeout(() => {
         productInputRef.current?.focus();
       }, 100);
@@ -1014,8 +1003,7 @@ export default function RFPickingForm({
 
       setSourceBarcode("");
       setProductBarcode("");
-      setQuantity("1");
-
+  
       window.setTimeout(() => {
         sourceInputRef.current?.focus();
       }, 100);
@@ -1033,7 +1021,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     window.setTimeout(() => {
       locationInputRef.current?.focus();
@@ -1057,7 +1044,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     setSessionPickCount(0);
     setSessionPickedQuantity(0);
@@ -1081,7 +1067,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     setShowMessage(false);
 
@@ -1093,7 +1078,6 @@ export default function RFPickingForm({
   function changeTarget() {
     setTargetBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     setShowMessage(false);
 
@@ -1119,7 +1103,6 @@ export default function RFPickingForm({
     setLocationBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
   }
 
   function handleOrderKeyDown(
@@ -1182,6 +1165,9 @@ export default function RFPickingForm({
 
     if (locationMatches) {
       sourceInputRef.current?.focus();
+    } else {
+      setLocationBarcode("");
+      window.setTimeout(() => locationInputRef.current?.focus(), 50);
     }
   }
 
@@ -1197,6 +1183,9 @@ export default function RFPickingForm({
 
     if (sourceMatches) {
       productInputRef.current?.focus();
+    } else {
+      setSourceBarcode("");
+      window.setTimeout(() => sourceInputRef.current?.focus(), 50);
     }
   }
 
@@ -1210,14 +1199,20 @@ export default function RFPickingForm({
 
     event.preventDefault();
 
-    if (productMatches) {
-      quantityInputRef.current?.focus();
-      quantityInputRef.current?.select();
+    if (productMatches && !isPending && canSubmit) {
+      event.currentTarget.form?.requestSubmit();
+    } else if (!productMatches) {
+      setProductBarcode("");
+      window.setTimeout(() => productInputRef.current?.focus(), 50);
     }
   }
 
   async function handleLostProduct() {
     if (!selectedOrder || !recommendedSource || !nextOrderItem) return;
+    if (zoneTaskId) {
+      setLostMessage("Zone görevinde eksik/kayıp stok otomatik olarak düşülmez. Görev planını bozmamak için yönetici istisna işlemi gerekir.");
+      return;
+    }
 
     const lostQuantity = recommendedSource.product.quantity;
     const confirmed = window.confirm(
@@ -1246,28 +1241,11 @@ export default function RFPickingForm({
       setLocationBarcode("");
       setSourceBarcode("");
       setProductBarcode("");
-      setQuantity("1");
-      window.setTimeout(() => window.location.reload(), 900);
+        window.setTimeout(() => window.location.reload(), 900);
     } catch (error) {
       setLostMessage(error instanceof Error ? error.message : "Kayıp stok işlemi başarısız.");
     } finally {
       setLostPending(false);
-    }
-  }
-
-  function handleQuantityKeyDown(
-    event:
-      React.KeyboardEvent<HTMLInputElement>
-  ) {
-    if (event.key !== "Enter") {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (canSubmit) {
-      event.currentTarget.form
-        ?.requestSubmit();
     }
   }
 
@@ -1279,6 +1257,7 @@ export default function RFPickingForm({
       }
       className="rounded-2xl bg-white p-4 shadow md:p-6"
     >
+      {zoneTaskId && <input type="hidden" name="zoneTaskId" value={zoneTaskId} />}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-black">
@@ -1287,7 +1266,7 @@ export default function RFPickingForm({
 
           <p className="mt-1 text-xs text-slate-500">
             Sipariş → {targetPurposeLabel} → Lokasyon
-            → Kaynak THM → Ürün → Miktar
+            → Kaynak THM → Ürünü tek tek okut
           </p>
         </div>
 
@@ -1404,59 +1383,17 @@ export default function RFPickingForm({
           </div>
         )}
 
-      <datalist id="rf-picking-order-options">
-        {orders.map((order) => (
-          <option
-            key={order.id}
-            value={order.orderNumber}
-          >
-            {order.flowType ===
-            "WAVE"
-              ? `Wave ${order.waveNo ?? ""}`
-              : "Doğrudan"}
-            {" — "}
-            {order.customerCode}
-            {" — "}
-            {order.customerName}
-            {" — Kalan: "}
-            {order.remainingQuantity}
-          </option>
-        ))}
-      </datalist>
-
-      <datalist id="rf-picking-target-options">
-        {availableTargetUnits.map(
-  (unit) => (
-          <option
-            key={unit.id}
-            value={unit.barcode}
-          >
-            {unit.unitType}
-            {" — "}
-            {unit.purpose ===
-            "SHIPPING"
-              ? "Sevk THM"
-              : "Toplama THM"}
-            {" — "}
-            {unit.status}
-            {" — Stok: "}
-            {currentTargetQuantities[
-              unit.barcode.toUpperCase()
-            ] ?? unit.totalQuantity}
-          </option>
-        ))}
-      </datalist>
-
       <div className="mt-5 space-y-5">
         <label className="block">
           <span className="mb-2 block text-sm font-black">
-            1. Sipariş Numarası
+            1. Sipariş
           </span>
+          {lockedOrderNumber && selectedOrder ? <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4"><p className="text-xs font-black uppercase text-blue-700">Görev Siparişi</p><p className="mt-1 text-xl font-black">{selectedOrder.orderNumber} · {selectedOrder.customerName}</p><input type="hidden" name="orderNumber" value={selectedOrder.orderNumber}/></div> : null}
+          {!lockedOrderNumber && <>
 
           <input
             ref={orderInputRef}
             name="orderNumber"
-            list="rf-picking-order-options"
             value={orderNumber}
             onChange={(event) =>
               handleOrderChange(
@@ -1527,6 +1464,7 @@ export default function RFPickingForm({
               </button>
             </div>
           )}
+          </>}
         </label>
 
         <label className="block">
@@ -1537,7 +1475,6 @@ export default function RFPickingForm({
           <input
             ref={targetInputRef}
             name="targetBarcode"
-            list="rf-picking-target-options"
             value={targetBarcode}
             onChange={(event) =>
               setTargetBarcode(
@@ -1902,9 +1839,21 @@ export default function RFPickingForm({
             )}
         </label>
 
+        {nextOrderItem && recommendedSource && <div className="rounded-2xl border-2 border-blue-700 bg-blue-50 p-5">
+          <p className="text-xs font-black uppercase tracking-wider text-blue-700">Toplanacak Ürün</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{nextOrderItem.productCode} · {nextOrderItem.productName}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Barkod</p><p className="mt-1 font-mono font-black">{nextOrderItem.productBarcode}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Kalan Adet</p><p className="mt-1 text-2xl font-black">{nextOrderItem.remainingQuantity}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Git / Adres</p><p className="mt-1 text-xl font-black text-blue-900">{recommendedSource.unit.locationCode}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Kaynak THM</p><p className="mt-1 font-mono text-xl font-black text-blue-900">{recommendedSource.unit.barcode}</p></div>
+          </div>
+          <p className="mt-4 rounded-xl bg-blue-900 p-3 text-center font-black text-white">ÜRÜNÜ SEÇMEYİN · EKRANDAKİ ÜRÜNÜ OKUTUN · HER OKUTMA 1 ADET</p>
+        </div>}
+
         <label className="block">
           <span className="mb-2 block text-sm font-black">
-            5. Ürün Barkodu
+            5. Ürün Barkodu — Ekrandaki Ürünü Okut
           </span>
 
           <input
@@ -1959,72 +1908,11 @@ export default function RFPickingForm({
             )}
         </label>
 
-        <label className="block">
-          <span className="mb-2 block text-sm font-black">
-            6. Toplama Miktarı
-          </span>
-
-          <input
-            ref={quantityInputRef}
-            name="quantity"
-            type="number"
-            min="1"
-            max={maximumPickQuantity}
-            step="1"
-            value={quantity}
-            onChange={(event) =>
-              setQuantity(
-                event.target.value
-              )
-            }
-            onKeyDown={
-              handleQuantityKeyDown
-            }
-            className="w-full rounded-xl border-2 border-slate-300 p-4 text-2xl font-black focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-            disabled={
-              isPending ||
-              !productMatches
-            }
-            required
-          />
-
-          {productMatches && (
-            <p className="mt-2 text-sm font-bold text-slate-600">
-              En fazla{" "}
-              {maximumPickQuantity} adet
-              toplanabilir.
-            </p>
-          )}
-        </label>
-      </div>
-
-      <div className="mt-5 grid grid-cols-4 gap-2">
-        {[1, 5, 10, 24].map(
-          (quickQuantity) => (
-            <button
-              key={quickQuantity}
-              type="button"
-              onClick={() =>
-                setQuantity(
-                  String(
-                    Math.min(
-                      quickQuantity,
-                      maximumPickQuantity
-                    )
-                  )
-                )
-              }
-              disabled={
-                isPending ||
-                !productMatches ||
-                maximumPickQuantity <= 0
-              }
-              className="rounded-xl border border-slate-300 bg-white py-3 font-black disabled:opacity-40"
-            >
-              {quickQuantity}
-            </button>
-          )
-        )}
+        <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-black text-blue-950">6. Tekil Ürün Okutma</p>
+          <p className="mt-1 text-sm text-blue-800">Her barkod okuması <b>1 adet</b> toplar. Elle miktar girişi kapalıdır. Kalan: <b>{maximumPickQuantity}</b></p>
+          <input type="hidden" name="quantity" value="1" />
+        </div>
       </div>
 
       {lostMessage && (
@@ -2036,10 +1924,10 @@ export default function RFPickingForm({
       <button
         type="button"
         onClick={handleLostProduct}
-        disabled={isPending || lostPending || !selectedOrder || !recommendedSource || !nextOrderItem}
+        disabled={isPending || lostPending || Boolean(zoneTaskId) || !selectedOrder || !recommendedSource || !nextOrderItem}
         className="mt-6 w-full rounded-xl border-2 border-red-600 bg-red-50 py-4 text-lg font-black text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {lostPending ? "KAYIP İŞLEMİ YAPILIYOR..." : "ÜRÜN BULUNAMADI / KAYIP"}
+        {lostPending ? "KAYIP İŞLEMİ YAPILIYOR..." : zoneTaskId ? "EKSİK STOK — YÖNETİCİ İŞLEMİ GEREKİR" : "ÜRÜN BULUNAMADI / KAYIP"}
       </button>
 
       {recommendedSource && nextOrderItem && (
@@ -2062,7 +1950,7 @@ export default function RFPickingForm({
       >
         {isPending
           ? "ÜRÜN TOPLANIYOR..."
-          : "TOPLAMAYI KAYDET"}
+          : "ÜRÜN BARKODUNU OKUT"}
       </button>
 
       <p className="mt-4 text-center text-xs font-semibold text-slate-400">

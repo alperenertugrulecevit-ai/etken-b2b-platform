@@ -19,6 +19,7 @@ import {
 } from "@/lib/wms/wave-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { WaveDistributionService } from "@/modules/fulfillment/services/wave-distribution.service";
+import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 
 function optionalDate(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -58,7 +59,6 @@ export async function createWaveAction(formData: FormData) {
 
   const selectedOrderIds = Array.from(new Set(orderIds(formData)));
   const warehouseId = Number(formData.get("warehouseId"));
-  const pickerUserId = String(formData.get("pickerUserId") ?? "").trim();
   const groupedFlow = selectedOrderIds.length > 0;
 
   const displayName = currentUser.employee
@@ -68,21 +68,11 @@ export async function createWaveAction(formData: FormData) {
   if (groupedFlow) {
     if (selectedOrderIds.length < 2) throw new Error("Wave toplama için en az 2 sipariş seçilmelidir.");
     if (!Number.isInteger(warehouseId) || warehouseId <= 0) throw new Error("Wave deposu seçilmelidir.");
-    if (!pickerUserId) throw new Error("Toplama personeli seçilmelidir.");
 
-    const [warehouse, picker, orders] = await Promise.all([
+    const [warehouse, orders] = await Promise.all([
       prisma.warehouse.findFirst({
         where: { id: warehouseId, isActive: true, code: { not: "KYP001" } },
         select: { id: true, code: true },
-      }),
-      prisma.user.findFirst({
-        where: {
-          id: pickerUserId,
-          status: "ACTIVE",
-          isRfUser: true,
-          employee: { is: { isActive: true, canUseRf: true } },
-        },
-        select: { id: true },
       }),
       prisma.order.findMany({
         where: { id: { in: selectedOrderIds } },
@@ -107,7 +97,6 @@ export async function createWaveAction(formData: FormData) {
     ]);
 
     if (!warehouse) throw new Error("Seçilen depo aktif değil.");
-    if (!picker) throw new Error("Seçilen personel aktif bir RF toplama kullanıcısı değil.");
     if (orders.length !== selectedOrderIds.length) throw new Error("Seçilen siparişlerden biri bulunamadı.");
 
     for (const order of orders) {
@@ -142,12 +131,7 @@ export async function createWaveAction(formData: FormData) {
         data: { fulfillmentWarehouseId: warehouse.id },
       });
 
-      await assignUserToWave({
-        waveId: wave.id,
-        userId: pickerUserId,
-        assignedById: currentUser.id,
-        operationType: WmsOperationType.PICKING,
-      });
+      await ZonePickingService.buildTasksForOrders(prisma, { orderIds: selectedOrderIds, warehouseId: warehouse.id, waveId: wave.id });
 
       await WaveDistributionService.createOrRefreshPlan(wave.id, {
         userId: currentUser.id,
@@ -162,14 +146,23 @@ export async function createWaveAction(formData: FormData) {
         data: { status: OrderStatus.PREPARING },
       });
     } catch (error) {
-      await prisma.wave.delete({ where: { id: wave.id } }).catch(() => undefined);
+      await prisma.$transaction(async tx => {
+        await ZonePickingService.releaseWavePlan(tx, wave.id);
+        for (const order of orders) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: { fulfillmentWarehouseId: order.fulfillmentWarehouseId },
+          });
+        }
+        await tx.wave.delete({ where: { id: wave.id } });
+      }).catch(() => undefined);
       throw error;
     }
 
     revalidatePath("/admin/order-grouping");
     revalidatePath("/admin/waves");
     revalidatePath("/rf/wave-picking");
-    redirect(`/admin/waves/${wave.id}?success=${encodeURIComponent("Wave oluşturuldu ve toplama emri RF terminaline gönderildi.")}`);
+    redirect(`/admin/waves/${wave.id}?success=${encodeURIComponent("Wave oluşturuldu; Zone görevleri RF görev havuzuna gönderildi.")}`);
   }
 
   const wave = await createWave({
@@ -179,7 +172,7 @@ export async function createWaveAction(formData: FormData) {
     plannedStartAt,
     plannedFinishAt,
     notes: optionalText(formData.get("notes")),
-    createdBy: optionalText(formData.get("createdBy")) ?? displayName,
+    createdBy: displayName,
   });
 
   revalidatePath("/admin");

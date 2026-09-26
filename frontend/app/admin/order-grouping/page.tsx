@@ -73,7 +73,7 @@ export default async function OrderGroupingPage({ searchParams }: Props) {
         </div>
       </form>
 
-      <OrderGroupingClient orders={serializedOrders} warehouses={data.warehouses} pickers={data.pickers} />
+      <OrderGroupingClient orders={serializedOrders} warehouses={data.warehouses} />
     </section>
   );
 }

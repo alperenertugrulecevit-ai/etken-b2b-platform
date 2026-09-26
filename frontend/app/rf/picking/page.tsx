@@ -76,8 +76,42 @@ function createFullLocationCode({
     .join("-");
 }
 
-export default async function RFPickingPage() {
+export default async function RFPickingPage({ searchParams }: { searchParams: Promise<{ zoneTaskId?: string }> }) {
   const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+  const query = await searchParams;
+  const zoneTaskId = String(query.zoneTaskId ?? "").trim();
+  const zoneTask = zoneTaskId ? await prisma.zonePickTask.findFirst({
+    where: { id: zoneTaskId, claimedByUserId: currentUser.id, status: { in: ["CLAIMED", "IN_PROGRESS"] } },
+    include: {
+      zone: true,
+      order: { select: { id: true, orderNumber: true } },
+      warehouse: { select: { id: true, code: true } },
+      lines: { orderBy: { sequence: "asc" }, include: { handlingUnitItem: { select: { handlingUnitId: true } } } },
+    },
+  }) : null;
+  if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bulunamadı veya bu kullanıcıya ait değil.");
+  const activeTaskLines = zoneTask ? zoneTask.lines.filter(line => line.pickedQuantity < line.plannedQuantity) : [];
+  const plannedSourceUnitIds = Array.from(new Set(activeTaskLines.map(line => line.handlingUnitItem.handlingUnitId)));
+  const plannedSourceItemIds = new Set(activeTaskLines.map(line => line.handlingUnitItemId));
+  const plannedRemainingBySourceItem = new Map<number, number>();
+  for (const line of activeTaskLines) {
+    plannedRemainingBySourceItem.set(
+      line.handlingUnitItemId,
+      (plannedRemainingBySourceItem.get(line.handlingUnitItemId) ?? 0) + Math.max(0, line.plannedQuantity - line.pickedQuantity),
+    );
+  }
+  const taskLineByOrderItem = new Map<number, { planned: number; picked: number; remaining: number; sequence: number }>();
+  for (const line of activeTaskLines) {
+    const current = taskLineByOrderItem.get(line.orderItemId);
+    const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
+    taskLineByOrderItem.set(line.orderItemId, {
+      planned: (current?.planned ?? 0) + line.plannedQuantity,
+      picked: (current?.picked ?? 0) + Math.min(line.pickedQuantity, line.plannedQuantity),
+      remaining: (current?.remaining ?? 0) + remaining,
+      sequence: Math.min(current?.sequence ?? Number.MAX_SAFE_INTEGER, line.sequence),
+    });
+  }
+
   const [
     orders,
     sourceUnits,
@@ -85,6 +119,7 @@ export default async function RFPickingPage() {
   ] = await Promise.all([
     prisma.order.findMany({
       where: {
+        ...(zoneTask ? { id: zoneTask.orderId } : {}),
         status: {
           in: [
             OrderStatus.APPROVED,
@@ -95,10 +130,10 @@ export default async function RFPickingPage() {
 
         stockReserved: true,
         stockDeducted: false,
-        OR: [
+        ...(zoneTask ? {} : { OR: [
           { pickingAssignment: { is: { userId: currentUser.id, completedAt: null, cancelledAt: null } } },
           { waveOrders: { some: { wave: { assignments: { some: { userId: currentUser.id, operationType: "PICKING", status: { in: ["ASSIGNED", "ACTIVE", "WAITING"] } } } } } } },
-        ],
+        ] }),
       },
 
       orderBy: [
@@ -190,6 +225,7 @@ export default async function RFPickingPage() {
      */
     prisma.handlingUnit.findMany({
       where: {
+        ...(zoneTask ? { id: { in: plannedSourceUnitIds } } : {}),
         purpose:
           HandlingUnitPurpose.STOCK,
 
@@ -210,6 +246,7 @@ export default async function RFPickingPage() {
 
         location: {
           isActive: true,
+          ...(zoneTask ? { zoneId: zoneTask.zoneId } : {}),
         },
 
         status: {
@@ -267,6 +304,7 @@ export default async function RFPickingPage() {
             level: true,
             bin: true,
             sortOrder: true,
+            zoneId: true,
           },
         },
 
@@ -400,7 +438,16 @@ export default async function RFPickingPage() {
           WaveStatus.IN_PROGRESS;
 
       const items =
-        order.items.map((item) => ({
+        order.items
+          .filter(item => !zoneTask || taskLineByOrderItem.has(item.id))
+          .sort((a, b) => zoneTask
+            ? (taskLineByOrderItem.get(a.id)?.sequence ?? 0) - (taskLineByOrderItem.get(b.id)?.sequence ?? 0)
+            : a.id - b.id)
+          .map((item) => {
+            const taskPlan = taskLineByOrderItem.get(item.id);
+            const taskRemaining = taskPlan?.remaining ?? Math.max(0, item.quantity - item.pickedQuantity);
+            const taskPlanned = zoneTask ? (taskPlan?.planned ?? taskRemaining) : item.quantity;
+            return ({
           id: item.id,
           productId:
             item.productId,
@@ -414,22 +461,12 @@ export default async function RFPickingPage() {
           productName:
             item.productName,
 
-          orderedQuantity:
-            item.quantity,
-
-          pickedQuantity:
-            item.pickedQuantity,
-
-          remainingQuantity:
-            Math.max(
-              0,
-              item.quantity -
-                item.pickedQuantity
-            ),
-
-          isActive:
-            item.product.isActive,
-        }));
+          orderedQuantity: taskPlanned,
+          pickedQuantity: zoneTask ? (taskPlan?.picked ?? 0) : item.pickedQuantity,
+          remainingQuantity: taskRemaining,
+          isActive: item.product.isActive,
+        });
+          });
 
       const totalQuantity =
         items.reduce(
@@ -564,7 +601,9 @@ export default async function RFPickingPage() {
           ),
 
         products:
-          unit.items.map(
+          unit.items
+            .filter(item => !zoneTask || plannedSourceItemIds.has(item.id))
+            .map(
             (item) => ({
               itemId: item.id,
               productId:
@@ -588,8 +627,7 @@ export default async function RFPickingPage() {
               availableQuantity:
                 Math.max(
                   0,
-                  item.quantity -
-                    item.reservedStock
+                  item.quantity - item.reservedStock + (zoneTask ? (plannedRemainingBySourceItem.get(item.id) ?? 0) : 0)
                 ),
 
               isActive:
@@ -690,7 +728,7 @@ export default async function RFPickingPage() {
           </p>
 
           <h1 className="mt-1 text-2xl font-black">
-            Sipariş Toplama
+            {zoneTask ? `${zoneTask.zone.code} · ${zoneTask.zone.name} Toplama` : "Sipariş Toplama"}
           </h1>
         </div>
 
@@ -702,6 +740,8 @@ export default async function RFPickingPage() {
         </Link>
       </div>
 
+      {zoneTask && <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950"><b>Aktif Zone Görevi:</b> {zoneTask.zone.code} · {zoneTask.zone.name} · {zoneTask.order.orderNumber}. Yalnızca bu Zone içindeki kaynak lokasyonlardan toplama yapılabilir.</div>}
+
       <RFPickingForm
         orders={orderOptions}
         sourceUnits={
@@ -710,6 +750,8 @@ export default async function RFPickingPage() {
         targetUnits={
           targetUnitOptions
         }
+        lockedOrderNumber={zoneTask?.order.orderNumber}
+        zoneTaskId={zoneTask?.id}
       />
 
       <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-900">

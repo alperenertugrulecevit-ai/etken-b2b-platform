@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
 import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
+import { ConsolidationService } from "@/lib/wms/consolidation-service";
 
 export type RFPickingState = {
   success: boolean;
@@ -295,6 +296,7 @@ export async function rfPickOrderItem(
     : currentUser.username;
 
   const orderNumber = normalizeValue(formData.get("orderNumber"));
+  const zoneTaskId = String(formData.get("zoneTaskId") ?? "").trim();
 
   const targetBarcode = normalizeValue(formData.get("targetBarcode"));
 
@@ -304,7 +306,7 @@ export async function rfPickOrderItem(
 
   const productBarcode = normalizeValue(formData.get("productBarcode"));
 
-  const quantity = Number(formData.get("quantity"));
+  const quantity = 1;
 
   if (!orderNumber) {
     return createErrorState("Toplanacak sipariş numarasını okutun.");
@@ -332,11 +334,6 @@ export async function rfPickOrderItem(
     return createErrorState("Kaynak ve hedef taşıma birimi aynı olamaz.");
   }
 
-  if (!Number.isInteger(quantity) || quantity <= 0) {
-    return createErrorState(
-      "Toplama miktarı sıfırdan büyük bir tam sayı olmalıdır.",
-    );
-  }
 
   try {
     const result = await prisma.$transaction(
@@ -389,6 +386,12 @@ export async function rfPickOrderItem(
         if (!order) {
           throw new Error(`${orderNumber} numaralı sipariş bulunamadı.`);
         }
+
+        const zoneTask = zoneTaskId ? await tx.zonePickTask.findFirst({
+          where: { id: zoneTaskId, orderId: order.id, claimedByUserId: currentUser.id, status: { in: ["CLAIMED", "IN_PROGRESS"] } },
+          select: { id: true, zoneId: true, status: true, plannedQuantity: true, pickedQuantity: true },
+        }) : null;
+        if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bu kullanıcıya ait değil veya artık aktif değil.");
 
         if (!canPickOrder(order.status)) {
           throw new Error(
@@ -503,6 +506,7 @@ export async function rfPickOrderItem(
                   section: true,
                   level: true,
                   bin: true,
+                  zoneId: true,
                   isActive: true,
                 },
               },
@@ -636,6 +640,10 @@ export async function rfPickOrderItem(
           );
         }
 
+        if (zoneTask && sourceUnit.location.zoneId !== zoneTask.zoneId) {
+          throw new Error("Okutulan kaynak lokasyon bu Zone görevine ait değildir.");
+        }
+
         const expectedLocationCode = createFullLocationCode({
           code: sourceUnit.location.code,
 
@@ -708,6 +716,19 @@ export async function rfPickOrderItem(
 
         const sourceItem = sourceUnit.items[0];
 
+        const plannedTaskLine = zoneTask ? await tx.zonePickTaskLine.findFirst({
+          where: {
+            taskId: zoneTask.id,
+            orderItemId: orderItem.id,
+            handlingUnitItemId: sourceItem?.id ?? -1,
+          },
+          select: { id: true, plannedQuantity: true, pickedQuantity: true },
+        }) : null;
+
+        if (zoneTask && (!plannedTaskLine || plannedTaskLine.pickedQuantity >= plannedTaskLine.plannedQuantity)) {
+          throw new Error("Bu ürün ve kaynak THM aktif Zone görevinin planlı toplama satırında bulunmuyor.");
+        }
+
         if (!sourceItem) {
           throw new Error(
             `${orderItem.productCode} - ${orderItem.productName} ürünü ` +
@@ -725,8 +746,11 @@ export async function rfPickOrderItem(
          * ayrılmış miktar varsa kullanılabilir
          * miktardan düşülür.
          */
+        const taskOwnedReservation = plannedTaskLine
+          ? Math.max(0, plannedTaskLine.plannedQuantity - plannedTaskLine.pickedQuantity)
+          : 0;
         const sourceAvailableQuantity =
-          sourceItem.quantity - sourceItem.reservedStock;
+          sourceItem.quantity - sourceItem.reservedStock + taskOwnedReservation;
 
         if (sourceAvailableQuantity <= 0) {
           throw new Error(
@@ -745,20 +769,14 @@ export async function rfPickOrderItem(
 
         const sourceQuantityAfter = sourceItem.quantity - quantity;
 
-        if (sourceQuantityAfter === 0 && sourceItem.reservedStock === 0) {
-          await tx.handlingUnitItem.delete({
-            where: {
-              id: sourceItem.id,
-            },
-          });
+        if (sourceQuantityAfter === 0 && sourceItem.reservedStock === 0 && !plannedTaskLine) {
+          await tx.handlingUnitItem.delete({ where: { id: sourceItem.id } });
         } else {
           await tx.handlingUnitItem.update({
-            where: {
-              id: sourceItem.id,
-            },
-
+            where: { id: sourceItem.id },
             data: {
               quantity: sourceQuantityAfter,
+              ...(plannedTaskLine ? { reservedStock: { decrement: 1 } } : {}),
             },
           });
         }
@@ -901,21 +919,41 @@ export async function rfPickOrderItem(
           orderTotalQuantity - orderPickedQuantity,
         );
 
+        let taskOrderItemProgress: { planned: number; picked: number; remaining: number } | null = null;
+        if (plannedTaskLine) {
+          const lineAdvance = await tx.zonePickTaskLine.updateMany({
+            where: { id: plannedTaskLine.id, pickedQuantity: { lt: plannedTaskLine.plannedQuantity } },
+            data: { pickedQuantity: { increment: 1 } },
+          });
+          if (lineAdvance.count !== 1) throw new Error("Bu görev satırı başka bir işlemde tamamlandı. Ekranı yenileyip devam edin.");
+          const relatedLines = await tx.zonePickTaskLine.findMany({
+            where: { taskId: zoneTask!.id, orderItemId: orderItem.id },
+            select: { plannedQuantity: true, pickedQuantity: true },
+          });
+          const planned = relatedLines.reduce((n, line) => n + line.plannedQuantity, 0);
+          const picked = relatedLines.reduce((n, line) => n + Math.min(line.pickedQuantity, line.plannedQuantity), 0);
+          taskOrderItemProgress = { planned, picked, remaining: Math.max(0, planned - picked) };
+        }
+
+        if (zoneTask) {
+          const taskLinesAfter = await tx.zonePickTaskLine.findMany({ where: { taskId: zoneTask.id }, select: { plannedQuantity: true, pickedQuantity: true } });
+          const remainingPlannedLines = taskLinesAfter.filter(line => line.pickedQuantity < line.plannedQuantity).length;
+          const nextZonePicked = Math.min(zoneTask.plannedQuantity, zoneTask.pickedQuantity + quantity);
+          const zoneCompleted = remainingPlannedLines === 0;
+          await tx.zonePickTask.update({
+            where: { id: zoneTask.id },
+            data: { pickedQuantity: nextZonePicked, status: zoneCompleted ? "COMPLETED" : "IN_PROGRESS", startedAt: zoneTask.status === "CLAIMED" ? new Date() : undefined, completedAt: zoneCompleted ? new Date() : null },
+          });
+        }
+
+
+        const remainingZoneTasks = await tx.zonePickTask.count({
+          where: { orderId: order.id, status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] }, ...(zoneTask ? { id: { not: zoneTask.id } } : {}) },
+        });
+        const currentZoneWillComplete = !zoneTask || zoneTask.pickedQuantity + quantity >= zoneTask.plannedQuantity;
         const pickingCompleted = updatedOrderItems.every(
           (item) => item.pickedQuantity >= item.quantity,
-        );
-
-        const nextOrderStatus = pickingCompleted
-          ? isWavePicking
-            ? OrderStatus.PACKING
-            : OrderStatus.READY_TO_SHIP
-          : OrderStatus.PICKING;
-
-        await FulfillmentService.refreshOrderProgress(tx, {
-          orderId: order.id,
-          flowType: pickingFlow.flowType,
-          waveId: pickingFlow.waveId,
-        });
+        ) && remainingZoneTasks === 0 && currentZoneWillComplete;
 
         const pickingRecord = await tx.pickingRecord.create({
           data: {
@@ -944,6 +982,19 @@ export async function rfPickOrderItem(
             createdAt: true,
           },
         });
+
+        if (zoneTask) await ConsolidationService.syncOrder(tx, order.id);
+
+        await FulfillmentService.refreshOrderProgress(tx, {
+          orderId: order.id,
+          flowType: pickingFlow.flowType,
+          waveId: pickingFlow.waveId,
+        });
+        const refreshedOrder = await tx.order.findUnique({
+          where: { id: order.id },
+          select: { status: true },
+        });
+        const nextOrderStatus = refreshedOrder?.status ?? order.status;
 
         const targetTypeLabel = isWavePicking ? "Toplama THM" : "Sevk THM";
 
@@ -1091,9 +1142,9 @@ export async function rfPickOrderItem(
 
           pickedQuantity: quantity,
 
-          linePickedQuantity: updatedOrderItem.pickedQuantity,
+          linePickedQuantity: taskOrderItemProgress?.picked ?? updatedOrderItem.pickedQuantity,
 
-          lineRemainingQuantity: Math.max(
+          lineRemainingQuantity: taskOrderItemProgress?.remaining ?? Math.max(
             0,
             updatedOrderItem.quantity - updatedOrderItem.pickedQuantity,
           ),
@@ -1115,6 +1166,7 @@ export async function rfPickOrderItem(
 
     revalidatePath("/rf");
     revalidatePath("/rf/picking");
+    revalidatePath("/rf/zone-picking");
 
     revalidatePath("/admin/orders");
 

@@ -18,13 +18,6 @@ type OrderRow = {
 };
 
 type Warehouse = { id: number; code: string; name: string };
-type Picker = {
-  id: string;
-  username: string;
-  fullName: string | null;
-  employee: { firstName: string; lastName: string; employeeCode: string } | null;
-};
-
 const typeLabels: Record<string, string> = {
   ECOMMERCE: "E-Ticaret",
   STORE: "Mağaza",
@@ -40,15 +33,12 @@ function date(value: string | null) {
 export default function OrderGroupingClient({
   orders,
   warehouses,
-  pickers,
 }: {
   orders: OrderRow[];
   warehouses: Warehouse[];
-  pickers: Picker[];
 }) {
   const [selected, setSelected] = useState<number[]>([]);
   const [warehouseId, setWarehouseId] = useState("");
-  const [pickerUserId, setPickerUserId] = useState("");
   const [showMode, setShowMode] = useState(false);
 
   const selectedOrders = useMemo(
@@ -67,47 +57,12 @@ export default function OrderGroupingClient({
     <>
       {selected.map((id) => <input key={id} type="hidden" name="orderId" value={id} />)}
       <input type="hidden" name="warehouseId" value={warehouseId} />
-      <input type="hidden" name="pickerUserId" value={pickerUserId} />
     </>
   );
 
   return (
     <>
-      <div className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
-        <label className="text-sm font-bold text-slate-700">
-          Toplama Deposu
-          <select
-            value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
-          >
-            <option value="">Depo seçin</option>
-            {warehouses.map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.code} - {warehouse.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="text-sm font-bold text-slate-700">
-          Toplama Personeli
-          <select
-            value={pickerUserId}
-            onChange={(e) => setPickerUserId(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
-          >
-            <option value="">Personel seçin</option>
-            {pickers.map((picker) => (
-              <option key={picker.id} value={picker.id}>
-                {picker.employee
-                  ? `${picker.employee.firstName} ${picker.employee.lastName} (${picker.employee.employeeCode})`
-                  : picker.fullName || picker.username}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-950"><b>Zone bazlı toplama:</b> Personel bu ekrandan atanmaz. Sipariş başlatıldığında stok lokasyonlarına göre Zone görevleri oluşur; RF personeli Zone seçerek görev alır.</div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div className="font-semibold text-slate-600">
@@ -115,7 +70,7 @@ export default function OrderGroupingClient({
         </div>
         <button
           type="button"
-          disabled={selected.length === 0 || !warehouseId || !pickerUserId}
+          disabled={selected.length === 0 || !warehouseId}
           onClick={() => setShowMode(true)}
           className="rounded-xl bg-blue-900 px-6 py-3 font-black text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
@@ -185,7 +140,7 @@ export default function OrderGroupingClient({
                 {hidden}
                 <button className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50 p-5 text-left hover:border-blue-500">
                   <span className="block text-lg font-black text-blue-950">Sipariş Bazlı Toplama</span>
-                  <span className="mt-1 block text-sm text-blue-800">Her sipariş ayrı toplama emri olarak seçilen personele gönderilir.</span>
+                  <span className="mt-1 block text-sm text-blue-800">Her sipariş stok lokasyonlarına göre Zone görevlerine bölünür ve ortak RF görev havuzuna gönderilir.</span>
                 </button>
               </form>
 

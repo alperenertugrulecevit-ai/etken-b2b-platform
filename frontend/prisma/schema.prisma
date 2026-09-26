@@ -447,6 +447,8 @@ model Order {
   packingRecords             PackingRecord[]
   dispatchLines              DispatchDocumentLine[]
   pickingAssignment          OrderPickingAssignment?
+  zonePickTasks              ZonePickTask[]
+  consolidationTask          ConsolidationTask?
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -587,6 +589,7 @@ model OrderItem {
   order                     Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product                   Product                    @relation(fields: [productId], references: [id])
   pickingRecords            PickingRecord[]
+  zonePickTaskLines         ZonePickTaskLine[]
   waveDistributionLines     WaveDistributionLine[]
   shippingHandlingUnitItems ShippingHandlingUnitItem[]
   packingRecords            PackingRecord[]
@@ -748,6 +751,11 @@ model Warehouse {
   logisticsCenter LogisticsCenter @relation(fields: [logisticsCenterId], references: [id], onDelete: Restrict)
 
   locations       WarehouseLocation[]
+  zones           WarehouseZone[]
+  zonePickTasks   ZonePickTask[]
+  consolidationPoints ConsolidationPoint[]
+  consolidationTasks ConsolidationTask[]
+  zoneHistory     WarehouseLocationZoneHistory[]
   handlingUnits   HandlingUnit[]
   productStocks   WarehouseProductStock[]
   stockMovements  StockMovement[]
@@ -766,6 +774,7 @@ model Warehouse {
 model WarehouseLocation {
   id                      Int                      @id @default(autoincrement())
   warehouseId             Int
+  zoneId                  Int?
   code                    String
   aisle                   String                   @default("")
   section                 String                   @default("")
@@ -784,14 +793,189 @@ model WarehouseLocation {
   inventoryCountLines     InventoryCountLine[]
 
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  zone      WarehouseZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  zoneHistory WarehouseLocationZoneHistory[]
+  consolidationPoints ConsolidationPoint[] @relation("ConsolidationPointLocation")
 
   @@unique([warehouseId, code, aisle, section, level, bin], name: "warehouse_location_position_unique")
   @@index([warehouseId])
+  @@index([zoneId])
+  @@index([warehouseId, zoneId])
   @@index([code])
   @@index([aisle])
   @@index([locationType])
   @@index([isActive])
   @@index([sortOrder])
+}
+
+
+model WarehouseZone {
+  id           Int      @id @default(autoincrement())
+  warehouseId  Int
+  code         String
+  name         String
+  description  String?
+  pickSequence Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  locations WarehouseLocation[]
+  pickTasks ZonePickTask[]
+  historyAsOld WarehouseLocationZoneHistory[] @relation("OldWarehouseZone")
+  historyAsNew WarehouseLocationZoneHistory[] @relation("NewWarehouseZone")
+
+  @@unique([warehouseId, code], name: "warehouse_zone_code_unique")
+  @@index([warehouseId, isActive])
+  @@index([warehouseId, pickSequence])
+}
+
+enum ZonePickTaskStatus {
+  OPEN
+  CLAIMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ConsolidationTaskStatus {
+  WAITING
+  READY
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ConsolidationPoint {
+  id          String   @id @default(cuid())
+  warehouseId Int
+  code        String
+  name        String
+  locationId  Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  location  WarehouseLocation? @relation("ConsolidationPointLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  tasks     ConsolidationTask[]
+
+  @@unique([warehouseId, code], name: "warehouse_consolidation_code_unique")
+  @@index([warehouseId, isActive])
+}
+
+model ConsolidationTask {
+  id                   String                  @id @default(cuid())
+  warehouseId          Int
+  orderId              Int                    @unique
+  waveId               String?
+  consolidationPointId String?
+  status               ConsolidationTaskStatus @default(WAITING)
+  requiredZoneCount    Int                     @default(0)
+  completedZoneCount   Int                     @default(0)
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  warehouse          Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  order              Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  wave               Wave?               @relation(fields: [waveId], references: [id], onDelete: SetNull)
+  consolidationPoint ConsolidationPoint? @relation(fields: [consolidationPointId], references: [id], onDelete: SetNull)
+  units ConsolidationTaskUnit[]
+
+  @@index([warehouseId, status])
+  @@index([waveId, status])
+  @@index([consolidationPointId, status])
+}
+model ConsolidationTaskUnit {
+  id             String   @id @default(cuid())
+  taskId         String
+  handlingUnitId Int
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  task         ConsolidationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  handlingUnit HandlingUnit      @relation(fields: [handlingUnitId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, handlingUnitId], name: "consolidation_task_unit_unique")
+  @@index([taskId, verifiedAt])
+  @@index([handlingUnitId])
+}
+
+
+model ZonePickTask {
+  id              String             @id @default(cuid())
+  warehouseId     Int
+  zoneId          Int
+  orderId         Int
+  waveId          String?
+  status          ZonePickTaskStatus @default(OPEN)
+  claimedByUserId String?
+  claimedAt       DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  plannedLineCount Int               @default(0)
+  plannedQuantity  Int               @default(0)
+  pickedQuantity   Int               @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  warehouse Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  zone      WarehouseZone @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  wave      Wave?         @relation(fields: [waveId], references: [id], onDelete: Cascade)
+  claimedBy User?         @relation("ZonePickTaskClaimedBy", fields: [claimedByUserId], references: [id], onDelete: SetNull)
+  lines     ZonePickTaskLine[]
+
+  @@unique([orderId, zoneId, waveId], name: "order_zone_wave_task_unique")
+  @@index([warehouseId, zoneId, status])
+  @@index([claimedByUserId, status])
+  @@index([waveId, status])
+  @@index([orderId, status])
+}
+
+
+model ZonePickTaskLine {
+  id                 String @id @default(cuid())
+  taskId             String
+  orderItemId        Int
+  handlingUnitItemId Int
+  plannedQuantity    Int
+  pickedQuantity     Int    @default(0)
+  sequence           Int    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  task             ZonePickTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  orderItem        OrderItem        @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  handlingUnitItem HandlingUnitItem @relation(fields: [handlingUnitItemId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, orderItemId, handlingUnitItemId], name: "zone_task_order_item_source_unique")
+  @@index([taskId, sequence])
+  @@index([orderItemId])
+  @@index([handlingUnitItemId])
+}
+
+model WarehouseLocationZoneHistory {
+  id          Int      @id @default(autoincrement())
+  warehouseId Int
+  locationId  Int
+  oldZoneId   Int?
+  newZoneId   Int?
+  changedBy   String?
+  changedAt   DateTime @default(now())
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  location  WarehouseLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  oldZone   WarehouseZone? @relation("OldWarehouseZone", fields: [oldZoneId], references: [id], onDelete: SetNull)
+  newZone   WarehouseZone? @relation("NewWarehouseZone", fields: [newZoneId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId, changedAt])
+  @@index([locationId, changedAt])
+  @@index([oldZoneId])
+  @@index([newZoneId])
 }
 
 model WarehouseLocationStock {
@@ -891,6 +1075,7 @@ model HandlingUnit {
 
   sourcePickingRecords        PickingRecord[]            @relation("PickingSourceHandlingUnit")
   targetPickingRecords        PickingRecord[]            @relation("PickingTargetHandlingUnit")
+  consolidationTaskUnits      ConsolidationTaskUnit[]
   sourcePackingRecords        PackingRecord[]            @relation("PackingSourceHandlingUnit")
   targetPackingRecords        PackingRecord[]            @relation("PackingTargetHandlingUnit")
   shippingProfile             ShippingHandlingUnit?
@@ -925,6 +1110,7 @@ model HandlingUnitItem {
 
   handlingUnit HandlingUnit @relation(fields: [handlingUnitId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  zonePickTaskLines ZonePickTaskLine[]
 
   @@unique([handlingUnitId, productId], name: "handling_unit_product_unique")
   @@index([handlingUnitId])
@@ -1193,6 +1379,8 @@ model Wave {
   warehouse           Warehouse? @relation("WaveWarehouse", fields: [warehouseId], references: [id], onDelete: SetNull)
   orders              WaveOrder[]
   assignments         WaveAssignment[]
+  zonePickTasks        ZonePickTask[]
+  consolidationTasks   ConsolidationTask[]
   distributions       WaveDistribution[]
   handlingUnits       HandlingUnit[]                @relation("AssignedWaveHandlingUnits")
   orderFulfillments   OrderFulfillment[]
@@ -2118,6 +2306,7 @@ model User {
   reversedSortingTransactions ManualSortingTransaction[] @relation("SortingReversedBy")
   thmOperations               ThmOperation[]
   ptlSessions                 PtlSession[]
+  claimedZonePickTasks        ZonePickTask[] @relation("ZonePickTaskClaimedBy")
 
   @@index([employeeId])
   @@index([customerId, status])
