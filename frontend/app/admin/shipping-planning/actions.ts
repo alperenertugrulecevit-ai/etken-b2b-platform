@@ -3,7 +3,7 @@ import { ShippingVehicleOwnershipType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { ShipmentPlanningService } from "@/modules/fulfillment/services/shipment-planning.service";
-export type ShippingAdminState={success:boolean;message:string}; export const initialShippingAdminState={success:false,message:""};
+export type ShippingAdminState={success:boolean;message:string}; 
 const v=(f:FormData,k:string)=>String(f.get(k)??"").trim();
 async function auth(){const p=await AuthorizationService.requirePermission("SHIPPING_EXECUTE");return {userId:p.id,displayName:p.employee?`${p.employee.firstName} ${p.employee.lastName}`:p.username};}
 function fail(e:unknown):ShippingAdminState{return {success:false,message:e instanceof Error?e.message:"İşlem tamamlanamadı."}}
