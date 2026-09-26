@@ -184,6 +184,26 @@ export class ShipmentPlanningService {
       return {shipmentNumber:row.shipment.shipmentNumber,thmBarcode:code};
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
+  static async preDispatchCheck(shipmentNumber:string){
+    const code=shipmentNumber.trim().toUpperCase();
+    if(!code) throw new Error("Sevkiyat numarası seçin.");
+    const shipment=await prisma.shipment.findFirst({
+      where:{tenantId:TENANT_ID,companyId:COMPANY_ID,shipmentNumber:code},
+      include:{carrier:true,vehicle:true,routes:{include:{route:true}},handlingUnits:{include:{route:true,shippingHandlingUnit:{include:{handlingUnit:{select:{barcode:true}}}}}}}
+    });
+    if(!shipment) throw new Error("Sevkiyat bulunamadı.");
+    const total=shipment.handlingUnits.length;
+    const loaded=shipment.handlingUnits.filter(x=>x.status===ShipmentHandlingUnitStatus.LOADED).length;
+    const pending=shipment.handlingUnits.filter(x=>x.status!==ShipmentHandlingUnitStatus.LOADED).map(x=>x.shippingHandlingUnit.handlingUnit.barcode);
+    const issues:string[]=[];
+    if(shipment.status===ShipmentStatus.SHIPPED) issues.push("Sevkiyat daha önce sevk edilmiş.");
+    if(!total) issues.push("Sevkiyata bağlı THM bulunmuyor.");
+    if(pending.length) issues.push(`${pending.length} THM araç yüklemesi bekliyor.`);
+    if(!shipment.vehicleId) issues.push("Sevkiyata araç atanmamış.");
+    if(!shipment.routes.length) issues.push("Sevkiyata rota atanmamış.");
+    return {shipmentNumber:shipment.shipmentNumber,status:shipment.status,total,loaded,pending,issues,ready:issues.length===0&&shipment.status===ShipmentStatus.LOADED,vehicle:shipment.vehicle?.plate??"-",carrier:shipment.carrier?.name??"-",routes:shipment.routes.map(x=>x.route.routeNumber)};
+  }
+
   static async dispatchShipment(input:{shipmentNumber:string;actor:ShipmentActor}){
     const shipmentNumber=input.shipmentNumber.trim().toUpperCase();
     if(!shipmentNumber) throw new Error("Sevkiyat numarası seçin.");
