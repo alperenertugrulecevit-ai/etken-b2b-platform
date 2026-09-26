@@ -93,6 +93,13 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
   const activeTaskLines = zoneTask ? zoneTask.lines.filter(line => line.pickedQuantity < line.plannedQuantity) : [];
   const plannedSourceUnitIds = Array.from(new Set(activeTaskLines.map(line => line.handlingUnitItem.handlingUnitId)));
   const plannedSourceItemIds = new Set(activeTaskLines.map(line => line.handlingUnitItemId));
+  const plannedRemainingBySourceItem = new Map<number, number>();
+  for (const line of activeTaskLines) {
+    plannedRemainingBySourceItem.set(
+      line.handlingUnitItemId,
+      (plannedRemainingBySourceItem.get(line.handlingUnitItemId) ?? 0) + Math.max(0, line.plannedQuantity - line.pickedQuantity),
+    );
+  }
   const taskLineByOrderItem = new Map<number, { remaining: number; sequence: number }>();
   for (const line of activeTaskLines) {
     const current = taskLineByOrderItem.get(line.orderItemId);
@@ -618,8 +625,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
               availableQuantity:
                 Math.max(
                   0,
-                  item.quantity -
-                    item.reservedStock
+                  item.quantity - item.reservedStock + (zoneTask ? (plannedRemainingBySourceItem.get(item.id) ?? 0) : 0)
                 ),
 
               isActive:
