@@ -254,6 +254,22 @@ export default function RFPackingListPreview({
 
                     <p>
                       <strong>
+                        Depo:
+                      </strong>{" "}
+                      {data.warehouseCode || "-"}
+                    </p>
+
+                    <p>
+                      <strong>
+                        İl / İlçe:
+                      </strong>{" "}
+                      {[data.recipientCity, data.recipientDistrict]
+                        .filter(Boolean)
+                        .join(" / ") || "-"}
+                    </p>
+
+                    <p>
+                      <strong>
                         Toplam Ürün Adeti:
                       </strong>{" "}
                       {

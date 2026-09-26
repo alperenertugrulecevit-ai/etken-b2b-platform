@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { ShippingHandlingUnitStatus, WmsOperationType } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { PackingListPrintService } from "@/modules/printing/services/packing-list-print.service";
@@ -201,4 +204,176 @@ export async function printPackingListAction(
       }
     );
   }
+}
+
+export async function confirmPackingListWithoutPrintAction(
+  formData: FormData
+) {
+  const profile =
+    await AuthorizationService.requireRfAccess(
+      "PICKING_EXECUTE"
+    );
+
+  const barcode =
+    readBarcode(
+      formData,
+      "shippingHandlingUnitBarcode"
+    );
+
+  if (!barcode) {
+    redirect(
+      "/rf/packing-list-print?manualError=" +
+        encodeURIComponent("Sevk THM barkodunu okutun.")
+    );
+  }
+
+  const shippingUnit =
+    await prisma.shippingHandlingUnit.findFirst({
+      where: {
+        handlingUnit: {
+          barcode,
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+        packingListPrintedAt: true,
+        packingListPrintCount: true,
+        handlingUnit: {
+          select: {
+            id: true,
+            barcode: true,
+          },
+        },
+        items: {
+          where: {
+            quantity: {
+              gt: 0,
+            },
+          },
+          select: {
+            quantity: true,
+          },
+        },
+      },
+    });
+
+  if (!shippingUnit) {
+    redirect(
+      "/rf/packing-list-print?manualError=" +
+        encodeURIComponent(
+          `${barcode} barkodlu Sevk THM bulunamadı.`
+        )
+    );
+  }
+
+  if (
+    shippingUnit.status !==
+      ShippingHandlingUnitStatus.READY_TO_SHIP &&
+    shippingUnit.status !==
+      ShippingHandlingUnitStatus.SHIPPED
+  ) {
+    redirect(
+      "/rf/packing-list-print?manualError=" +
+        encodeURIComponent(
+          "Sevk THM kapatılmış ve sevke hazır durumda olmalıdır."
+        )
+    );
+  }
+
+  const totalQuantity =
+    shippingUnit.items.reduce(
+      (total, item) =>
+        total + item.quantity,
+      0
+    );
+
+  if (totalQuantity <= 0) {
+    redirect(
+      "/rf/packing-list-print?manualError=" +
+        encodeURIComponent(
+          "Sevk THM içerisinde çeki listesine alınacak ürün bulunamadı."
+        )
+    );
+  }
+
+  const displayName =
+    profile.employee
+      ? `${profile.employee.firstName} ${profile.employee.lastName}`
+      : profile.username;
+
+  const confirmedAt =
+    new Date();
+
+  await prisma.$transaction([
+    prisma.shippingHandlingUnit.update({
+      where: {
+        id: shippingUnit.id,
+      },
+      data: {
+        packingListPrintedAt:
+          confirmedAt,
+        packingListPrintCount:
+          Math.max(
+            1,
+            shippingUnit.packingListPrintCount
+          ),
+        packingListLastPrinterCode:
+          "MANUAL-CONFIRM",
+      },
+    }),
+    prisma.wmsOperationLog.create({
+      data: {
+        operationType:
+          WmsOperationType.OTHER,
+        module:
+          "RF_PACKING_LIST_MANUAL_CONFIRM",
+        entityType:
+          "SHIPPING_HANDLING_UNIT",
+        entityId:
+          shippingUnit.handlingUnit.id,
+        operatorId:
+          profile.id,
+        operatorName:
+          displayName,
+        barcode:
+          shippingUnit.handlingUnit.barcode,
+        quantity:
+          totalQuantity,
+        description:
+          `${shippingUnit.handlingUnit.barcode} Sevk THM çeki listesi fiziksel yazdırma yapılmadan kullanıcı onayıyla basılmış olarak işaretlendi.`,
+        metadata: {
+          shippingHandlingUnitId:
+            shippingUnit.id,
+          confirmationType:
+            "WITHOUT_PHYSICAL_PRINT",
+          previousPrintedAt:
+            shippingUnit.packingListPrintedAt,
+          previousPrintCount:
+            shippingUnit.packingListPrintCount,
+        },
+        isSuccessful:
+          true,
+      },
+    }),
+  ]);
+
+  revalidatePath(
+    "/rf/packing-list-print"
+  );
+  revalidatePath(
+    "/rf/packing-list-preview"
+  );
+  revalidatePath(
+    "/rf/shipment-routing"
+  );
+  revalidatePath(
+    "/admin/shipping-planning"
+  );
+
+  redirect(
+    "/rf/packing-list-preview?barcode=" +
+      encodeURIComponent(barcode) +
+      "&confirmed=1"
+  );
 }

@@ -3,8 +3,14 @@ import Link from "next/link";
 import RFPackingListPrintForm from "@/components/rf/RFPackingListPrintForm";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { confirmPackingListWithoutPrintAction } from "./actions";
 
-export default async function RFPackingListPrintPage() {
+export default async function RFPackingListPrintPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ manualError?: string }>;
+}) {
+  const params = await searchParams;
   await AuthorizationService.requireRfAccess(
     "PICKING_EXECUTE"
   );
@@ -63,6 +69,43 @@ export default async function RFPackingListPrintPage() {
           ← RF Menüsü
         </Link>
       </div>
+
+      <form
+        action={confirmPackingListWithoutPrintAction}
+        className="mt-6 rounded-2xl border-2 border-amber-300 bg-amber-50 p-5 shadow-sm"
+      >
+        <p className="text-xs font-black uppercase tracking-widest text-amber-700">
+          Yazıcısız Test / Operasyon Onayı
+        </p>
+        <h2 className="mt-2 text-xl font-black text-amber-950">
+          Yazdırmadan Baskıyı Onayla
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-amber-900">
+          Fiziksel baskı göndermeden çeki listesini basılmış olarak işaretler.
+          İşlem kullanıcı bilgisiyle hareket geçmişine kaydedilir ve THM rotalamaya açılır.
+        </p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            name="shippingHandlingUnitBarcode"
+            placeholder="Sevk THM barkodunu okutun"
+            autoComplete="off"
+            autoCapitalize="characters"
+            required
+            className="min-w-0 flex-1 rounded-xl border border-amber-400 bg-white p-4 text-lg font-black uppercase text-slate-950 outline-none focus:border-amber-700"
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-amber-700 px-6 py-4 font-black text-white hover:bg-amber-800"
+          >
+            YAZDIRMADAN BASKIYI ONAYLA
+          </button>
+        </div>
+        {params.manualError && (
+          <div className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 font-bold text-red-900">
+            {params.manualError}
+          </div>
+        )}
+      </form>
 
       {printers.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-6 text-amber-950">

@@ -13,6 +13,9 @@ export type PackingListData = {
   closedAt: Date | null;
 
   customerName: string;
+  warehouseCode: string;
+  recipientCity: string;
+  recipientDistrict: string;
   orderNumbers: string[];
 
   totalQuantity: number;
@@ -520,26 +523,38 @@ function createLabel({
     commandPosition(
       scale,
       15,
-      145
+      140
     ),
     commandFont(
       scale,
-      23,
-      20
+      20,
+      18
     ),
-    "^FDToplam Urun Adeti:^FS",
+    `^FDDepo: ${limitText(data.warehouseCode || "-", 20)}^FS`,
 
     commandPosition(
       scale,
-      225,
-      145
+      250,
+      140
     ),
     commandFont(
       scale,
-      25,
-      22
+      20,
+      18
     ),
-    `^FD${data.totalQuantity}^FS`,
+    `^FDIl/Ilce: ${limitText([data.recipientCity, data.recipientDistrict].filter(Boolean).join(" / ") || "-", 38)}^FS`,
+
+    commandPosition(
+      scale,
+      15,
+      168
+    ),
+    commandFont(
+      scale,
+      20,
+      18
+    ),
+    `^FDToplam Urun Adeti: ${data.totalQuantity}^FS`,
 
     ...createQrCommands({
       scale,
@@ -550,7 +565,7 @@ function createLabel({
     commandPosition(
       scale,
       10,
-      190
+      200
     ),
     `^GB${scale(
       770
@@ -563,7 +578,7 @@ function createLabel({
     commandPosition(
       scale,
       18,
-      205
+      215
     ),
     commandFont(
       scale,
@@ -602,7 +617,7 @@ function createLabel({
     commandPosition(
       scale,
       10,
-      238
+      248
     ),
     `^GB${scale(
       770

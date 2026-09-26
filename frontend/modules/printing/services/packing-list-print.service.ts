@@ -175,6 +175,8 @@ export class PackingListPrintService {
             id: true,
             status: true,
             customerName: true,
+            city: true,
+            district: true,
 
             closedAt: true,
             readyAt: true,
@@ -204,6 +206,15 @@ export class PackingListPrintService {
               select: {
                 orderNumber:
                   true,
+                order: {
+                  select: {
+                    fulfillmentWarehouse: {
+                      select: {
+                        code: true,
+                      },
+                    },
+                  },
+                },
               },
             },
 
@@ -506,6 +517,21 @@ export class PackingListPrintService {
 
           customerName:
             shippingUnit.customerName,
+
+          warehouseCode:
+            Array.from(
+              new Set(
+                shippingUnit.orders
+                  .map((row) => row.order.fulfillmentWarehouse?.code)
+                  .filter((value): value is string => Boolean(value))
+              )
+            ).join(", ") || "-",
+
+          recipientCity:
+            shippingUnit.city,
+
+          recipientDistrict:
+            shippingUnit.district,
 
           orderNumbers,
 

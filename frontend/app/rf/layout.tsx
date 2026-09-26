@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 
 import LogoutButton from "@/components/auth/LogoutButton";
 import WmsContextSelector from "@/components/layout/WmsContextSelector";
+import RFGlobalBackButton from "@/components/rf/RFGlobalBackButton";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { WmsContextService } from "@/modules/wms-context/services/wms-context.service";
@@ -153,6 +154,7 @@ export default async function RFLayout({
       </header>
 
       <main className="mx-auto w-full max-w-5xl p-4 md:p-6">
+        <RFGlobalBackButton />
         {children}
       </main>
     </div>
