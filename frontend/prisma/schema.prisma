@@ -3236,9 +3236,21 @@ enum ShipmentStatus {
   LOADED
   SHIPPED
 }
-enum ShipmentHandlingUnitStatus { ROUTED LOADED }
-enum ShipmentHandlingUnitEventType { ROUTED REROUTED LOADED SHIPMENT_REMOVED SHIPPED }
-enum ShippingVehicleOwnershipType { OWNED RENTED }
+enum ShipmentHandlingUnitStatus {
+  ROUTED
+  LOADED
+}
+enum ShipmentHandlingUnitEventType {
+  ROUTED
+  REROUTED
+  LOADED
+  SHIPMENT_REMOVED
+  SHIPPED
+}
+enum ShippingVehicleOwnershipType {
+  OWNED
+  RENTED
+}
 
 model ShippingCarrier {
   id String @id @default(cuid())
