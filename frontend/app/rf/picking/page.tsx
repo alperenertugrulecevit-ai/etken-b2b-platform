@@ -425,8 +425,13 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
     }),
     prisma.zonePickTask.findMany({
       where: {
-        status: ZonePickTaskStatus.OPEN,
-        claimedByUserId: null,
+        OR: [
+          { status: ZonePickTaskStatus.OPEN, claimedByUserId: null },
+          {
+            status: { in: [ZonePickTaskStatus.CLAIMED, ZonePickTaskStatus.IN_PROGRESS] },
+            claimedByUserId: currentUser.id,
+          },
+        ],
         order: { status: { in: [OrderStatus.APPROVED, OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
       },
       select: {
