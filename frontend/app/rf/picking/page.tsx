@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import {
   HandlingUnitPurpose,
@@ -82,8 +83,8 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
   const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
   const query = await searchParams;
   const zoneTaskId = String(query.zoneTaskId ?? "").trim();
-  const zoneTask = zoneTaskId ? await prisma.zonePickTask.findFirst({
-    where: { id: zoneTaskId, claimedByUserId: currentUser.id, status: { in: ["CLAIMED", "IN_PROGRESS"] } },
+  const requestedZoneTask = zoneTaskId ? await prisma.zonePickTask.findFirst({
+    where: { id: zoneTaskId, claimedByUserId: currentUser.id },
     include: {
       zone: true,
       order: { select: { id: true, orderNumber: true } },
@@ -91,7 +92,12 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
       lines: { orderBy: { sequence: "asc" }, include: { handlingUnitItem: { select: { handlingUnitId: true } } } },
     },
   }) : null;
-  if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bulunamadı veya bu kullanıcıya ait değil.");
+  if (zoneTaskId && !requestedZoneTask) throw new Error("Zone görevi bulunamadı veya bu kullanıcıya ait değil.");
+  if (requestedZoneTask?.status === ZonePickTaskStatus.COMPLETED) redirect("/rf/picking");
+  if (requestedZoneTask && ![ZonePickTaskStatus.CLAIMED, ZonePickTaskStatus.IN_PROGRESS].includes(requestedZoneTask.status)) {
+    redirect("/rf/picking");
+  }
+  const zoneTask = requestedZoneTask;
   const activeTaskLines = zoneTask ? zoneTask.lines.filter(line => line.pickedQuantity < line.plannedQuantity) : [];
   const plannedSourceUnitIds = Array.from(new Set(activeTaskLines.map(line => line.handlingUnitItem.handlingUnitId)));
   const plannedSourceItemIds = new Set(activeTaskLines.map(line => line.handlingUnitItemId));
