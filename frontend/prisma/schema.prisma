@@ -748,6 +748,8 @@ model Warehouse {
   logisticsCenter LogisticsCenter @relation(fields: [logisticsCenterId], references: [id], onDelete: Restrict)
 
   locations       WarehouseLocation[]
+  zones           WarehouseZone[]
+  zoneHistory     WarehouseLocationZoneHistory[]
   handlingUnits   HandlingUnit[]
   productStocks   WarehouseProductStock[]
   stockMovements  StockMovement[]
@@ -766,6 +768,7 @@ model Warehouse {
 model WarehouseLocation {
   id                      Int                      @id @default(autoincrement())
   warehouseId             Int
+  zoneId                  Int?
   code                    String
   aisle                   String                   @default("")
   section                 String                   @default("")
@@ -784,14 +787,60 @@ model WarehouseLocation {
   inventoryCountLines     InventoryCountLine[]
 
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  zone      WarehouseZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  zoneHistory WarehouseLocationZoneHistory[]
 
   @@unique([warehouseId, code, aisle, section, level, bin], name: "warehouse_location_position_unique")
   @@index([warehouseId])
+  @@index([zoneId])
+  @@index([warehouseId, zoneId])
   @@index([code])
   @@index([aisle])
   @@index([locationType])
   @@index([isActive])
   @@index([sortOrder])
+}
+
+
+model WarehouseZone {
+  id           Int      @id @default(autoincrement())
+  warehouseId  Int
+  code         String
+  name         String
+  description  String?
+  pickSequence Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  locations WarehouseLocation[]
+  historyAsOld WarehouseLocationZoneHistory[] @relation("OldWarehouseZone")
+  historyAsNew WarehouseLocationZoneHistory[] @relation("NewWarehouseZone")
+
+  @@unique([warehouseId, code], name: "warehouse_zone_code_unique")
+  @@index([warehouseId, isActive])
+  @@index([warehouseId, pickSequence])
+}
+
+model WarehouseLocationZoneHistory {
+  id          Int      @id @default(autoincrement())
+  warehouseId Int
+  locationId  Int
+  oldZoneId   Int?
+  newZoneId   Int?
+  changedBy   String?
+  changedAt   DateTime @default(now())
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  location  WarehouseLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  oldZone   WarehouseZone? @relation("OldWarehouseZone", fields: [oldZoneId], references: [id], onDelete: SetNull)
+  newZone   WarehouseZone? @relation("NewWarehouseZone", fields: [newZoneId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId, changedAt])
+  @@index([locationId, changedAt])
+  @@index([oldZoneId])
+  @@index([newZoneId])
 }
 
 model WarehouseLocationStock {
