@@ -90,6 +90,14 @@ export default async function RFWavePickingPage() {
           ],
         },
 
+        assignments: {
+          some: {
+            userId: currentUser.id,
+            operationType: "PICKING",
+            status: { in: ["ASSIGNED", "ACTIVE", "WAITING"] },
+          },
+        },
+
         distributions: {
           some: {
             status: {
