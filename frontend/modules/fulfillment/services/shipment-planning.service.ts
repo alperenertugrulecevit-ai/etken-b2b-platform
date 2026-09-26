@@ -111,6 +111,7 @@ export class ShipmentPlanningService {
       const shipment=await tx.shipment.findFirst({where:{tenantId:TENANT_ID,companyId:COMPANY_ID,shipmentNumber:input.shipmentNumber},include:{routes:{include:{route:true}}}});
       if(!shipment) throw new Error("Sevkiyat numarası bulunamadı.");
       if(shipment.status===ShipmentStatus.SHIPPED) throw new Error("Sevk edilmiş sevkiyata ROTA işlemi yapılamaz.");
+      if(shipment.status===ShipmentStatus.LOADING || shipment.status===ShipmentStatus.LOADED) throw new Error("Araç yükleme başladıktan sonra ROTA değiştirilemez. Gerekirse önce Sevkiyat Bozma işlemi yapın.");
       const route=shipment.routes.find(x=>x.route.routeNumber.toUpperCase()===routeNumber)?.route;
       if(!route) throw new Error("Okutulan rota bu sevkiyat planına bağlı değil.");
       const unit=await tx.shippingHandlingUnit.findFirst({where:{handlingUnit:{barcode:thmBarcode}},include:{handlingUnit:{select:{id:true,barcode:true}},shipmentHandlingUnit:true}});
