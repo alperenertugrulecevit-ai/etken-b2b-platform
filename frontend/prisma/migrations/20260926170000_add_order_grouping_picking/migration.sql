@@ -20,12 +20,14 @@ CREATE TABLE "OrderPickingAssignment" (
 );
 
 CREATE UNIQUE INDEX "OrderPickingAssignment_orderId_key" ON "OrderPickingAssignment"("orderId");
-CREATE INDEX "Wave_warehouseId_status_idx" ON "Wave"("warehouseId", "status");\nCREATE INDEX "Order_orderType_status_idx" ON "Order"("orderType", "status");
+CREATE INDEX "Wave_warehouseId_status_idx" ON "Wave"("warehouseId", "status");
+CREATE INDEX "Order_orderType_status_idx" ON "Order"("orderType", "status");
 CREATE INDEX "Order_fulfillmentWarehouseId_status_idx" ON "Order"("fulfillmentWarehouseId", "status");
 CREATE INDEX "OrderPickingAssignment_userId_completedAt_cancelledAt_idx" ON "OrderPickingAssignment"("userId", "completedAt", "cancelledAt");
 CREATE INDEX "OrderPickingAssignment_warehouseId_completedAt_cancelledAt_idx" ON "OrderPickingAssignment"("warehouseId", "completedAt", "cancelledAt");
 
-ALTER TABLE "Wave" ADD CONSTRAINT "Wave_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE SET NULL ON UPDATE CASCADE;\nALTER TABLE "Order" ADD CONSTRAINT "Order_fulfillmentWarehouseId_fkey"
+ALTER TABLE "Wave" ADD CONSTRAINT "Wave_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Order" ADD CONSTRAINT "Order_fulfillmentWarehouseId_fkey"
   FOREIGN KEY ("fulfillmentWarehouseId") REFERENCES "Warehouse"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "OrderPickingAssignment" ADD CONSTRAINT "OrderPickingAssignment_orderId_fkey"
   FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
