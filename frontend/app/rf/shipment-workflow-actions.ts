@@ -28,6 +28,12 @@ export async function removeShipmentAction(_:RfShipmentState,fd:FormData):Promis
  catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevkiyat bozma tamamlanamadı."};}
 }
 
+
+export async function preDispatchCheckAction(_:RfShipmentState,fd:FormData):Promise<RfShipmentState>{
+ try{await AuthorizationService.requireRfAccess("SHIPPING_EXECUTE");const r=await ShipmentPlanningService.preDispatchCheck(value(fd,"shipmentNumber"));const summary=`${r.shipmentNumber} · Araç: ${r.vehicle} · THM: ${r.loaded}/${r.total}`;return r.ready?{ok:true,message:`${summary} · SEVKE HAZIR.`}:{ok:false,message:`${summary} · ${r.issues.join(" ")}`};}
+ catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevk öncesi kontrol tamamlanamadı."};}
+}
+
 export async function dispatchShipmentAction(_:RfShipmentState,fd:FormData):Promise<RfShipmentState>{
  try{const r=await ShipmentPlanningService.dispatchShipment({shipmentNumber:value(fd,"shipmentNumber"),actor:await actor()});return {ok:true,message:`${r.shipmentNumber} SEVK EDİLDİ. ${r.thmCount} THM, toplam ${r.totalQuantity} adet ürün stoktan çıkıldı.`};}
  catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevk işlemi tamamlanamadı."};}
