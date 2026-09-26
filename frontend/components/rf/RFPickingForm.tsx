@@ -1849,7 +1849,7 @@ export default function RFPickingForm({
             <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Kaynak THM</p><p className="mt-1 font-mono text-xl font-black text-blue-900">{recommendedSource.unit.barcode}</p></div>
           </div>
           <p className="mt-4 rounded-xl bg-blue-900 p-3 text-center font-black text-white">ÜRÜNÜ SEÇMEYİN · EKRANDAKİ ÜRÜNÜ OKUTUN · HER OKUTMA 1 ADET</p>
-        </div>
+        </div>}
 
         <label className="block">
           <span className="mb-2 block text-sm font-black">
@@ -1913,6 +1913,7 @@ export default function RFPickingForm({
           <p className="mt-1 text-sm text-blue-800">Her barkod okuması <b>1 adet</b> toplar. Elle miktar girişi kapalıdır. Kalan: <b>{maximumPickQuantity}</b></p>
           <input type="hidden" name="quantity" value="1" />
         </div>
+      </div>
 
       {lostMessage && (
         <div className="mt-5 rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm font-bold text-orange-900">
