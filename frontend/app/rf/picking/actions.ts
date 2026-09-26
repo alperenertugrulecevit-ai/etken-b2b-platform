@@ -306,7 +306,7 @@ export async function rfPickOrderItem(
 
   const productBarcode = normalizeValue(formData.get("productBarcode"));
 
-  const quantity = Number(formData.get("quantity"));
+  const quantity = 1;
 
   if (!orderNumber) {
     return createErrorState("Toplanacak sipariş numarasını okutun.");
@@ -334,11 +334,6 @@ export async function rfPickOrderItem(
     return createErrorState("Kaynak ve hedef taşıma birimi aynı olamaz.");
   }
 
-  if (!Number.isInteger(quantity) || quantity <= 0) {
-    return createErrorState(
-      "Toplama miktarı sıfırdan büyük bir tam sayı olmalıdır.",
-    );
-  }
 
   try {
     const result = await prisma.$transaction(
