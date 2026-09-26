@@ -611,6 +611,27 @@ export default async function AdminDashboardPage() {
     <section className="p-4 sm:p-6 lg:p-10">
       <div className="mb-6"><p className="text-xs font-black uppercase tracking-[.18em] text-blue-600">ETKEN OFİS</p><h1 className="mt-1 text-3xl font-black text-slate-950">Dashboard</h1><p className="mt-1 text-sm text-slate-500">Sipariş, stok, müşteri ve WMS operasyonlarının detaylı yönetim görünümü.</p></div>
 
+      <Link
+        href="/admin/shipping-planning"
+        className="mb-6 flex items-center gap-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-5 shadow-sm transition hover:border-sky-400 hover:shadow-md"
+      >
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-950 text-2xl text-white">
+          🚚
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black uppercase tracking-wider text-sky-700">
+            Operasyon
+          </p>
+          <h2 className="mt-1 text-xl font-black text-slate-950">
+            Sevkiyat Planlama
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Sevkiyat, rota, araç ve sevke hazır THM planlamasını yönetin.
+          </p>
+        </div>
+        <span className="text-2xl font-black text-blue-950">›</span>
+      </Link>
+
       {/* WMS OPERASYON MERKEZİ */}
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow sm:mt-8 sm:p-6 lg:mt-10">
