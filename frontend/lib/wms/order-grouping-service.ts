@@ -3,9 +3,7 @@ import {
   OrderFulfillmentFlow,
   OrderStatus,
   OrderType,
-  UserStatus,
   WaveStatus,
-  WmsOperationType,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -96,7 +94,7 @@ export class OrderGroupingService {
     if (orderIds.length === 0) throw new Error("En az bir sipariş seçmelisiniz.");
 
     return prisma.$transaction(async (tx) => {
-      const [warehouse, picker, orders] = await Promise.all([
+      const [warehouse, orders] = await Promise.all([
         tx.warehouse.findFirst({
           where: { id: input.warehouseId, isActive: true, code: { not: "KYP001" } },
           select: { id: true, code: true, name: true },
