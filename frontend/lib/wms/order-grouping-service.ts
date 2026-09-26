@@ -63,7 +63,17 @@ export class OrderGroupingService {
           fulfillmentWarehouseId: true,
           fulfillmentWarehouse: { select: { id: true, code: true, name: true } },
           customer: { select: { customerCode: true, companyName: true } },
-          items: { select: { quantity: true } },
+          shippingAddress: { select: { city: true, district: true } },
+          stockReserved: true,
+          items: {
+            select: {
+              id: true,
+              productCode: true,
+              productName: true,
+              quantity: true,
+            },
+            orderBy: { id: "asc" },
+          },
           _count: { select: { items: true } },
         },
       }),
