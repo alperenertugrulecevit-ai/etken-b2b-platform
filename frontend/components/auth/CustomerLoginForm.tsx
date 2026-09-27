@@ -67,8 +67,8 @@ export default function CustomerLoginForm({
 
 const destination =
   result.mustChangePassword
-    ? "/change-password?returnTo=%2F"
-    : "/";
+    ? "/change-password?returnTo=%2Faccount"
+    : "/account";
 
       router.replace(
         destination,
