@@ -147,6 +147,10 @@ export async function POST(request: NextRequest) {
           shippingUnit = { ...profile, handlingUnit: hu } as any;
         }
 
+        if (!shippingUnit) {
+          throw new Error("Sevk THM oluşturulamadı veya bulunamadı.");
+        }
+
         if (shippingUnit.handlingUnit.assignedOrderId && shippingUnit.handlingUnit.assignedOrderId !== order.id) {
           throw new Error("Sevk THM başka bir siparişe atanmış.");
         }
