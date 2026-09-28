@@ -113,6 +113,8 @@ export default async function AdminOrdersPage() {
         },
       },
 
+      carrier: { select: { code: true, name: true } },
+
       shippingAddress: {
         select: {
           title: true,
@@ -172,6 +174,10 @@ export default async function AdminOrdersPage() {
 
               <th className="p-4">
                 Müşteri
+              </th>
+
+              <th className="p-4">
+                Nakliyeci
               </th>
 
               <th className="p-4">
@@ -240,6 +246,15 @@ export default async function AdminOrdersPage() {
                   <p className="mt-1 text-sm text-gray-500">
                     {order.customer.customerCode}
                   </p>
+                </td>
+
+                <td className="p-4">
+                  {order.carrier ? (
+                    <>
+                      <p className="font-semibold">{order.carrier.name}</p>
+                      <p className="mt-1 text-sm text-gray-500">{order.carrier.code}</p>
+                    </>
+                  ) : "-"}
                 </td>
 
                 <td className="p-4">
@@ -313,7 +328,7 @@ export default async function AdminOrdersPage() {
             {orders.length === 0 && (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="p-10 text-center text-gray-500"
                 >
                   Henüz sipariş oluşturulmadı.
