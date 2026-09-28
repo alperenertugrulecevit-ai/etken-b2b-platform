@@ -9,8 +9,8 @@ function dateStart(value:string){ if(!value)return undefined; const d=new Date(`
 function dateEnd(value:string){ if(!value)return undefined; const d=new Date(`${value}T23:59:59.999+03:00`); return Number.isNaN(d.getTime())?undefined:d; }
 function fmtDate(value:Date){return new Intl.DateTimeFormat("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Istanbul"}).format(value)}
 function n(value:number){return value.toLocaleString("tr-TR")}
-type OperationalStatus="WAITING"|"PICKING"|"PICKED"|"APPROVED"|"LOADED"|"SHIPPED"|"CANCELLED";
-function operationalLabel(status:OperationalStatus){const m:Record<OperationalStatus,string>={WAITING:"Bekliyor",PICKING:"Toplanıyor",PICKED:"Toplandı",APPROVED:"Onaylandı",LOADED:"Araca Yüklendi",SHIPPED:"Sevk Edildi",CANCELLED:"İptal"};return m[status]}
+type OperationalStatus="WAITING"|"PICKING"|"PICKED"|"APPROVED"|"DISPATCH_ISSUED"|"LOADED"|"SHIPPED"|"CANCELLED";
+function operationalLabel(status:OperationalStatus){const m:Record<OperationalStatus,string>={WAITING:"Bekliyor",PICKING:"Toplanıyor",PICKED:"Toplandı",APPROVED:"Onaylandı",DISPATCH_ISSUED:"İrsaliye Kesildi",LOADED:"Araca Yüklendi",SHIPPED:"Sevk Edildi",CANCELLED:"İptal"};return m[status]}
 function receiptStatus(status:string){const m:Record<string,string>={DRAFT:"Taslak",PENDING:"Bekliyor",APPROVED:"Mal Kabul Onaylandı",PARTIALLY_RECEIVED:"Kısmi Mal Kabul",RECEIVED:"Mal Kabul Tamamlandı",CANCELLED:"İptal"};return m[status]??status}
 
 const meta:Record<ReportKind,{title:string;subtitle:string;orderLabel:string}> = {
@@ -32,7 +32,7 @@ function Filters({title,orderLabel,startDate,endDate,orderNumber,status,productC
    <label><span className="mb-2 block text-sm font-semibold text-slate-700">{shipment?"Firma İsmi":"Tedarikçi Adı"}</span><input name="companyName" defaultValue={companyName} placeholder={shipment?"Firma ismi":"Tedarikçi adı"} className="w-full rounded-xl border border-slate-300 p-3"/></label>
    <label><span className="mb-2 block text-sm font-semibold text-slate-700">Durum</span><select name="status" defaultValue={status} className="w-full rounded-xl border border-slate-300 bg-white p-3">
     <option value="">Tüm Durumlar</option><option value="OPEN">Açık Siparişler</option>
-    {shipment?<><option value="WAITING">Bekliyor</option><option value="PICKING">Toplanıyor</option><option value="PICKED">Toplandı</option><option value="APPROVED">Onaylandı</option><option value="LOADED">Araca Yüklendi</option><option value="SHIPPED">Sevk Edildi</option><option value="CANCELLED">İptal</option></>:<><option value="DRAFT">Taslak</option><option value="PENDING">Bekliyor</option><option value="APPROVED">Mal Kabul Onaylandı</option><option value="PARTIALLY_RECEIVED">Kısmi Mal Kabul</option><option value="RECEIVED">Mal Kabul Tamamlandı</option><option value="CANCELLED">İptal</option></>}
+    {shipment?<><option value="WAITING">Bekliyor</option><option value="PICKING">Toplanıyor</option><option value="PICKED">Toplandı</option><option value="APPROVED">Onaylandı</option><option value="DISPATCH_ISSUED">İrsaliye Kesildi</option><option value="LOADED">Araca Yüklendi</option><option value="SHIPPED">Sevk Edildi</option><option value="CANCELLED">İptal</option></>:<><option value="DRAFT">Taslak</option><option value="PENDING">Bekliyor</option><option value="APPROVED">Mal Kabul Onaylandı</option><option value="PARTIALLY_RECEIVED">Kısmi Mal Kabul</option><option value="RECEIVED">Mal Kabul Tamamlandı</option><option value="CANCELLED">İptal</option></>}
    </select></label>
    <div className="flex items-end gap-2"><button className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white hover:bg-blue-800">Raporu Getir</button><a href="?" className="rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700">Temizle</a></div>
   </div>
@@ -55,7 +55,7 @@ export default async function WmsOrderReport({kind,searchParams}:{kind:ReportKin
   if(status==="CANCELLED")where.status="CANCELLED"; else if(status==="SHIPPED")where.status={not:"CANCELLED"};
   if(from||to)where.orderDate={...(from?{gte:from}:{}),...(to?{lte:to}:{})};
   const itemWhere=productCode?{productCode:{contains:productCode,mode:"insensitive" as const}}:undefined;
-  const queriedOrders=await prisma.order.findMany({where,orderBy:{orderDate:"desc"},include:{customer:{select:{customerCode:true,companyName:true}},items:{where:itemWhere,orderBy:{id:"asc"}},fulfillment:true,shippingHandlingUnitOrders:{include:{shippingHandlingUnit:{select:{status:true,closedAt:true,shippedAt:true,boxType:true,desi:true}}}}}});
+  const queriedOrders=await prisma.order.findMany({where,orderBy:{orderDate:"desc"},include:{customer:{select:{customerCode:true,companyName:true}},items:{where:itemWhere,orderBy:{id:"asc"}},fulfillment:true,shippingHandlingUnitOrders:{include:{shippingHandlingUnit:{select:{status:true,closedAt:true,shippedAt:true,boxType:true,desi:true,dispatchDocument:{select:{status:true,issuedAt:true}}}}}}}});
   const withOperationalStatus=queriedOrders.map(o=>{
    const ordered=o.items.reduce((s,x)=>s+x.quantity,0),picked=o.items.reduce((s,x)=>s+x.pickedQuantity,0),packed=o.items.reduce((s,x)=>s+x.packedQuantity,0);
    const units=o.shippingHandlingUnitOrders.map(x=>x.shippingHandlingUnit);
@@ -63,6 +63,7 @@ export default async function WmsOrderReport({kind,searchParams}:{kind:ReportKin
    if(o.status==="CANCELLED")operationalStatus="CANCELLED";
    else if(units.some(x=>x.status==="SHIPPED"||Boolean(x.shippedAt))||o.fulfillment?.shippingStatus==="COMPLETED")operationalStatus="SHIPPED";
    else if(o.fulfillment?.shippingStatus==="IN_PROGRESS"||o.fulfillment?.shippingStartedAt)operationalStatus="LOADED";
+   else if(units.some(x=>x.dispatchDocument?.status==="ISSUED"||Boolean(x.dispatchDocument?.issuedAt)))operationalStatus="DISPATCH_ISSUED";
    else if(ordered>0&&packed>=ordered&&units.length>0&&units.every(x=>x.status==="CLOSED"||x.status==="READY_TO_SHIP"||x.status==="SHIPPED"||Boolean(x.closedAt)))operationalStatus="APPROVED";
    else if(ordered>0&&picked>=ordered)operationalStatus="PICKED";
    else if(picked>0||o.fulfillment?.pickingStatus==="IN_PROGRESS"||o.fulfillment?.pickingStartedAt)operationalStatus="PICKING";
