@@ -1018,6 +1018,7 @@ export class WavePackingService {
               id: true,
               barcode: true,
               purpose: true,
+              warehouseId: true,
               items: {
                 select: {
                   quantity: true,
