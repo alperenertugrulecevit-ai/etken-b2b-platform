@@ -81,7 +81,7 @@ export async function claimZoneTaskById(formData: FormData) {
   if (active && active.id !== taskId) {
     throw new Error("Önce üzerinizdeki aktif toplama görevini tamamlayın veya bırakın.");
   }
-  if (active?.id === taskId) redirect(`/rf/picking?zoneTaskId=${encodeURIComponent(taskId)}`);
+  if (active?.id === taskId) return { taskId };
 
   const result = await prisma.zonePickTask.updateMany({
     where: { id: taskId, status: ZonePickTaskStatus.OPEN, claimedByUserId: null },
@@ -89,7 +89,5 @@ export async function claimZoneTaskById(formData: FormData) {
   });
   if (result.count !== 1) throw new Error("Seçilen sipariş görevi artık alınabilir durumda değil.");
 
-  revalidatePath("/rf/picking");
-  revalidatePath("/rf/zone-picking");
-  redirect(`/rf/picking?zoneTaskId=${encodeURIComponent(taskId)}`);
+  return { taskId };
 }
