@@ -252,7 +252,7 @@ function getReturnPath(
   }
 
   if (labelType === "product") {
-    return "/admin/products";
+    return "/admin/stock/sku-labels";
   }
 
   return "/admin/handling-units";
@@ -266,7 +266,7 @@ function getReturnLabel(
   }
 
   if (labelType === "product") {
-    return "Ürünlere Dön";
+    return "SKU Etiketine Dön";
   }
 
   return "Koli / Paletlere Dön";
