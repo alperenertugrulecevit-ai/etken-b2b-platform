@@ -13,6 +13,7 @@ type Row = {
 };
 
 type OrderInfo = {
+  id: number;
   orderNumber: string;
   placedBy: string;
   recipientName: string;
@@ -54,6 +55,7 @@ export default function EcommercePackagingScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [boxCode, setBoxCode] = useState("");
 
   useEffect(() => {
     scannerRef.current?.focus();
@@ -180,9 +182,9 @@ export default function EcommercePackagingScreen() {
 
           <div className="my-5 flex items-center gap-3 text-xs font-bold text-slate-400"><span className="h-px flex-1 bg-slate-200"/><span>OTOMATİK ALGILAMA</span><span className="h-px flex-1 bg-slate-200"/></div>
 
-          <label className="mb-2 block text-sm font-bold text-slate-700">Koli Tipi:</label>
-          <div className="flex h-12 items-center justify-between rounded-xl border border-slate-300 px-4 font-semibold text-slate-700">
-            <span>📦 Standart Koli (STK)</span><span>⌄</span>
+          <label className="mb-2 block text-sm font-bold text-slate-700">Desi / Koli Barkodu:</label>
+          <div className="flex h-12 items-center rounded-xl border border-slate-300 px-4 font-semibold text-slate-700">
+            <input value={boxCode} onChange={(e)=>setBoxCode(e.target.value.toUpperCase())} className="w-full bg-transparent outline-none" placeholder="Desi barkodu okutun..." />
           </div>
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
             ⓘ Desi barkodu okutulacak. Paketleme tamamlanınca yazdırma işlemi başlatılabilir.
@@ -235,7 +237,18 @@ export default function EcommercePackagingScreen() {
           <p>* Çeki listesinde Sipariş No ve Sevk THM barkodları yazdırılır.</p>
           <p>* Tekli siparişlerde ürün barkodu ile FIFO sırasına göre en eski uygun sipariş bulunur.</p>
         </div>
-        <button type="button" disabled={!order || total === 0 || packed !== total} className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
+        <button type="button" onClick={async ()=>{
+          if (!order || !boxCode || packed !== total) return;
+          setBusy(true);
+          try {
+            const response=await fetch("/api/admin/ecommerce/packaging/complete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:order.id,shippingHandlingUnitBarcode:shippingThm,boxCode})});
+            const data=await response.json();
+            if(!response.ok || !data.success){setMessage(`HATA: ${data.message ?? "Paketleme tamamlanamadı."}`);return;}
+            setShippingThm(data.shippingHandlingUnitBarcode);
+            setMessage(`${data.orderNumber} paketlendi. Sevk THM: ${data.shippingHandlingUnitBarcode}. Yazdırma adımına hazır.`);
+          } catch { setMessage("HATA: Paketleme tamamlama servisine ulaşılamadı."); }
+          finally { setBusy(false); requestAnimationFrame(()=>scannerRef.current?.focus()); }
+        }} disabled={!order || !boxCode || total === 0 || packed !== total || busy} className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
       </div>
     </div>
   );
