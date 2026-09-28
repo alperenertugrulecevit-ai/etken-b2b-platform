@@ -48,6 +48,7 @@ function BarcodeIcon() {
 
 export default function EcommercePackagingScreen() {
   const scannerRef = useRef<HTMLInputElement>(null);
+  const boxCodeRef = useRef<HTMLInputElement>(null);
   const [scan, setScan] = useState("");
   const [message, setMessage] = useState("THM veya ürün barkodu okutun.");
   const [order, setOrder] = useState<OrderInfo | null>(null);
@@ -99,8 +100,11 @@ export default function EcommercePackagingScreen() {
         ),
       );
       setCurrentImage(row.imageUrl);
-      setMessage(`${row.code} okundu. Paketleme miktarı güncellendi.`);
-      requestAnimationFrame(() => scannerRef.current?.focus());
+      const willBeComplete = rows.every((item, itemIndex) =>
+        itemIndex === index ? item.packed + 1 >= item.ordered : item.packed >= item.ordered,
+      );
+      setMessage(willBeComplete ? `${row.code} okundu. Desi / koli barkodunu okutun.` : `${row.code} okundu. Paketleme miktarı güncellendi.`);
+      requestAnimationFrame(() => (willBeComplete ? boxCodeRef.current : scannerRef.current)?.focus());
       return;
     }
 
@@ -132,14 +136,17 @@ export default function EcommercePackagingScreen() {
       if (isSingleFifo) setCurrentImage(data.order.items[0]?.imageUrl ?? null);
       setMessage(
         isSingleFifo
-          ? `${data.order.orderNumber} FIFO ile bulundu; tek ürün paketleme doğrulaması tamamlandı.`
+          ? `${data.order.orderNumber} FIFO ile bulundu; tek ürün tamamlandı. Desi / koli barkodunu okutun.`
           : `${data.order.orderNumber} siparişi yüklendi. Ürünleri okutun.`,
       );
+      requestAnimationFrame(() => (isSingleFifo ? boxCodeRef.current : scannerRef.current)?.focus());
     } catch {
       setMessage("HATA: Paketleme servisine ulaşılamadı.");
     } finally {
       setBusy(false);
-      requestAnimationFrame(() => scannerRef.current?.focus());
+      requestAnimationFrame(() => {
+        if (order) scannerRef.current?.focus();
+      });
     }
   }
 
@@ -193,9 +200,18 @@ export default function EcommercePackagingScreen() {
           <div className="my-5 flex items-center gap-3 text-xs font-bold text-slate-400"><span className="h-px flex-1 bg-slate-200"/><span>OTOMATİK ALGILAMA</span><span className="h-px flex-1 bg-slate-200"/></div>
 
           <label className="mb-2 block text-sm font-bold text-slate-700">Desi / Koli Barkodu:</label>
-          <div className="flex h-12 items-center rounded-xl border border-slate-300 px-4 font-semibold text-slate-700">
-            <input value={boxCode} onChange={(e)=>setBoxCode(e.target.value.toUpperCase())} className="w-full bg-transparent outline-none" placeholder="Desi barkodu okutun..." />
-          </div>
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            const value = boxCode.trim().toUpperCase();
+            if (!value) return;
+            setBoxCode(value);
+            setMessage(`${value} desi / koli barkodu alındı. Paketleme ve irsaliye yazdırma işlemine hazır.`);
+          }}>
+            <div className="flex h-12 items-center rounded-xl border border-slate-300 px-4 font-semibold text-slate-700">
+              <input ref={boxCodeRef} value={boxCode} onChange={(e)=>setBoxCode(e.target.value.toUpperCase())} autoComplete="off" className="w-full bg-transparent outline-none" placeholder="Desi barkodu okutun..." aria-label="Desi veya koli barkodu" />
+            </div>
+            <button type="submit" className="sr-only">Desi barkodunu işle</button>
+          </form>
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
             ⓘ Desi barkodu okutulacak. Paketleme tamamlanınca yazdırma işlemi başlatılabilir.
           </div>
