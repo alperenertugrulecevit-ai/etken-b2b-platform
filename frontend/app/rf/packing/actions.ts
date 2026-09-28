@@ -183,6 +183,7 @@ export async function rfPackWaveItemAction(
 export async function closeWaveShippingUnitAction(
   targetBarcode: string,
   terminalCode = "",
+  boxCode = "",
 ): Promise<CloseShippingUnitResult> {
   const currentUser =
     await AuthorizationService.requireRfAccess(
@@ -199,6 +200,7 @@ export async function closeWaveShippingUnitAction(
             .trim()
             .toUpperCase(),
         ),
+        boxCode,
       );
 
     revalidatePath(
