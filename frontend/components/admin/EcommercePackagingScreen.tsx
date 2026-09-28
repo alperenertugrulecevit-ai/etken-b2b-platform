@@ -242,10 +242,10 @@ export default function EcommercePackagingScreen() {
       <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-lg font-black text-slate-900"><BarcodeIcon /> &nbsp; Sipariş Ürünleri</h2>
         <table className="w-full overflow-hidden rounded-xl text-sm">
-          <thead className="bg-slate-100 text-slate-700"><tr>{["#","Ürün Kodu","Ürün Tanımı","Sipariş Miktarı","Paketleme Miktarı","Kalan Miktar","Durum"].map(x=><th key={x} className="border border-slate-200 px-4 py-3 text-left font-black">{x}</th>)}</tr></thead>
+          <thead className="bg-slate-100 text-slate-700"><tr>{["#","Ürün Kodu","Barkod","Ürün Tanımı","Sipariş Miktarı","Paketleme Miktarı","Kalan Miktar","Durum"].map(x=><th key={x} className="border border-slate-200 px-4 py-3 text-left font-black">{x}</th>)}</tr></thead>
           <tbody>
-            {rows.length ? rows.map((row,index)=><tr key={row.code}><td className="border border-slate-200 px-4 py-3">{index+1}</td><td className="border border-slate-200 px-4 py-3">{row.code}</td><td className="border border-slate-200 px-4 py-3">{row.name}</td><td className="border border-slate-200 px-4 py-3">{row.ordered}</td><td className="border border-slate-200 px-4 py-3">{row.packed}</td><td className="border border-slate-200 px-4 py-3">{row.ordered-row.packed}</td><td className="border border-slate-200 px-4 py-3 font-bold text-blue-700">{row.packed >= row.ordered ? "Tamamlandı" : "Bekliyor"}</td></tr>) : (
-              <tr><td colSpan={7} className="border border-slate-200 px-4 py-10 text-center font-semibold text-slate-400">Sipariş bulununca ürünler burada listelenecek.</td></tr>
+            {rows.length ? rows.map((row,index)=><tr key={row.code}><td className="border border-slate-200 px-4 py-3">{index+1}</td><td className="border border-slate-200 px-4 py-3">{row.code}</td><td className="border border-slate-200 px-4 py-3 font-mono">{row.barcode}</td><td className="border border-slate-200 px-4 py-3">{row.name}</td><td className="border border-slate-200 px-4 py-3">{row.ordered}</td><td className="border border-slate-200 px-4 py-3">{row.packed}</td><td className="border border-slate-200 px-4 py-3">{row.ordered-row.packed}</td><td className="border border-slate-200 px-4 py-3 font-bold text-blue-700">{row.packed >= row.ordered ? "Tamamlandı" : "Bekliyor"}</td></tr>) : (
+              <tr><td colSpan={8} className="border border-slate-200 px-4 py-10 text-center font-semibold text-slate-400">Sipariş bulununca ürünler burada listelenecek.</td></tr>
             )}
           </tbody>
         </table>
