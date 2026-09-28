@@ -419,6 +419,30 @@ export async function mergeHandlingUnits(
             });
           }
 
+          const sourceLocationIds = Array.from(new Set(sourceUnits.map((unit) => unit.locationId).filter((id): id is number => id !== null)));
+          const locationRows = sourceLocationIds.length
+            ? await tx.warehouseLocation.findMany({ where: { id: { in: sourceLocationIds } }, select: { id: true, code: true, section: true, level: true, bin: true } })
+            : [];
+          const locationMap = new Map(locationRows.map((location) => [location.id, [location.code, location.section, location.level, location.bin].filter(Boolean).join("-")]));
+
+          await tx.wmsOperationLog.createMany({
+            data: sourceUnits.map((sourceUnit) => ({
+              operationType: "FULL_TRANSFER",
+              module: "ADMIN_HANDLING_UNIT_MERGE",
+              entityType: "HANDLING_UNIT",
+              entityId: sourceUnit.id,
+              barcode: sourceUnit.barcode,
+              sourceBarcode: sourceUnit.barcode,
+              targetBarcode: targetUnit.barcode,
+              warehouseId: sourceUnit.warehouseId,
+              sourceLocationId: sourceUnit.locationId,
+              sourceLocationCode: sourceUnit.locationId ? locationMap.get(sourceUnit.locationId) ?? null : null,
+              description: `THM birleştirme: ${sourceUnit.barcode} → ${targetUnit.barcode}`,
+              metadata: { action: "THM_MERGE", targetHandlingUnitId: targetUnit.id },
+              isSuccessful: true,
+            })),
+          });
+
           const targetStockSummary =
             await tx.handlingUnitItem.aggregate({
               where: {
