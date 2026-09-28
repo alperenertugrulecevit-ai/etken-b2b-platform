@@ -313,6 +313,17 @@ export async function addressHandlingUnit(
             },
           });
 
+          const fullLocationCode = createFullLocationCode({ code: location.code, section: location.section, level: location.level, bin: location.bin });
+          await tx.wmsOperationLog.create({
+            data: {
+              operationType: "ADDRESSING", module: "ADMIN_HANDLING_UNIT_ADDRESSING", entityType: "HANDLING_UNIT", entityId: handlingUnit.id,
+              barcode: handlingUnit.barcode, warehouseId, warehouseCode: warehouse.code,
+              sourceLocationId: handlingUnit.locationId, targetLocationId: location.id, targetLocationCode: fullLocationCode,
+              previousStatus: handlingUnit.status, newStatus: HandlingUnitStatus.STORED,
+              description: `Adresleme: ${handlingUnit.barcode} → ${warehouse.code} / ${fullLocationCode}`, isSuccessful: true,
+            },
+          });
+
           let affectedUnitCount = 1;
 
           if (

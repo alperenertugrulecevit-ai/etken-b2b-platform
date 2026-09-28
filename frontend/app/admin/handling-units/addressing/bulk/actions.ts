@@ -393,6 +393,17 @@ export async function bulkAddressHandlingUnits(
               },
             });
 
+            const fullLocationCode = createFullLocationCode({ code: location.code, section: location.section, level: location.level, bin: location.bin });
+            await tx.wmsOperationLog.create({
+              data: {
+                operationType: "ADDRESSING", module: "ADMIN_HANDLING_UNIT_BULK_ADDRESSING", entityType: "HANDLING_UNIT", entityId: unit.id,
+                barcode: unit.barcode, warehouseId, warehouseCode: warehouse.code,
+                sourceLocationId: unit.locationId, targetLocationId: location.id, targetLocationCode: fullLocationCode,
+                previousStatus: unit.status, newStatus: HandlingUnitStatus.STORED,
+                description: `Adresleme: ${unit.barcode} → ${warehouse.code} / ${fullLocationCode}`, isSuccessful: true,
+              },
+            });
+
             affectedUnitIds.push(unit.id);
             affectedUnitCount += 1;
 
