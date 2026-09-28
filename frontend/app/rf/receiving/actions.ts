@@ -10,6 +10,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type RFReceivingState = {
@@ -332,17 +333,37 @@ export async function rfReceivePurchaseItem(
               },
             });
 
+          if (!handlingUnit.warehouseId) {
+            throw new Error(
+              `${handlingUnit.barcode} taşıma biriminin deposu tanımlı değil. Mal kabul yapılamaz.`
+            );
+          }
+
+          await createStockMovementWithTransaction(
+            tx,
+            {
+              warehouseId:
+                handlingUnit.warehouseId,
+              productId:
+                purchaseOrderItem.productId,
+              purchaseOrderId:
+                purchaseOrder.id,
+              movementType:
+                StockMovementType.PURCHASE_RECEIPT,
+              physicalChange: quantity,
+              reservedChange: 0,
+              documentNumber:
+                purchaseOrder.purchaseNumber,
+              description:
+                `${handlingUnit.barcode} taşıma birimine RF mal kabulü. ` +
+                `Tedarikçi: ${purchaseOrder.supplier.name}.`,
+            }
+          );
+
           const updatedProduct =
-            await tx.product.update({
+            await tx.product.findUniqueOrThrow({
               where: {
-                id:
-                  purchaseOrderItem
-                    .productId,
-              },
-              data: {
-                stock: {
-                  increment: quantity,
-                },
+                id: purchaseOrderItem.productId,
               },
               select: {
                 id: true,
@@ -406,32 +427,7 @@ export async function rfReceivePurchaseItem(
             });
           }
 
-          await tx.stockMovement.create({
-            data: {
-              productId:
-                purchaseOrderItem
-                  .productId,
-              purchaseOrderId:
-                purchaseOrder.id,
-              movementType:
-                StockMovementType.PURCHASE_RECEIPT,
-              physicalChange: quantity,
-              reservedChange: 0,
-              physicalBalanceAfter:
-                updatedProduct.stock,
-              reservedBalanceAfter:
-                updatedProduct.reservedStock,
-              availableBalanceAfter:
-                updatedProduct.stock -
-                updatedProduct.reservedStock,
-              documentNumber:
-                purchaseOrder.purchaseNumber,
-              description:
-                `${handlingUnit.barcode} taşıma birimine RF mal kabulü. ` +
-                `Tedarikçi: ${purchaseOrder.supplier.name}.`,
-            },
-          });
-                    await tx.wmsOperationLog.create({
+          await tx.wmsOperationLog.create({
             data: {
               operationType:
                 WmsOperationType.RECEIVING,
