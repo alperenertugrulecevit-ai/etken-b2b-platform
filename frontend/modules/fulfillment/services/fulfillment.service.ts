@@ -482,17 +482,44 @@ export class FulfillmentService {
       );
     }
 
+    /*
+     * Hızlı yol: Sevk THM daha önce bu sipariş için hazırlanmışsa her ürün
+     * okutmasında paket sayısı, ilişki UPSERT'i ve HandlingUnit UPDATE'i
+     * tekrarlanmaz. Yukarıdaki kontroller alıcı/adres, durum ve sipariş
+     * sahipliğini zaten doğrulamıştır.
+     */
+    const existingOrderLink = targetUnit.shippingProfile?.orders.find(
+      (item) => item.orderId === order.id,
+    );
+
+    if (
+      targetUnit.shippingProfile &&
+      existingOrderLink &&
+      targetUnit.assignedOrderId === order.id &&
+      targetUnit.purpose === HandlingUnitPurpose.SHIPPING &&
+      targetUnit.status === HandlingUnitStatus.OPEN
+    ) {
+      return {
+        id: targetUnit.shippingProfile.id,
+        handlingUnitId: targetUnit.id,
+        barcode: targetUnit.barcode,
+        packageSequence: targetUnit.shippingProfile.packageSequence,
+      };
+    }
+
     const addressSnapshot = getRequiredAddress(order);
 
-    const existingPackageCount = await tx.shippingHandlingUnit.count({
-      where: {
-        orders: {
-          some: {
-            orderId: order.id,
+    const existingPackageCount = targetUnit.shippingProfile
+      ? 0
+      : await tx.shippingHandlingUnit.count({
+          where: {
+            orders: {
+              some: {
+                orderId: order.id,
+              },
+            },
           },
-        },
-      },
-    });
+        });
 
     const shippingUnit =
       targetUnit.shippingProfile ??
@@ -515,34 +542,34 @@ export class FulfillmentService {
         },
       }));
 
-    if (targetUnit.shippingProfile) {
-      await tx.shippingHandlingUnitOrder.upsert({
-        where: {
-          shipping_handling_unit_order_unique: {
-            shippingHandlingUnitId: shippingUnit.id,
-            orderId: order.id,
-          },
-        },
-        create: {
+    if (targetUnit.shippingProfile && !existingOrderLink) {
+      await tx.shippingHandlingUnitOrder.create({
+        data: {
           shippingHandlingUnitId: shippingUnit.id,
           orderId: order.id,
           orderNumber: order.orderNumber,
         },
-        update: {},
       });
     }
 
-    await tx.handlingUnit.update({
-      where: {
-        id: targetUnit.id,
-      },
-      data: {
-        assignedOrderId: order.id,
-        assignedWaveId: null,
-        purpose: HandlingUnitPurpose.SHIPPING,
-        status: HandlingUnitStatus.OPEN,
-      },
-    });
+    if (
+      targetUnit.assignedOrderId !== order.id ||
+      targetUnit.assignedWaveId !== null ||
+      targetUnit.purpose !== HandlingUnitPurpose.SHIPPING ||
+      targetUnit.status !== HandlingUnitStatus.OPEN
+    ) {
+      await tx.handlingUnit.update({
+        where: {
+          id: targetUnit.id,
+        },
+        data: {
+          assignedOrderId: order.id,
+          assignedWaveId: null,
+          purpose: HandlingUnitPurpose.SHIPPING,
+          status: HandlingUnitStatus.OPEN,
+        },
+      });
+    }
 
     return {
       id: shippingUnit.id,
