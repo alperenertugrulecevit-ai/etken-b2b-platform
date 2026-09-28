@@ -28,6 +28,7 @@ type PrintableLabel = {
   id: number;
   primaryText: string;
   secondaryText?: string;
+  barcodeHumanText?: string;
   barcodeValue: string;
   barcodeSvg: string;
 };
@@ -225,6 +226,7 @@ async function getProductLabels(
 
       select: {
         id: true,
+        code: true,
         name: true,
         barcode: true,
       },
@@ -232,8 +234,9 @@ async function getProductLabels(
 
   return products.map((product) => ({
     id: product.id,
-    primaryText: product.name,
-    secondaryText: product.barcode,
+    primaryText: product.code,
+    secondaryText: product.name,
+    barcodeHumanText: product.barcode,
     barcodeValue: product.barcode,
     barcodeSvg: createBarcodeSvg(
       product.barcode
@@ -249,7 +252,7 @@ function getReturnPath(
   }
 
   if (labelType === "product") {
-    return "/admin/products";
+    return "/admin/stock/sku-labels";
   }
 
   return "/admin/handling-units";
@@ -263,7 +266,7 @@ function getReturnLabel(
   }
 
   if (labelType === "product") {
-    return "Ürünlere Dön";
+    return "SKU Etiketine Dön";
   }
 
   return "Koli / Paletlere Dön";
@@ -501,9 +504,10 @@ export default async function LabelPrintPage({
          * Code 128
          */
         .product-label .label-primary {
-          min-height: 11mm;
-          font-size: 4.1mm;
-          -webkit-line-clamp: 2;
+          min-height: 6mm;
+          font-family: "Courier New", monospace;
+          font-size: 4.5mm;
+          -webkit-line-clamp: 1;
         }
 
         .label-secondary {
@@ -514,6 +518,26 @@ export default async function LabelPrintPage({
           font-size: 3.8mm;
           font-weight: 800;
           line-height: 1;
+          overflow-wrap: anywhere;
+        }
+
+        .product-label .label-secondary {
+          min-height: 9mm;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 3.5mm;
+          line-height: 1.15;
+        }
+
+        .barcode-human-text {
+          width: 100%;
+          margin: 1mm 0 0;
+          font-family: "Courier New", monospace;
+          font-size: 3.5mm;
+          font-weight: 900;
+          letter-spacing: 0.25mm;
+          line-height: 1;
+          color: #000;
+          text-align: center;
           overflow-wrap: anywhere;
         }
 
@@ -716,6 +740,12 @@ export default async function LabelPrintPage({
                   label.barcodeSvg,
               }}
             />
+
+            {label.barcodeHumanText && (
+              <p className="barcode-human-text">
+                {label.barcodeHumanText}
+              </p>
+            )}
           </article>
         ))}
       </section>

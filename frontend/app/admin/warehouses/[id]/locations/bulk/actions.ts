@@ -11,6 +11,7 @@ import { AuthorizationService } from "@/modules/authorization/services/authoriza
 export type BulkLocationActionState = {
   success: boolean;
   message: string;
+  createdIds: number[];
 };
 
 type LocationRange = {
@@ -76,6 +77,7 @@ export async function createBulkWarehouseLocations(
   ) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Geçerli bir depo bulunamadı.",
     };
@@ -143,6 +145,7 @@ export async function createBulkWarehouseLocations(
   if (!code) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Lokasyon kodu zorunludur. Örneğin A, B veya C.",
     };
@@ -151,6 +154,7 @@ export async function createBulkWarehouseLocations(
   if (!aisle) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Koridor bilgisi zorunludur.",
     };
@@ -164,6 +168,7 @@ export async function createBulkWarehouseLocations(
   ) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Bölüm başlangıç ve bitiş değerleri geçerli değil.",
     };
@@ -177,6 +182,7 @@ export async function createBulkWarehouseLocations(
   ) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Kat başlangıç ve bitiş değerleri geçerli değil.",
     };
@@ -190,6 +196,7 @@ export async function createBulkWarehouseLocations(
   ) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Göz başlangıç ve bitiş değerleri geçerli değil.",
     };
@@ -201,6 +208,7 @@ export async function createBulkWarehouseLocations(
   ) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Kapasite sıfırdan büyük bir tam sayı olmalıdır.",
     };
@@ -212,6 +220,7 @@ export async function createBulkWarehouseLocations(
   ) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Başlangıç sıra değeri sıfır veya pozitif olmalıdır.",
     };
@@ -224,6 +233,7 @@ export async function createBulkWarehouseLocations(
   ) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Geçerli bir lokasyon tipi seçin.",
     };
@@ -252,6 +262,7 @@ export async function createBulkWarehouseLocations(
   if (requestedLocationCount <= 0) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Oluşturulacak lokasyon bulunamadı.",
     };
@@ -260,6 +271,7 @@ export async function createBulkWarehouseLocations(
   if (requestedLocationCount > 2000) {
     return {
       success: false,
+      createdIds: [],
       message:
         "Tek işlemde en fazla 2.000 lokasyon oluşturabilirsiniz.",
     };
@@ -282,6 +294,7 @@ export async function createBulkWarehouseLocations(
     if (!warehouse) {
       return {
         success: false,
+        createdIds: [],
         message:
           "Lokasyonların ekleneceği depo bulunamadı.",
       };
@@ -290,6 +303,7 @@ export async function createBulkWarehouseLocations(
     if (!warehouse.isActive) {
       return {
         success: false,
+        createdIds: [],
         message:
           `${warehouse.code} - ${warehouse.name} deposu pasif durumda.`,
       };
@@ -347,8 +361,8 @@ export async function createBulkWarehouseLocations(
       }
     }
 
-    const result =
-      await prisma.warehouseLocation.createMany({
+    const createdLocations =
+      await prisma.warehouseLocation.createManyAndReturn({
         data: locations,
 
         /*
@@ -356,11 +370,12 @@ export async function createBulkWarehouseLocations(
          * o kayıt atlanır, diğerleri oluşturulur.
          */
         skipDuplicates: true,
+        select: { id: true },
       });
 
     const skippedCount =
       requestedLocationCount -
-      result.count;
+      createdLocations.length;
 
     revalidatePath("/admin");
 
@@ -376,9 +391,10 @@ export async function createBulkWarehouseLocations(
       `/admin/warehouses/${warehouseId}/locations/bulk`
     );
 
-    if (result.count === 0) {
+    if (createdLocations.length === 0) {
       return {
         success: false,
+        createdIds: [],
         message:
           "Seçilen aralıktaki tüm lokasyonlar daha önce oluşturulmuş.",
       };
@@ -386,8 +402,9 @@ export async function createBulkWarehouseLocations(
 
     return {
       success: true,
+      createdIds: createdLocations.map((location) => location.id),
       message:
-        `${result.count} lokasyon başarıyla oluşturuldu.` +
+        `${createdLocations.length} lokasyon başarıyla oluşturuldu.` +
         (
           skippedCount > 0
             ? ` ${skippedCount} tekrarlı lokasyon atlandı.`
@@ -402,6 +419,7 @@ export async function createBulkWarehouseLocations(
 
     return {
       success: false,
+      createdIds: [],
       message:
         error instanceof Error
           ? error.message

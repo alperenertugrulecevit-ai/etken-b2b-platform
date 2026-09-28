@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   useActionState,
   useMemo,
@@ -20,6 +22,7 @@ const initialState:
   BulkLocationActionState = {
   success: false,
   message: "",
+  createdIds: [],
 };
 
 function safeRangeCount(
@@ -147,6 +150,18 @@ export default function WarehouseLocationBulkCreateForm({
           <p className="mt-2">
             {state.message}
           </p>
+        </div>
+      )}
+
+      {state.success && state.createdIds.length > 0 && (
+        <div className="mt-6">
+          <Link
+            href={`/labels/print?type=location&ids=${state.createdIds.join(",")}&layout=a4`}
+            target="_blank"
+            className="block w-full rounded-xl bg-emerald-700 px-5 py-4 text-center font-bold text-white hover:bg-emerald-800"
+          >
+            🖨️ Oluşturulan Birimleri Yazdır
+          </Link>
         </div>
       )}
 

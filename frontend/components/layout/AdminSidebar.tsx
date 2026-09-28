@@ -29,6 +29,7 @@ const groups:MenuGroup[]=[
  ]},
  {title:"Stok Yönetimi",icon:"🗄️",items:[
   {href:"/admin/barcode-printers",icon:"🖨️",label:"Barkod Yazıcıları",permissionCodes:["HANDLING_UNIT_MANAGE"]},
+  {href:"/admin/stock/sku-labels",icon:"🏷️",label:"SKU Etiketi Yazdır",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/movements",icon:"📋",label:"Stok Hareketleri",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/thm-movements",icon:"🔄",label:"THM Hareketleri",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/manual",icon:"📥",label:"Manuel Stok İşlemi",permissionCodes:["INVENTORY_ADJUST"]},
@@ -39,6 +40,7 @@ const groups:MenuGroup[]=[
  ]},
  {title:"Handling Unit",icon:"🔗",items:[
   {href:"/admin/handling-units",icon:"🧱",label:"Koli / Palet Yönetimi",permissionCodes:["HANDLING_UNIT_VIEW","HANDLING_UNIT_MANAGE"]},
+  {href:"/admin/handling-units/locations",icon:"📍",label:"Lokasyon Oluşturma",permissionCodes:["LOCATION_MANAGE","HANDLING_UNIT_MANAGE"]},
   {href:"/admin/handling-units/transfers",icon:"🔄",label:"Koli / Palet Transferi",permissionCodes:["TRANSFER_EXECUTE"]},
   {href:"/admin/handling-units/merge",icon:"🔗",label:"Toplu Birleştirme",permissionCodes:["HANDLING_UNIT_MANAGE"]},
   {href:"/admin/handling-units/pallet-link",icon:"🔗",label:"Koli-Palet Bağlama",permissionCodes:["HANDLING_UNIT_MANAGE"]},

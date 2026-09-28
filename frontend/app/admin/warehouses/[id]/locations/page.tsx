@@ -8,7 +8,6 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
-import WarehouseLocationCreateForm from "@/components/admin/WarehouseLocationCreateForm";
 import WarehouseLocationBulkUpdateForm from "@/components/admin/WarehouseLocationBulkUpdateForm";
 import WarehouseLocationLabelSelector from "@/components/admin/WarehouseLocationLabelSelector";
 
@@ -417,14 +416,7 @@ export default async function WarehouseLocationsPage({
         </article>
       </div>
 
-      <div className="mt-8 grid gap-8 2xl:grid-cols-[460px_1fr]">
-        <WarehouseLocationCreateForm
-          warehouseId={warehouse.id}
-          warehouseIsActive={
-            warehouse.isActive
-          }
-        />
-
+      <div className="mt-8">
         <div className="space-y-6">
           <form className="rounded-2xl bg-white p-6 shadow">
             <div className="grid gap-5 md:grid-cols-3">
