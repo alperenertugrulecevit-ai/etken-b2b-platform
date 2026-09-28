@@ -223,7 +223,7 @@ export default function EcommercePackagingScreen() {
             <button type="submit" className="sr-only">Desi barkodunu işle</button>
           </form>
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
-            ⓘ Desi barkodu okutulacak. Paketleme tamamlanınca yazdırma işlemi başlatılabilir.
+            {boxCode ? `✓ ${boxCode} Desi / Koli barkodu alındı.` : "ⓘ Desi barkodu okutulacak. Paketleme tamamlanınca yazdırma işlemi başlatılabilir."}
           </div>
         </section>
 
@@ -292,9 +292,15 @@ export default function EcommercePackagingScreen() {
             const dispatch=await dispatchResponse.json();
             if(!dispatchResponse.ok || !dispatch.success){setMessage(`Paketleme tamamlandı fakat irsaliye oluşturulamadı: ${dispatch.message ?? "-"}`);return;}
 
-            const printResponse=await fetch("/api/admin/ecommerce/packaging/packing-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shippingHandlingUnitBarcode:data.shippingHandlingUnitBarcode,printerId})});
-            const print=await printResponse.json();
-            if(!printResponse.ok || !print.success){setMessage(`İrsaliye kesildi (${dispatch.dispatchNumber}) fakat çeki listesi basılamadı: ${print.message ?? "-"}`);return;}
+            let packingListText = "Çeki listesi yazdırılmış olarak işaretlendi (yazıcı tanımlı değil).";
+            if(printerId){
+              const printResponse=await fetch("/api/admin/ecommerce/packaging/packing-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shippingHandlingUnitBarcode:data.shippingHandlingUnitBarcode,printerId})});
+              const print=await printResponse.json();
+              if(!printResponse.ok || !print.success){setMessage(`İrsaliye kesildi (${dispatch.dispatchNumber}) fakat çeki listesi basılamadı: ${print.message ?? "-"}`);return;}
+              packingListText=`Çeki listesi: ${print.printerCode}.`;
+            } else {
+              await fetch("/api/admin/ecommerce/packaging/print-status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shippingHandlingUnitBarcode:data.shippingHandlingUnitBarcode})});
+            }
 
             const printWindow=window.open("", "ecommerce-a4-print", "width=1000,height=800");
             if(printWindow){
@@ -306,11 +312,11 @@ export default function EcommercePackagingScreen() {
               },500);
             }
             const giftText=Array.isArray(dispatch.giftNotes)&&dispatch.giftNotes.length ? " Hediye notu için de A4 baskı penceresi açıldı." : "";
-            setMessage(`${data.orderNumber} tamamlandı. İrsaliye: ${dispatch.dispatchNumber}. Çeki listesi: ${print.printerCode}. A4 irsaliye baskısı açıldı.${giftText}`);
+            setMessage(`${data.orderNumber} tamamlandı. İrsaliye: ${dispatch.dispatchNumber}. ${packingListText} A4 irsaliye baskısı açıldı.${giftText}`);
             setOrder(null); setRows([]); setBoxCode(""); setCurrentImage(null); setShippingThm(null);
           } catch { setMessage("HATA: Paketleme tamamlama servisine ulaşılamadı."); }
           finally { setBusy(false); requestAnimationFrame(()=>scannerRef.current?.focus()); }
-        }} disabled={!order || !boxCode || !printerId || total === 0 || packed !== total || busy} className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
+        }} disabled={!order || !boxCode || total === 0 || packed !== total || busy} className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
       </div>
     </div>
   );
