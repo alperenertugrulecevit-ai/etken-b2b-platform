@@ -3,13 +3,43 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 type Row = {
+  id: number;
   code: string;
+  barcode: string;
   name: string;
   ordered: number;
   packed: number;
+  imageUrl: string | null;
 };
 
-const initialRows: Row[] = [];
+type OrderInfo = {
+  orderNumber: string;
+  placedBy: string;
+  recipientName: string;
+  recipientAddress: string;
+  phone: string;
+  totalQuantity: number;
+  carrier: string;
+  gift: boolean;
+  giftNote: string;
+};
+
+type ScanResponse = {
+  success: boolean;
+  message?: string;
+  mode?: "THM" | "FIFO_SINGLE";
+  shippingHandlingUnitBarcode?: string | null;
+  order?: OrderInfo & {
+    items: Array<{
+      id: number;
+      code: string;
+      barcode: string;
+      name: string;
+      ordered: number;
+      imageUrl: string | null;
+    }>;
+  };
+};
 
 function BarcodeIcon() {
   return <span aria-hidden="true" className="font-black tracking-[-2px]">|||||</span>;
@@ -19,19 +49,86 @@ export default function EcommercePackagingScreen() {
   const scannerRef = useRef<HTMLInputElement>(null);
   const [scan, setScan] = useState("");
   const [message, setMessage] = useState("THM veya ürün barkodu okutun.");
-  const [rows] = useState<Row[]>(initialRows);
+  const [order, setOrder] = useState<OrderInfo | null>(null);
+  const [shippingThm, setShippingThm] = useState<string | null>(null);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     scannerRef.current?.focus();
   }, []);
 
-  function submitScan(event: FormEvent) {
+  async function submitScan(event: FormEvent) {
     event.preventDefault();
-    const value = scan.trim();
-    if (!value) return;
-    setMessage(`${value} okundu. Sipariş bağlantısı API aşamasında aktif edilecek.`);
+    const value = scan.trim().toUpperCase();
+    if (!value || busy) return;
+
     setScan("");
-    requestAnimationFrame(() => scannerRef.current?.focus());
+
+    if (order) {
+      const index = rows.findIndex((row) => row.barcode.toUpperCase() === value);
+      if (index < 0) {
+        setMessage(`HATA: ${value} bu siparişe ait değil.`);
+        requestAnimationFrame(() => scannerRef.current?.focus());
+        return;
+      }
+
+      const row = rows[index];
+      if (row.packed >= row.ordered) {
+        setMessage(`HATA: ${row.code} için sipariş miktarı aşılamaz.`);
+        requestAnimationFrame(() => scannerRef.current?.focus());
+        return;
+      }
+
+      setRows((current) =>
+        current.map((item, itemIndex) =>
+          itemIndex === index ? { ...item, packed: item.packed + 1 } : item,
+        ),
+      );
+      setCurrentImage(row.imageUrl);
+      setMessage(`${row.code} okundu. Paketleme miktarı güncellendi.`);
+      requestAnimationFrame(() => scannerRef.current?.focus());
+      return;
+    }
+
+    setBusy(true);
+    setMessage(`${value} aranıyor...`);
+
+    try {
+      const response = await fetch("/api/admin/ecommerce/packaging/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode: value }),
+      });
+      const data = (await response.json()) as ScanResponse;
+
+      if (!response.ok || !data.success || !data.order) {
+        setMessage(`HATA: ${data.message ?? "Sipariş bulunamadı."}`);
+        return;
+      }
+
+      setOrder(data.order);
+      setShippingThm(data.shippingHandlingUnitBarcode ?? null);
+      const isSingleFifo = data.mode === "FIFO_SINGLE";
+      setRows(
+        data.order.items.map((item) => ({
+          ...item,
+          packed: isSingleFifo ? 1 : 0,
+        })),
+      );
+      if (isSingleFifo) setCurrentImage(data.order.items[0]?.imageUrl ?? null);
+      setMessage(
+        isSingleFifo
+          ? `${data.order.orderNumber} FIFO ile bulundu; tek ürün paketleme doğrulaması tamamlandı.`
+          : `${data.order.orderNumber} siparişi yüklendi. Ürünleri okutun.`,
+      );
+    } catch {
+      setMessage("HATA: Paketleme servisine ulaşılamadı.");
+    } finally {
+      setBusy(false);
+      requestAnimationFrame(() => scannerRef.current?.focus());
+    }
   }
 
   const total = rows.reduce((sum, row) => sum + row.ordered, 0);
@@ -59,8 +156,8 @@ export default function EcommercePackagingScreen() {
           </div>
           <dl className="space-y-0 text-sm">
             {[
-              ["Sipariş No", "—"], ["Siparişi Veren", "—"], ["Alıcı İsmi", "—"], ["Alıcı Adresi", "—"],
-              ["Telefon No", "—"], ["Sipariş Miktarı", "—"], ["Nakliyeci", "—"], ["Hediye", "—"], ["Hediye Notu", "—"],
+              ["Sipariş No", order?.orderNumber ?? "—"], ["Siparişi Veren", order?.placedBy ?? "—"], ["Alıcı İsmi", order?.recipientName ?? "—"], ["Alıcı Adresi", order?.recipientAddress ?? "—"],
+              ["Telefon No", order?.phone ?? "—"], ["Sipariş Miktarı", order ? String(order.totalQuantity) : "—"], ["Nakliyeci", order?.carrier ?? "—"], ["Hediye", order ? (order.gift ? "Evet" : "Hayır") : "—"], ["Hediye Notu", order?.giftNote || "—"],
             ].map(([label,value]) => (
               <div key={label} className="grid grid-cols-[130px_1fr] border-b border-slate-100 py-2 last:border-0">
                 <dt className="font-medium text-slate-500">{label}:</dt><dd className="font-semibold text-slate-900">{value}</dd>
@@ -94,10 +191,12 @@ export default function EcommercePackagingScreen() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 border-b border-slate-200 pb-3 text-lg font-black text-slate-900">▣ Ürün Görseli</h2>
-          <div className="flex h-[270px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-slate-400">
-            <div className="mb-3 text-5xl">📦</div>
-            <p className="font-bold">Ürün okutulduğunda</p>
-            <p className="text-sm">görsel burada gösterilecek</p>
+          <div className="flex h-[270px] flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-slate-400">
+            {currentImage ? <img src={currentImage} alt="Okutulan ürün" className="h-full w-full object-contain p-3" /> : <>
+              <div className="mb-3 text-5xl">📦</div>
+              <p className="font-bold">Ürün okutulduğunda</p>
+              <p className="text-sm">görsel burada gösterilecek</p>
+            </>}
           </div>
         </section>
       </div>
@@ -107,7 +206,7 @@ export default function EcommercePackagingScreen() {
         <table className="w-full overflow-hidden rounded-xl text-sm">
           <thead className="bg-slate-100 text-slate-700"><tr>{["#","Ürün Kodu","Ürün Tanımı","Sipariş Miktarı","Paketleme Miktarı","Kalan Miktar","Durum"].map(x=><th key={x} className="border border-slate-200 px-4 py-3 text-left font-black">{x}</th>)}</tr></thead>
           <tbody>
-            {rows.length ? rows.map((row,index)=><tr key={row.code}><td className="border border-slate-200 px-4 py-3">{index+1}</td><td className="border border-slate-200 px-4 py-3">{row.code}</td><td className="border border-slate-200 px-4 py-3">{row.name}</td><td className="border border-slate-200 px-4 py-3">{row.ordered}</td><td className="border border-slate-200 px-4 py-3">{row.packed}</td><td className="border border-slate-200 px-4 py-3">{row.ordered-row.packed}</td><td className="border border-slate-200 px-4 py-3 font-bold text-blue-700">Bekliyor</td></tr>) : (
+            {rows.length ? rows.map((row,index)=><tr key={row.code}><td className="border border-slate-200 px-4 py-3">{index+1}</td><td className="border border-slate-200 px-4 py-3">{row.code}</td><td className="border border-slate-200 px-4 py-3">{row.name}</td><td className="border border-slate-200 px-4 py-3">{row.ordered}</td><td className="border border-slate-200 px-4 py-3">{row.packed}</td><td className="border border-slate-200 px-4 py-3">{row.ordered-row.packed}</td><td className="border border-slate-200 px-4 py-3 font-bold text-blue-700">{row.packed >= row.ordered ? "Tamamlandı" : "Bekliyor"}</td></tr>) : (
               <tr><td colSpan={7} className="border border-slate-200 px-4 py-10 text-center font-semibold text-slate-400">Sipariş bulununca ürünler burada listelenecek.</td></tr>
             )}
           </tbody>
@@ -117,7 +216,7 @@ export default function EcommercePackagingScreen() {
       <div className="mt-4 grid grid-cols-3 gap-4">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-lg font-black">🚚 Sevk THM Bilgisi</h2>
-          <div className="flex items-center justify-between"><span className="text-slate-500">Sevk THM:</span><span className="rounded-lg bg-blue-50 px-3 py-2 font-black text-blue-700">Sistem tarafından oluşturulacak</span></div>
+          <div className="flex items-center justify-between"><span className="text-slate-500">Sevk THM:</span><span className="rounded-lg bg-blue-50 px-3 py-2 font-black text-blue-700">{shippingThm ?? (order ? "Tekli sipariş - otomatik THM oluşturulacak" : "—")}</span></div>
           <p className="mt-3 text-xs font-semibold text-amber-700">Tek kalem / tek adet siparişte benzersiz Sevk THM otomatik üretilecek.</p>
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -136,7 +235,7 @@ export default function EcommercePackagingScreen() {
           <p>* Çeki listesinde Sipariş No ve Sevk THM barkodları yazdırılır.</p>
           <p>* Tekli siparişlerde ürün barkodu ile FIFO sırasına göre en eski uygun sipariş bulunur.</p>
         </div>
-        <button type="button" disabled className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
+        <button type="button" disabled={!order || total === 0 || packed !== total} className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
       </div>
     </div>
   );
