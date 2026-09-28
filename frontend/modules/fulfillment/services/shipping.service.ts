@@ -469,15 +469,9 @@ export class ShippingService {
           );
         }
 
-        if (
-          shippingUnit.dispatchDocument
-            ?.status ===
-          DispatchDocumentStatus.ISSUED
-        ) {
-          throw new Error(
-            "Bu Sevk THM için irsaliye daha önce oluşturulmuş."
-          );
-        }
+        // İrsaliye paketleme/evrak adımında önceden kesilmiş olabilir.
+        // Sevk Et bu durumda mevcut ISSUED belgeyi kullanarak fiziksel sevkiyatı
+        // tamamlamalıdır; yalnızca irsaliye var diye sevki engellememelidir.
 
         const pendingItems =
           shippingUnit.items
