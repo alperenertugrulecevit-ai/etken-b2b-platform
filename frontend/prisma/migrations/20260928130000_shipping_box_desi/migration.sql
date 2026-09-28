@@ -30,3 +30,15 @@ CREATE INDEX "ShippingHandlingUnit_boxCode_idx" ON "ShippingHandlingUnit"("boxCo
 ALTER TABLE "ShippingBoxDefinitionWarehouse" ADD CONSTRAINT "ShippingBoxDefinitionWarehouse_boxDefinitionId_fkey" FOREIGN KEY ("boxDefinitionId") REFERENCES "ShippingBoxDefinition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ShippingBoxDefinitionWarehouse" ADD CONSTRAINT "ShippingBoxDefinitionWarehouse_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ShippingHandlingUnit" ADD CONSTRAINT "ShippingHandlingUnit_boxDefinitionId_fkey" FOREIGN KEY ("boxDefinitionId") REFERENCES "ShippingBoxDefinition"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+INSERT INTO "ShippingBoxDefinition" ("id","code","boxType","dimensions","desi","updatedAt") VALUES
+('box-b2b001','B2B001','B2B','15*20*20',8,CURRENT_TIMESTAMP),
+('box-b2b002','B2B002','B2B','30*20*20',16,CURRENT_TIMESTAMP),
+('box-b2b003','B2B003','B2B','60*40*40',32,CURRENT_TIMESTAMP),
+('box-b2c001','B2C001','B2C','10*10*30',1,CURRENT_TIMESTAMP),
+('box-b2c002','B2C002','B2C','15*20*20',8,CURRENT_TIMESTAMP),
+('box-b2c003','B2C003','B2C','30*20*20',16,CURRENT_TIMESTAMP),
+('box-b2c004','B2C004','B2C','60*40*40',32,CURRENT_TIMESTAMP);
+INSERT INTO "ShippingBoxDefinitionWarehouse" ("boxDefinitionId","warehouseId")
+SELECT b."id",w."id" FROM "ShippingBoxDefinition" b CROSS JOIN "Warehouse" w
+WHERE b."id" IN ('box-b2b001','box-b2b002','box-b2b003','box-b2c001','box-b2c002','box-b2c003','box-b2c004') AND w."isActive"=true;
