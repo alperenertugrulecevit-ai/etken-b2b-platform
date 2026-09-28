@@ -29,8 +29,6 @@ export default function RFShippingUnitCloseForm() {
     useRef<HTMLInputElement>(null);
   const boxCodeInputRef =
     useRef<HTMLInputElement>(null);
-  const formRef =
-    useRef<HTMLFormElement>(null);
 
   const [
     shippingHandlingUnitBarcode,
@@ -38,6 +36,7 @@ export default function RFShippingUnitCloseForm() {
   ] = useState("");
 
   const [boxCode,setBoxCode] = useState("");
+  const [scanCycle, setScanCycle] = useState(0);
 
   const [
     terminalCode,
@@ -93,13 +92,10 @@ export default function RFShippingUnitCloseForm() {
 
     setShippingHandlingUnitBarcode("");
     setBoxCode("");
-    formRef.current?.reset();
+    setScanCycle((cycle) => cycle + 1);
 
     window.setTimeout(() => {
-      setShippingHandlingUnitBarcode("");
-      setBoxCode("");
       barcodeInputRef.current?.focus();
-      barcodeInputRef.current?.select();
     }, 50);
   }, [state]);
 
@@ -139,7 +135,7 @@ export default function RFShippingUnitCloseForm() {
   return (
     <div className="space-y-5">
       <form
-        ref={formRef}
+        key={scanCycle}
         action={formAction}
         onSubmit={handleSubmit}
         className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
