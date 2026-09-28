@@ -577,7 +577,10 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
     })
     .filter(
       (order) =>
-        order.remainingQuantity > 0 &&
+        // Aktif Zone görevi seçildiyse siparişi formdan düşürmeyelim.
+        // Görev satırları ayrı ilerleme tuttuğu için sipariş kalemi pickedQuantity
+        // toplamı Zone görevindeki kalan miktarı temsil etmeyebilir.
+        (zoneTask ? order.items.length > 0 : order.remainingQuantity > 0) &&
         order.isFlowPickable
     );
 
