@@ -16,6 +16,11 @@ import RFPickingForm from "@/components/rf/RFPickingForm";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { claimZoneTaskById } from "@/app/rf/zone-picking/actions";
 
+// RF toplama gerçek zamanlı operasyon ekranıdır; seçim sonrası eski RSC/cache
+// verisinin tekrar kullanılmasını engelle.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function getOrderStatusLabel(
   status: string
 ) {
