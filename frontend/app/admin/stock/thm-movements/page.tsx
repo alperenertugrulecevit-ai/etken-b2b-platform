@@ -25,6 +25,7 @@ const THM_OPERATION_TYPES: WmsOperationType[] = [
   WmsOperationType.UNADDRESSING,
   WmsOperationType.WAREHOUSE_TRANSFER,
   WmsOperationType.LOST_STOCK,
+  WmsOperationType.HANDLING_UNIT_UPDATE,
 ];
 
 const OPERATION_OPTIONS: Array<{
@@ -70,6 +71,10 @@ const OPERATION_OPTIONS: Array<{
   {
     value: WmsOperationType.UNADDRESSING,
     label: "Adresten Çıkarma",
+  },
+  {
+    value: WmsOperationType.HANDLING_UNIT_UPDATE,
+    label: "THM Birleştirme",
   },
   {
     value: WmsOperationType.WAREHOUSE_TRANSFER,
@@ -1216,6 +1221,8 @@ export default async function ThmMovementsPage({
                     Hedef / İşlem THM
                   </th>
 
+                  <th className="px-4 py-4">Adres</th>
+
                   <th className="px-4 py-4">
                     Miktar
                   </th>
@@ -1256,7 +1263,7 @@ export default async function ThmMovementsPage({
                   <tr>
                     <td
                       colSpan={
-                        13
+                        14
                       }
                       className="px-6 py-16 text-center text-slate-500"
                     >
@@ -1381,6 +1388,10 @@ export default async function ThmMovementsPage({
                                   Mal Kabul THM
                                 </p>
                               )}
+                          </td>
+
+                          <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-700">
+                            {log.targetLocationCode || log.sourceLocationCode || "-"}
                           </td>
 
                           <td className="whitespace-nowrap px-4 py-4 font-black text-slate-900">
