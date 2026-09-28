@@ -427,7 +427,7 @@ export async function mergeHandlingUnits(
 
           await tx.wmsOperationLog.createMany({
             data: sourceUnits.map((sourceUnit) => ({
-              operationType: "FULL_TRANSFER",
+              operationType: "HANDLING_UNIT_UPDATE",
               module: "ADMIN_HANDLING_UNIT_MERGE",
               entityType: "HANDLING_UNIT",
               entityId: sourceUnit.id,
