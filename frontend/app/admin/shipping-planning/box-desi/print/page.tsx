@@ -83,7 +83,6 @@ export default async function Page({
       />
 
       <div className="toolbar">
-        <button type="button" onClick={undefined} style={{ display: "none" }} />
         <b>Yazdırmak için tarayıcı menüsünden Yazdır veya Ctrl+P kullanın.</b>
         <Link href="/admin/shipping-planning/box-desi">Geri dön</Link>
       </div>
