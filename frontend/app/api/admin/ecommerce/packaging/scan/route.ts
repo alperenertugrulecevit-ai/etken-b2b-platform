@@ -32,7 +32,7 @@ function orderPayload(order: any, shippingHandlingUnitBarcode: string | null, mo
         : [order.customer.address, order.customer.district, order.customer.city].filter(Boolean).join(" / "),
       phone: address?.phone || order.customer.phone || "",
       totalQuantity,
-      carrier: "-",
+      carrier: order.carrier ? `${order.carrier.code} - ${order.carrier.name}` : "-",
       gift: Boolean(order.customerNote?.trim()),
       giftNote: order.customerNote?.trim() || "",
       status: order.status,
@@ -57,6 +57,7 @@ const orderSelect = {
   placedByUsername: true,
   status: true,
   customerNote: true,
+  carrier: { select: { code: true, name: true } },
   customer: {
     select: {
       companyName: true,
