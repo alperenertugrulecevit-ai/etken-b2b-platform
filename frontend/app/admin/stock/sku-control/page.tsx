@@ -11,7 +11,11 @@ export default async function SkuStockControlPage({searchParams}:Props){
   prisma.warehouse.findMany({where:{isActive:true},orderBy:{code:"asc"},select:{id:true,code:true,name:true}}),
   prisma.product.findMany({where:{isActive:true},orderBy:{code:"asc"},take:500,select:{code:true,name:true}})
  ]);
- const stocks=codes.length?await prisma.warehouseProductStock.findMany({where:{...(warehouseIds.length?{warehouseId:{in:warehouseIds}}:{}),product:{code:{in:codes}}},include:{warehouse:true,product:true},orderBy:[{warehouse:{code:"asc"}},{product:{code:"asc"}}]}):[];
+ const stocks=codes.length?await prisma.warehouseProductStock.findMany({
+  where:{...(warehouseIds.length?{warehouseId:{in:warehouseIds}}:{}),product:{code:{in:codes}}},
+  include:{warehouse:true,product:true},
+ }):[];
+ stocks.sort((a,b)=>a.warehouse.code.localeCompare(b.warehouse.code,"tr")||a.product.code.localeCompare(b.product.code,"tr"));
  return <main className="p-6 lg:p-10"><h1 className="text-4xl font-bold">SKU Stok Kontrol</h1><p className="mt-2 text-slate-500">Bir veya birden fazla ürünün seçili depolardaki güncel stoklarını görüntüleyin.</p>
  <form className="mt-7 rounded-2xl bg-white p-6 shadow"><div className="grid gap-5 lg:grid-cols-2"><fieldset><legend className="font-bold">Depolar (çoklu seçim)</legend><div className="mt-2 max-h-52 overflow-auto rounded-xl border p-3">{warehouses.map(w=><label key={w.id} className="flex gap-2 py-1"><input type="checkbox" name="warehouseId" value={w.id} defaultChecked={warehouseIds.includes(w.id)}/>{w.code} - {w.name}</label>)}</div></fieldset>
  <div><label className="font-bold">Ürün Kodu</label><div className="mt-2 flex gap-2"><input name="addCode" placeholder="Ürün kodunu yazın" className="min-w-0 flex-1 rounded-xl border p-3 uppercase"/><button type="button" popoverTarget="stock-product-picker" className="rounded-xl border px-4 text-xl">⌄</button></div><p className="mt-2 text-sm text-slate-500">Liste: {codes.join(", ")||"Henüz ürün eklenmedi"}</p>{codes.map(c=><input key={c} type="hidden" name="productCodes" value={c}/>)}</div></div>
