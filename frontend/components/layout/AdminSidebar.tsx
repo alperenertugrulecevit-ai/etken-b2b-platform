@@ -39,6 +39,7 @@ const groups:MenuGroup[]=[
  ]},
  {title:"Handling Unit",icon:"🔗",items:[
   {href:"/admin/handling-units",icon:"🧱",label:"Koli / Palet Yönetimi",permissionCodes:["HANDLING_UNIT_VIEW","HANDLING_UNIT_MANAGE"]},
+  {href:"/admin/handling-units/locations",icon:"📍",label:"Lokasyon Oluşturma",permissionCodes:["LOCATION_MANAGE","HANDLING_UNIT_MANAGE"]},
   {href:"/admin/handling-units/transfers",icon:"🔄",label:"Koli / Palet Transferi",permissionCodes:["TRANSFER_EXECUTE"]},
   {href:"/admin/handling-units/merge",icon:"🔗",label:"Toplu Birleştirme",permissionCodes:["HANDLING_UNIT_MANAGE"]},
   {href:"/admin/handling-units/pallet-link",icon:"🔗",label:"Koli-Palet Bağlama",permissionCodes:["HANDLING_UNIT_MANAGE"]},
