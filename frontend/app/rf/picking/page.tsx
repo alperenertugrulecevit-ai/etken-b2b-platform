@@ -234,9 +234,11 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
     }),
 
     /*
-     * Yalnızca planlanabilir kaynak stoklar.
+     * Kaynak stokları yalnızca kullanıcı bir Zone görevi seçtiğinde yükle.
+     * Görev seçilmeden tüm depo THM/stok içeriğini taramak toplama ekranını
+     * gereksiz yere yavaşlatıyordu.
      */
-    prisma.handlingUnit.findMany({
+    zoneTask ? prisma.handlingUnit.findMany({
       where: {
         ...(zoneTask ? { id: { in: plannedSourceUnitIds } } : {}),
         purpose:
@@ -345,15 +347,16 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           },
         },
       },
-    }),
+    }) : Promise.resolve([]),
 
     /*
      * Wave akışı için Toplama THM'leri,
      * doğrudan sipariş akışı için Sevk THM'leri.
      * Form seçilen siparişin akışına göre
      * uygun hedefleri ayrıca filtreler.
+     * Hedef THM listesi de aktif görev olmadan yüklenmez.
      */
-    prisma.handlingUnit.findMany({
+    zoneTask ? prisma.handlingUnit.findMany({
       where: {
         purpose: {
           in: [
@@ -432,7 +435,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           },
         },
       },
-    }),
+    }) : Promise.resolve([]),
     prisma.zonePickTask.findMany({
       where: {
         OR: [
