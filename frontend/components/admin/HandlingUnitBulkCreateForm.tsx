@@ -242,7 +242,7 @@ export default function HandlingUnitBulkCreateForm() {
               target="_blank"
               className="rounded-xl bg-blue-900 px-5 py-4 text-center font-bold text-white hover:bg-blue-800"
             >
-              🖨️ Oluşturulan Birimleri Yazdır
+              🖨️ A4 3×5 Etiketleri
             </Link>
 
             <Link
