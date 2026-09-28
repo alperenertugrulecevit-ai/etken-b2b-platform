@@ -177,7 +177,7 @@ export default async function AdminLayout({
           <AdminTopbar initials={profile.username.slice(0,2).toUpperCase()} fullName={fullName} roleSummary={roleSummary} />
         </header>
 
-        <main className="min-w-0 overflow-x-hidden">
+        <main className="min-w-0 overflow-x-auto">
           <AdminTableEnhancer />
           {children}
         </main>
