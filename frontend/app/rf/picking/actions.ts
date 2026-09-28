@@ -338,6 +338,15 @@ export async function rfPickOrderItem(
 
 
   try {
+    const perfStartedAt = Date.now();
+    const perfMarks: Record<string, number> = {};
+    let perfLastAt = perfStartedAt;
+    const perfMark = (name: string) => {
+      const now = Date.now();
+      perfMarks[name] = now - perfLastAt;
+      perfLastAt = now;
+    };
+
     const result = await prisma.$transaction(
       async (tx) => {
         const order = await tx.order.findUnique({
@@ -385,6 +394,7 @@ export async function rfPickOrderItem(
           },
         });
 
+        perfMark("order");
         if (!order) {
           throw new Error(`${orderNumber} numaralı sipariş bulunamadı.`);
         }
@@ -393,6 +403,7 @@ export async function rfPickOrderItem(
           where: { id: zoneTaskId, orderId: order.id, claimedByUserId: currentUser.id, status: { in: ["CLAIMED", "IN_PROGRESS"] } },
           select: { id: true, zoneId: true, status: true, plannedQuantity: true, pickedQuantity: true },
         }) : null;
+        perfMark("zoneTask");
         if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bu kullanıcıya ait değil veya artık aktif değil.");
 
         if (!canPickOrder(order.status)) {
@@ -418,11 +429,13 @@ export async function rfPickOrderItem(
           order.id,
         );
 
+        perfMark("resolveFlow");
         await FulfillmentService.ensureOrderFulfillment(tx, {
           orderId: order.id,
           flowType: pickingFlow.flowType,
           waveId: pickingFlow.waveId,
         });
+        perfMark("ensureFulfillment");
 
         const directShippingUnit =
           pickingFlow.flowType === OrderFulfillmentFlow.WAVE
@@ -447,6 +460,7 @@ export async function rfPickOrderItem(
           });
         }
 
+        perfMark("prepareTarget");
         const orderItem = order.items.find(
           (item) =>
             (item.product.barcode.trim().toUpperCase() === productBarcode ||
@@ -579,6 +593,7 @@ export async function rfPickOrderItem(
           }),
         ]);
 
+        perfMark("sourceTarget");
         if (!sourceUnit) {
           throw new Error(`${sourceBarcode} barkodlu kaynak THM bulunamadı.`);
         }
@@ -830,6 +845,7 @@ export async function rfPickOrderItem(
           },
         });
 
+        perfMark("stockMoves");
         if (directShippingUnit) {
           await FulfillmentService.recordDirectShippingItem(tx, {
             shippingHandlingUnitId: directShippingUnit.id,
@@ -845,6 +861,7 @@ export async function rfPickOrderItem(
          * OrderItem tablosunu tekrar okumak yerine güncellenen satırı bellekte
          * birleştiriyoruz. Hedef ürünün yeni miktarı da upsert sonucunda mevcut.
          */
+        perfMark("directShippingItem");
         const updatedOrderItems = order.items.map((item) =>
           item.id === updatedOrderItem.id
             ? { quantity: updatedOrderItem.quantity, pickedQuantity: updatedOrderItem.pickedQuantity }
@@ -931,6 +948,7 @@ export async function rfPickOrderItem(
         }
 
 
+        perfMark("zoneProgress");
         const remainingZoneTasks = await tx.zonePickTask.count({
           where: { orderId: order.id, status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] }, ...(zoneTask ? { id: { not: zoneTask.id } } : {}) },
         });
@@ -939,6 +957,7 @@ export async function rfPickOrderItem(
           (item) => item.pickedQuantity >= item.quantity,
         ) && remainingZoneTasks === 0 && currentZoneWillComplete;
 
+        perfMark("completionCheck");
         const pickingRecord = await tx.pickingRecord.create({
           data: {
             orderId: order.id,
@@ -967,6 +986,7 @@ export async function rfPickOrderItem(
           },
         });
 
+        perfMark("pickingRecord");
         // Konsolidasyon durumu yalnızca Zone görevi tamamlandığında değişebilir.
         // Her ürün okutmasında senkronizasyon yapmak gereksiz DB sorguları üretir.
         if (zoneTask && taskCompleted) {
@@ -999,6 +1019,7 @@ export async function rfPickOrderItem(
           });
         }
 
+        perfMark("fulfillmentProgress");
         const targetTypeLabel = isWavePicking ? "Toplama THM" : "Sevk THM";
 
         await tx.wmsOperationLog.create({
@@ -1103,6 +1124,7 @@ export async function rfPickOrderItem(
           },
         });
 
+        perfMark("wmsLog");
         const progressPercentage =
           orderTotalQuantity > 0
             ? Math.min(
@@ -1167,6 +1189,14 @@ export async function rfPickOrderItem(
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       },
     );
+
+    perfMark("transactionCommit");
+    console.info("[RF_PICKING_PERF]", JSON.stringify({
+      orderNumber,
+      productBarcode,
+      totalMs: Date.now() - perfStartedAt,
+      ...perfMarks,
+    }));
 
     /*
      * RF formu başarılı okutma sonucunu action state üzerinden yerel olarak
