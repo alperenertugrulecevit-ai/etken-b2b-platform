@@ -6,7 +6,7 @@ const arr=(v:string|string[]|undefined)=>Array.isArray(v)?v:v?[v]:[];
 export default async function SkuStockControlPage({searchParams}:Props){
  await AuthorizationService.requirePermission("INVENTORY_VIEW");
  const q=await searchParams; const warehouseIds=arr(q.warehouseId).map(Number).filter(Number.isInteger);
- const codes=Array.from(new Set([...arr(q.productCodes).flatMap(x=>x.split(",")),q.addCode??""].map(x=>x.trim().toUpperCase()).filter(Boolean)));
+ const codes=Array.from(new Set([...arr(q.productCodes).flatMap(x=>x.split(",")),...arr(q.addCode)].map(x=>x.trim().toUpperCase()).filter(Boolean)));
  const [warehouses,products]=await Promise.all([
   prisma.warehouse.findMany({where:{isActive:true},orderBy:{code:"asc"},select:{id:true,code:true,name:true}}),
   prisma.product.findMany({where:{isActive:true},orderBy:{code:"asc"},take:500,select:{code:true,name:true}})
