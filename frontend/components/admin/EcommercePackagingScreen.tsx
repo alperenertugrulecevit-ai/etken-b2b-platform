@@ -56,9 +56,19 @@ export default function EcommercePackagingScreen() {
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [boxCode, setBoxCode] = useState("");
+  const [printers, setPrinters] = useState<Array<{id:string;code:string;name:string}>>([]);
+  const [printerId, setPrinterId] = useState("");
 
   useEffect(() => {
     scannerRef.current?.focus();
+    fetch("/api/admin/ecommerce/packaging/printers")
+      .then((response)=>response.json())
+      .then((data)=>{
+        const list=Array.isArray(data.printers)?data.printers:[];
+        setPrinters(list);
+        if(list.length===1) setPrinterId(list[0].id);
+      })
+      .catch(()=>setMessage("UYARI: Barkod yazıcıları alınamadı."));
   }, []);
 
   async function submitScan(event: FormEvent) {
@@ -228,7 +238,13 @@ export default function EcommercePackagingScreen() {
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-lg font-black">🖨️ Yazdırılacak Belgeler</h2>
-          <div className="space-y-2 text-sm font-semibold"><p>☑ Çeki Listesi <span className="text-slate-500">(Barkod Printer)</span></p><p>☑ İrsaliye <span className="text-slate-500">(A4 - Laser Yazıcı)</span></p><p>☑ Hediye Notu <span className="text-slate-500">(varsa, A4 - Laser Yazıcı)</span></p></div>
+          <div className="space-y-2 text-sm font-semibold">
+            <p>☑ Çeki Listesi <span className="text-slate-500">(Barkod Printer)</span></p>
+            <select value={printerId} onChange={(e)=>setPrinterId(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+              <option value="">Barkod yazıcısı seçin</option>
+              {printers.map((printer)=><option key={printer.id} value={printer.id}>{printer.code} - {printer.name}</option>)}
+            </select>
+            <p>☑ İrsaliye <span className="text-slate-500">(A4 - Laser Yazıcı)</span></p><p>☑ Hediye Notu <span className="text-slate-500">(varsa, A4 - Laser Yazıcı)</span></p></div>
         </section>
       </div>
 
@@ -245,10 +261,21 @@ export default function EcommercePackagingScreen() {
             const data=await response.json();
             if(!response.ok || !data.success){setMessage(`HATA: ${data.message ?? "Paketleme tamamlanamadı."}`);return;}
             setShippingThm(data.shippingHandlingUnitBarcode);
-            setMessage(`${data.orderNumber} paketlendi. Sevk THM: ${data.shippingHandlingUnitBarcode}. Yazdırma adımına hazır.`);
+
+            const dispatchResponse=await fetch("/api/admin/ecommerce/packaging/dispatch",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shippingHandlingUnitBarcode:data.shippingHandlingUnitBarcode})});
+            const dispatch=await dispatchResponse.json();
+            if(!dispatchResponse.ok || !dispatch.success){setMessage(`Paketleme tamamlandı fakat irsaliye oluşturulamadı: ${dispatch.message ?? "-"}`);return;}
+
+            const printResponse=await fetch("/api/admin/ecommerce/packaging/packing-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shippingHandlingUnitBarcode:data.shippingHandlingUnitBarcode,printerId})});
+            const print=await printResponse.json();
+            if(!printResponse.ok || !print.success){setMessage(`İrsaliye kesildi (${dispatch.dispatchNumber}) fakat çeki listesi basılamadı: ${print.message ?? "-"}`);return;}
+
+            const giftText=Array.isArray(dispatch.giftNotes)&&dispatch.giftNotes.length ? " Hediye notu A4 baskı kuyruğuna alınmayı bekliyor." : "";
+            setMessage(`${data.orderNumber} tamamlandı. İrsaliye: ${dispatch.dispatchNumber}. Çeki listesi: ${print.printerCode}.${giftText}`);
+            setOrder(null); setRows([]); setBoxCode(""); setCurrentImage(null); setShippingThm(null);
           } catch { setMessage("HATA: Paketleme tamamlama servisine ulaşılamadı."); }
           finally { setBusy(false); requestAnimationFrame(()=>scannerRef.current?.focus()); }
-        }} disabled={!order || !boxCode || total === 0 || packed !== total || busy} className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
+        }} disabled={!order || !boxCode || !printerId || total === 0 || packed !== total || busy} className="rounded-xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed disabled:bg-slate-400">🖨️ Paketle ve İrsaliye Yazdır</button>
       </div>
     </div>
   );
