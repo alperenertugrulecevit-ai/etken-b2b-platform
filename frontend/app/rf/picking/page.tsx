@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 
 import RFPickingForm from "@/components/rf/RFPickingForm";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
-import { claimZoneTaskById } from "@/app/rf/zone-picking/actions";
+import ClaimZoneTaskButton from "@/components/rf/ClaimZoneTaskButton";
 
 // RF toplama gerçek zamanlı operasyon ekranıdır; seçim sonrası eski RSC/cache
 // verisinin tekrar kullanılmasını engelle.
@@ -795,14 +795,13 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           </div>
           <div className="mt-3 grid gap-2">
             {openTasks.map((task) => (
-              <form key={task.id} action={claimZoneTaskById} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
-                <input type="hidden" name="taskId" value={task.id} />
+              <div key={task.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
                 <div>
                   <div className="font-black">{task.order.orderNumber} · {task.order.customer.companyName}</div>
                   <div className="mt-1 text-xs font-semibold text-slate-500">{task.warehouse.code} · {task.zone.code} {task.zone.name} · {task.plannedLineCount} kalem · {task.plannedQuantity} adet{task.wave ? ` · Wave ${task.wave.waveNo}` : " · Sipariş Bazlı"}</div>
                 </div>
-                <button className="shrink-0 rounded-xl bg-blue-900 px-4 py-3 font-black text-white">SEÇ</button>
-              </form>
+                <ClaimZoneTaskButton taskId={task.id} />
+              </div>
             ))}
           </div>
         </div>
