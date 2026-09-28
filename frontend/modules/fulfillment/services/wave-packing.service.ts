@@ -279,6 +279,7 @@ export class WavePackingService {
               id: true,
               barcode: true,
               purpose: true,
+              warehouseId: true,
               status: true,
               assignedOrderId: true,
               assignedWaveId: true,
@@ -990,6 +991,7 @@ export class WavePackingService {
   static async closeShippingUnit(
     targetBarcodeValue: string,
     actor: Actor,
+    boxCodeValue: string,
   ) {
     const targetBarcode =
       normalize(
@@ -1001,6 +1003,8 @@ export class WavePackingService {
         "Kapatılacak Sevk THM barkodu bulunamadı.",
       );
     }
+    const boxCode=normalize(boxCodeValue);
+    if(!boxCode) throw new Error("Desi barkodunu okutun.");
 
     return prisma.$transaction(
       async (tx) => {
@@ -1014,6 +1018,7 @@ export class WavePackingService {
               id: true,
               barcode: true,
               purpose: true,
+              warehouseId: true,
               items: {
                 select: {
                   quantity: true,
@@ -1058,6 +1063,13 @@ export class WavePackingService {
           );
         }
 
+        if(!targetUnit.warehouseId) throw new Error("Sevk THM depo bilgisi bulunamadı.");
+        const boxDefinition=await tx.shippingBoxDefinition.findFirst({
+          where:{tenantId:"tenant_etken",companyId:"company_etken_office",code:boxCode,isActive:true,warehouses:{some:{warehouseId:targetUnit.warehouseId}}},
+          select:{id:true,code:true,boxType:true,dimensions:true,desi:true},
+        });
+        if(!boxDefinition) throw new Error(`${boxCode} koli/desi tanımı bu depo için bulunamadı veya pasif.`);
+
         const totalQuantity =
           targetUnit.items.reduce(
             (total, item) =>
@@ -1089,6 +1101,11 @@ export class WavePackingService {
                 actor.userId,
               closedByName:
                 actor.displayName,
+              boxDefinitionId: boxDefinition.id,
+              boxCode: boxDefinition.code,
+              boxType: boxDefinition.boxType,
+              boxDimensions: boxDefinition.dimensions,
+              desi: boxDefinition.desi,
             },
           }),
           tx.handlingUnit.update({
@@ -1126,7 +1143,8 @@ export class WavePackingService {
               newStatus:
                 ShippingHandlingUnitStatus.READY_TO_SHIP,
               description:
-                `${targetUnit.barcode} Sevk THM kapatıldı ve sevke hazırlandı.`,
+                `${targetUnit.barcode} Sevk THM kapatıldı ve sevke hazırlandı. Koli: ${boxDefinition.code}, Tip: ${boxDefinition.boxType}, Desi: ${boxDefinition.desi}.`,
+              metadata:{boxCode:boxDefinition.code,boxType:boxDefinition.boxType,boxDimensions:boxDefinition.dimensions,desi:boxDefinition.desi},
             },
           }),
         ]);

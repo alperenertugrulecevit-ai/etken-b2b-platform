@@ -45,6 +45,13 @@ export async function closeShippingUnitAction(
       )
     );
 
+  const boxCode =
+    normalizeBarcode(
+      formData.get(
+        "boxCode"
+      )
+    );
+
   const terminalCode =
     normalizeBarcode(
       formData.get(
@@ -61,10 +68,15 @@ export async function closeShippingUnitAction(
     );
   }
 
+  if (!boxCode) {
+    return createState(false, "Desi barkodunu okutun. Desi bilgisi olmadan Sevk THM kapatılamaz.", shippingHandlingUnitBarcode);
+  }
+
   const result =
     await closeWaveShippingUnitAction(
       shippingHandlingUnitBarcode,
-      terminalCode
+      terminalCode,
+      boxCode
     );
 
   revalidatePath(

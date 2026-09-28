@@ -764,6 +764,7 @@ model Warehouse {
   fulfillmentOrders Order[] @relation("OrderFulfillmentWarehouse")
   pickingAssignments OrderPickingAssignment[]
   waves Wave[] @relation("WaveWarehouse")
+  shippingBoxDefinitions ShippingBoxDefinitionWarehouse[]
 
   @@index([tenantId])
   @@index([companyId])
@@ -1700,6 +1701,37 @@ model BarcodePrinter {
   @@index([ipAddress])
 }
 
+model ShippingBoxDefinition {
+  id        String   @id @default(cuid())
+  tenantId  String   @default("tenant_etken")
+  companyId String   @default("company_etken_office")
+  code      String
+  boxType   String
+  dimensions String
+  desi      Float
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warehouses ShippingBoxDefinitionWarehouse[]
+  shippingUnits ShippingHandlingUnit[]
+
+  @@unique([tenantId, companyId, code])
+  @@index([tenantId, companyId, isActive])
+}
+
+model ShippingBoxDefinitionWarehouse {
+  boxDefinitionId String
+  warehouseId     Int
+  createdAt       DateTime @default(now())
+
+  boxDefinition ShippingBoxDefinition @relation(fields: [boxDefinitionId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@id([boxDefinitionId, warehouseId])
+  @@index([warehouseId])
+}
+
 model ShippingHandlingUnit {
   id             String @id @default(cuid())
   handlingUnitId Int    @unique
@@ -1732,6 +1764,12 @@ model ShippingHandlingUnit {
   widthCm       Float?
   heightCm      Float?
 
+  boxDefinitionId String?
+  boxCode         String?
+  boxType         String?
+  boxDimensions   String?
+  desi            Float?
+
   labelPrintedAt DateTime?
 
   packingListPrintedAt       DateTime?
@@ -1753,6 +1791,7 @@ model ShippingHandlingUnit {
   updatedAt DateTime @updatedAt
 
   handlingUnit HandlingUnit @relation(fields: [handlingUnitId], references: [id], onDelete: Restrict)
+  boxDefinition ShippingBoxDefinition? @relation(fields: [boxDefinitionId], references: [id], onDelete: SetNull)
 
   waveDistribution WaveDistribution? @relation(fields: [waveDistributionId], references: [id], onDelete: SetNull)
 
@@ -1781,6 +1820,8 @@ model ShippingHandlingUnit {
   @@index([shippedAt])
   @@index([packingListPrintedAt])
   @@index([packingListLastPrinterCode])
+  @@index([boxDefinitionId])
+  @@index([boxCode])
 }
 
 model ShippingHandlingUnitOrder {

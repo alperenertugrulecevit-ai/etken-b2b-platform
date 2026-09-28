@@ -27,11 +27,15 @@ const TERMINAL_STORAGE_KEY =
 export default function RFShippingUnitCloseForm() {
   const barcodeInputRef =
     useRef<HTMLInputElement>(null);
+  const boxCodeInputRef =
+    useRef<HTMLInputElement>(null);
 
   const [
     shippingHandlingUnitBarcode,
     setShippingHandlingUnitBarcode,
   ] = useState("");
+
+  const [boxCode,setBoxCode] = useState("");
 
   const [
     terminalCode,
@@ -88,6 +92,7 @@ export default function RFShippingUnitCloseForm() {
     setShippingHandlingUnitBarcode(
       ""
     );
+    setBoxCode("");
 
     window.setTimeout(() => {
       barcodeInputRef.current?.focus();
@@ -108,6 +113,12 @@ export default function RFShippingUnitCloseForm() {
     if (!barcode) {
       event.preventDefault();
       barcodeInputRef.current?.focus();
+      return;
+    }
+    const normalizedBoxCode=boxCode.trim().toUpperCase();
+    if(!normalizedBoxCode){
+      event.preventDefault();
+      boxCodeInputRef.current?.focus();
       return;
     }
 
@@ -234,7 +245,15 @@ export default function RFShippingUnitCloseForm() {
 
           <label className="block">
             <span className="mb-2 block text-sm font-black text-slate-800">
-              2. Terminal Kodu
+              2. Desi / Koli Barkodu
+            </span>
+            <input ref={boxCodeInputRef} name="boxCode" value={boxCode} onChange={e=>setBoxCode(e.target.value.toUpperCase())} placeholder="B2B001 / B2C001 barkodunu okutun" autoComplete="off" autoCapitalize="characters" required disabled={isPending} className="w-full rounded-xl border-2 border-amber-300 bg-amber-50 p-4 font-mono text-xl font-black uppercase outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"/>
+            <p className="mt-2 text-xs font-bold text-amber-800">Desi barkodu okutulmadan Sevk THM kapatılamaz.</p>
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-black text-slate-800">
+              3. Terminal Kodu
             </span>
 
             <input
@@ -271,11 +290,13 @@ export default function RFShippingUnitCloseForm() {
           type="submit"
           disabled={
             isPending ||
-            !shippingHandlingUnitBarcode.trim()
+            !shippingHandlingUnitBarcode.trim() ||
+            !boxCode.trim()
           }
           className={`mt-6 w-full rounded-xl py-4 font-black text-white ${
             isPending ||
-            !shippingHandlingUnitBarcode.trim()
+            !shippingHandlingUnitBarcode.trim() ||
+            !boxCode.trim()
               ? "cursor-not-allowed bg-slate-400"
               : "bg-red-700 hover:bg-red-800"
           }`}
