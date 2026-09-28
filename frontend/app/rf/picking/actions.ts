@@ -987,7 +987,11 @@ export async function rfPickOrderItem(
           },
         });
 
-        if (zoneTask) await ConsolidationService.syncOrder(tx, order.id);
+        // Konsolidasyon durumu yalnızca Zone görevi tamamlandığında değişebilir.
+        // Her ürün okutmasında senkronizasyon yapmak gereksiz DB sorguları üretir.
+        if (zoneTask && taskCompleted) {
+          await ConsolidationService.syncOrder(tx, order.id);
+        }
 
         await FulfillmentService.refreshOrderProgress(tx, {
           orderId: order.id,
@@ -1169,21 +1173,12 @@ export async function rfPickOrderItem(
       },
     );
 
-    revalidatePath("/rf");
-    revalidatePath("/rf/picking");
-    revalidatePath("/rf/zone-picking");
-
-    revalidatePath("/admin/orders");
-
-    revalidatePath(`/admin/orders/${result.orderId}`);
-
-    revalidatePath("/admin/handling-units");
-
-    revalidatePath(`/admin/handling-units/${result.sourceUnitId}`);
-
-    revalidatePath(`/admin/handling-units/${result.targetUnitId}`);
-
-    revalidatePath("/admin/stock/locations");
+    /*
+     * RF formu başarılı okutma sonucunu action state üzerinden yerel olarak
+     * güncelliyor. Her tekil ürün için çok sayıda route cache invalidasyonu
+     * yapmak okutma cevabını gereksiz yere bekletiyordu. İlgili ekranlar
+     * sonraki navigasyonda veritabanından güncel veriyi okuyacak.
+     */
 
     return {
       success: true,
