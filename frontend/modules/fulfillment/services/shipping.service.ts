@@ -714,8 +714,12 @@ export class ShippingService {
         for (
           const item of pendingItems
         ) {
-          await tx.dispatchDocumentLine.create({
-            data: {
+          await tx.dispatchDocumentLine.upsert({
+            where: {
+              shippingHandlingUnitItemId:
+                item.id,
+            },
+            create: {
               dispatchDocumentId:
                 dispatchDocument.id,
               shippingHandlingUnitItemId:
@@ -742,6 +746,7 @@ export class ShippingService {
               quantity:
                 item.pendingQuantity,
             },
+            update: {},
           });
 
           await tx.shippingHandlingUnitItem.update({
