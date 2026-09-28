@@ -13,6 +13,7 @@ type OrderRow = {
   fulfillmentWarehouseId: number | null;
   fulfillmentWarehouse: { id: number; code: string; name: string } | null;
   customer: { customerCode: string; companyName: string };
+  carrier: { code: string; name: string } | null;
   shippingAddress: { city: string; district: string } | null;
   stockReserved: boolean;
   items: { id: number; productCode: string; productName: string; quantity: number }[];
@@ -124,6 +125,7 @@ export default function OrderGroupingClient({
               <th className="p-4">Sipariş Tipi</th>
               <th className="p-4">Depo</th>
               <th className="p-4">Müşteri</th>
+              <th className="p-4">Nakliyeci</th>
               <th className="p-4">Sipariş Tarihi</th>
               <th className="p-4">Talep Tarihi</th>
               <th className="p-4">Kalem Sayısı</th>
@@ -150,6 +152,7 @@ export default function OrderGroupingClient({
                     : <span className="text-amber-700">Başlatırken atanacak</span>}
                 </td>
                 <td className="p-4"><div className="font-bold">{order.customer.companyName}</div><div className="text-slate-500">{order.customer.customerCode}</div></td>
+                <td className="p-4">{order.carrier ? <><div className="font-bold">{order.carrier.name}</div><div className="text-slate-500">{order.carrier.code}</div></> : "—"}</td>
                 <td className="p-4 whitespace-nowrap">{date(order.orderDate)}</td>
                 <td className="p-4 whitespace-nowrap">{date(order.requestedDate)}</td>
                 <td className="p-4">{order._count.items}</td>
@@ -158,7 +161,7 @@ export default function OrderGroupingClient({
               </tr>
               {expanded.includes(order.id) && (
                 <tr className="border-b bg-slate-50">
-                  <td colSpan={11} className="p-0">
+                  <td colSpan={12} className="p-0">
                     <div className="overflow-x-auto p-4">
                       <div className="mb-3 grid gap-3 text-sm md:grid-cols-5">
                         <div><b>Firma Kodu:</b> {order.customer.customerCode}</div>
