@@ -270,8 +270,17 @@ export default function EcommercePackagingScreen() {
             const print=await printResponse.json();
             if(!printResponse.ok || !print.success){setMessage(`İrsaliye kesildi (${dispatch.dispatchNumber}) fakat çeki listesi basılamadı: ${print.message ?? "-"}`);return;}
 
-            const giftText=Array.isArray(dispatch.giftNotes)&&dispatch.giftNotes.length ? " Hediye notu A4 baskı kuyruğuna alınmayı bekliyor." : "";
-            setMessage(`${data.orderNumber} tamamlandı. İrsaliye: ${dispatch.dispatchNumber}. Çeki listesi: ${print.printerCode}.${giftText}`);
+            const printWindow=window.open("", "ecommerce-a4-print", "width=1000,height=800");
+            if(printWindow){
+              printWindow.location.href=`/api/admin/ecommerce/packaging/a4-print?thm=${encodeURIComponent(data.shippingHandlingUnitBarcode)}&kind=dispatch`;
+            }
+            if(Array.isArray(dispatch.giftNotes)&&dispatch.giftNotes.length){
+              setTimeout(()=>{
+                window.open(`/api/admin/ecommerce/packaging/a4-print?thm=${encodeURIComponent(data.shippingHandlingUnitBarcode)}&kind=gift`, "ecommerce-gift-print", "width=1000,height=800");
+              },500);
+            }
+            const giftText=Array.isArray(dispatch.giftNotes)&&dispatch.giftNotes.length ? " Hediye notu için de A4 baskı penceresi açıldı." : "";
+            setMessage(`${data.orderNumber} tamamlandı. İrsaliye: ${dispatch.dispatchNumber}. Çeki listesi: ${print.printerCode}. A4 irsaliye baskısı açıldı.${giftText}`);
             setOrder(null); setRows([]); setBoxCode(""); setCurrentImage(null); setShippingThm(null);
           } catch { setMessage("HATA: Paketleme tamamlama servisine ulaşılamadı."); }
           finally { setBusy(false); requestAnimationFrame(()=>scannerRef.current?.focus()); }
