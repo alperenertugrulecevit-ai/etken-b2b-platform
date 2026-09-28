@@ -57,6 +57,9 @@ export async function createOrder(
       ) ?? ""
     ).trim();
 
+  const carrierId = String(formData.get("carrierId") ?? "").trim();
+  if (!carrierId) throw new Error("Nakliyeci seçilmelidir.");
+
   const orderTypeValue = String(formData.get("orderType") ?? "CUSTOMER").trim();
   const orderType = Object.values(OrderType).includes(orderTypeValue as OrderType)
     ? (orderTypeValue as OrderType)
@@ -131,6 +134,9 @@ export async function createOrder(
       );
     }
   }
+
+  const carrier = await prisma.shippingCarrier.findFirst({ where: { id: carrierId, isActive: true }, select: { id: true } });
+  if (!carrier) throw new Error("Nakliyeci bulunamadı veya pasif.");
 
   const customer =
     await prisma.customer.findFirst({
@@ -333,6 +339,7 @@ export async function createOrder(
 
       customerId,
       shippingAddressId,
+      carrierId,
       status: "PENDING",
       orderType,
       requestedDate,
