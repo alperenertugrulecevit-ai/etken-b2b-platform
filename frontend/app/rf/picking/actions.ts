@@ -840,43 +840,21 @@ export async function rfPickOrderItem(
           });
         }
 
-        const [sourceTotalResult, targetTotalResult, updatedOrderItems] =
-          await Promise.all([
-            tx.handlingUnitItem.aggregate({
-              where: {
-                handlingUnitId: sourceUnit.id,
-              },
+        /*
+         * Sipariş toplamları transaction başında zaten yüklendi. Her barkodda
+         * OrderItem tablosunu tekrar okumak yerine güncellenen satırı bellekte
+         * birleştiriyoruz. Hedef ürünün yeni miktarı da upsert sonucunda mevcut.
+         */
+        const updatedOrderItems = order.items.map((item) =>
+          item.id === updatedOrderItem.id
+            ? { quantity: updatedOrderItem.quantity, pickedQuantity: updatedOrderItem.pickedQuantity }
+            : { quantity: item.quantity, pickedQuantity: item.pickedQuantity },
+        );
 
-              _sum: {
-                quantity: true,
-              },
-            }),
+        const sourceTotalQuantity =
+          sourceUnit.items.length === 1 ? sourceQuantityAfter : -1;
 
-            tx.handlingUnitItem.aggregate({
-              where: {
-                handlingUnitId: targetUnit.id,
-              },
-
-              _sum: {
-                quantity: true,
-              },
-            }),
-
-            tx.orderItem.findMany({
-              where: {
-                orderId: order.id,
-              },
-
-              select: {
-                quantity: true,
-                pickedQuantity: true,
-              },
-            }),
-          ]);
-
-        const sourceTotalQuantity = sourceTotalResult._sum.quantity ?? 0;
-
-        const targetTotalQuantity = targetTotalResult._sum.quantity ?? 0;
+        const targetTotalQuantity = targetProductItem.quantity;
 
         if (sourceTotalQuantity === 0 && sourceUnit.childUnits.length === 0) {
           await tx.handlingUnit.update({
@@ -928,21 +906,23 @@ export async function rfPickOrderItem(
             data: { pickedQuantity: { increment: 1 } },
           });
           if (lineAdvance.count !== 1) throw new Error("Bu görev satırı başka bir işlemde tamamlandı. Ekranı yenileyip devam edin.");
-          const relatedLines = await tx.zonePickTaskLine.findMany({
-            where: { taskId: zoneTask!.id, orderItemId: orderItem.id },
-            select: { plannedQuantity: true, pickedQuantity: true },
-          });
-          const planned = relatedLines.reduce((n, line) => n + line.plannedQuantity, 0);
-          const picked = relatedLines.reduce((n, line) => n + Math.min(line.pickedQuantity, line.plannedQuantity), 0);
-          taskOrderItemProgress = { planned, picked, remaining: Math.max(0, planned - picked) };
+          const picked = Math.min(
+            plannedTaskLine.plannedQuantity,
+            plannedTaskLine.pickedQuantity + 1,
+          );
+          taskOrderItemProgress = {
+            planned: plannedTaskLine.plannedQuantity,
+            picked,
+            remaining: Math.max(0, plannedTaskLine.plannedQuantity - picked),
+          };
         }
 
         let taskCompleted = false;
         if (zoneTask) {
-          const taskLinesAfter = await tx.zonePickTaskLine.findMany({ where: { taskId: zoneTask.id }, select: { plannedQuantity: true, pickedQuantity: true } });
-          const remainingPlannedLines = taskLinesAfter.filter(line => line.pickedQuantity < line.plannedQuantity).length;
           const nextZonePicked = Math.min(zoneTask.plannedQuantity, zoneTask.pickedQuantity + quantity);
-          const zoneCompleted = remainingPlannedLines === 0;
+          // Zone görevinin toplam planlanan miktarı bütün satırların toplamıdır.
+          // Bu yüzden her okutmada bütün görev satırlarını tekrar okumaya gerek yok.
+          const zoneCompleted = nextZonePicked >= zoneTask.plannedQuantity;
           taskCompleted = zoneCompleted;
           await tx.zonePickTask.update({
             where: { id: zoneTask.id },
@@ -993,16 +973,31 @@ export async function rfPickOrderItem(
           await ConsolidationService.syncOrder(tx, order.id);
         }
 
-        await FulfillmentService.refreshOrderProgress(tx, {
-          orderId: order.id,
-          flowType: pickingFlow.flowType,
-          waveId: pickingFlow.waveId,
+        /*
+         * refreshOrderProgress her okutma için siparişi ve fulfillment kaydını
+         * yeniden okuyordu. Toplama sırasında ihtiyaç duyduğumuz durum burada
+         * zaten biliniyor; fulfillment sayaçlarını atomik artırıp sipariş
+         * durumunu yalnız gerektiğinde güncelliyoruz.
+         */
+        await tx.orderFulfillment.update({
+          where: { orderId: order.id },
+          data: {
+            pickedQuantity: orderPickedQuantity,
+            pickingStatus: pickingCompleted ? "COMPLETED" : "IN_PROGRESS",
+            pickingStartedAt: new Date(),
+            ...(pickingCompleted ? { pickingCompletedAt: new Date() } : {}),
+          },
         });
-        const refreshedOrder = await tx.order.findUnique({
-          where: { id: order.id },
-          select: { status: true },
-        });
-        const nextOrderStatus = refreshedOrder?.status ?? order.status;
+        const nextOrderStatus =
+          order.status === OrderStatus.APPROVED || order.status === OrderStatus.PREPARING
+            ? OrderStatus.PICKING
+            : order.status;
+        if (nextOrderStatus !== order.status) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: { status: nextOrderStatus },
+          });
+        }
 
         const targetTypeLabel = isWavePicking ? "Toplama THM" : "Sevk THM";
 
