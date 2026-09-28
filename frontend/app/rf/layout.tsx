@@ -153,7 +153,7 @@ export default async function RFLayout({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl p-4 md:p-6">
+      <main className="mx-auto w-full max-w-5xl overflow-x-auto p-4 md:p-6">
         <RFGlobalBackButton />
         {children}
       </main>
