@@ -68,6 +68,7 @@ const groups:MenuGroup[]=[
  ]},
  {title:"E-Ticaret Yönetimi",icon:"🛍️",items:[
   {href:"/admin/e-ticaret/packaging",icon:"📦",label:"E-Ticaret Paketleme",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
+  {href:"/admin/e-ticaret/documents",icon:"🖨️",label:"E-Ticaret Evrak Basım",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
  ]},
  {title:"Sevkiyat Planlama",icon:"🚚",items:[
   {href:"/admin/shipping-planning",icon:"🗓️",label:"Sevkiyat Planlama",permissionCodes:["SHIPPING_EXECUTE"]},
