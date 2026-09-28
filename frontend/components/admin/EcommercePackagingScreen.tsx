@@ -57,6 +57,7 @@ export default function EcommercePackagingScreen() {
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [boxCode, setBoxCode] = useState("");
+  const boxScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [printers, setPrinters] = useState<Array<{id:string;code:string;name:string}>>([]);
   const [printerId, setPrinterId] = useState("");
 
@@ -208,7 +209,16 @@ export default function EcommercePackagingScreen() {
             setMessage(`${value} desi / koli barkodu alındı. Paketleme ve irsaliye yazdırma işlemine hazır.`);
           }}>
             <div className="flex h-12 items-center rounded-xl border border-slate-300 px-4 font-semibold text-slate-700">
-              <input ref={boxCodeRef} value={boxCode} onChange={(e)=>setBoxCode(e.target.value.toUpperCase())} autoComplete="off" className="w-full bg-transparent outline-none" placeholder="Desi barkodu okutun..." aria-label="Desi veya koli barkodu" />
+              <input ref={boxCodeRef} value={boxCode} onChange={(e)=>{
+                const value=e.target.value.toUpperCase();
+                setBoxCode(value);
+                if(boxScanTimerRef.current) clearTimeout(boxScanTimerRef.current);
+                if(value.trim()){
+                  boxScanTimerRef.current=setTimeout(()=>{
+                    setMessage(`${value.trim()} desi / koli barkodu alındı. Paketleme ve irsaliye yazdırma işlemine hazır.`);
+                  },150);
+                }
+              }} autoComplete="off" className="w-full bg-transparent outline-none" placeholder="Desi barkodu okutun..." aria-label="Desi veya koli barkodu" />
             </div>
             <button type="submit" className="sr-only">Desi barkodunu işle</button>
           </form>
