@@ -764,12 +764,12 @@ model Warehouse {
   fulfillmentOrders Order[] @relation("OrderFulfillmentWarehouse")
   pickingAssignments OrderPickingAssignment[]
   waves Wave[] @relation("WaveWarehouse")
+  shippingBoxDefinitions ShippingBoxDefinitionWarehouse[]
 
   @@index([tenantId])
   @@index([companyId])
   @@index([logisticsCenterId])
   @@index([tenantId, companyId, isActive])
-  shippingBoxDefinitions ShippingBoxDefinitionWarehouse[]
 }
 
 model WarehouseLocation {
