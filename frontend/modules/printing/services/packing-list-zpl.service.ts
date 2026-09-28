@@ -488,6 +488,17 @@ function createLabel({
       70
     )}^FS`,
 
+    // Sipariş numarası yalnızca yazı olarak değil, sevkiyat akışında
+    // doğrudan okutulabilmesi için Code 128 barkod olarak da basılır.
+    ...(data.orderNumbers.length === 1
+      ? [
+          commandPosition(scale, 520, 38),
+          `^BY${scale(1)},2,${scale(45)}`,
+          `^BCN,${scale(45)},Y,N,N`,
+          `^FD${normalizeText(data.orderNumbers[0])}^FS`,
+        ]
+      : []),
+
     commandPosition(
       scale,
       15,
