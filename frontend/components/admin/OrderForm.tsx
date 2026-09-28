@@ -35,9 +35,12 @@ type OrderLine = {
   quantity: number;
 };
 
+type Carrier = { id: string; code: string; name: string };
+
 type Props = {
   customers: Customer[];
   products: Product[];
+  carriers: Carrier[];
   action: (
     formData: FormData
   ) => void | Promise<void>;
@@ -53,6 +56,7 @@ function formatCurrency(value: number) {
 export default function OrderForm({
   customers,
   products,
+  carriers,
   action,
 }: Props) {
   const [customerId, setCustomerId] =
@@ -371,6 +375,20 @@ function addLine() {
                     </option>
                   )
                 )}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Nakliyeci
+              </span>
+              <select name="carrierId" className="w-full rounded-xl border bg-white p-4" required>
+                <option value="">Nakliyeci seçiniz</option>
+                {carriers.map((carrier) => (
+                  <option key={carrier.id} value={carrier.id}>
+                    {carrier.code} — {carrier.name}
+                  </option>
+                ))}
               </select>
             </label>
 
