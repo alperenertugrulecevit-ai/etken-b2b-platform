@@ -449,17 +449,19 @@ export async function rfPickOrderItem(
                 },
               });
 
-        if (pickingFlow.flowType === OrderFulfillmentFlow.WAVE) {
-          if (!pickingFlow.waveId) {
-            throw new Error("Wave toplama akışında Wave kimliği bulunamadı.");
-          }
-
-          await FulfillmentService.prepareWavePickingUnit(tx, {
-            waveId: pickingFlow.waveId,
-            targetBarcode,
-          });
+        if (
+          pickingFlow.flowType === OrderFulfillmentFlow.WAVE &&
+          !pickingFlow.waveId
+        ) {
+          throw new Error("Wave toplama akışında Wave kimliği bulunamadı.");
         }
 
+        /*
+         * Wave hedef THM aşağıdaki source/target sorgusunda zaten tekrar okunup
+         * purpose/status/parent/assignedWave kontrollerinden geçiyor. Burada
+         * prepareWavePickingUnit çağrısı aynı THM ve Wave'i yeniden okuyup her
+         * barkodda gereksiz UPDATE üretiyordu.
+         */
         perfMark("prepareTarget");
         const orderItem = order.items.find(
           (item) =>
@@ -885,21 +887,12 @@ export async function rfPickOrderItem(
           });
         }
 
-        await tx.handlingUnit.update({
-          where: {
-            id: targetUnit.id,
-          },
-
-          data: {
-            purpose: expectedTargetPurpose,
-
-            assignedOrderId: isWavePicking ? null : order.id,
-
-            assignedWaveId: isWavePicking ? pickingFlow.waveId : null,
-
-            status: HandlingUnitStatus.OPEN,
-          },
-        });
+        if (targetUnit.status !== HandlingUnitStatus.OPEN) {
+          await tx.handlingUnit.update({
+            where: { id: targetUnit.id },
+            data: { status: HandlingUnitStatus.OPEN },
+          });
+        }
 
         const orderTotalQuantity = updatedOrderItems.reduce(
           (total, item) => total + item.quantity,
@@ -949,13 +942,20 @@ export async function rfPickOrderItem(
 
 
         perfMark("zoneProgress");
-        const remainingZoneTasks = await tx.zonePickTask.count({
-          where: { orderId: order.id, status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] }, ...(zoneTask ? { id: { not: zoneTask.id } } : {}) },
+        const remainingZoneTask = await tx.zonePickTask.findFirst({
+          where: {
+            orderId: order.id,
+            status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] },
+            ...(zoneTask ? { id: { not: zoneTask.id } } : {}),
+          },
+          select: { id: true },
         });
-        const currentZoneWillComplete = !zoneTask || zoneTask.pickedQuantity + quantity >= zoneTask.plannedQuantity;
-        const pickingCompleted = updatedOrderItems.every(
-          (item) => item.pickedQuantity >= item.quantity,
-        ) && remainingZoneTasks === 0 && currentZoneWillComplete;
+        const currentZoneWillComplete =
+          !zoneTask || zoneTask.pickedQuantity + quantity >= zoneTask.plannedQuantity;
+        const pickingCompleted =
+          updatedOrderItems.every((item) => item.pickedQuantity >= item.quantity) &&
+          !remainingZoneTask &&
+          currentZoneWillComplete;
 
         perfMark("completionCheck");
         const pickingRecord = await tx.pickingRecord.create({
