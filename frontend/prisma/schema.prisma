@@ -408,6 +408,7 @@ model Order {
   source            OrderSource       @default(ADMIN)
   orderType         OrderType         @default(CUSTOMER)
   fulfillmentWarehouseId Int?
+  carrierId         String?
   paymentMethod     B2BPaymentMethod?
   placedByUserId    String?
   placedByUsername  String?
@@ -432,6 +433,7 @@ model Order {
   shippingAddress            CustomerAddress?            @relation(fields: [shippingAddressId], references: [id])
   placedByUser               User?                       @relation("OrderPlacedByUser", fields: [placedByUserId], references: [id], onDelete: SetNull)
   fulfillmentWarehouse       Warehouse?                  @relation("OrderFulfillmentWarehouse", fields: [fulfillmentWarehouseId], references: [id], onDelete: SetNull)
+  carrier                    ShippingCarrier?            @relation(fields: [carrierId], references: [id], onDelete: SetNull)
   items                      OrderItem[]
   statusHistory              OrderStatusHistory[]
   accountEntries             CustomerAccountEntry[]
@@ -456,6 +458,7 @@ model Order {
   @@index([source, status])
   @@index([orderType, status])
   @@index([fulfillmentWarehouseId, status])
+  @@index([carrierId])
   @@index([status])
   @@index([orderDate])
 }
@@ -3542,6 +3545,7 @@ model ShippingCarrier {
   updatedAt DateTime @updatedAt
   vehicles ShippingVehicle[]
   shipments Shipment[]
+  orders Order[]
   @@unique([tenantId, companyId, code])
   @@index([tenantId, companyId, name])
   @@index([tenantId, companyId, isActive])
