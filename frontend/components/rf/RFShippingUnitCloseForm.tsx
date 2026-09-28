@@ -122,18 +122,7 @@ export default function RFShippingUnitCloseForm() {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        `${barcode} Sevk THM kapatılsın ve sevke hazır hâle getirilsin mi?\n\nBu işlemden sonra bu THM'ye ürün eklenemez.`
-      );
 
-    if (!confirmed) {
-      event.preventDefault();
-
-      window.setTimeout(() => {
-        barcodeInputRef.current?.focus();
-      }, 50);
-    }
   }
 
   function clearBarcode() {
@@ -214,6 +203,12 @@ export default function RFShippingUnitCloseForm() {
                 autoComplete="off"
                 autoCapitalize="characters"
                 maxLength={60}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  if (!shippingHandlingUnitBarcode.trim()) return;
+                  boxCodeInputRef.current?.focus();
+                }}
                 required
                 disabled={isPending}
                 className="min-w-0 flex-1 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 font-mono text-xl font-black uppercase text-slate-950 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:bg-slate-100"
@@ -236,10 +231,7 @@ export default function RFShippingUnitCloseForm() {
             </div>
 
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Barkod okuyucunun Enter
-              tuşu göndermesi halinde
-              kapatma onayı otomatik
-              açılır.
+              THM okutulduğunda imleç otomatik olarak Desi / Koli Barkodu alanına geçer.
             </p>
           </label>
 
@@ -247,7 +239,24 @@ export default function RFShippingUnitCloseForm() {
             <span className="mb-2 block text-sm font-black text-slate-800">
               2. Desi / Koli Barkodu
             </span>
-            <input ref={boxCodeInputRef} name="boxCode" value={boxCode} onChange={e=>setBoxCode(e.target.value.toUpperCase())} placeholder="B2B001 / B2C001 barkodunu okutun" autoComplete="off" autoCapitalize="characters" required disabled={isPending} className="w-full rounded-xl border-2 border-amber-300 bg-amber-50 p-4 font-mono text-xl font-black uppercase outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"/>
+            <input
+              ref={boxCodeInputRef}
+              name="boxCode"
+              value={boxCode}
+              onChange={(e) => setBoxCode(e.target.value.toUpperCase())}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                if (!shippingHandlingUnitBarcode.trim() || !boxCode.trim() || isPending) return;
+                event.currentTarget.form?.requestSubmit();
+              }}
+              placeholder="B2B001 / B2C001 barkodunu okutun"
+              autoComplete="off"
+              autoCapitalize="characters"
+              required
+              disabled={isPending}
+              className="w-full rounded-xl border-2 border-amber-300 bg-amber-50 p-4 font-mono text-xl font-black uppercase outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-200"
+            />
             <p className="mt-2 text-xs font-bold text-amber-800">Desi barkodu okutulmadan Sevk THM kapatılamaz.</p>
           </label>
 
@@ -303,7 +312,7 @@ export default function RFShippingUnitCloseForm() {
         >
           {isPending
             ? "Sevk THM Kapatılıyor..."
-            : "Sevk THM'yi Kapat ve Sevke Hazırla"}
+            : "Sevk THM'yi Kapat"}
         </button>
       </form>
 
