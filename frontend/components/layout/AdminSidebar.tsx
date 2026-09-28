@@ -66,6 +66,9 @@ const groups:MenuGroup[]=[
   {href:"/admin/wms-reports/picking-detail",icon:"🧺",label:"Yapılan Toplama Detay Raporu",permissionCodes:["ORDER_VIEW"]},
   {href:"/admin/wms-reports/lost-stock",icon:"⚠️",label:"Kayıp Stok Raporu",permissionCodes:["INVENTORY_VIEW"]},
  ]},
+ {title:"E-Ticaret Yönetimi",icon:"🛍️",items:[
+  {href:"/admin/e-ticaret/packaging",icon:"📦",label:"E-Ticaret Paketleme",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
+ ]},
  {title:"Sevkiyat Planlama",icon:"🚚",items:[
   {href:"/admin/shipping-planning",icon:"🗓️",label:"Sevkiyat Planlama",permissionCodes:["SHIPPING_EXECUTE"]},
   {href:"/admin/shipping-planning/box-desi",icon:"📐",label:"Desi Bilgileri Tanımlama",permissionCodes:["SHIPPING_EXECUTE"]},
