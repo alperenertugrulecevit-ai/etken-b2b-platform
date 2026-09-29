@@ -52,6 +52,7 @@ const groups:MenuGroup[]=[
  ]},
  {title:"WMS Operasyonları",icon:"〽️",items:[
   {href:"/admin/wms-dashboard",icon:"📊",label:"WMS Dashboard",permissionCodes:["DASHBOARD_VIEW"]},
+  {href:"/admin/picking-operations",icon:"🎯",label:"Toplama Operasyonları İzleme",permissionCodes:["WAVE_MANAGE"]},
   {href:"/admin/manual-wave/product-query",icon:"🔎",label:"THM Sorgu",permissionCodes:["MANUAL_WAVE_REPORT_VIEW"]},
   {href:"/admin/manual-wave/distribution-summary",icon:"📊",label:"Dağıtım Performansı",permissionCodes:["MANUAL_WAVE_REPORT_VIEW"]},
   {href:"/admin/manual-wave/wave-summary",icon:"🌊",label:"Wave Dağılım Özeti",permissionCodes:["MANUAL_WAVE_REPORT_VIEW"]},
