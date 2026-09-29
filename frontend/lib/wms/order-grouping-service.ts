@@ -106,6 +106,7 @@ export class OrderGroupingService {
     orderIds: number[];
     actorId: string;
     actorName: string;
+    preserveEmptyWaveAsCancelled?: boolean;
   }) {
     const orderIds = Array.from(new Set(input.orderIds));
     if (orderIds.length === 0) throw new Error("En az bir sipariş seçmelisiniz.");
@@ -175,7 +176,24 @@ export class OrderGroupingService {
     for (const waveId of affectedWaveIds) {
       const remaining = await prisma.waveOrder.count({ where: { waveId } });
       if (remaining === 0) {
-        await prisma.wave.delete({ where: { id: waveId } });
+        if (input.preserveEmptyWaveAsCancelled) {
+          await prisma.waveDistribution.deleteMany({ where: { waveId } });
+          await prisma.wave.update({
+            where: { id: waveId },
+            data: {
+              status: WaveStatus.CANCELLED,
+              plannedOrderCount: 0,
+              plannedLineCount: 0,
+              plannedQuantity: 0,
+              completedOrderCount: 0,
+              completedLineCount: 0,
+              completedQuantity: 0,
+              pickingProgress: 0,
+            },
+          });
+        } else {
+          await prisma.wave.delete({ where: { id: waveId } });
+        }
       } else {
         const { WaveDistributionService } = await import("@/modules/fulfillment/services/wave-distribution.service");
         await WaveDistributionService.createOrRefreshPlan(waveId, {
