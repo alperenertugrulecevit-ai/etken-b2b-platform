@@ -6,7 +6,7 @@ import {
 } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { updateWaveStatusAction } from "./actions";
+import { cancelWaveToGroupingAction, updateWaveStatusAction } from "./actions";
 import {
   createWaveDistributionPlanAction,
 } from "./distribution-actions";
@@ -231,8 +231,12 @@ function StatusActionButton({
   label,
   className,
 }: StatusActionButtonProps) {
+  const action = targetStatus === WaveStatus.CANCELLED
+    ? cancelWaveToGroupingAction
+    : updateWaveStatusAction;
+
   return (
-    <form action={updateWaveStatusAction}>
+    <form action={action}>
       <input
         type="hidden"
         name="waveId"
@@ -507,7 +511,7 @@ export default async function WaveDetailPage({
                   targetStatus={
                     WaveStatus.CANCELLED
                   }
-                  label="İptal Et"
+                  label="Wave’i İptal Et ve Gruplamaya Gönder"
                   className="bg-red-100 text-red-800 hover:bg-red-200"
                 />
               </>
@@ -539,7 +543,7 @@ export default async function WaveDetailPage({
                   targetStatus={
                     WaveStatus.CANCELLED
                   }
-                  label="İptal Et"
+                  label="Wave’i İptal Et ve Gruplamaya Gönder"
                   className="bg-red-100 text-red-800 hover:bg-red-200"
                 />
               </>
@@ -571,7 +575,7 @@ export default async function WaveDetailPage({
                   targetStatus={
                     WaveStatus.CANCELLED
                   }
-                  label="İptal Et"
+                  label="Wave’i İptal Et ve Gruplamaya Gönder"
                   className="bg-red-100 text-red-800 hover:bg-red-200"
                 />
               </>
@@ -603,7 +607,7 @@ export default async function WaveDetailPage({
                   targetStatus={
                     WaveStatus.CANCELLED
                   }
-                  label="İptal Et"
+                  label="Wave’i İptal Et ve Gruplamaya Gönder"
                   className="bg-red-100 text-red-800 hover:bg-red-200"
                 />
               </>
@@ -626,7 +630,7 @@ export default async function WaveDetailPage({
                   targetStatus={
                     WaveStatus.CANCELLED
                   }
-                  label="İptal Et"
+                  label="Wave’i İptal Et ve Gruplamaya Gönder"
                   className="bg-red-100 text-red-800 hover:bg-red-200"
                 />
               </>
