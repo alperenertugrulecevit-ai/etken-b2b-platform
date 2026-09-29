@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { OrderGroupingService } from "@/lib/wms/order-grouping-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 const allowedTransitions: Record<
@@ -194,4 +195,44 @@ export async function updateWaveStatusAction(
   redirect(
     `/admin/waves/${waveId}`
   );
+}
+
+export async function cancelWaveToGroupingAction(formData: FormData) {
+  const currentUser = await AuthorizationService.requirePermission("WAVE_MANAGE");
+  const waveId = String(formData.get("waveId") ?? "").trim();
+  if (!waveId) throw new Error("Wave kimliği bulunamadı.");
+
+  const wave = await prisma.wave.findUnique({
+    where: { id: waveId },
+    select: {
+      id: true,
+      waveNo: true,
+      status: true,
+      orders: { select: { orderId: true } },
+    },
+  });
+  if (!wave) throw new Error("Wave kaydı bulunamadı.");
+  if (wave.status === WaveStatus.COMPLETED || wave.status === WaveStatus.CANCELLED) {
+    throw new Error("Tamamlanmış veya iptal edilmiş Wave yeniden iptal edilemez.");
+  }
+  if (wave.orders.length === 0) {
+    await prisma.wave.update({ where: { id: waveId }, data: { status: WaveStatus.CANCELLED } });
+  } else {
+    const displayName = currentUser.employee
+      ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+      : currentUser.username;
+
+    await OrderGroupingService.returnUnstartedOrdersToGrouping({
+      orderIds: wave.orders.map((row) => row.orderId),
+      actorId: currentUser.id,
+      actorName: displayName,
+      preserveEmptyWaveAsCancelled: true,
+    });
+  }
+
+  revalidatePath("/admin/order-grouping");
+  revalidatePath("/admin/waves");
+  revalidatePath(`/admin/waves/${waveId}`);
+  revalidatePath("/rf/wave-picking");
+  redirect(`/admin/waves/${waveId}?success=${encodeURIComponent("Wave iptal edildi; başlanmamış siparişler Gruplama havuzuna geri gönderildi.")}`);
 }
