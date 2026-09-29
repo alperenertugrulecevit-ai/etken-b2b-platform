@@ -18,6 +18,38 @@ import { AuthorizationService } from "@/modules/authorization/services/authoriza
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
 import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
 import { ConsolidationService } from "@/lib/wms/consolidation-service";
+import { OrderGroupingService } from "@/lib/wms/order-grouping-service";
+
+export async function returnWaveToGroupingFromRfAction(formData: FormData) {
+  const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+  const waveId = String(formData.get("waveId") ?? "").trim();
+  if (!waveId) throw new Error("Wave kimliği bulunamadı.");
+
+  const wave = await prisma.wave.findUnique({
+    where: { id: waveId },
+    select: {
+      waveNo: true,
+      orders: { select: { orderId: true } },
+    },
+  });
+  if (!wave) throw new Error("Wave bulunamadı.");
+  if (wave.orders.length === 0) throw new Error("Wave içinde Gruplamaya gönderilecek sipariş bulunmuyor.");
+
+  const displayName = currentUser.employee
+    ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+    : currentUser.username;
+
+  await OrderGroupingService.returnUnstartedOrdersToGrouping({
+    orderIds: wave.orders.map((row) => row.orderId),
+    actorId: currentUser.id,
+    actorName: displayName,
+    preserveEmptyWaveAsCancelled: true,
+  });
+
+  revalidatePath("/rf/picking");
+  revalidatePath("/rf/wave-picking");
+  revalidatePath("/admin/order-grouping");
+}
 
 export type RFPickingState = {
   success: boolean;
