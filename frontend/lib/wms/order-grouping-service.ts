@@ -115,7 +115,7 @@ export class OrderGroupingService {
       select: {
         id: true,
         orderNumber: true,
-        items: { select: { pickedQuantity: true } },
+        items: { select: { pickedQuantity: true, pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } } } },
         zonePickTasks: {
           select: { lines: { select: { pickedQuantity: true } } },
         },
@@ -133,8 +133,9 @@ export class OrderGroupingService {
         (sum, task) => sum + task.lines.reduce((lineSum, line) => lineSum + line.pickedQuantity, 0),
         0,
       );
-      if (picked > 0 || taskPicked > 0) {
-        throw new Error(`${order.orderNumber}: toplama başladığı için gruplama havuzuna geri alınamaz.`);
+      const shortage = order.items.reduce((sum, item) => sum + item.pickingShortages.reduce((s, row) => s + row.quantity, 0), 0);
+      if (picked > 0 || taskPicked > 0 || shortage > 0) {
+        throw new Error(`${order.orderNumber}: toplama veya eksik kapatma işlemi başladığı için gruplama havuzuna geri alınamaz.`);
       }
     }
 
@@ -142,22 +143,7 @@ export class OrderGroupingService {
 
     await prisma.$transaction(async (tx) => {
       for (const order of orders) {
-        const tasks = await tx.zonePickTask.findMany({
-          where: { orderId: order.id },
-          select: { id: true, lines: { select: { handlingUnitItemId: true, plannedQuantity: true, pickedQuantity: true } } },
-        });
-        for (const task of tasks) {
-          for (const line of task.lines) {
-            const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
-            if (remaining > 0) {
-              await tx.handlingUnitItem.updateMany({
-                where: { id: line.handlingUnitItemId, reservedStock: { gte: remaining } },
-                data: { reservedStock: { decrement: remaining } },
-              });
-            }
-          }
-        }
-        await tx.zonePickTask.deleteMany({ where: { orderId: order.id } });
+        await ZonePickingService.releaseOrderPlan(tx, order.id);
         await tx.pickingAssignment.deleteMany({ where: { orderId: order.id } });
         await tx.orderFulfillment.deleteMany({ where: { orderId: order.id } });
         await tx.waveOrder.deleteMany({ where: { orderId: order.id } });
