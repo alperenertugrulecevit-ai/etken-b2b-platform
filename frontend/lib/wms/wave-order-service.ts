@@ -7,6 +7,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 import { WaveDistributionService } from "@/modules/fulfillment/services/wave-distribution.service";
+import { OrderGroupingService } from "@/lib/wms/order-grouping-service";
 
 const EDITABLE_WAVE_STATUSES: WaveStatus[] = [
   WaveStatus.DRAFT,
@@ -551,80 +552,38 @@ export async function addOrdersToWave(
 
 export async function removeOrdersFromWave(
   waveId: string,
-  waveOrderIds: string[]
+  waveOrderIds: string[],
+  actor: { userId: string; displayName: string }
 ) {
-  const uniqueWaveOrderIds = [
-    ...new Set(
-      waveOrderIds
-        .map((value) => value.trim())
-        .filter(Boolean)
-    ),
-  ];
-
+  const uniqueWaveOrderIds = [...new Set(waveOrderIds.map((value) => value.trim()).filter(Boolean))];
   if (uniqueWaveOrderIds.length === 0) {
-    throw new Error(
-      "Wave’den çıkarılacak en az bir sipariş seçmelisiniz."
-    );
+    throw new Error("Wave’den çıkarılacak en az bir sipariş seçmelisiniz.");
   }
 
-  return prisma.$transaction(async (tx) => {
-    await assertWaveEditable(tx, waveId);
-
-    const selectedWaveOrders =
-      await tx.waveOrder.findMany({
-        where: {
-          id: {
-            in: uniqueWaveOrderIds,
-          },
-
-          waveId,
-        },
-
-        select: {
-          id: true,
-          isCompleted: true,
-          completedQuantity: true,
-        },
-      });
-
-    if (
-      selectedWaveOrders.length !==
-      uniqueWaveOrderIds.length
-    ) {
-      throw new Error(
-        "Seçilen Wave siparişlerinden biri bulunamadı."
-      );
-    }
-
-    const processedOrderExists =
-      selectedWaveOrders.some(
-        (waveOrder) =>
-          waveOrder.isCompleted ||
-          waveOrder.completedQuantity > 0
-      );
-
-    if (processedOrderExists) {
-      throw new Error(
-        "Toplama işlemi başlamış veya tamamlanmış sipariş Wave’den çıkarılamaz."
-      );
-    }
-
-    const deleteResult =
-      await tx.waveOrder.deleteMany({
-        where: {
-          id: {
-            in: uniqueWaveOrderIds,
-          },
-
-          waveId,
-        },
-      });
-
-    await recalculateWaveKpis(tx, waveId);
-
-    return {
-      removedOrderCount:
-        deleteResult.count,
-    };
+  const wave = await prisma.wave.findUnique({
+    where: { id: waveId },
+    select: { id: true, waveNo: true, status: true },
   });
+  if (!wave) throw new Error("Wave kaydı bulunamadı.");
+  if (!EDITABLE_WAVE_STATUSES.includes(wave.status)) {
+    throw new Error(`${wave.waveNo} numaralı Wave bu durumda değiştirilemez.`);
+  }
+
+  const selected = await prisma.waveOrder.findMany({
+    where: { id: { in: uniqueWaveOrderIds }, waveId },
+    select: { id: true, orderId: true },
+  });
+  if (selected.length !== uniqueWaveOrderIds.length) {
+    throw new Error("Seçilen Wave siparişlerinden biri bulunamadı.");
+  }
+
+  // Merkezi servis; gerçek OrderItem toplamalarını, Zone satırlarını ve aktif
+  // eksik kapatmaları birlikte kontrol eder. Başlamış siparişi çıkarmaz.
+  await OrderGroupingService.returnUnstartedOrdersToGrouping({
+    orderIds: selected.map((row) => row.orderId),
+    actorId: actor.userId,
+    actorName: actor.displayName,
+  });
+
+  return { removedOrderCount: selected.length };
 }
