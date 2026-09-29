@@ -18,7 +18,7 @@ export default async function PickingOperationsPage(){
   prisma.zonePickTask.findMany({
    where:{status:{in:["OPEN","CLAIMED","IN_PROGRESS"]},waveId:null},
    orderBy:{createdAt:"desc"},take:100,
-   select:{id:true,createdAt:true,status:true,zone:{select:{code:true}},claimedByUser:{select:{username:true,employee:{select:{firstName:true,lastName:true}}}},
+   select:{id:true,createdAt:true,status:true,zone:{select:{code:true}},claimedBy:{select:{username:true,employee:{select:{firstName:true,lastName:true}}}},
     order:{select:{id:true,orderNumber:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,pickedQuantity:true,pickingShortages:{where:{status:"ACTIVE"},select:{id:true,quantity:true,reason:true}}}}}}}
   })
  ]);
@@ -32,7 +32,7 @@ export default async function PickingOperationsPage(){
  for(const task of directTasks){
   const items=task.order.items.map(i=>({...i,orderId:task.order.id,orderNumber:task.order.orderNumber}));
   const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+i.pickedQuantity,0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
-  groups.push({key:task.id,date:task.createdAt,type:"Sipariş Bazlı",person:person(task.claimedByUser),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:planned<=picked+short?"Tamamlandı":"Devam Ediyor",items});
+  groups.push({key:task.id,date:task.createdAt,type:"Sipariş Bazlı",person:person(task.claimedBy),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:planned<=picked+short?"Tamamlandı":"Devam Ediyor",items});
  }
  groups.sort((a,b)=>b.date.getTime()-a.date.getTime());
  return <main className="p-6">
