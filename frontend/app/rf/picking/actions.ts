@@ -436,13 +436,6 @@ export async function rfPickOrderItem(
   _previousState: RFPickingState,
   formData: FormData,
 ): Promise<RFPickingState> {
-  const currentUser =
-    await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
-
-  const operatorName = currentUser.employee
-    ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
-    : currentUser.username;
-
   const orderNumber = normalizeValue(formData.get("orderNumber"));
   const zoneTaskId = String(formData.get("zoneTaskId") ?? "").trim();
 
@@ -482,8 +475,14 @@ export async function rfPickOrderItem(
     return createErrorState("Kaynak ve hedef taşıma birimi aynı olamaz.");
   }
 
-
   try {
+    const currentUser =
+      await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+
+    const operatorName = currentUser.employee
+      ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+      : currentUser.username;
+
     const perfStartedAt = Date.now();
     const perfMarks: Record<string, number> = {};
     let perfLastAt = perfStartedAt;
