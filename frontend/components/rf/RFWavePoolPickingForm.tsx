@@ -560,25 +560,39 @@ export default function RFWavePoolPickingForm({
     }
   }
 
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function handleQuantityKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (
+      isPending ||
+      !selectedWave ||
+      !targetBarcode.trim() ||
+      !sourceBarcode.trim() ||
+      !productBarcode.trim() ||
+      !selectedTask ||
+      selectedTask.remainingQuantity === 0
+    ) return;
+    formRef.current?.requestSubmit();
+  }
+
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-blue-700">
-              Wave Havuz Toplama
+              RF OPERASYONU
             </p>
 
             <h1 className="mt-2 text-2xl font-black text-slate-950">
-              Ortak Toplama THM
+              Wave Toplama
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Wave içindeki siparişlerin aynı
-              ürünlerini birleştirerek ortak
-              Toplama THM&apos;ine aktarın.
-              Sipariş ayrımı paketleme
-              aşamasında yapılır.
+              Wave seç → Toplama THM → Kaynak THM → Ürün → Adet. Wave içindeki
+              sipariş ihtiyaçları sistem tarafından birlikte yönetilir.
             </p>
           </div>
 
@@ -763,6 +777,7 @@ export default function RFWavePoolPickingForm({
       )}
 
       <form
+        ref={formRef}
         action={formAction}
         className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
       >
@@ -1197,7 +1212,9 @@ export default function RFWavePoolPickingForm({
                   event.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-300 p-4 text-lg font-black"
+              onKeyDown={handleQuantityKeyDown}
+              enterKeyHint="done"
+              className="w-full rounded-xl border-2 border-blue-300 bg-blue-50 p-4 text-lg font-black"
               required
             />
           </label>
@@ -1238,7 +1255,7 @@ export default function RFWavePoolPickingForm({
           >
             {isPending
               ? "Havuz toplama kaydediliyor..."
-              : "Wave Havuz Toplamayı Kaydet"}
+              : "TOPLAMAYI KAYDET"}
           </button>
         </div>
       </form>
