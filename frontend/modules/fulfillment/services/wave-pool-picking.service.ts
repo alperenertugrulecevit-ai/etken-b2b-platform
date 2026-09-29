@@ -398,6 +398,7 @@ export class WavePoolPickingService {
                 select: {
                   quantity: true,
                   pickedQuantity: true,
+                  pickingShortages: { select: { quantity: true } },
                 },
               },
             },
@@ -455,13 +456,16 @@ export class WavePoolPickingService {
               total,
               line
             ) => {
+              const shortageQuantity = line.orderItem.pickingShortages.reduce(
+                (sum, shortage) => sum + shortage.quantity,
+                0,
+              );
               const orderItemRemaining =
                 Math.max(
                   0,
-                  line.orderItem
-                    .quantity -
-                    line.orderItem
-                      .pickedQuantity
+                  line.orderItem.quantity -
+                    line.orderItem.pickedQuantity -
+                    shortageQuantity
                 );
 
               return (
@@ -604,15 +608,18 @@ export class WavePoolPickingService {
             break;
           }
 
+          const shortageQuantity = line.orderItem.pickingShortages.reduce(
+            (sum, shortage) => sum + shortage.quantity,
+            0,
+          );
           const lineRemaining =
             Math.max(
               0,
               Math.min(
                 line.plannedQuantity,
-                line.orderItem
-                  .quantity -
-                  line.orderItem
-                    .pickedQuantity
+                line.orderItem.quantity -
+                  line.orderItem.pickedQuantity -
+                  shortageQuantity
               )
             );
 
@@ -841,8 +848,10 @@ export class WavePoolPickingService {
               },
 
               select: {
+                id: true,
                 quantity: true,
                 pickedQuantity: true,
+                pickingShortages: { select: { quantity: true } },
               },
             });
 
@@ -871,10 +880,21 @@ export class WavePoolPickingService {
               0
             );
 
+          const closedQuantity =
+            orderItems.reduce(
+              (total, item) =>
+                total +
+                Math.min(
+                  item.quantity,
+                  item.pickedQuantity +
+                    item.pickingShortages.reduce((sum, shortage) => sum + shortage.quantity, 0)
+                ),
+              0
+            );
+
           const isCompleted =
             plannedQuantity > 0 &&
-            pickedQuantity >=
-              plannedQuantity;
+            closedQuantity >= plannedQuantity;
 
           await tx.waveOrder.update({
             where: {
