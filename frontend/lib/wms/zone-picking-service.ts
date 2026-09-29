@@ -83,6 +83,19 @@ export class ZonePickingService {
   }
   return {taskCount:plans.size,zoneCount:new Set([...plans.values()].map(p=>p.zoneId)).size};
  }
+ static async releaseOrderPlan(tx:Prisma.TransactionClient,orderId:number){
+  const tasks=await tx.zonePickTask.findMany({where:{orderId,waveId:null},select:{id:true,lines:{select:{handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}}}});
+  for(const task of tasks) for(const line of task.lines){
+   const remaining=Math.max(0,line.plannedQuantity-line.pickedQuantity); if(!remaining) continue;
+   const src=await tx.handlingUnitItem.findUnique({where:{id:line.handlingUnitItemId},select:{productId:true,handlingUnit:{select:{warehouseId:true}}}});
+   if(!src?.handlingUnit.warehouseId) throw new Error("Toplama rezervasyonunun depo bilgisi bulunamadı.");
+   const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
+   if(changed.count!==1) throw new Error("Toplama rezervasyonu THM ve merkezi stok arasında uyumsuz.");
+   await createStockMovementWithTransaction(tx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-remaining,description:"Toplama görevi yeniden planlama için serbest bırakıldı."});
+  }
+  await tx.zonePickTask.deleteMany({where:{orderId,waveId:null}});
+ }
+
  static async releaseWavePlan(tx:Tx,waveId:string){
   const tasks=await tx.zonePickTask.findMany({
     where:{waveId},
@@ -92,10 +105,11 @@ export class ZonePickingService {
     for(const line of task.lines){
       const remaining=Math.max(0,line.plannedQuantity-line.pickedQuantity);
       if(remaining>0){
-        await tx.handlingUnitItem.updateMany({
-          where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},
-          data:{reservedStock:{decrement:remaining}},
-        });
+        const src=await tx.handlingUnitItem.findUnique({where:{id:line.handlingUnitItemId},select:{productId:true,handlingUnit:{select:{warehouseId:true}}}});
+        if(!src?.handlingUnit.warehouseId) throw new Error("Wave rezervasyonunun depo bilgisi bulunamadı.");
+        const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
+        if(changed.count!==1) throw new Error("Wave rezervasyonu THM ve merkezi stok arasında uyumsuz.");
+        await createStockMovementWithTransaction(tx as Prisma.TransactionClient,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-remaining,description:"Wave Zone toplama rezervasyonu serbest bırakıldı."});
       }
     }
   }
