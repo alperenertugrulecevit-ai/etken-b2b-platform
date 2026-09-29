@@ -1,3 +1,5 @@
+CREATE TYPE "PickingShortageStatus" AS ENUM ('ACTIVE', 'REOPENED');
+
 CREATE TYPE "PickingShortageReason" AS ENUM ('NOT_FOUND', 'DAMAGED', 'STOCK_DIFFERENCE', 'QUALITY_REJECTED', 'OTHER');
 
 CREATE TABLE "PickingShortage" (
@@ -7,7 +9,12 @@ CREATE TABLE "PickingShortage" (
     "productId" INTEGER NOT NULL,
     "quantity" INTEGER NOT NULL,
     "reason" "PickingShortageReason" NOT NULL,
+    "status" "PickingShortageStatus" NOT NULL DEFAULT 'ACTIVE',
     "note" TEXT,
+    "reopenedAt" TIMESTAMP(3),
+    "reopenedByUserId" TEXT,
+    "reopenedByName" TEXT,
+    "reopenNote" TEXT,
     "createdByUserId" TEXT,
     "createdByName" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
