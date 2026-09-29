@@ -17,6 +17,8 @@ export type CreateStockMovementInput =
 
     purchaseOrderId?: number | null;
 
+    shippingHandlingUnitId?: string | null;
+
     movementType: StockMovementType;
 
     physicalChange?: number;
