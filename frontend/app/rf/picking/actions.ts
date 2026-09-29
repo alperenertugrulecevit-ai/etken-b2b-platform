@@ -386,7 +386,7 @@ export async function rfClosePickingShortage(formData: FormData) {
 
     await tx.wmsOperationLog.create({
       data: { operationType: WmsOperationType.PICKING, module: "RF_PICKING", entityType: "PICKING_SHORTAGE",
-        entityId: String(item.id), orderId: order.id, orderNumber: order.orderNumber, productId: item.productId,
+        entityId: item.id, orderId: order.id, orderNumber: order.orderNumber, productId: item.productId,
         productCode: item.productCode, productName: item.productName, quantity: shortage,
         description: `${item.productCode} için ${shortage} adet eksik toplama kapatıldı. Neden: ${reasonValue}${note ? ` - ${note}` : ""}`,
         metadata: { reason: reasonValue, note, shortageQuantity: shortage, pickedQuantity: item.pickedQuantity, orderedQuantity: item.quantity },
