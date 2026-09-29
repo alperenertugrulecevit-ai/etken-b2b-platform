@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.READY_TO_SHIP } });
         if (order.fulfillment) {
           await tx.orderFulfillment.update({
-            where: { orderId: order.id, status: "ACTIVE" },
+            where: { orderId: order.id },
             data: {
               packingStatus: FulfillmentProgressStatus.COMPLETED,
               packedQuantity: totalQuantity,
