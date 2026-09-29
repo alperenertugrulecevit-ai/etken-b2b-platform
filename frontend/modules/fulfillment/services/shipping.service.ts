@@ -989,6 +989,11 @@ export class ShippingService {
           const nextShippedQuantity =
             distribution.shippedQuantity +
             totalQuantity;
+          const distributionShortage=await tx.pickingShortage.aggregate({
+            where:{status:"ACTIVE",order:{waveOrders:{some:{waveId:distribution.waveId}},distributionOrder:{distributionId:distribution.id}}},
+            _sum:{quantity:true},
+          });
+          const distributionClosedQuantity=nextShippedQuantity+(distributionShortage._sum.quantity??0);
 
           await tx.waveDistribution.update({
             where: {
@@ -998,12 +1003,12 @@ export class ShippingService {
               shippedQuantity:
                 nextShippedQuantity,
               status:
-                nextShippedQuantity >=
+                distributionClosedQuantity >=
                 distribution.plannedQuantity
                   ? "COMPLETED"
                   : "IN_PROGRESS",
               completedAt:
-                nextShippedQuantity >=
+                distributionClosedQuantity >=
                 distribution.plannedQuantity
                   ? shipmentAt
                   : null,
@@ -1038,12 +1043,16 @@ export class ShippingService {
               0
             );
 
+          const waveShortage=await tx.pickingShortage.aggregate({
+            where:{status:"ACTIVE",order:{waveOrders:{some:{waveId:distribution.waveId}}}},
+            _sum:{quantity:true},
+          });
           const shippingProgress =
             plannedQuantity > 0
               ? Math.min(
                   100,
                   Math.round(
-                    (shippedQuantity /
+                    ((shippedQuantity + (waveShortage._sum.quantity ?? 0)) /
                       plannedQuantity) *
                       100
                   )
