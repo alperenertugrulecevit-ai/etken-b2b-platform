@@ -61,3 +61,29 @@ export async function prepareWavePickingAction(formData: FormData) {
   });
   redirect(`/admin/waves/new?${params.toString()}`);
 }
+
+
+export async function returnToGroupingAction(formData: FormData) {
+  const user = await AuthorizationService.requirePermission("WAVE_MANAGE");
+  const orderIds = idsFrom(formData);
+  const displayName = user.employee
+    ? `${user.employee.firstName} ${user.employee.lastName}`
+    : user.username;
+
+  let result: Awaited<ReturnType<typeof OrderGroupingService.returnUnstartedOrdersToGrouping>>;
+  try {
+    result = await OrderGroupingService.returnUnstartedOrdersToGrouping({
+      orderIds,
+      actorId: user.id,
+      actorName: displayName,
+    });
+  } catch (error) {
+    redirect(errorUrl(error instanceof Error ? error.message : "Toplama planı geri alınamadı."));
+  }
+
+  revalidatePath("/admin/order-grouping");
+  revalidatePath("/admin/waves");
+  revalidatePath("/rf/picking");
+  revalidatePath("/rf/wave-picking");
+  redirect(`/admin/order-grouping?success=${encodeURIComponent(`${result.count} sipariş toplama planından çıkarıldı ve gruplama havuzuna geri alındı.`)}`);
+}
