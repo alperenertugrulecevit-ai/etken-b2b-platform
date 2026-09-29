@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 import {
   assignUserToWave,
   changeWaveStatus,
@@ -105,6 +106,13 @@ export async function createWaveAction(formData: FormData) {
         throw new Error(`${order.orderNumber} farklı bir depoya atanmış.`);
       }
     }
+
+    // Remove any legacy/orphan Zone tasks before the orders enter a new Wave.
+    await prisma.$transaction(async (tx) => {
+      for (const order of orders) {
+        await ZonePickingService.releaseOrderPlan(tx, order.id);
+      }
+    });
 
     const wave = await createWave({
       name: optionalText(formData.get("name")),
