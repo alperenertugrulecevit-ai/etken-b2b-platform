@@ -307,9 +307,31 @@ export class WavePoolPickingService {
           );
         }
 
+        // Zone görevleri Wave oluşturulurken aynı kaynak stoğu rezerve eder.
+        // Wave havuz toplama kendi rezervasyonunu kullanabilmelidir; yalnızca
+        // başka sipariş/Wave rezervasyonları fiziksel kullanılabilirliği azaltır.
+        const waveZoneLines = await tx.zonePickTaskLine.findMany({
+          where: {
+            handlingUnitItemId: sourceItem.id,
+            task: { waveId: wave.id },
+          },
+          select: {
+            id: true,
+            orderItemId: true,
+            plannedQuantity: true,
+            pickedQuantity: true,
+          },
+        });
+        const waveReservedOnSource = waveZoneLines.reduce(
+          (sum, line) => sum + Math.max(0, line.plannedQuantity - line.pickedQuantity),
+          0,
+        );
+        const reservedByOthers = Math.max(
+          0,
+          sourceItem.reservedStock - waveReservedOnSource,
+        );
         const sourceAvailableQuantity =
-          sourceItem.quantity -
-          sourceItem.reservedStock;
+          sourceItem.quantity - reservedByOthers;
 
         if (
           sourceAvailableQuantity <= 0
@@ -326,8 +348,8 @@ export class WavePoolPickingService {
           throw new Error(
             `Kaynak THM'de yeterli kullanılabilir miktar yok. ` +
               `Fiziksel: ${sourceItem.quantity}, ` +
-              `THM rezerve: ${sourceItem.reservedStock}, ` +
-              `kullanılabilir: ${sourceAvailableQuantity}.`
+              `Diğer rezervasyon: ${reservedByOthers}, ` +
+              `bu Wave kullanılabilir: ${sourceAvailableQuantity}.`
           );
         }
 
@@ -540,8 +562,9 @@ export class WavePoolPickingService {
           },
 
           data: {
-            quantity:
-              sourceQuantityAfter,
+            quantity: sourceQuantityAfter,
+            // Fiziksel toplama ile bu Wave'in rezervasyonu da tüketilir.
+            reservedStock: Math.max(0, sourceItem.reservedStock - Math.min(input.quantity, waveReservedOnSource)),
           },
         });
 
@@ -640,6 +663,22 @@ export class WavePoolPickingService {
               },
             },
           });
+
+          // Aynı fiziksel kaynak satırına bağlı Zone görev satırını da ilerlet.
+          // Böylece Wave havuz toplama ile Zone rezervasyonu/görev ilerlemesi ayrışmaz.
+          let zoneRemainingToMark = allocationQuantity;
+          for (const zoneLine of waveZoneLines.filter((row) => row.orderItemId === line.orderItemId)) {
+            if (zoneRemainingToMark <= 0) break;
+            const zoneOpen = Math.max(0, zoneLine.plannedQuantity - zoneLine.pickedQuantity);
+            if (zoneOpen <= 0) continue;
+            const zonePickedNow = Math.min(zoneOpen, zoneRemainingToMark);
+            await tx.zonePickTaskLine.update({
+              where: { id: zoneLine.id },
+              data: { pickedQuantity: { increment: zonePickedNow } },
+            });
+            zoneLine.pickedQuantity += zonePickedNow;
+            zoneRemainingToMark -= zonePickedNow;
+          }
 
           allocatedQuantity +=
             allocationQuantity;
