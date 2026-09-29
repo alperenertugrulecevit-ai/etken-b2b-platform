@@ -608,6 +608,11 @@ model OrderItem {
 }
 
 
+enum PickingShortageStatus {
+  ACTIVE
+  REOPENED
+}
+
 enum PickingShortageReason {
   NOT_FOUND
   DAMAGED
@@ -623,7 +628,12 @@ model PickingShortage {
   productId       Int
   quantity        Int
   reason          PickingShortageReason
+  status          PickingShortageStatus @default(ACTIVE)
   note            String?
+  reopenedAt      DateTime?
+  reopenedByUserId String?
+  reopenedByName  String?
+  reopenNote      String?
   createdByUserId String?
   createdByName   String
   createdAt       DateTime               @default(now())
