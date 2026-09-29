@@ -157,7 +157,7 @@ export default async function RFWavePickingPage() {
                   select: {
                     quantity: true,
                     pickedQuantity: true,
-                    pickingShortages: { select: { quantity: true } },
+                    pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } },
                   },
                 },
               },
