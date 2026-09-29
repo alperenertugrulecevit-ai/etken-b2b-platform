@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { FulfillmentProgressStatus, OrderFulfillmentFlow, OrderStatus, PickingShortageStatus, Prisma, WaveStatus, WmsOperationType } from "@prisma/client";
+import { FulfillmentProgressStatus, OrderFulfillmentFlow, OrderStatus, PickingShortageStatus, Prisma, StockMovementType, WaveStatus, WmsOperationType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 
 function n(fd:FormData,key:string){const v=Number(fd.get(key));if(!Number.isInteger(v)||v<=0)throw new Error("Geçersiz kayıt.");return v;}
 function s(fd:FormData,key:string){return String(fd.get(key)??"").trim();}
@@ -16,7 +17,7 @@ export async function reopenPickingShortageAction(fd:FormData){
  await prisma.$transaction(async tx=>{
   const sh=await tx.pickingShortage.findUnique({where:{id:shortageId},select:{
    id:true,status:true,quantity:true,orderId:true,orderItemId:true,productId:true,
-   order:{select:{orderNumber:true,status:true,fulfillmentWarehouseId:true,dispatchDocument:{select:{id:true,status:true}},waveOrders:{where:{wave:{status:{in:[WaveStatus.RELEASED,WaveStatus.IN_PROGRESS,WaveStatus.PAUSED]}}},select:{waveId:true}}}},
+   order:{select:{orderNumber:true,status:true,fulfillmentWarehouseId:true,dispatchDocument:{select:{id:true,status:true}},waveOrders:{where:{wave:{status:{in:[WaveStatus.RELEASED,WaveStatus.IN_PROGRESS,WaveStatus.PAUSED]}}},select:{waveId:true,wave:{select:{warehouseId:true}}}}}},
    orderItem:{select:{productCode:true,productName:true}}
   }});
   if(!sh||sh.status!==PickingShortageStatus.ACTIVE)throw new Error("Aktif eksik kapatma kaydı bulunamadı.");
@@ -26,6 +27,9 @@ export async function reopenPickingShortageAction(fd:FormData){
   await tx.pickingShortage.update({where:{id:sh.id},data:{status:PickingShortageStatus.REOPENED,reopenedAt:new Date(),reopenedByUserId:user.id,reopenedByName:actorName,reopenNote:note||"Sistem operatörü tarafından yeniden toplamaya açıldı."}});
 
   const waveId=sh.order.waveOrders[0]?.waveId??null;
+  const reservationWarehouseId=sh.order.fulfillmentWarehouseId??sh.order.waveOrders[0]?.wave.warehouseId??null;
+  if(!reservationWarehouseId)throw new Error("Yeniden açılacak miktarın rezervasyon deposu bulunamadı.");
+  await createStockMovementWithTransaction(tx,{productId:sh.productId,warehouseId:reservationWarehouseId,orderId:sh.orderId,movementType:StockMovementType.RESERVATION_CREATE,physicalChange:0,reservedChange:sh.quantity,documentNumber:sh.order.orderNumber,description:"Yanlış eksik kapatma geri alındı; miktar yeniden rezerve edildi."});
   if(waveId){
    await tx.wave.update({where:{id:waveId},data:{status:WaveStatus.IN_PROGRESS,completedAt:null}});
    await tx.waveOrder.update({where:{wave_order_unique:{waveId,orderId:sh.orderId}},data:{isCompleted:false,completedAt:null}});
