@@ -902,17 +902,19 @@ export async function rfPickOrderItem(
 
         const sourceQuantityAfter = sourceItem.quantity - quantity;
 
-        if (sourceQuantityAfter === 0 && sourceItem.reservedStock === 0 && !plannedTaskLine) {
-          await tx.handlingUnitItem.delete({ where: { id: sourceItem.id } });
-        } else {
-          await tx.handlingUnitItem.update({
-            where: { id: sourceItem.id },
-            data: {
-              quantity: sourceQuantityAfter,
-              ...(plannedTaskLine ? { reservedStock: { decrement: 1 } } : {}),
-            },
-          });
-        }
+        /*
+         * HandlingUnitItem may still be referenced by ZonePickTaskLine history.
+         * Keep the source row at quantity 0 instead of deleting it so the
+         * picking/audit reference remains valid. Pickable-stock queries already
+         * exclude zero-quantity rows.
+         */
+        await tx.handlingUnitItem.update({
+          where: { id: sourceItem.id },
+          data: {
+            quantity: sourceQuantityAfter,
+            ...(plannedTaskLine ? { reservedStock: { decrement: 1 } } : {}),
+          },
+        });
 
         const targetProductItem = await tx.handlingUnitItem.upsert({
           where: {
