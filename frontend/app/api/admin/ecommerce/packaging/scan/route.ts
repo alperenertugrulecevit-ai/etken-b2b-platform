@@ -16,7 +16,8 @@ function normalize(value: string) {
 
 function orderPayload(order: any, shippingHandlingUnitBarcode: string | null, mode: "THM" | "FIFO_SINGLE") {
   const address = order.shippingAddress;
-  const totalQuantity = order.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+  const totalQuantity = order.items.reduce((sum: number, item: any) => sum + item.pickedQuantity, 0);
+  const orderedQuantity = order.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 
   return {
     mode,
@@ -32,6 +33,7 @@ function orderPayload(order: any, shippingHandlingUnitBarcode: string | null, mo
         : [order.customer.address, order.customer.district, order.customer.city].filter(Boolean).join(" / "),
       phone: address?.phone || order.customer.phone || "",
       totalQuantity,
+      orderedQuantity,
       carrier: order.carrier ? `${order.carrier.code} - ${order.carrier.name}` : "-",
       gift: Boolean(order.customerNote?.trim()),
       giftNote: order.customerNote?.trim() || "",
@@ -43,6 +45,8 @@ function orderPayload(order: any, shippingHandlingUnitBarcode: string | null, mo
         barcode: item.product.barcode,
         name: item.productName,
         ordered: item.quantity,
+        packable: item.pickedQuantity,
+        shortage: Math.max(0, item.quantity - item.pickedQuantity),
         alreadyPacked: item.packedQuantity,
         imageUrl: item.product.imageUrl,
       })),
