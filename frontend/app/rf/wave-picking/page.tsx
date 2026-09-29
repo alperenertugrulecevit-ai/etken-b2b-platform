@@ -9,6 +9,7 @@ import { AuthorizationService } from "@/modules/authorization/services/authoriza
  * RF picking ekranıdır. flow=wave yalnız Wave Zone görevlerini gösterir.
  *
  * Eski Wave kayıtları Zone görev mimarisinden önce oluşturulmuş olabilir.
+ * Güncel RF görünümü siparişleri değil Wave'leri listeler.
  * Bu giriş noktası yalnız hiç toplama görmemiş ve hiç Zone görevi olmayan
  * aktif Wave siparişlerini idempotent biçimde RF görev havuzuna hazırlar.
  */
