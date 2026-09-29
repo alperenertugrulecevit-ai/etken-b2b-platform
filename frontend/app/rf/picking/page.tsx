@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import RFPickingForm from "@/components/rf/RFPickingForm";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import ClaimZoneTaskButton from "@/components/rf/ClaimZoneTaskButton";
+import { returnToGroupingAction } from "@/app/admin/order-grouping/actions";
 
 // RF toplama gerçek zamanlı operasyon ekranıdır; seçim sonrası eski RSC/cache
 // verisinin tekrar kullanılmasını engelle.
@@ -459,7 +460,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
         createdAt: true,
         warehouse: { select: { code: true, name: true } },
         zone: { select: { code: true, name: true, pickSequence: true } },
-        order: { select: { orderNumber: true, customer: { select: { customerCode: true, companyName: true } } } },
+        order: { select: { id: true, orderNumber: true, items: { select: { pickedQuantity: true } }, customer: { select: { customerCode: true, companyName: true } } } },
         wave: { select: { waveNo: true } },
       },
       orderBy: [{ createdAt: "asc" }],
@@ -800,7 +801,21 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
                   <div className="font-black">{task.order.orderNumber} · {task.order.customer.companyName}</div>
                   <div className="mt-1 text-xs font-semibold text-slate-500">{task.warehouse.code} · {task.zone.code} {task.zone.name} · {task.plannedLineCount} kalem · {task.plannedQuantity} adet{task.wave ? ` · Wave ${task.wave.waveNo}` : " · Sipariş Bazlı"}</div>
                 </div>
-                <ClaimZoneTaskButton taskId={task.id} />
+                <div className="flex items-center gap-2">
+                  <ClaimZoneTaskButton taskId={task.id} />
+                  {task.order.items.every((item) => item.pickedQuantity === 0) && (
+                    <form action={returnToGroupingAction}>
+                      <input type="hidden" name="orderId" value={task.order.id} />
+                      <button
+                        type="submit"
+                        className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 hover:bg-amber-100"
+                        title="Hiç toplama yapılmadıysa siparişi toplama planından çıkarır ve Sipariş Gruplama havuzuna geri gönderir."
+                      >
+                        Gruplamaya Geri Al
+                      </button>
+                    </form>
+                  )}
+                </div>
               </div>
             ))}
           </div>
