@@ -55,7 +55,7 @@ export default async function WmsOrderReport({kind,searchParams}:{kind:ReportKin
   if(status==="CANCELLED")where.status="CANCELLED"; else if(status==="SHIPPED")where.status={not:"CANCELLED"};
   if(from||to)where.orderDate={...(from?{gte:from}:{}),...(to?{lte:to}:{})};
   const itemWhere=productCode?{productCode:{contains:productCode,mode:"insensitive" as const}}:undefined;
-  const queriedOrders=await prisma.order.findMany({where,orderBy:{orderDate:"desc"},include:{customer:{select:{customerCode:true,companyName:true}},carrier:{select:{code:true,name:true}},items:{where:itemWhere,orderBy:{id:"asc"},include:{pickingShortages:{select:{quantity:true,reason:true}}}},fulfillment:true,shippingHandlingUnitOrders:{include:{shippingHandlingUnit:{select:{status:true,closedAt:true,shippedAt:true,boxType:true,desi:true,dispatchDocument:{select:{status:true,issuedAt:true}}}}}}}});
+  const queriedOrders=await prisma.order.findMany({where,orderBy:{orderDate:"desc"},include:{customer:{select:{customerCode:true,companyName:true}},carrier:{select:{code:true,name:true}},items:{where:itemWhere,orderBy:{id:"asc"},include:{pickingShortages:{where:{status:"ACTIVE"},select:{quantity:true,reason:true}}}},fulfillment:true,shippingHandlingUnitOrders:{include:{shippingHandlingUnit:{select:{status:true,closedAt:true,shippedAt:true,boxType:true,desi:true,dispatchDocument:{select:{status:true,issuedAt:true}}}}}}}});
   const withOperationalStatus=queriedOrders.map(o=>{
    const ordered=o.items.reduce((s,x)=>s+x.quantity,0),picked=o.items.reduce((s,x)=>s+x.pickedQuantity,0),packed=o.items.reduce((s,x)=>s+x.packedQuantity,0);
    const units=o.shippingHandlingUnitOrders.map(x=>x.shippingHandlingUnit);
