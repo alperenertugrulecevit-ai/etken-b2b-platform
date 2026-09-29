@@ -5,10 +5,15 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { ZonePickingService } from "@/lib/wms/zone-picking-service";
+import { WaveDistributionService } from "@/modules/fulfillment/services/wave-distribution.service";
 
 const EDITABLE_WAVE_STATUSES: WaveStatus[] = [
   WaveStatus.DRAFT,
   WaveStatus.READY,
+  WaveStatus.RELEASED,
+  WaveStatus.IN_PROGRESS,
+  WaveStatus.PAUSED,
 ];
 
 const ACTIVE_WAVE_STATUSES: WaveStatus[] = [
@@ -73,6 +78,7 @@ async function assertWaveEditable(
       id: true,
       waveNo: true,
       status: true,
+      warehouseId: true,
     },
   });
 
@@ -399,7 +405,8 @@ export async function getWaveOrderManagementData(
 
 export async function addOrdersToWave(
   waveId: string,
-  orderIds: number[]
+  orderIds: number[],
+  actor?: { userId: string; displayName: string }
 ) {
   const uniqueOrderIds = [
     ...new Set(
@@ -417,8 +424,9 @@ export async function addOrdersToWave(
     );
   }
 
-  return prisma.$transaction(async (tx) => {
-    await assertWaveEditable(tx, waveId);
+  const result = await prisma.$transaction(async (tx) => {
+    const wave = await assertWaveEditable(tx, waveId);
+    if (!wave.warehouseId) throw new Error("Wave deposu bulunamadı.");
 
     const eligibleOrders =
       await tx.order.findMany({
@@ -445,6 +453,8 @@ export async function addOrdersToWave(
         select: {
           id: true,
           orderNumber: true,
+          fulfillmentWarehouseId: true,
+          pickingAssignment: { select: { id: true } },
 
           customer: {
             select: {
@@ -476,6 +486,14 @@ export async function addOrdersToWave(
       );
     }
 
+    for (const order of eligibleOrders) {
+      if (order.pickingAssignment) throw new Error(`${order.orderNumber} için sipariş bazlı toplama görevi bulunuyor.`);
+      if (order.fulfillmentWarehouseId && order.fulfillmentWarehouseId !== wave.warehouseId) {
+        throw new Error(`${order.orderNumber} farklı bir depoya atanmış.`);
+      }
+      await ZonePickingService.releaseOrderPlan(tx, order.id);
+    }
+
     await tx.waveOrder.createMany({
       data: eligibleOrders.map((order) => ({
         waveId,
@@ -503,13 +521,32 @@ export async function addOrdersToWave(
       })),
     });
 
+    await tx.order.updateMany({
+      where: { id: { in: uniqueOrderIds } },
+      data: { status: OrderStatus.PREPARING, fulfillmentWarehouseId: wave.warehouseId },
+    });
+
     await recalculateWaveKpis(tx, waveId);
 
     return {
-      addedOrderCount:
-        eligibleOrders.length,
+      addedOrderCount: eligibleOrders.length,
+      warehouseId: wave.warehouseId,
     };
   });
+
+  await WaveDistributionService.createOrRefreshPlan(waveId, {
+    userId: actor?.userId ?? "SYSTEM",
+    displayName: actor?.displayName ?? "System",
+  });
+  await prisma.$transaction(async (tx) => {
+    await ZonePickingService.buildTasksForOrders(tx, {
+      orderIds: uniqueOrderIds,
+      warehouseId: result.warehouseId,
+      waveId,
+    });
+  });
+
+  return { addedOrderCount: result.addedOrderCount };
 }
 
 export async function removeOrdersFromWave(
