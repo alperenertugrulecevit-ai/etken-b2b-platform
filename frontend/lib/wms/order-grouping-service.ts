@@ -144,7 +144,7 @@ export class OrderGroupingService {
     await prisma.$transaction(async (tx) => {
       for (const order of orders) {
         await ZonePickingService.releaseOrderPlan(tx, order.id);
-        await tx.pickingAssignment.deleteMany({ where: { orderId: order.id } });
+        await tx.orderPickingAssignment.deleteMany({ where: { orderId: order.id } });
         await tx.orderFulfillment.deleteMany({ where: { orderId: order.id } });
         await tx.waveOrder.deleteMany({ where: { orderId: order.id } });
         await tx.order.update({
