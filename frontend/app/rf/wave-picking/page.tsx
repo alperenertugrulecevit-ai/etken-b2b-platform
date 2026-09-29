@@ -551,12 +551,11 @@ export default async function RFWavePickingPage() {
               productName:
                 item.product.name,
 
+              // Lokasyon yönlendirmesinde fiziksel miktarı göster.
+              // Wave'in kendi Zone rezervasyonu bu kaynağı ekrandan gizlememeli;
+              // başka rezervasyonların gerçek uygunluk kontrolü submit sırasında yapılır.
               availableQuantity:
-                Math.max(
-                  0,
-                  item.quantity -
-                    item.reservedStock
-                ),
+                Math.max(0, item.quantity),
             })
           )
           .filter(
