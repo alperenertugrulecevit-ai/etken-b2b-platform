@@ -167,7 +167,7 @@ export async function rfWavePoolCloseShortage(formData: FormData) {
       where: { id: waveId },
       select: { id: true, waveNo: true, status: true, warehouseId: true, orders: { select: { orderId: true } } },
     });
-    if (!wave || ![WaveStatus.RELEASED, WaveStatus.IN_PROGRESS].includes(wave.status))
+    if (!wave || (wave.status !== WaveStatus.RELEASED && wave.status !== WaveStatus.IN_PROGRESS))
       throw new Error("Wave eksik kapatmaya açık değildir.");
 
     const lines = await tx.waveDistributionLine.findMany({
