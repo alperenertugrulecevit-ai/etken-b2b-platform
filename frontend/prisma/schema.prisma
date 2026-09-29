@@ -646,6 +646,7 @@ model PickingShortage {
   @@index([orderItemId])
   @@index([productId])
   @@index([reason])
+  @@index([status])
   @@index([createdAt])
 }
 
