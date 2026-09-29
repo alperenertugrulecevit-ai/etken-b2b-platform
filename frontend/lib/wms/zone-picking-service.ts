@@ -5,7 +5,6 @@ const SOURCE_STATUSES: HandlingUnitStatus[]=[HandlingUnitStatus.OPEN,HandlingUni
 
 export class ZonePickingService {
  static async buildTasksForOrders(tx:Tx,input:{orderIds:number[];warehouseId:number;waveId?:string|null}){
-  if (!("$transaction" in tx)) throw new Error("Zone toplama planı transaction içinde oluşturulmalıdır.");
   const trx=tx as Prisma.TransactionClient;
   const ids=[...new Set(input.orderIds)];
   const orders=await tx.order.findMany({where:{id:{in:ids}},select:{id:true,orderNumber:true,items:{select:{id:true,productId:true,quantity:true,pickedQuantity:true}}}});
