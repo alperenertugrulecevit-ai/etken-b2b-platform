@@ -157,6 +157,7 @@ export default async function RFWavePickingPage() {
                   select: {
                     quantity: true,
                     pickedQuantity: true,
+                    pickingShortages: { select: { quantity: true } },
                   },
                 },
               },
@@ -334,13 +335,15 @@ export default async function RFWavePickingPage() {
                 line.productId
               );
 
+            const shortageQuantity = line.orderItem.pickingShortages.reduce(
+              (sum, shortage) => sum + shortage.quantity,
+              0,
+            );
             const linePickedQuantity =
               Math.min(
                 line.plannedQuantity,
-                line.orderItem
-                  .pickedQuantity,
-                line.orderItem
-                  .quantity
+                line.orderItem.pickedQuantity + shortageQuantity,
+                line.orderItem.quantity
               );
 
             if (existing) {
