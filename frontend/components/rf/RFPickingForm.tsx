@@ -511,6 +511,7 @@ export default function RFPickingForm({
       nextOrderItem,
       sourceUnits,
       currentSourceProducts,
+      zoneTaskId,
     ]);
 
   const recommendedSource =
@@ -966,7 +967,7 @@ export default function RFPickingForm({
         (product) =>
           product.productId ===
             nextOrderItem.productId &&
-          product.availableQuantity > 0
+          (zoneTaskId ? product.reservedStock > 0 : product.availableQuantity > 0)
       );
 
     if (
