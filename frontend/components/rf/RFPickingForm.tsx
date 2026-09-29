@@ -11,6 +11,7 @@ import {
 import {
   rfPickOrderItem,
   rfMarkPickingProductLost,
+  rfClosePickingShortage,
   type RFPickingState,
 } from "@/app/rf/picking/actions";
 
@@ -202,6 +203,11 @@ export default function RFPickingForm({
 
   const [lostPending, setLostPending] = useState(false);
   const [lostMessage, setLostMessage] = useState("");
+  const [shortageOpen, setShortageOpen] = useState(false);
+  const [shortageReason, setShortageReason] = useState("NOT_FOUND");
+  const [shortageNote, setShortageNote] = useState("");
+  const [shortagePending, setShortagePending] = useState(false);
+  const [shortageMessage, setShortageMessage] = useState("");
 
   const [
     showMessage,
@@ -1257,6 +1263,32 @@ export default function RFPickingForm({
     }
   }
 
+  async function handleCloseShortage() {
+    if (!selectedOrder || !nextOrderItem) return;
+    const missing = nextOrderItem.remainingQuantity;
+    if (missing <= 0) return;
+    if (!window.confirm(`${nextOrderItem.productCode} için kalan ${missing} adet eksik kapatılsın mı? Bu miktar sevk edilmeyecek.`)) return;
+
+    setShortagePending(true);
+    setShortageMessage("");
+    try {
+      const data = new FormData();
+      data.set("orderNumber", selectedOrder.orderNumber);
+      data.set("orderItemId", String(nextOrderItem.id));
+      data.set("reason", shortageReason);
+      data.set("note", shortageNote);
+      if (zoneTaskId) data.set("zoneTaskId", zoneTaskId);
+      const result = await rfClosePickingShortage(data);
+      setShortageMessage(`${result.productCode}: ${result.shortage} adet eksik kapatıldı.`);
+      setShortageOpen(false);
+      window.setTimeout(() => window.location.reload(), 700);
+    } catch (error) {
+      setShortageMessage(error instanceof Error ? error.message : "Eksik toplama kapatılamadı.");
+    } finally {
+      setShortagePending(false);
+    }
+  }
+
   return (
     <form
       action={formAction}
@@ -1396,6 +1428,36 @@ export default function RFPickingForm({
           <p className="text-lg font-black">✓ Görev Toplaması Tamamlandı</p>
           <p className="mt-1 text-sm font-semibold">Onayladığınızda bu görev bekleyen sipariş listesinden kalkar ve sıradaki görevi seçebilirsiniz.</p>
           <a href="/rf/picking" className="mt-3 block w-full rounded-xl bg-green-700 px-4 py-4 text-center text-lg font-black text-white">TOPLAMAYI ONAYLA · LİSTEYE DÖN</a>
+        </div>
+      )}
+
+      {selectedOrder && nextOrderItem && (
+        <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-black text-amber-950">Ürün bulunamıyor / eksik gönderilecek</p>
+              <p className="mt-1 text-sm text-amber-800">{nextOrderItem.productCode} · Kalan {nextOrderItem.remainingQuantity} adet</p>
+            </div>
+            <button type="button" onClick={() => setShortageOpen((value) => !value)} className="rounded-xl bg-amber-700 px-4 py-3 font-black text-white">
+              Eksik Kapat
+            </button>
+          </div>
+          {shortageOpen && (
+            <div className="mt-4 grid gap-3">
+              <select value={shortageReason} onChange={(event) => setShortageReason(event.target.value)} className="rounded-xl border border-amber-300 bg-white p-3 font-bold">
+                <option value="NOT_FOUND">Ürün Bulunamadı</option>
+                <option value="DAMAGED">Hasarlı Ürün</option>
+                <option value="STOCK_DIFFERENCE">Stok Farkı</option>
+                <option value="QUALITY_REJECTED">Kalite Reddi</option>
+                <option value="OTHER">Diğer</option>
+              </select>
+              <input value={shortageNote} onChange={(event) => setShortageNote(event.target.value)} placeholder="Açıklama (opsiyonel)" className="rounded-xl border border-amber-300 bg-white p-3" />
+              <button type="button" disabled={shortagePending} onClick={handleCloseShortage} className="rounded-xl bg-red-700 px-4 py-3 font-black text-white disabled:opacity-50">
+                {shortagePending ? "İşleniyor..." : `Kalan ${nextOrderItem.remainingQuantity} Adedi Eksik Kapat`}
+              </button>
+            </div>
+          )}
+          {shortageMessage && <p className="mt-3 rounded-lg bg-white p-3 text-sm font-bold text-amber-900">{shortageMessage}</p>}
         </div>
       )}
 
