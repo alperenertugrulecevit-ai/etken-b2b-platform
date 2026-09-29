@@ -19,7 +19,6 @@ import {
 } from "@/lib/wms/wave-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { WaveDistributionService } from "@/modules/fulfillment/services/wave-distribution.service";
-import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 
 function optionalDate(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -131,11 +130,16 @@ export async function createWaveAction(formData: FormData) {
         data: { fulfillmentWarehouseId: warehouse.id },
       });
 
-      await ZonePickingService.buildTasksForOrders(prisma, { orderIds: selectedOrderIds, warehouseId: warehouse.id, waveId: wave.id });
-
       await WaveDistributionService.createOrRefreshPlan(wave.id, {
         userId: currentUser.id,
         displayName,
+      });
+
+      await assignUserToWave({
+        waveId: wave.id,
+        userId: currentUser.id,
+        assignedById: currentUser.id,
+        operationType: WmsOperationType.PICKING,
       });
 
       await changeWaveStatus(wave.id, WaveStatus.READY, displayName);
@@ -147,7 +151,6 @@ export async function createWaveAction(formData: FormData) {
       });
     } catch (error) {
       await prisma.$transaction(async tx => {
-        await ZonePickingService.releaseWavePlan(tx, wave.id);
         for (const order of orders) {
           await tx.order.update({
             where: { id: order.id },
