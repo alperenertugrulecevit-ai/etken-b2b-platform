@@ -13,6 +13,7 @@ import {
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
 import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
@@ -338,9 +339,24 @@ export async function rfClosePickingShortage(formData: FormData) {
         const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
         if (!remaining) continue;
         closed += remaining;
+        const sourceItem = await tx.handlingUnitItem.findUnique({
+          where: { id: line.handlingUnitItemId },
+          select: { productId: true, handlingUnit: { select: { warehouseId: true } } },
+        });
+        if (!sourceItem?.handlingUnit.warehouseId) throw new Error("Eksik kapatılan rezervasyonun depo bilgisi bulunamadı.");
         await tx.handlingUnitItem.updateMany({
           where: { id: line.handlingUnitItemId, reservedStock: { gte: remaining } },
           data: { reservedStock: { decrement: remaining } },
+        });
+        await createStockMovementWithTransaction(tx, {
+          productId: sourceItem.productId,
+          warehouseId: sourceItem.handlingUnit.warehouseId,
+          orderId: order.id,
+          movementType: "RESERVATION_RELEASE",
+          physicalChange: 0,
+          reservedChange: -remaining,
+          documentNumber: order.orderNumber,
+          description: `Eksik toplama nedeniyle rezervasyon serbest bırakıldı: ${reasonValue}`,
         });
         await tx.zonePickTaskLine.update({ where: { id: line.id }, data: { plannedQuantity: line.pickedQuantity } });
       }
