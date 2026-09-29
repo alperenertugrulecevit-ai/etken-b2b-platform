@@ -16,6 +16,7 @@ import RFPickingForm from "@/components/rf/RFPickingForm";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import ClaimZoneTaskButton from "@/components/rf/ClaimZoneTaskButton";
 import { returnToGroupingFromRfAction } from "@/app/admin/order-grouping/actions";
+import { returnWaveToGroupingFromRfAction } from "./actions";
 
 // RF toplama gerçek zamanlı operasyon ekranıdır; seçim sonrası eski RSC/cache
 // verisinin tekrar kullanılmasını engelle.
@@ -769,6 +770,27 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           ShippingHandlingUnitStatus.OPEN
     );
 
+  const waveTaskGroups = waveOnly
+    ? Array.from(
+        openTasks.reduce((map, task) => {
+          if (!task.wave || !task.waveId) return map;
+          const current = map.get(task.waveId) ?? {
+            waveId: task.waveId,
+            waveNo: task.wave.waveNo,
+            tasks: [] as typeof openTasks,
+            plannedLineCount: 0,
+            plannedQuantity: 0,
+          };
+          current.tasks.push(task);
+          current.plannedLineCount += task.plannedLineCount;
+          current.plannedQuantity += task.plannedQuantity;
+          map.set(task.waveId, current);
+          return map;
+        }, new Map<string, { waveId: string; waveNo: string; tasks: typeof openTasks; plannedLineCount: number; plannedQuantity: number }>())
+          .values()
+      )
+    : [];
+
   return (
     <section>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -793,26 +815,62 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
       {!zoneTask && openTasks.length > 0 && (
         <div className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <div><h2 className="text-lg font-black">Bekleyen Siparişler</h2><p className="mt-1 text-sm text-slate-600">Toplamak istediğiniz siparişi seçin. Görev size atanıp toplama ekranı açılır.</p></div>
-            <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-black text-blue-900">{openTasks.length} görev</span>
+            <div>
+              <h2 className="text-lg font-black">{waveOnly ? "Bekleyen Wave'ler" : "Bekleyen Siparişler"}</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {waveOnly
+                  ? "Toplamak istediğiniz Wave'i seçin. Siparişler tek tek listelenmez; Wave içindeki görevler toplama akışında yürütülür."
+                  : "Toplamak istediğiniz siparişi seçin. Görev size atanıp toplama ekranı açılır."}
+              </p>
+            </div>
+            <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-black text-blue-900">
+              {waveOnly ? `${waveTaskGroups.length} Wave` : `${openTasks.length} görev`}
+            </span>
           </div>
+
           <div className="mt-3 grid gap-2">
-            {openTasks.map((task) => (
+            {waveOnly ? waveTaskGroups.map((group) => {
+              const firstTask = group.tasks[0];
+              const canReturnWholeWave = group.tasks.every((task) =>
+                task.order.items.every((item) => item.pickedQuantity === 0)
+              );
+              return (
+                <div key={group.waveId} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+                  <div>
+                    <div className="font-black">Wave {group.waveNo}</div>
+                    <div className="mt-1 text-xs font-semibold text-slate-500">
+                      {group.tasks.length} toplama görevi · {group.plannedLineCount} kalem · {group.plannedQuantity} adet
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {firstTask && <ClaimZoneTaskButton taskId={firstTask.id} />}
+                    {canReturnWholeWave && (
+                      <form action={returnWaveToGroupingFromRfAction}>
+                        <input type="hidden" name="waveId" value={group.waveId} />
+                        <button
+                          type="submit"
+                          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 hover:bg-amber-100"
+                          title="Wave'de hiç toplama yapılmadıysa tüm siparişleri Gruplama havuzuna geri gönderir."
+                        >
+                          Wave'i Gruplamaya Geri Al
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              );
+            }) : openTasks.map((task) => (
               <div key={task.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
                 <div>
                   <div className="font-black">{task.order.orderNumber} · {task.order.customer.companyName}</div>
-                  <div className="mt-1 text-xs font-semibold text-slate-500">{task.warehouse.code} · {task.zone.code} {task.zone.name} · {task.plannedLineCount} kalem · {task.plannedQuantity} adet{task.wave ? ` · Wave ${task.wave.waveNo}` : " · Sipariş Bazlı"}</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-500">{task.warehouse.code} · {task.zone.code} {task.zone.name} · {task.plannedLineCount} kalem · {task.plannedQuantity} adet · Sipariş Bazlı</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <ClaimZoneTaskButton taskId={task.id} />
                   {task.order.items.every((item) => item.pickedQuantity === 0) && (
                     <form action={returnToGroupingFromRfAction}>
                       <input type="hidden" name="orderId" value={task.order.id} />
-                      <button
-                        type="submit"
-                        className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 hover:bg-amber-100"
-                        title="Hiç toplama yapılmadıysa siparişi toplama planından çıkarır ve Sipariş Gruplama havuzuna geri gönderir."
-                      >
+                      <button type="submit" className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 hover:bg-amber-100">
                         Gruplamaya Geri Al
                       </button>
                     </form>
