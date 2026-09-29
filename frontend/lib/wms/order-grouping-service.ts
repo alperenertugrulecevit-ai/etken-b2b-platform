@@ -101,6 +101,99 @@ export class OrderGroupingService {
     };
   }
 
+
+  static async returnUnstartedOrdersToGrouping(input: {
+    orderIds: number[];
+    actorId: string;
+    actorName: string;
+  }) {
+    const orderIds = Array.from(new Set(input.orderIds));
+    if (orderIds.length === 0) throw new Error("En az bir sipariş seçmelisiniz.");
+
+    return prisma.$transaction(async (tx) => {
+      const orders = await tx.order.findMany({
+        where: { id: { in: orderIds } },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          items: { select: { pickedQuantity: true } },
+          zonePickTasks: {
+            select: {
+              id: true,
+              lines: { select: { handlingUnitItemId: true, plannedQuantity: true, pickedQuantity: true } },
+            },
+          },
+          waveOrders: {
+            where: { wave: { status: { in: ACTIVE_WAVE_STATUSES } } },
+            select: { waveId: true },
+          },
+        },
+      });
+
+      if (orders.length !== orderIds.length) throw new Error("Seçilen siparişlerden biri bulunamadı.");
+
+      for (const order of orders) {
+        const picked = order.items.reduce((sum, item) => sum + item.pickedQuantity, 0);
+        const taskPicked = order.zonePickTasks.reduce(
+          (sum, task) => sum + task.lines.reduce((lineSum, line) => lineSum + line.pickedQuantity, 0),
+          0,
+        );
+        if (picked > 0 || taskPicked > 0) {
+          throw new Error(`${order.orderNumber}: toplama başladığı için gruplama havuzuna geri alınamaz.`);
+        }
+      }
+
+      const affectedWaveIds = Array.from(
+        new Set(orders.flatMap((order) => order.waveOrders.map((waveOrder) => waveOrder.waveId))),
+      );
+
+      for (const order of orders) {
+        for (const task of order.zonePickTasks) {
+          for (const line of task.lines) {
+            if (line.plannedQuantity > 0) {
+              await tx.handlingUnitItem.updateMany({
+                where: { id: line.handlingUnitItemId, reservedStock: { gte: line.plannedQuantity } },
+                data: { reservedStock: { decrement: line.plannedQuantity } },
+              });
+            }
+          }
+        }
+
+        await tx.zonePickTask.deleteMany({ where: { orderId: order.id } });
+        await tx.pickingAssignment.deleteMany({ where: { orderId: order.id } });
+        await tx.orderFulfillment.deleteMany({ where: { orderId: order.id } });
+        await tx.waveOrder.deleteMany({ where: { orderId: order.id } });
+
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: OrderStatus.APPROVED,
+            fulfillmentWarehouseId: null,
+            statusHistory: {
+              create: {
+                status: OrderStatus.APPROVED,
+                note: `Toplama başlamadan plan iptal edildi; sipariş ${input.actorName} tarafından Sipariş Gruplama havuzuna geri alındı.`,
+                changedByUserId: input.actorId,
+                changedByUsername: input.actorName,
+                visibleToCustomer: false,
+              },
+            },
+          },
+        });
+      }
+
+      for (const waveId of affectedWaveIds) {
+        const remaining = await tx.waveOrder.count({ where: { waveId } });
+        if (remaining === 0) {
+          await tx.wave.delete({ where: { id: waveId } });
+        }
+      }
+
+      return { count: orders.length };
+    });
+  }
+
   static async startDirectPicking(input: {
     orderIds: number[];
     warehouseId: number;
