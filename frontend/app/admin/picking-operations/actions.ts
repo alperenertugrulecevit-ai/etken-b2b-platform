@@ -17,12 +17,12 @@ export async function reopenPickingShortageAction(fd:FormData){
  await prisma.$transaction(async tx=>{
   const sh=await tx.pickingShortage.findUnique({where:{id:shortageId},select:{
    id:true,status:true,quantity:true,orderId:true,orderItemId:true,productId:true,
-   order:{select:{orderNumber:true,status:true,fulfillmentWarehouseId:true,dispatchDocument:{select:{id:true,status:true}},waveOrders:{where:{wave:{status:{in:[WaveStatus.RELEASED,WaveStatus.IN_PROGRESS,WaveStatus.PAUSED]}}},select:{waveId:true,wave:{select:{warehouseId:true}}}}}},
+   order:{select:{orderNumber:true,status:true,fulfillmentWarehouseId:true,dispatchLines:{take:1,select:{id:true}},waveOrders:{where:{wave:{status:{in:[WaveStatus.RELEASED,WaveStatus.IN_PROGRESS,WaveStatus.PAUSED]}}},select:{waveId:true,wave:{select:{warehouseId:true}}}}}},
    orderItem:{select:{productCode:true,productName:true}}
   }});
   if(!sh||sh.status!==PickingShortageStatus.ACTIVE)throw new Error("Aktif eksik kapatma kaydı bulunamadı.");
   if(["PACKING","READY_TO_SHIP","SHIPPED","DELIVERED","CANCELLED"].includes(sh.order.status))throw new Error("Sipariş paketleme/sevk aşamasına geçtiği için basit yeniden toplama açılamaz.");
-  if(sh.order.dispatchDocument)throw new Error("Sipariş için irsaliye/dispatch kaydı bulunduğundan yeniden toplama açılamaz.");
+  if(sh.order.dispatchLines.length>0)throw new Error("Sipariş için irsaliye/dispatch kaydı bulunduğundan yeniden toplama açılamaz.");
 
   await tx.pickingShortage.update({where:{id:sh.id},data:{status:PickingShortageStatus.REOPENED,reopenedAt:new Date(),reopenedByUserId:user.id,reopenedByName:actorName,reopenNote:note||"Sistem operatörü tarafından yeniden toplamaya açıldı."}});
 
@@ -77,7 +77,7 @@ export async function refreshPickingReservationAction(fd:FormData){
   return {open,waveId};
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
  revalidatePath("/admin/picking-operations");revalidatePath("/rf/picking");revalidatePath("/rf/wave-picking");
- return result;
+ return;
 }
 
 export async function closePickingTaskAction(fd:FormData){
