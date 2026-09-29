@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         const totalQuantity = order.items.reduce((sum, item) => sum + item.pickedQuantity, 0);
         const shortageRows = await tx.pickingShortage.groupBy({
           by: ["orderItemId"],
-          where: { orderId: order.id },
+          where: { orderId: order.id, status: "ACTIVE" },
           _sum: { quantity: true },
         });
         const shortageByItem = new Map(shortageRows.map((row) => [row.orderItemId, row._sum.quantity ?? 0]));
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.READY_TO_SHIP } });
         if (order.fulfillment) {
           await tx.orderFulfillment.update({
-            where: { orderId: order.id },
+            where: { orderId: order.id, status: "ACTIVE" },
             data: {
               packingStatus: FulfillmentProgressStatus.COMPLETED,
               packedQuantity: totalQuantity,
