@@ -179,7 +179,7 @@ export async function rfWavePoolCloseShortage(formData: FormData) {
         distribution: { select: { sequenceNumber: true, distributionCode: true } },
         distributionOrder: { select: { orderNumber: true } },
         orderItem: { select: { quantity: true, pickedQuantity: true, productCode: true, productName: true,
-          pickingShortages: { select: { quantity: true } } } },
+          pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } } } },
       },
     });
     lines.sort((a,b) => a.distribution.sequenceNumber-b.distribution.sequenceNumber ||
