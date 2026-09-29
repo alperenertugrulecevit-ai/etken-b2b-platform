@@ -42,6 +42,7 @@ model Product {
   packingRecords        PackingRecord[]
   shippingUnitItems     ShippingHandlingUnitItem[]
   dispatchLines         DispatchDocumentLine[]
+  pickingShortages      PickingShortage[]
   inventoryCountLines   InventoryCountLine[]
   waveDistributionLines WaveDistributionLine[]
   competitorProducts    CompetitorProduct[]
@@ -107,8 +108,6 @@ enum ProductImageSourceType {
   IMPORT
   API
   OTHER
-  pickingShortages PickingShortage[]
-
 }
 
 model ProductBarcode {
