@@ -5,6 +5,7 @@ import {
   HandlingUnitStatus,
   OrderFulfillmentFlow,
   OrderStatus,
+  PickingShortageReason,
   Prisma,
   WmsOperationType,
 } from "@prisma/client";
@@ -283,6 +284,103 @@ export async function rfMarkPickingProductLost(formData: FormData) {
   revalidatePath("/admin/thm-movements");
   revalidatePath("/admin/lost-stock");
 
+  return result;
+}
+
+
+export async function rfClosePickingShortage(formData: FormData) {
+  const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+  const operatorName = currentUser.employee
+    ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+    : currentUser.username;
+
+  const orderNumber = normalizeValue(formData.get("orderNumber"));
+  const orderItemId = Number(formData.get("orderItemId"));
+  const reasonValue = String(formData.get("reason") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim() || null;
+  const zoneTaskId = String(formData.get("zoneTaskId") ?? "").trim() || null;
+
+  if (!orderNumber || !Number.isInteger(orderItemId) || orderItemId <= 0)
+    throw new Error("Eksik kapatma için sipariş ve ürün satırı zorunludur.");
+  if (!Object.values(PickingShortageReason).includes(reasonValue as PickingShortageReason))
+    throw new Error("Geçerli bir eksik nedeni seçmelisiniz.");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { orderNumber },
+      select: {
+        id: true, orderNumber: true, status: true,
+        items: { select: { id: true, productId: true, productCode: true, productName: true, quantity: true, pickedQuantity: true,
+          pickingShortages: { select: { quantity: true } } } },
+      },
+    });
+    if (!order || !canPickOrder(order.status)) throw new Error("Sipariş eksik toplamaya uygun durumda değildir.");
+    const item = order.items.find(row => row.id === orderItemId);
+    if (!item) throw new Error("Sipariş ürün satırı bulunamadı.");
+    const alreadyShort = item.pickingShortages.reduce((sum,row)=>sum+row.quantity,0);
+    const shortage = Math.max(0, item.quantity - item.pickedQuantity - alreadyShort);
+    if (shortage <= 0) throw new Error("Bu ürün satırında eksik kapatılacak miktar yok.");
+
+    await tx.pickingShortage.create({
+      data: { orderId: order.id, orderItemId: item.id, productId: item.productId, quantity: shortage,
+        reason: reasonValue as PickingShortageReason, note, createdByUserId: currentUser.id, createdByName: operatorName },
+    });
+
+    if (zoneTaskId) {
+      const task = await tx.zonePickTask.findFirst({
+        where: { id: zoneTaskId, orderId: order.id, claimedByUserId: currentUser.id },
+        select: { id: true, plannedQuantity: true, pickedQuantity: true,
+          lines: { where: { orderItemId: item.id }, select: { id: true, handlingUnitItemId: true, plannedQuantity: true, pickedQuantity: true } } },
+      });
+      if (!task) throw new Error("Zone görevi bulunamadı veya kullanıcıya ait değil.");
+      let closed = 0;
+      for (const line of task.lines) {
+        const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
+        if (!remaining) continue;
+        closed += remaining;
+        await tx.handlingUnitItem.updateMany({
+          where: { id: line.handlingUnitItemId, reservedStock: { gte: remaining } },
+          data: { reservedStock: { decrement: remaining } },
+        });
+        await tx.zonePickTaskLine.update({ where: { id: line.id }, data: { plannedQuantity: line.pickedQuantity } });
+      }
+      if (closed > 0) {
+        const nextPlanned = Math.max(task.pickedQuantity, task.plannedQuantity - closed);
+        const completed = task.pickedQuantity >= nextPlanned;
+        await tx.zonePickTask.update({
+          where: { id: task.id },
+          data: { plannedQuantity: nextPlanned, status: completed ? "COMPLETED" : "IN_PROGRESS", completedAt: completed ? new Date() : null },
+        });
+      }
+    }
+
+    const shortages = await tx.pickingShortage.groupBy({ by: ["orderItemId"], where: { orderId: order.id }, _sum: { quantity: true } });
+    const shortageByItem = new Map(shortages.map(row => [row.orderItemId, row._sum.quantity ?? 0]));
+    const operationallyClosed = order.items.every(row => row.pickedQuantity + (shortageByItem.get(row.id) ?? 0) >= row.quantity);
+    const pickedQuantity = order.items.reduce((sum,row)=>sum+row.pickedQuantity,0);
+
+    await tx.orderFulfillment.updateMany({
+      where: { orderId: order.id },
+      data: { pickedQuantity, pickingStatus: operationallyClosed ? "COMPLETED" : "IN_PROGRESS",
+        ...(operationallyClosed ? { pickingCompletedAt: new Date() } : {}) },
+    });
+    if (order.status === OrderStatus.APPROVED || order.status === OrderStatus.PREPARING) {
+      await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.PICKING } });
+    }
+
+    await tx.wmsOperationLog.create({
+      data: { operationType: WmsOperationType.PICKING, module: "RF_PICKING", entityType: "PICKING_SHORTAGE",
+        entityId: String(item.id), orderId: order.id, orderNumber: order.orderNumber, productId: item.productId,
+        productCode: item.productCode, productName: item.productName, quantity: shortage,
+        description: `${item.productCode} için ${shortage} adet eksik toplama kapatıldı. Neden: ${reasonValue}${note ? ` - ${note}` : ""}`,
+        metadata: { reason: reasonValue, note, shortageQuantity: shortage, pickedQuantity: item.pickedQuantity, orderedQuantity: item.quantity },
+        isSuccessful: true },
+    });
+    return { orderNumber: order.orderNumber, productCode: item.productCode, shortage, operationallyClosed };
+  }, { maxWait: 10000, timeout: 30000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  revalidatePath("/rf/picking");
+  revalidatePath("/admin/order-grouping");
   return result;
 }
 
