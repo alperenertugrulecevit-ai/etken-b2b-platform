@@ -12,13 +12,13 @@ export default async function PickingOperationsPage(){
    orderBy:{createdAt:"desc"},
    take:100,
    select:{id:true,waveNo:true,createdAt:true,status:true,assignments:{where:{operationType:"PICKING"},select:{user:{select:{username:true,employee:{select:{firstName:true,lastName:true}}}}}},
-    orders:{select:{order:{select:{id:true,orderNumber:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,pickedQuantity:true,pickingShortages:{select:{quantity:true,reason:true}}}}}}}}}
+    orders:{select:{order:{select:{id:true,orderNumber:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,pickedQuantity:true,pickingShortages:{where:{status:"ACTIVE"},select:{id:true,quantity:true,reason:true}}}}}}}}}
   }),
   prisma.zonePickTask.findMany({
    where:{status:{in:["OPEN","CLAIMED","IN_PROGRESS"]},waveId:null},
    orderBy:{createdAt:"desc"},take:100,
    select:{id:true,createdAt:true,status:true,zone:{select:{code:true}},claimedByUser:{select:{username:true,employee:{select:{firstName:true,lastName:true}}}},
-    order:{select:{id:true,orderNumber:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,pickedQuantity:true,pickingShortages:{select:{quantity:true,reason:true}}}}}}}
+    order:{select:{id:true,orderNumber:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,pickedQuantity:true,pickingShortages:{where:{status:"ACTIVE"},select:{id:true,quantity:true,reason:true}}}}}}}
   })
  ]);
  const person=(u:any)=>u?.employee?`${u.employee.firstName} ${u.employee.lastName}`:u?.username??"-";
