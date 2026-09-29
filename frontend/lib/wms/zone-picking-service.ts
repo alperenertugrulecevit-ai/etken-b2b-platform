@@ -1,9 +1,12 @@
-import { HandlingUnitPurpose, HandlingUnitStatus, Prisma, PrismaClient, ZonePickTaskStatus } from "@prisma/client";
+import { HandlingUnitPurpose, HandlingUnitStatus, Prisma, PrismaClient, StockMovementType, ZonePickTaskStatus } from "@prisma/client";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 type Tx = Prisma.TransactionClient | PrismaClient;
 const SOURCE_STATUSES: HandlingUnitStatus[]=[HandlingUnitStatus.OPEN,HandlingUnitStatus.CLOSED,HandlingUnitStatus.STORED];
 
 export class ZonePickingService {
  static async buildTasksForOrders(tx:Tx,input:{orderIds:number[];warehouseId:number;waveId?:string|null}){
+  if (!("$transaction" in tx)) throw new Error("Zone toplama planı transaction içinde oluşturulmalıdır.");
+  const trx=tx as Prisma.TransactionClient;
   const ids=[...new Set(input.orderIds)];
   const orders=await tx.order.findMany({where:{id:{in:ids}},select:{id:true,orderNumber:true,items:{select:{id:true,productId:true,quantity:true,pickedQuantity:true}}}});
   if(orders.length!==ids.length) throw new Error("Zone görev planı için siparişlerden biri bulunamadı.");
@@ -37,15 +40,30 @@ export class ZonePickingService {
    for(const oldLine of existingLines){
     const replacement=p.lines.find(line=>line.orderItemId===oldLine.orderItemId&&line.handlingUnitItemId===oldLine.handlingUnitItemId);
     if(!replacement){
-      if(oldLine.plannedQuantity>0) await tx.handlingUnitItem.update({where:{id:oldLine.handlingUnitItemId},data:{reservedStock:{decrement:oldLine.plannedQuantity}}});
+      if(oldLine.plannedQuantity>0) {
+        const src=await tx.handlingUnitItem.findUnique({where:{id:oldLine.handlingUnitItemId},select:{productId:true,handlingUnit:{select:{warehouseId:true}}}});
+        if(!src?.handlingUnit.warehouseId) throw new Error("Rezervasyon kaynağının depo bilgisi bulunamadı.");
+        const changed=await tx.handlingUnitItem.updateMany({where:{id:oldLine.handlingUnitItemId,reservedStock:{gte:oldLine.plannedQuantity}},data:{reservedStock:{decrement:oldLine.plannedQuantity}}});
+        if(changed.count!==1) throw new Error("Kaynak THM rezervasyonu merkezi stokla uyumlu değil.");
+        await createStockMovementWithTransaction(trx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId:p.orderId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-oldLine.plannedQuantity,description:"Zone toplama görevi yeniden planlandı; eski rezervasyon bırakıldı."});
+      }
       await tx.zonePickTaskLine.delete({where:{id:oldLine.id}});
     }
    }
    for(const line of p.lines){
     const previous=existingLines.find(old=>old.orderItemId===line.orderItemId&&old.handlingUnitItemId===line.handlingUnitItemId);
     const delta=line.quantity-(previous?.plannedQuantity??0);
-    if(delta>0) await tx.handlingUnitItem.update({where:{id:line.handlingUnitItemId},data:{reservedStock:{increment:delta}}});
-    if(delta<0) await tx.handlingUnitItem.update({where:{id:line.handlingUnitItemId},data:{reservedStock:{decrement:-delta}}});
+    if(delta!==0) {
+      const src=await tx.handlingUnitItem.findUnique({where:{id:line.handlingUnitItemId},select:{productId:true,quantity:true,reservedStock:true,handlingUnit:{select:{warehouseId:true}}}});
+      if(!src?.handlingUnit.warehouseId) throw new Error("Rezervasyon kaynağının depo bilgisi bulunamadı.");
+      if(delta>0 && src.quantity-src.reservedStock<delta) throw new Error("Kaynak THM üzerinde yeterli serbest stok yok.");
+      if(delta>0) await tx.handlingUnitItem.update({where:{id:line.handlingUnitItemId},data:{reservedStock:{increment:delta}}});
+      if(delta<0) {
+        const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:-delta}},data:{reservedStock:{decrement:-delta}}});
+        if(changed.count!==1) throw new Error("Kaynak THM rezervasyonu merkezi stokla uyumlu değil.");
+      }
+      await createStockMovementWithTransaction(trx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId:p.orderId,movementType:delta>0?StockMovementType.RESERVATION_CREATE:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:delta,description:delta>0?"Zone toplama rezervasyonu oluşturuldu.":"Zone toplama rezervasyonu azaltıldı."});
+    }
     await tx.zonePickTaskLine.upsert({where:{zone_task_order_item_source_unique:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId}},create:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId,plannedQuantity:line.quantity,sequence:line.sequence},update:{plannedQuantity:line.quantity,sequence:line.sequence}});
    }
   }
