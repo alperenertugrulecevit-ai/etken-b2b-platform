@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         const totalQuantity = order.items.reduce((sum, item) => sum + item.pickedQuantity, 0);
         const shortageRows = await tx.pickingShortage.groupBy({
           by: ["orderItemId"],
-          where: { orderId: order.id, status: "ACTIVE" },
+          where: { orderId: order.id },
           _sum: { quantity: true },
         });
         const shortageByItem = new Map(shortageRows.map((row) => [row.orderItemId, row._sum.quantity ?? 0]));
