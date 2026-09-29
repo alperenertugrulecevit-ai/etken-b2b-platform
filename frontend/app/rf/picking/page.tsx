@@ -844,7 +844,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {firstTask && <ClaimZoneTaskButton taskId={firstTask.id} />}
+                    {firstTask && <ClaimZoneTaskButton taskId={firstTask.id} flow="wave" />}
                     {canReturnWholeWave && (
                       <form action={returnWaveToGroupingFromRfAction}>
                         <input type="hidden" name="waveId" value={group.waveId} />
