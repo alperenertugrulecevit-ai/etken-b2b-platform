@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
 
 /*
- * Wave ve sipariş bazlı toplama aynı RF motorunu kullanır.
- * /rf/picking ekranı Zone görevlerini akış tipine göre ayırır ve Wave
- * görevlerini Wave numarasıyla gösterir. Böylece iki ayrı toplama ekranı
- * ve iki ayrı stok hareketi uygulaması oluşmaz.
+ * Wave toplama ayrı menü/akış olarak kalır; görsel ve okutma motoru ortak
+ * RF picking ekranıdır. flow=wave yalnız Wave Zone görevlerini gösterir.
  */
 export default function RFWavePickingPage() {
-  redirect("/rf/picking");
+  redirect("/rf/picking?flow=wave");
 }
-// Deployment sync marker: keep Wave picking on the shared RF picking engine.
