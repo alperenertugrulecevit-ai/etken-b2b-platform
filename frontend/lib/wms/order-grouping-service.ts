@@ -239,6 +239,10 @@ export class OrderGroupingService {
       }
 
       for (const order of orders) {
+        // Defensive cleanup for legacy/orphan RF tasks left by a previously
+        // cancelled picking plan. A freshly grouped order must start clean.
+        await ZonePickingService.releaseOrderPlan(tx, order.id);
+
         const plannedQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
         await tx.orderFulfillment.upsert({
