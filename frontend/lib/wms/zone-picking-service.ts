@@ -1,11 +1,9 @@
-import { HandlingUnitPurpose, HandlingUnitStatus, Prisma, PrismaClient, StockMovementType, ZonePickTaskStatus } from "@prisma/client";
-import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
+import { HandlingUnitPurpose, HandlingUnitStatus, Prisma, PrismaClient, ZonePickTaskStatus } from "@prisma/client";
 type Tx = Prisma.TransactionClient | PrismaClient;
 const SOURCE_STATUSES: HandlingUnitStatus[]=[HandlingUnitStatus.OPEN,HandlingUnitStatus.CLOSED,HandlingUnitStatus.STORED];
 
 export class ZonePickingService {
  static async buildTasksForOrders(tx:Tx,input:{orderIds:number[];warehouseId:number;waveId?:string|null}){
-  const trx=tx as Prisma.TransactionClient;
   const ids=[...new Set(input.orderIds)];
   const orders=await tx.order.findMany({where:{id:{in:ids}},select:{id:true,orderNumber:true,items:{select:{id:true,productId:true,quantity:true,pickedQuantity:true}}}});
   if(orders.length!==ids.length) throw new Error("Zone görev planı için siparişlerden biri bulunamadı.");
@@ -43,7 +41,6 @@ export class ZonePickingService {
         if(!src?.handlingUnit.warehouseId) throw new Error("Yeniden planlanan görevin kaynak depo bilgisi bulunamadı.");
         const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
         if(changed.count!==1) throw new Error("Eski görev rezervasyonu merkezi stokla uyumlu değil.");
-        await createStockMovementWithTransaction(trx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId:p.orderId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-remaining,description:"Kısmi toplama sonrası görev yeniden planlandı; kalan eski rezervasyon bırakıldı."});
       }
       await tx.zonePickTask.delete({where:{id:existing.id}});
       existing=null;
@@ -59,7 +56,6 @@ export class ZonePickingService {
         if(!src?.handlingUnit.warehouseId) throw new Error("Rezervasyon kaynağının depo bilgisi bulunamadı.");
         const changed=await tx.handlingUnitItem.updateMany({where:{id:oldLine.handlingUnitItemId,reservedStock:{gte:oldLine.plannedQuantity}},data:{reservedStock:{decrement:oldLine.plannedQuantity}}});
         if(changed.count!==1) throw new Error("Kaynak THM rezervasyonu merkezi stokla uyumlu değil.");
-        await createStockMovementWithTransaction(trx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId:p.orderId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-oldLine.plannedQuantity,description:"Zone toplama görevi yeniden planlandı; eski rezervasyon bırakıldı."});
       }
       await tx.zonePickTaskLine.delete({where:{id:oldLine.id}});
     }
@@ -76,7 +72,6 @@ export class ZonePickingService {
         const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:-delta}},data:{reservedStock:{decrement:-delta}}});
         if(changed.count!==1) throw new Error("Kaynak THM rezervasyonu merkezi stokla uyumlu değil.");
       }
-      await createStockMovementWithTransaction(trx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId:p.orderId,movementType:delta>0?StockMovementType.RESERVATION_CREATE:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:delta,description:delta>0?"Zone toplama rezervasyonu oluşturuldu.":"Zone toplama rezervasyonu azaltıldı."});
     }
     await tx.zonePickTaskLine.upsert({where:{zone_task_order_item_source_unique:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId}},create:{taskId:task.id,orderItemId:line.orderItemId,handlingUnitItemId:line.handlingUnitItemId,plannedQuantity:line.quantity,sequence:line.sequence},update:{plannedQuantity:line.quantity,sequence:line.sequence}});
    }
@@ -91,7 +86,6 @@ export class ZonePickingService {
    if(!src?.handlingUnit.warehouseId) throw new Error("Toplama rezervasyonunun depo bilgisi bulunamadı.");
    const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
    if(changed.count!==1) throw new Error("Toplama rezervasyonu THM ve merkezi stok arasında uyumsuz.");
-   await createStockMovementWithTransaction(tx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-remaining,description:"Toplama görevi yeniden planlama için serbest bırakıldı."});
   }
   await tx.zonePickTask.deleteMany({where:{orderId,waveId:null}});
  }
@@ -109,7 +103,6 @@ export class ZonePickingService {
         if(!src?.handlingUnit.warehouseId) throw new Error("Wave rezervasyonunun depo bilgisi bulunamadı.");
         const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
         if(changed.count!==1) throw new Error("Wave rezervasyonu THM ve merkezi stok arasında uyumsuz.");
-        await createStockMovementWithTransaction(tx as Prisma.TransactionClient,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-remaining,description:"Wave Zone toplama rezervasyonu serbest bırakıldı."});
       }
     }
   }
