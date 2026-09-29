@@ -79,7 +79,7 @@ export class ZonePickingService {
   return {taskCount:plans.size,zoneCount:new Set([...plans.values()].map(p=>p.zoneId)).size};
  }
  static async releaseOrderPlan(tx:Prisma.TransactionClient,orderId:number){
-  const tasks=await tx.zonePickTask.findMany({where:{orderId,waveId:null},select:{id:true,lines:{select:{handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}}}});
+  const tasks=await tx.zonePickTask.findMany({where:{orderId},select:{id:true,lines:{select:{handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}}}});
   for(const task of tasks) for(const line of task.lines){
    const remaining=Math.max(0,line.plannedQuantity-line.pickedQuantity); if(!remaining) continue;
    const src=await tx.handlingUnitItem.findUnique({where:{id:line.handlingUnitItemId},select:{productId:true,handlingUnit:{select:{warehouseId:true}}}});
@@ -87,7 +87,7 @@ export class ZonePickingService {
    const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
    if(changed.count!==1) throw new Error("Toplama rezervasyonu THM ve merkezi stok arasında uyumsuz.");
   }
-  await tx.zonePickTask.deleteMany({where:{orderId,waveId:null}});
+  await tx.zonePickTask.deleteMany({where:{orderId}});
  }
 
  static async releaseWavePlan(tx:Tx,waveId:string){
