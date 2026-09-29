@@ -110,61 +110,57 @@ export class OrderGroupingService {
     const orderIds = Array.from(new Set(input.orderIds));
     if (orderIds.length === 0) throw new Error("En az bir sipariş seçmelisiniz.");
 
-    return prisma.$transaction(async (tx) => {
-      const orders = await tx.order.findMany({
-        where: { id: { in: orderIds } },
-        select: {
-          id: true,
-          orderNumber: true,
-          status: true,
-          items: { select: { pickedQuantity: true } },
-          zonePickTasks: {
-            select: {
-              id: true,
-              lines: { select: { handlingUnitItemId: true, plannedQuantity: true, pickedQuantity: true } },
-            },
-          },
-          waveOrders: {
-            where: { wave: { status: { in: ACTIVE_WAVE_STATUSES } } },
-            select: { waveId: true },
-          },
+    const orders = await prisma.order.findMany({
+      where: { id: { in: orderIds } },
+      select: {
+        id: true,
+        orderNumber: true,
+        items: { select: { pickedQuantity: true } },
+        zonePickTasks: {
+          select: { lines: { select: { pickedQuantity: true } } },
         },
-      });
+        waveOrders: {
+          where: { wave: { status: { in: ACTIVE_WAVE_STATUSES } } },
+          select: { waveId: true },
+        },
+      },
+    });
+    if (orders.length !== orderIds.length) throw new Error("Seçilen siparişlerden biri bulunamadı.");
 
-      if (orders.length !== orderIds.length) throw new Error("Seçilen siparişlerden biri bulunamadı.");
-
-      for (const order of orders) {
-        const picked = order.items.reduce((sum, item) => sum + item.pickedQuantity, 0);
-        const taskPicked = order.zonePickTasks.reduce(
-          (sum, task) => sum + task.lines.reduce((lineSum, line) => lineSum + line.pickedQuantity, 0),
-          0,
-        );
-        if (picked > 0 || taskPicked > 0) {
-          throw new Error(`${order.orderNumber}: toplama başladığı için gruplama havuzuna geri alınamaz.`);
-        }
-      }
-
-      const affectedWaveIds = Array.from(
-        new Set(orders.flatMap((order) => order.waveOrders.map((waveOrder) => waveOrder.waveId))),
+    for (const order of orders) {
+      const picked = order.items.reduce((sum, item) => sum + item.pickedQuantity, 0);
+      const taskPicked = order.zonePickTasks.reduce(
+        (sum, task) => sum + task.lines.reduce((lineSum, line) => lineSum + line.pickedQuantity, 0),
+        0,
       );
+      if (picked > 0 || taskPicked > 0) {
+        throw new Error(`${order.orderNumber}: toplama başladığı için gruplama havuzuna geri alınamaz.`);
+      }
+    }
 
+    const affectedWaveIds = Array.from(new Set(orders.flatMap(order => order.waveOrders.map(row => row.waveId))));
+
+    await prisma.$transaction(async (tx) => {
       for (const order of orders) {
-        for (const task of order.zonePickTasks) {
+        const tasks = await tx.zonePickTask.findMany({
+          where: { orderId: order.id },
+          select: { id: true, lines: { select: { handlingUnitItemId: true, plannedQuantity: true, pickedQuantity: true } } },
+        });
+        for (const task of tasks) {
           for (const line of task.lines) {
-            if (line.plannedQuantity > 0) {
+            const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
+            if (remaining > 0) {
               await tx.handlingUnitItem.updateMany({
-                where: { id: line.handlingUnitItemId, reservedStock: { gte: line.plannedQuantity } },
-                data: { reservedStock: { decrement: line.plannedQuantity } },
+                where: { id: line.handlingUnitItemId, reservedStock: { gte: remaining } },
+                data: { reservedStock: { decrement: remaining } },
               });
             }
           }
         }
-
         await tx.zonePickTask.deleteMany({ where: { orderId: order.id } });
         await tx.pickingAssignment.deleteMany({ where: { orderId: order.id } });
         await tx.orderFulfillment.deleteMany({ where: { orderId: order.id } });
         await tx.waveOrder.deleteMany({ where: { orderId: order.id } });
-
         await tx.order.update({
           where: { id: order.id },
           data: {
@@ -182,16 +178,22 @@ export class OrderGroupingService {
           },
         });
       }
-
-      for (const waveId of affectedWaveIds) {
-        const remaining = await tx.waveOrder.count({ where: { waveId } });
-        if (remaining === 0) {
-          await tx.wave.delete({ where: { id: waveId } });
-        }
-      }
-
-      return { count: orders.length };
     });
+
+    for (const waveId of affectedWaveIds) {
+      const remaining = await prisma.waveOrder.count({ where: { waveId } });
+      if (remaining === 0) {
+        await prisma.wave.delete({ where: { id: waveId } });
+      } else {
+        const { WaveDistributionService } = await import("@/modules/fulfillment/services/wave-distribution.service");
+        await WaveDistributionService.createOrRefreshPlan(waveId, {
+          userId: input.actorId,
+          displayName: input.actorName,
+        });
+      }
+    }
+
+    return { count: orders.length };
   }
 
   static async startDirectPicking(input: {
