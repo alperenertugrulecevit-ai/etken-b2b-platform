@@ -398,7 +398,7 @@ export class WavePoolPickingService {
                 select: {
                   quantity: true,
                   pickedQuantity: true,
-                  pickingShortages: { select: { quantity: true } },
+                  pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } },
                 },
               },
             },
@@ -851,7 +851,7 @@ export class WavePoolPickingService {
                 id: true,
                 quantity: true,
                 pickedQuantity: true,
-                pickingShortages: { select: { quantity: true } },
+                pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } },
               },
             });
 
