@@ -85,10 +85,11 @@ function createFullLocationCode({
     .join("-");
 }
 
-export default async function RFPickingPage({ searchParams }: { searchParams: Promise<{ zoneTaskId?: string }> }) {
+export default async function RFPickingPage({ searchParams }: { searchParams: Promise<{ zoneTaskId?: string; flow?: string }> }) {
   const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
   const query = await searchParams;
   const zoneTaskId = String(query.zoneTaskId ?? "").trim();
+  const waveOnly = String(query.flow ?? "").toLowerCase() === "wave";
   const requestedZoneTask = zoneTaskId ? await prisma.zonePickTask.findFirst({
     where: { id: zoneTaskId, claimedByUserId: currentUser.id },
     include: {
@@ -452,6 +453,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           },
         ],
         order: { status: { in: [OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
+        ...(waveOnly ? { waveId: { not: null } } : { waveId: null }),
       },
       select: {
         id: true,
@@ -776,7 +778,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           </p>
 
           <h1 className="mt-1 text-2xl font-black">
-            {zoneTask ? `${zoneTask.zone.code} · ${zoneTask.zone.name} Toplama` : "Sipariş Toplama"}
+            {zoneTask ? `${zoneTask.zone.code} · ${zoneTask.zone.name} Toplama` : waveOnly ? "Wave Toplama" : "Sipariş Bazlı Toplama"}
           </h1>
         </div>
 
