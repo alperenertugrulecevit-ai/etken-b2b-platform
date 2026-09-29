@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 import RFPickingForm from "@/components/rf/RFPickingForm";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import ClaimZoneTaskButton from "@/components/rf/ClaimZoneTaskButton";
-import { returnToGroupingAction } from "@/app/admin/order-grouping/actions";
+import { returnToGroupingFromRfAction } from "@/app/admin/order-grouping/actions";
 
 // RF toplama gerçek zamanlı operasyon ekranıdır; seçim sonrası eski RSC/cache
 // verisinin tekrar kullanılmasını engelle.
@@ -451,7 +451,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
             claimedByUserId: currentUser.id,
           },
         ],
-        order: { status: { in: [OrderStatus.APPROVED, OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
+        order: { status: { in: [OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
       },
       select: {
         id: true,
@@ -804,7 +804,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
                 <div className="flex items-center gap-2">
                   <ClaimZoneTaskButton taskId={task.id} />
                   {task.order.items.every((item) => item.pickedQuantity === 0) && (
-                    <form action={returnToGroupingAction}>
+                    <form action={returnToGroupingFromRfAction}>
                       <input type="hidden" name="orderId" value={task.order.id} />
                       <button
                         type="submit"
