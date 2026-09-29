@@ -516,7 +516,12 @@ export class WarehouseTransferService {
       companyId: source.companyId,
       reservedToRelease,
     });
-    await tx.handlingUnitItem.delete({ where: { id: item.id } });
+    // Bu satır ZonePickTaskLine tarafından geçmiş/audit amacıyla referanslanabilir.
+    // Silmek FK ihlali üretir; kaynak fiziksel stok bittiğinde kaydı sıfır miktarla koru.
+    await tx.handlingUnitItem.update({
+      where: { id: item.id },
+      data: { quantity: 0, reservedStock: 0 },
+    });
 
     const lostHuBarcode = `KYP-${item.product.code}`;
     const lostHu = await tx.handlingUnit.upsert({
