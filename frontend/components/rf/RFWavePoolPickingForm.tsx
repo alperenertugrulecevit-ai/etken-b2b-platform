@@ -11,6 +11,7 @@ import {
 import {
   rfWavePoolPickAction,
   rfWavePoolMarkProductLost,
+  rfWavePoolCloseShortage,
   type RFWavePoolPickingState,
 } from "@/app/rf/wave-picking/actions";
 
@@ -137,6 +138,13 @@ export default function RFWavePoolPickingForm({
     quantity,
     setQuantity,
   ] = useState("1");
+
+  const [shortageOpen,setShortageOpen]=useState(false);
+  const [shortageQuantity,setShortageQuantity]=useState("1");
+  const [shortageReason,setShortageReason]=useState("NOT_FOUND");
+  const [shortageNote,setShortageNote]=useState("");
+  const [shortagePending,setShortagePending]=useState(false);
+  const [shortageMessage,setShortageMessage]=useState("");
 
   const [
     terminalCode,
@@ -436,6 +444,28 @@ export default function RFWavePoolPickingForm({
   }, [
     state,
   ]);
+
+  async function handleWaveShortage() {
+    if (!selectedWave || !selectedTask) return;
+    const value=Number(shortageQuantity);
+    if (!Number.isInteger(value)||value<=0||value>selectedTask.remainingQuantity) {
+      setShortageMessage("Geçerli bir eksik miktarı girin.");
+      return;
+    }
+    if (!window.confirm(`${selectedTask.productCode} için ${value} adet Wave ihtiyacı eksik kapatılsın mı? Sistem siparişlere FIFO dağıtacaktır.`)) return;
+    setShortagePending(true); setShortageMessage("");
+    try {
+      const data=new FormData();
+      data.set("waveId",selectedWave.id); data.set("productId",String(selectedTask.productId));
+      data.set("shortageQuantity",String(value)); data.set("shortageReason",shortageReason); data.set("shortageNote",shortageNote);
+      const result=await rfWavePoolCloseShortage(data);
+      setShortageMessage(`${result.waveNo}: ${result.quantity} adet eksik kapatıldı. ${result.allocations.join(" · ")}`);
+      setShortageOpen(false);
+      window.setTimeout(()=>window.location.reload(),800);
+    } catch(error) {
+      setShortageMessage(error instanceof Error?error.message:"Wave eksik kapatma başarısız.");
+    } finally { setShortagePending(false); }
+  }
 
   function handleWaveChange(
     waveId: string
@@ -1009,6 +1039,24 @@ export default function RFWavePoolPickingForm({
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {selectedTask && selectedTask.remainingQuantity > 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div><p className="font-black text-amber-950">Wave ürünü eksik mi?</p><p className="mt-1 text-sm text-amber-800">Kalan {selectedTask.remainingQuantity} adet · Eksik miktar siparişlere FIFO dağıtılır.</p></div>
+                <button type="button" onClick={()=>setShortageOpen(v=>!v)} className="rounded-xl bg-amber-700 px-4 py-3 font-black text-white">Eksik Kapat</button>
+              </div>
+              {shortageOpen && <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <input type="number" min={1} max={selectedTask.remainingQuantity} value={shortageQuantity} onChange={e=>setShortageQuantity(e.target.value)} className="rounded-xl border border-amber-300 bg-white p-3 font-bold" />
+                <select value={shortageReason} onChange={e=>setShortageReason(e.target.value)} className="rounded-xl border border-amber-300 bg-white p-3 font-bold">
+                  <option value="NOT_FOUND">Ürün Bulunamadı</option><option value="DAMAGED">Hasarlı Ürün</option><option value="STOCK_DIFFERENCE">Stok Farkı</option><option value="QUALITY_REJECTED">Kalite Reddi</option><option value="OTHER">Diğer</option>
+                </select>
+                <input value={shortageNote} onChange={e=>setShortageNote(e.target.value)} placeholder="Açıklama (opsiyonel)" className="rounded-xl border border-amber-300 bg-white p-3 md:col-span-2" />
+                <button type="button" disabled={shortagePending} onClick={handleWaveShortage} className="rounded-xl bg-red-700 px-4 py-3 font-black text-white disabled:opacity-50 md:col-span-2">{shortagePending?"İşleniyor...":"Wave Eksik Toplamayı Kapat"}</button>
+              </div>}
+              {shortageMessage && <p className="mt-3 rounded-lg bg-white p-3 text-sm font-bold text-amber-900">{shortageMessage}</p>}
             </div>
           )}
 
