@@ -89,7 +89,7 @@ export default async function NewWavePage({ searchParams }: NewWavePageProps) {
         {groupedFlow && (
           <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 p-5 text-violet-950">
             <p className="font-black">Sipariş Gruplama → Wave Toplama</p>
-            <p className="mt-1 text-sm">{selectedCount} sipariş seçildi. Wave Oluştur dediğinizde siparişler stok lokasyonlarına göre Zone görevlerine bölünecek ve ortak RF görev havuzuna serbest bırakılacak.</p>
+            <p className="mt-1 text-sm">{selectedCount} sipariş seçildi. Wave Oluştur dediğinizde siparişler ortak RF Wave Havuz Toplama ekranına gönderilecek ve SKU ihtiyaçları Wave bazında birlikte toplanacak.</p>
           </div>
         )}
 
