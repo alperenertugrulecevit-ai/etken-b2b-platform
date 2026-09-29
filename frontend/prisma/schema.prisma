@@ -449,6 +449,7 @@ model Order {
   shippingHandlingUnitItems  ShippingHandlingUnitItem[]
   packingRecords             PackingRecord[]
   dispatchLines              DispatchDocumentLine[]
+  pickingShortages           PickingShortage[]
   pickingAssignment          OrderPickingAssignment?
   zonePickTasks              ZonePickTask[]
   consolidationTask          ConsolidationTask?
