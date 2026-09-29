@@ -8,6 +8,8 @@ type Row = {
   barcode: string;
   name: string;
   ordered: number;
+  packable: number;
+  shortage: number;
   packed: number;
   imageUrl: string | null;
 };
@@ -20,6 +22,7 @@ type OrderInfo = {
   recipientAddress: string;
   phone: string;
   totalQuantity: number;
+  orderedQuantity: number;
   carrier: string;
   gift: boolean;
   giftNote: string;
@@ -37,6 +40,8 @@ type ScanResponse = {
       barcode: string;
       name: string;
       ordered: number;
+      packable: number;
+      shortage: number;
       imageUrl: string | null;
     }>;
   };
@@ -89,7 +94,7 @@ export default function EcommercePackagingScreen() {
       }
 
       const row = rows[index];
-      if (row.packed >= row.ordered) {
+      if (row.packed >= row.packable) {
         setMessage(`HATA: ${row.code} için sipariş miktarı aşılamaz.`);
         requestAnimationFrame(() => scannerRef.current?.focus());
         return;
@@ -102,7 +107,7 @@ export default function EcommercePackagingScreen() {
       );
       setCurrentImage(row.imageUrl);
       const willBeComplete = rows.every((item, itemIndex) =>
-        itemIndex === index ? item.packed + 1 >= item.ordered : item.packed >= item.ordered,
+        itemIndex === index ? item.packed + 1 >= item.packable : item.packed >= item.packable,
       );
       setMessage(willBeComplete ? `${row.code} okundu. Desi / koli barkodunu okutun.` : `${row.code} okundu. Paketleme miktarı güncellendi.`);
       requestAnimationFrame(() => (willBeComplete ? boxCodeRef.current : scannerRef.current)?.focus());
@@ -151,7 +156,7 @@ export default function EcommercePackagingScreen() {
     }
   }
 
-  const total = rows.reduce((sum, row) => sum + row.ordered, 0);
+  const total = rows.reduce((sum, row) => sum + row.packable, 0);
   const packed = rows.reduce((sum, row) => sum + row.packed, 0);
   const progress = total ? Math.round((packed / total) * 100) : 0;
 
@@ -177,7 +182,7 @@ export default function EcommercePackagingScreen() {
           <dl className="space-y-0 text-sm">
             {[
               ["Sipariş No", order?.orderNumber ?? "—"], ["Siparişi Veren", order?.placedBy ?? "—"], ["Alıcı İsmi", order?.recipientName ?? "—"], ["Alıcı Adresi", order?.recipientAddress ?? "—"],
-              ["Telefon No", order?.phone ?? "—"], ["Sipariş Miktarı", order ? String(order.totalQuantity) : "—"], ["Nakliyeci", order?.carrier ?? "—"], ["Hediye", order ? (order.gift ? "Evet" : "Hayır") : "—"], ["Hediye Notu", order?.giftNote || "—"],
+              ["Telefon No", order?.phone ?? "—"], ["Sipariş Miktarı", order ? String(order.orderedQuantity) : "—"], ["Sevk Edilecek", order ? String(order.totalQuantity) : "—"], ["Nakliyeci", order?.carrier ?? "—"], ["Hediye", order ? (order.gift ? "Evet" : "Hayır") : "—"], ["Hediye Notu", order?.giftNote || "—"],
             ].map(([label,value]) => (
               <div key={label} className="grid grid-cols-[130px_1fr] border-b border-slate-100 py-2 last:border-0">
                 <dt className="font-medium text-slate-500">{label}:</dt><dd className="font-semibold text-slate-900">{value}</dd>
@@ -242,10 +247,10 @@ export default function EcommercePackagingScreen() {
       <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-lg font-black text-slate-900"><BarcodeIcon /> &nbsp; Sipariş Ürünleri</h2>
         <table className="w-full overflow-hidden rounded-xl text-sm">
-          <thead className="bg-slate-100 text-slate-700"><tr>{["#","Ürün Kodu","Barkod","Ürün Tanımı","Sipariş Miktarı","Paketleme Miktarı","Kalan Miktar","Durum"].map(x=><th key={x} className="border border-slate-200 px-4 py-3 text-left font-black">{x}</th>)}</tr></thead>
+          <thead className="bg-slate-100 text-slate-700"><tr>{["#","Ürün Kodu","Barkod","Ürün Tanımı","Sipariş Miktarı","Sevk Edilecek","Eksik","Paketleme Miktarı","Kalan Miktar","Durum"].map(x=><th key={x} className="border border-slate-200 px-4 py-3 text-left font-black">{x}</th>)}</tr></thead>
           <tbody>
-            {rows.length ? rows.map((row,index)=><tr key={row.code}><td className="border border-slate-200 px-4 py-3">{index+1}</td><td className="border border-slate-200 px-4 py-3">{row.code}</td><td className="border border-slate-200 px-4 py-3 font-mono">{row.barcode}</td><td className="border border-slate-200 px-4 py-3">{row.name}</td><td className="border border-slate-200 px-4 py-3">{row.ordered}</td><td className="border border-slate-200 px-4 py-3">{row.packed}</td><td className="border border-slate-200 px-4 py-3">{row.ordered-row.packed}</td><td className="border border-slate-200 px-4 py-3 font-bold text-blue-700">{row.packed >= row.ordered ? "Tamamlandı" : "Bekliyor"}</td></tr>) : (
-              <tr><td colSpan={8} className="border border-slate-200 px-4 py-10 text-center font-semibold text-slate-400">Sipariş bulununca ürünler burada listelenecek.</td></tr>
+            {rows.length ? rows.map((row,index)=><tr key={row.code}><td className="border border-slate-200 px-4 py-3">{index+1}</td><td className="border border-slate-200 px-4 py-3">{row.code}</td><td className="border border-slate-200 px-4 py-3 font-mono">{row.barcode}</td><td className="border border-slate-200 px-4 py-3">{row.name}</td><td className="border border-slate-200 px-4 py-3">{row.ordered}</td><td className="border border-slate-200 px-4 py-3 font-bold text-green-700">{row.packable}</td><td className="border border-slate-200 px-4 py-3 font-bold text-amber-700">{row.shortage}</td><td className="border border-slate-200 px-4 py-3">{row.packed}</td><td className="border border-slate-200 px-4 py-3">{row.packable-row.packed}</td><td className="border border-slate-200 px-4 py-3 font-bold text-blue-700">{row.packed >= row.packable ? "Tamamlandı" : "Bekliyor"}</td></tr>) : (
+              <tr><td colSpan={10} className="border border-slate-200 px-4 py-10 text-center font-semibold text-slate-400">Sipariş bulununca ürünler burada listelenecek.</td></tr>
             )}
           </tbody>
         </table>
