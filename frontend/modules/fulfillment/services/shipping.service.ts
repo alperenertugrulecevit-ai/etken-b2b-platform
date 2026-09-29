@@ -990,7 +990,7 @@ export class ShippingService {
             distribution.shippedQuantity +
             totalQuantity;
           const distributionShortage=await tx.pickingShortage.aggregate({
-            where:{status:"ACTIVE",order:{waveOrders:{some:{waveId:distribution.waveId}},distributionOrder:{distributionId:distribution.id}}},
+            where:{status:"ACTIVE",order:{waveOrders:{some:{waveId:distribution.waveId}},waveDistributionOrders:{some:{distributionId:distribution.id}}}},
             _sum:{quantity:true},
           });
           const distributionClosedQuantity=nextShippedQuantity+(distributionShortage._sum.quantity??0);
