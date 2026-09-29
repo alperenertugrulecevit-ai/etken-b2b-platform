@@ -587,6 +587,9 @@ export async function removeOrdersFromWave(
     orderIds: selected.map((row) => row.orderId),
     actorId: actor.userId,
     actorName: actor.displayName,
+    // Son sipariş de çıkarılırsa Wave silinmez. Operasyon/audit geçmişi
+    // korunur ve action silinmiş Wave sayfasına yönlenerek 404 üretmez.
+    preserveEmptyWaveAsCancelled: true,
   });
 
   return { removedOrderCount: selected.length };
