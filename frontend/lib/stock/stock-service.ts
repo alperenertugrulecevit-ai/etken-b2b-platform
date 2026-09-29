@@ -171,6 +171,8 @@ export async function createStockMovementWithTransaction(
     input.purchaseOrderId ??
     null;
 
+  const shippingHandlingUnitId = input.shippingHandlingUnitId ?? null;
+
   const changesValidation =
     validateStockChanges({
       physicalChange,
@@ -431,6 +433,7 @@ export async function createStockMovementWithTransaction(
           product.id,
         orderId,
         purchaseOrderId,
+        shippingHandlingUnitId,
         movementType:
           input.movementType,
         physicalChange,
