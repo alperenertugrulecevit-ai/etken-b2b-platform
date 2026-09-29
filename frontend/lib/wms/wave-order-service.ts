@@ -545,6 +545,10 @@ export async function addOrdersToWave(
       warehouseId: result.warehouseId,
       waveId,
     });
+    await tx.order.updateMany({
+      where: { id: { in: uniqueOrderIds } },
+      data: { stockReserved: true },
+    });
   });
 
   return { addedOrderCount: result.addedOrderCount };
