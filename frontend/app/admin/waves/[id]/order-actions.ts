@@ -58,7 +58,7 @@ function refreshWavePages(
 export async function addOrdersToWaveAction(
   formData: FormData
 ) {
-  await AuthorizationService.requirePermission(
+  const currentUser = await AuthorizationService.requirePermission(
     "WAVE_MANAGE"
   );
 
@@ -99,7 +99,13 @@ export async function addOrdersToWaveAction(
     const result =
       await addOrdersToWave(
         waveId,
-        orderIds
+        orderIds,
+        {
+          userId: currentUser.id,
+          displayName: currentUser.employee
+            ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+            : currentUser.username,
+        }
       );
 
     addedOrderCount =
@@ -128,7 +134,7 @@ export async function addOrdersToWaveAction(
 export async function removeOrdersFromWaveAction(
   formData: FormData
 ) {
-  await AuthorizationService.requirePermission(
+  const currentUser = await AuthorizationService.requirePermission(
     "WAVE_MANAGE"
   );
 
@@ -166,7 +172,13 @@ export async function removeOrdersFromWaveAction(
     const result =
       await removeOrdersFromWave(
         waveId,
-        waveOrderIds
+        waveOrderIds,
+        {
+          userId: currentUser.id,
+          displayName: currentUser.employee
+            ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+            : currentUser.username,
+        }
       );
 
     removedOrderCount =
