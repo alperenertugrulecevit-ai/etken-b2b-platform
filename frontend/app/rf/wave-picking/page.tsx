@@ -9,3 +9,4 @@ import { redirect } from "next/navigation";
 export default function RFWavePickingPage() {
   redirect("/rf/picking");
 }
+// Deployment sync marker: keep Wave picking on the shared RF picking engine.
