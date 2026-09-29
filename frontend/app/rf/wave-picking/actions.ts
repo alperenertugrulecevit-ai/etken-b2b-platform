@@ -5,6 +5,7 @@ import {
   OrderStatus,
   PickingShortageReason,
   Prisma,
+  StockMovementType,
   WaveStatus,
   WmsOperationType,
 } from "@prisma/client";
@@ -15,6 +16,7 @@ import {
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { prisma } from "@/lib/prisma";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { WarehouseTransferService } from "@/modules/inventory/services/warehouse-transfer.service";
 
 import { WavePoolPickingService } from "@/modules/fulfillment/services/wave-pool-picking.service";
@@ -163,7 +165,7 @@ export async function rfWavePoolCloseShortage(formData: FormData) {
   const result = await prisma.$transaction(async (tx) => {
     const wave = await tx.wave.findUnique({
       where: { id: waveId },
-      select: { id: true, waveNo: true, status: true, orders: { select: { orderId: true } } },
+      select: { id: true, waveNo: true, status: true, warehouseId: true, orders: { select: { orderId: true } } },
     });
     if (!wave || ![WaveStatus.RELEASED, WaveStatus.IN_PROGRESS].includes(wave.status))
       throw new Error("Wave eksik kapatmaya açık değildir.");
@@ -207,6 +209,13 @@ export async function rfWavePoolCloseShortage(formData: FormData) {
         reason:reasonValue as PickingShortageReason, note,
         createdByUserId:currentUser.id, createdByName:operatorName,
       }});
+      if(!wave.warehouseId) throw new Error("Wave rezervasyon deposu bulunamadı.");
+      await createStockMovementWithTransaction(tx,{
+        productId,warehouseId:wave.warehouseId,orderId:line.orderId,
+        movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-quantity,
+        documentNumber:line.distributionOrder.orderNumber,
+        description:`${wave.waveNo} Wave eksik toplama nedeniyle ${quantity} adet rezervasyon serbest bırakıldı.`,
+      });
       await tx.wmsOperationLog.create({data:{
         operationType:WmsOperationType.PICKING,module:"RF_WAVE_POOL_PICKING",entityType:"PICKING_SHORTAGE",
         entityId:line.orderItemId,operatorId:currentUser.id,operatorName,
