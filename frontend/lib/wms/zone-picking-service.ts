@@ -31,11 +31,26 @@ export class ZonePickingService {
    }
   }
   for(const p of plans.values()){
-   const existing=await tx.zonePickTask.findFirst({where:{orderId:p.orderId,zoneId:p.zoneId,waveId:input.waveId??null}});
+   let existing=await tx.zonePickTask.findFirst({where:{orderId:p.orderId,zoneId:p.zoneId,waveId:input.waveId??null}});
    const data={warehouseId:input.warehouseId,zoneId:p.zoneId,orderId:p.orderId,waveId:input.waveId??null,status:ZonePickTaskStatus.OPEN,plannedLineCount:p.lines.length,plannedQuantity:p.lines.reduce((n,l)=>n+l.quantity,0)};
-   const task=existing?await tx.zonePickTask.update({where:{id:existing.id},data:{plannedLineCount:data.plannedLineCount,plannedQuantity:data.plannedQuantity}}):await tx.zonePickTask.create({data});
+   if(existing){
+    const oldLines=await tx.zonePickTaskLine.findMany({where:{taskId:existing.id},select:{handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}});
+    if(oldLines.some(line=>line.pickedQuantity>0)){
+      for(const line of oldLines){
+        const remaining=Math.max(0,line.plannedQuantity-line.pickedQuantity);
+        if(!remaining) continue;
+        const src=await tx.handlingUnitItem.findUnique({where:{id:line.handlingUnitItemId},select:{productId:true,handlingUnit:{select:{warehouseId:true}}}});
+        if(!src?.handlingUnit.warehouseId) throw new Error("Yeniden planlanan görevin kaynak depo bilgisi bulunamadı.");
+        const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
+        if(changed.count!==1) throw new Error("Eski görev rezervasyonu merkezi stokla uyumlu değil.");
+        await createStockMovementWithTransaction(trx,{productId:src.productId,warehouseId:src.handlingUnit.warehouseId,orderId:p.orderId,movementType:StockMovementType.RESERVATION_RELEASE,physicalChange:0,reservedChange:-remaining,description:"Kısmi toplama sonrası görev yeniden planlandı; kalan eski rezervasyon bırakıldı."});
+      }
+      await tx.zonePickTask.delete({where:{id:existing.id}});
+      existing=null;
+    }
+   }
+   const task=existing?await tx.zonePickTask.update({where:{id:existing.id},data:{status:ZonePickTaskStatus.OPEN,claimedByUserId:null,claimedAt:null,startedAt:null,completedAt:null,plannedLineCount:data.plannedLineCount,plannedQuantity:data.plannedQuantity,pickedQuantity:0}}):await tx.zonePickTask.create({data});
    const existingLines=await tx.zonePickTaskLine.findMany({where:{taskId:task.id},select:{id:true,orderItemId:true,handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}});
-   if(existingLines.some(line=>line.pickedQuantity>0)) throw new Error("Toplaması başlamış Zone görevi yeniden planlanamaz.");
    for(const oldLine of existingLines){
     const replacement=p.lines.find(line=>line.orderItemId===oldLine.orderItemId&&line.handlingUnitItemId===oldLine.handlingUnitItemId);
     if(!replacement){
