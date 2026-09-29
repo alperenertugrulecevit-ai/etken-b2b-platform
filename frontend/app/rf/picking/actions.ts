@@ -312,7 +312,7 @@ export async function rfClosePickingShortage(formData: FormData) {
       select: {
         id: true, orderNumber: true, status: true,
         items: { select: { id: true, productId: true, productCode: true, productName: true, quantity: true, pickedQuantity: true,
-          pickingShortages: { select: { quantity: true } } } },
+          pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } } } },
       },
     });
     if (!order || !canPickOrder(order.status)) throw new Error("Sipariş eksik toplamaya uygun durumda değildir.");
@@ -370,7 +370,7 @@ export async function rfClosePickingShortage(formData: FormData) {
       }
     }
 
-    const shortages = await tx.pickingShortage.groupBy({ by: ["orderItemId"], where: { orderId: order.id }, _sum: { quantity: true } });
+    const shortages = await tx.pickingShortage.groupBy({ by: ["orderItemId"], where: { orderId: order.id, status: "ACTIVE" }, _sum: { quantity: true } });
     const shortageByItem = new Map(shortages.map(row => [row.orderItemId, row._sum.quantity ?? 0]));
     const operationallyClosed = order.items.every(row => row.pickedQuantity + (shortageByItem.get(row.id) ?? 0) >= row.quantity);
     const pickedQuantity = order.items.reduce((sum,row)=>sum+row.pickedQuantity,0);
