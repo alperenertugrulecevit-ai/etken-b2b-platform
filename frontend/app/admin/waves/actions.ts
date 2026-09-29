@@ -143,6 +143,20 @@ export async function createWaveAction(formData: FormData) {
         displayName,
       });
 
+      // Wave RF ekranı Zone görev havuzunu kullanır. Wave oluşturulduğu anda
+      // fiziksel stok rezervasyonlarını ve Zone görevlerini gerçekten üret.
+      await prisma.$transaction(async (tx) => {
+        await ZonePickingService.buildTasksForOrders(tx, {
+          orderIds: selectedOrderIds,
+          warehouseId: warehouse.id,
+          waveId: wave.id,
+        });
+        await tx.order.updateMany({
+          where: { id: { in: selectedOrderIds } },
+          data: { stockReserved: true },
+        });
+      });
+
       await assignUserToWave({
         waveId: wave.id,
         userId: currentUser.id,
