@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 
 export type ReadyShippingUnitSummary = {
   id: string;
@@ -123,11 +124,12 @@ function getOrderStatus(
     pickedQuantity: number;
     packedQuantity: number;
     shippedQuantity: number;
+    shortageQuantity: number;
   }>
 ) {
   const allShipped = items.every(
     (item) =>
-      item.shippedQuantity >= item.quantity
+      item.shippedQuantity + item.shortageQuantity >= item.quantity
   );
 
   if (allShipped) {
@@ -136,7 +138,7 @@ function getOrderStatus(
 
   const allPicked = items.every(
     (item) =>
-      item.pickedQuantity >= item.quantity
+      item.pickedQuantity + item.shortageQuantity >= item.quantity
   );
 
   if (!allPicked) {
@@ -145,7 +147,7 @@ function getOrderStatus(
 
   const allPacked = items.every(
     (item) =>
-      item.packedQuantity >= item.quantity
+      item.packedQuantity + item.shortageQuantity >= item.quantity
   );
 
   return allPacked
@@ -402,6 +404,7 @@ export class ShippingService {
                   id: true,
                   barcode: true,
                   status: true,
+                  warehouseId: true,
                 },
               },
               waveDistribution: {
@@ -868,9 +871,13 @@ export class ShippingService {
               fulfillment.shippedQuantity +
               shippedQuantity;
 
+            const activeShortage = await tx.pickingShortage.aggregate({
+              where: { orderId: orderLink.orderId, status: "ACTIVE" },
+              _sum: { quantity: true },
+            });
             const shippingStatus =
               getProgressStatus(
-                nextShippedQuantity,
+                nextShippedQuantity + (activeShortage._sum.quantity ?? 0),
                 fulfillment.plannedQuantity
               );
 
@@ -905,12 +912,17 @@ export class ShippingService {
                 pickedQuantity: true,
                 packedQuantity: true,
                 shippedQuantity: true,
+                pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } },
               },
             });
 
+          const statusItems=updatedOrderItems.map(item=>({
+            ...item,
+            shortageQuantity:item.pickingShortages.reduce((sum,row)=>sum+row.quantity,0),
+          }));
           const nextOrderStatus =
             getOrderStatus(
-              updatedOrderItems
+              statusItems
             );
 
           const completelyShipped =
@@ -945,53 +957,16 @@ export class ShippingService {
             shipment,
           ] of quantitiesByProduct
         ) {
-          const product =
-            productMap.get(productId)!;
-
-          const physicalBalanceAfter =
-            product.stock -
-            shipment.quantity;
-
-          const reservedBalanceAfter =
-            product.reservedStock -
-            shipment.quantity;
-
-          await tx.product.update({
-            where: {
-              id: productId,
-            },
-            data: {
-              stock:
-                physicalBalanceAfter,
-              reservedStock:
-                reservedBalanceAfter,
-            },
-          });
-
-          await tx.stockMovement.create({
-            data: {
-              productId,
-              orderId: null,
-              purchaseOrderId: null,
-              shippingHandlingUnitId:
-                shippingUnit.id,
-              movementType:
-                StockMovementType.SALE_SHIPMENT,
-              physicalChange:
-                -shipment.quantity,
-              reservedChange:
-                -shipment.quantity,
-              physicalBalanceAfter,
-              reservedBalanceAfter,
-              availableBalanceAfter:
-                physicalBalanceAfter -
-                reservedBalanceAfter,
-              documentNumber:
-                dispatchNumber,
-              description:
-                `${barcode} Sevk THM çıkışı. ` +
-                `Alıcı: ${shippingUnit.customerName}.`,
-            },
+          if(!shippingUnit.handlingUnit.warehouseId) throw new Error("Sevk THM depo bilgisi bulunamadı.");
+          await createStockMovementWithTransaction(tx,{
+            productId,
+            warehouseId:shippingUnit.handlingUnit.warehouseId,
+            shippingHandlingUnitId:shippingUnit.id,
+            movementType:StockMovementType.SALE_SHIPMENT,
+            physicalChange:-shipment.quantity,
+            reservedChange:-shipment.quantity,
+            documentNumber:dispatchNumber,
+            description:`${barcode} Sevk THM çıkışı. Alıcı: ${shippingUnit.customerName}.`,
           });
         }
 
