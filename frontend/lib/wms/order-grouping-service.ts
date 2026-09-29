@@ -159,6 +159,7 @@ export class OrderGroupingService {
           data: {
             status: OrderStatus.APPROVED,
             fulfillmentWarehouseId: null,
+            stockReserved: false,
             statusHistory: {
               create: {
                 status: OrderStatus.APPROVED,
