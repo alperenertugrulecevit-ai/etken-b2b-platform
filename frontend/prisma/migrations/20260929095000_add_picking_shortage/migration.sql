@@ -25,6 +25,7 @@ CREATE INDEX "PickingShortage_orderId_idx" ON "PickingShortage"("orderId");
 CREATE INDEX "PickingShortage_orderItemId_idx" ON "PickingShortage"("orderItemId");
 CREATE INDEX "PickingShortage_productId_idx" ON "PickingShortage"("productId");
 CREATE INDEX "PickingShortage_reason_idx" ON "PickingShortage"("reason");
+CREATE INDEX "PickingShortage_status_idx" ON "PickingShortage"("status");
 CREATE INDEX "PickingShortage_createdAt_idx" ON "PickingShortage"("createdAt");
 
 ALTER TABLE "PickingShortage" ADD CONSTRAINT "PickingShortage_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
