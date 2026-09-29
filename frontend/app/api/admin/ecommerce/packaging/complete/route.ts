@@ -85,10 +85,20 @@ export async function POST(request: NextRequest) {
           throw new Error("E-Ticaret siparişi bulunamadı.");
         }
 
-        const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
-        const singleOrder = order.items.length === 1 && totalQuantity === 1;
-        const allPicked = order.items.every((item) => item.pickedQuantity >= item.quantity);
-        if (!allPicked) throw new Error("Siparişin toplaması tamamlanmadan paketleme bitirilemez.");
+        const orderedQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+        const totalQuantity = order.items.reduce((sum, item) => sum + item.pickedQuantity, 0);
+        const shortageRows = await tx.pickingShortage.groupBy({
+          by: ["orderItemId"],
+          where: { orderId: order.id },
+          _sum: { quantity: true },
+        });
+        const shortageByItem = new Map(shortageRows.map((row) => [row.orderItemId, row._sum.quantity ?? 0]));
+        const pickingClosed = order.items.every(
+          (item) => item.pickedQuantity + (shortageByItem.get(item.id) ?? 0) >= item.quantity,
+        );
+        if (!pickingClosed) throw new Error("Siparişin toplaması veya eksik toplama kapatma işlemi tamamlanmadan paketleme bitirilemez.");
+        if (totalQuantity <= 0) throw new Error("Siparişte paketlenecek toplanmış ürün yok.");
+        const singleOrder = order.items.length === 1 && orderedQuantity === 1 && totalQuantity === 1;
 
         let shippingUnit = requestedShippingThm
           ? await tx.shippingHandlingUnit.findFirst({
@@ -203,18 +213,18 @@ export async function POST(request: NextRequest) {
               productCode: item.productCode,
               productBarcode: item.product.barcode,
               productName: item.productName,
-              quantity: item.quantity,
+              quantity: item.pickedQuantity,
             },
-            update: { quantity: item.quantity },
+            update: { quantity: item.pickedQuantity },
           });
           await tx.orderItem.update({
             where: { id: item.id },
-            data: { packedQuantity: item.quantity },
+            data: { packedQuantity: item.pickedQuantity },
           });
           await tx.handlingUnitItem.upsert({
             where: { handling_unit_product_unique: { handlingUnitId: shippingUnit.handlingUnit.id, productId: item.productId } },
-            create: { handlingUnitId: shippingUnit.handlingUnit.id, productId: item.productId, quantity: item.quantity },
-            update: { quantity: item.quantity },
+            create: { handlingUnitId: shippingUnit.handlingUnit.id, productId: item.productId, quantity: item.pickedQuantity },
+            update: { quantity: item.pickedQuantity },
           });
         }
 
