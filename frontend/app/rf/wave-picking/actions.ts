@@ -209,7 +209,7 @@ export async function rfWavePoolCloseShortage(formData: FormData) {
       }});
       await tx.wmsOperationLog.create({data:{
         operationType:WmsOperationType.PICKING,module:"RF_WAVE_POOL_PICKING",entityType:"PICKING_SHORTAGE",
-        entityId:String(line.orderItemId),operatorId:currentUser.id,operatorName,
+        entityId:line.orderItemId,operatorId:currentUser.id,operatorName,
         orderId:line.orderId,orderNumber:line.distributionOrder.orderNumber,productId,
         productCode:line.orderItem.productCode,productName:line.orderItem.productName,quantity,
         description:`${wave.waveNo} Wave havuz toplamada ${quantity} adet eksik kapatıldı. Neden: ${reasonValue}`,
