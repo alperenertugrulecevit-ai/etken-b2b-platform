@@ -127,7 +127,10 @@ export default async function WaveOrdersPage({
 
   const waveIsEditable =
     wave.status === WaveStatus.DRAFT ||
-    wave.status === WaveStatus.READY;
+    wave.status === WaveStatus.READY ||
+    wave.status === WaveStatus.RELEASED ||
+    wave.status === WaveStatus.IN_PROGRESS ||
+    wave.status === WaveStatus.PAUSED;
 
   return (
     <section className="min-h-screen p-8 xl:p-10">
@@ -202,9 +205,8 @@ export default async function WaveOrdersPage({
           </p>
 
           <p className="mt-1 text-sm">
-            Yalnızca Taslak veya Hazır
-            durumundaki Wave’lere sipariş
-            eklenebilir ve çıkarılabilir.
+            Tamamlanmış veya iptal edilmiş Wave’lerde sipariş değişikliği yapılamaz.
+            Aktif Wave’lerde yalnızca toplamasına hiç başlanmamış siparişler çıkarılabilir.
           </p>
         </div>
       )}
