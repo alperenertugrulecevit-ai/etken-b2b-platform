@@ -528,30 +528,22 @@ export class WavePoolPickingService {
           targetQuantityBefore +
           input.quantity;
 
-        if (
-          sourceQuantityAfter === 0 &&
-          sourceItem.reservedStock ===
-            0
-        ) {
-          await tx.handlingUnitItem.delete({
-            where: {
-              id:
-                sourceItem.id,
-            },
-          });
-        } else {
-          await tx.handlingUnitItem.update({
-            where: {
-              id:
-                sourceItem.id,
-            },
+        /*
+         * ZonePickTaskLine may still reference this stock row after its physical
+         * quantity reaches zero. Preserve the row for picking/audit history;
+         * pickable-stock queries already exclude quantity = 0.
+         */
+        await tx.handlingUnitItem.update({
+          where: {
+            id:
+              sourceItem.id,
+          },
 
-            data: {
-              quantity:
-                sourceQuantityAfter,
-            },
-          });
-        }
+          data: {
+            quantity:
+              sourceQuantityAfter,
+          },
+        });
 
         await tx.handlingUnitItem.upsert({
           where: {
