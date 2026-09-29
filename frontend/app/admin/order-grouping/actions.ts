@@ -87,3 +87,23 @@ export async function returnToGroupingAction(formData: FormData) {
   revalidatePath("/rf/wave-picking");
   redirect(`/admin/order-grouping?success=${encodeURIComponent(`${result.count} sipariş toplama planından çıkarıldı ve gruplama havuzuna geri alındı.`)}`);
 }
+
+
+export async function returnToGroupingFromRfAction(formData: FormData) {
+  const user = await AuthorizationService.requirePermission("WAVE_MANAGE");
+  const orderIds = idsFrom(formData);
+  const displayName = user.employee
+    ? `${user.employee.firstName} ${user.employee.lastName}`
+    : user.username;
+
+  await OrderGroupingService.returnUnstartedOrdersToGrouping({
+    orderIds,
+    actorId: user.id,
+    actorName: displayName,
+  });
+
+  revalidatePath("/admin/order-grouping");
+  revalidatePath("/admin/waves");
+  revalidatePath("/rf/picking");
+  revalidatePath("/rf/wave-picking");
+}
