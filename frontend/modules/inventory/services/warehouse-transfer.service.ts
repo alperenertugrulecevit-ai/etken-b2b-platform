@@ -330,7 +330,14 @@ export class WarehouseTransferService {
 
     const sourceAfter = item.quantity - input.quantity;
     if (sourceAfter === 0 && item.reservedStock === 0) {
-      await tx.handlingUnitItem.delete({ where: { id: item.id } });
+      // ZonePickTaskLine geçmişi kaynak HandlingUnitItem kaydına FK ile bağlıdır.
+    // Fiziksel stok kayıp depoya taşındığında satırı silmek audit/izlenebilirliği
+    // bozar ve ZonePickTaskLine_handlingUnitItemId_fkey hatası üretir.
+    // Kaynak satırı sıfır miktarla koru; pickable stok sorguları quantity > 0 kullanır.
+    await tx.handlingUnitItem.update({
+      where: { id: item.id },
+      data: { quantity: 0, reservedStock: 0 },
+    });
     } else {
       await tx.handlingUnitItem.update({ where: { id: item.id }, data: { quantity: sourceAfter } });
     }
