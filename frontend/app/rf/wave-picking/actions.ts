@@ -1,7 +1,12 @@
 "use server";
 
 import {
+  OrderFulfillmentFlow,
+  OrderStatus,
+  PickingShortageReason,
   Prisma,
+  WaveStatus,
+  WmsOperationType,
 } from "@prisma/client";
 
 import {
@@ -133,6 +138,125 @@ export async function rfWavePoolMarkProductLost(formData: FormData) {
   revalidatePath("/admin/stock/movements");
   revalidatePath("/admin/stock/thm-movements");
   revalidatePath("/admin/wms-reports/lost-stock");
+}
+
+
+export async function rfWavePoolCloseShortage(formData: FormData) {
+  const currentUser = await AuthorizationService.requireRfAccess("PICKING_EXECUTE");
+  const waveId = readText(formData, "waveId");
+  const productId = Number(formData.get("productId"));
+  const requestedQuantity = Number(formData.get("shortageQuantity"));
+  const reasonValue = readText(formData, "shortageReason");
+  const note = readText(formData, "shortageNote") || null;
+
+  if (!waveId || !Number.isInteger(productId) || productId <= 0)
+    throw new Error("Wave ve ürün seçilmelidir.");
+  if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0)
+    throw new Error("Eksik miktarı sıfırdan büyük tam sayı olmalıdır.");
+  if (!Object.values(PickingShortageReason).includes(reasonValue as PickingShortageReason))
+    throw new Error("Geçerli bir eksik nedeni seçilmelidir.");
+
+  const operatorName = currentUser.employee
+    ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+    : currentUser.username;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const wave = await tx.wave.findUnique({
+      where: { id: waveId },
+      select: { id: true, waveNo: true, status: true, orders: { select: { orderId: true } } },
+    });
+    if (!wave || ![WaveStatus.RELEASED, WaveStatus.IN_PROGRESS].includes(wave.status))
+      throw new Error("Wave eksik kapatmaya açık değildir.");
+
+    const lines = await tx.waveDistributionLine.findMany({
+      where: {
+        productId,
+        distribution: { waveId, status: { not: "CANCELLED" } },
+        order: { status: { not: OrderStatus.CANCELLED } },
+      },
+      select: {
+        orderId: true, orderItemId: true, plannedQuantity: true, createdAt: true,
+        distribution: { select: { sequenceNumber: true, distributionCode: true } },
+        distributionOrder: { select: { orderNumber: true } },
+        orderItem: { select: { quantity: true, pickedQuantity: true, productCode: true, productName: true,
+          pickingShortages: { select: { quantity: true } } } },
+      },
+    });
+    lines.sort((a,b) => a.distribution.sequenceNumber-b.distribution.sequenceNumber ||
+      a.distributionOrder.orderNumber.localeCompare(b.distributionOrder.orderNumber,"tr") ||
+      a.createdAt.getTime()-b.createdAt.getTime());
+
+    const availableToClose = lines.reduce((sum,line) => {
+      const short = line.orderItem.pickingShortages.reduce((s,r)=>s+r.quantity,0);
+      return sum + Math.max(0, Math.min(line.plannedQuantity, line.orderItem.quantity-line.orderItem.pickedQuantity-short));
+    },0);
+    if (requestedQuantity > availableToClose)
+      throw new Error(`Eksik miktarı Wave kalan ihtiyacından fazla. Kalan: ${availableToClose}.`);
+
+    let remaining = requestedQuantity;
+    const affected = new Set<number>();
+    const allocations: string[] = [];
+    for (const line of lines) {
+      if (remaining <= 0) break;
+      const alreadyShort = line.orderItem.pickingShortages.reduce((s,r)=>s+r.quantity,0);
+      const open = Math.max(0, Math.min(line.plannedQuantity, line.orderItem.quantity-line.orderItem.pickedQuantity-alreadyShort));
+      if (!open) continue;
+      const quantity = Math.min(open, remaining);
+      await tx.pickingShortage.create({data:{
+        orderId:line.orderId, orderItemId:line.orderItemId, productId, quantity,
+        reason:reasonValue as PickingShortageReason, note,
+        createdByUserId:currentUser.id, createdByName:operatorName,
+      }});
+      await tx.wmsOperationLog.create({data:{
+        operationType:WmsOperationType.PICKING,module:"RF_WAVE_POOL_PICKING",entityType:"PICKING_SHORTAGE",
+        entityId:String(line.orderItemId),operatorId:currentUser.id,operatorName,
+        orderId:line.orderId,orderNumber:line.distributionOrder.orderNumber,productId,
+        productCode:line.orderItem.productCode,productName:line.orderItem.productName,quantity,
+        description:`${wave.waveNo} Wave havuz toplamada ${quantity} adet eksik kapatıldı. Neden: ${reasonValue}`,
+        metadata:{waveId,waveNo:wave.waveNo,distributionCode:line.distribution.distributionCode,reason:reasonValue,note},
+      }});
+      affected.add(line.orderId);
+      allocations.push(`${line.distributionOrder.orderNumber}: ${quantity} adet`);
+      remaining -= quantity;
+    }
+    if (remaining !== 0) throw new Error("Eksik miktarın tamamı Wave siparişlerine dağıtılamadı.");
+
+    for (const orderId of affected) {
+      const items = await tx.orderItem.findMany({where:{orderId},select:{
+        quantity:true,pickedQuantity:true,pickingShortages:{select:{quantity:true}}
+      }});
+      const planned=items.reduce((s,i)=>s+i.quantity,0);
+      const picked=items.reduce((s,i)=>s+Math.min(i.quantity,i.pickedQuantity),0);
+      const closed=items.reduce((s,i)=>s+Math.min(i.quantity,i.pickedQuantity+i.pickingShortages.reduce((a,r)=>a+r.quantity,0)),0);
+      const complete=planned>0&&closed>=planned;
+      await tx.waveOrder.update({where:{wave_order_unique:{waveId,orderId}},data:{
+        completedQuantity:picked,isCompleted:complete,completedAt:complete?new Date():null
+      }});
+      await tx.orderFulfillment.updateMany({where:{orderId,flowType:OrderFulfillmentFlow.WAVE},data:{
+        pickedQuantity:picked,pickingStatus:complete?"COMPLETED":"IN_PROGRESS",...(complete?{pickingCompletedAt:new Date()}:{})
+      }});
+    }
+
+    const waveOrders = await tx.waveOrder.findMany({where:{waveId},select:{isCompleted:true,order:{select:{items:{select:{
+      quantity:true,pickedQuantity:true,pickingShortages:{select:{quantity:true}}
+    }}}}}});
+    const items=waveOrders.flatMap(w=>w.order.items);
+    const planned=items.reduce((s,i)=>s+i.quantity,0);
+    const picked=items.reduce((s,i)=>s+Math.min(i.quantity,i.pickedQuantity),0);
+    const closed=items.reduce((s,i)=>s+Math.min(i.quantity,i.pickedQuantity+i.pickingShortages.reduce((a,r)=>a+r.quantity,0)),0);
+    const completedLines=items.filter(i=>i.pickedQuantity+i.pickingShortages.reduce((a,r)=>a+r.quantity,0)>=i.quantity).length;
+    await tx.wave.update({where:{id:waveId},data:{
+      completedQuantity:picked,completedLineCount:completedLines,
+      completedOrderCount:waveOrders.filter(w=>w.isCompleted).length,
+      pickingProgress:planned>0?Math.min(100,Math.round(closed/planned*100)):0,
+    }});
+    return { waveNo: wave.waveNo, quantity: requestedQuantity, allocations };
+  }, {maxWait:10000,timeout:30000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+
+  revalidatePath("/rf/wave-picking");
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/waves");
+  return result;
 }
 
 export async function rfWavePoolPickAction(
