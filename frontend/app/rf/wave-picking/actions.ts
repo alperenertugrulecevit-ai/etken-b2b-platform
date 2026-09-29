@@ -272,11 +272,6 @@ export async function rfWavePoolPickAction(
   _previousState: RFWavePoolPickingState,
   formData: FormData
 ): Promise<RFWavePoolPickingState> {
-  const currentUser =
-    await AuthorizationService.requireRfAccess(
-      "PICKING_EXECUTE"
-    );
-
   const waveId =
     readText(
       formData,
@@ -358,12 +353,16 @@ export async function rfWavePoolPickAction(
     );
   }
 
-  const operatorName =
-    currentUser.employee
-      ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
-      : currentUser.username;
-
   try {
+    const currentUser =
+      await AuthorizationService.requireRfAccess(
+        "PICKING_EXECUTE"
+      );
+
+    const operatorName =
+      currentUser.employee
+        ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
+        : currentUser.username;
     const result =
       await WavePoolPickingService.execute(
         {
