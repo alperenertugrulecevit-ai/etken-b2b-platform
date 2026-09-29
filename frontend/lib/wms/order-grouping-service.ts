@@ -146,6 +146,12 @@ export class OrderGroupingService {
         await ZonePickingService.releaseOrderPlan(tx, order.id);
         await tx.orderPickingAssignment.deleteMany({ where: { orderId: order.id } });
         await tx.orderFulfillment.deleteMany({ where: { orderId: order.id } });
+
+        // WaveDistributionOrder.waveOrder uses onDelete: Restrict. Remove the
+        // unstarted order from the distribution plan first; its distribution
+        // lines are deleted by the relation cascade. The remaining Wave plan
+        // is rebuilt after this transaction.
+        await tx.waveDistributionOrder.deleteMany({ where: { orderId: order.id } });
         await tx.waveOrder.deleteMany({ where: { orderId: order.id } });
         await tx.order.update({
           where: { id: order.id },
