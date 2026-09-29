@@ -107,6 +107,8 @@ enum ProductImageSourceType {
   IMPORT
   API
   OTHER
+  pickingShortages PickingShortage[]
+
 }
 
 model ProductBarcode {
@@ -597,12 +599,45 @@ model OrderItem {
   shippingHandlingUnitItems ShippingHandlingUnitItem[]
   packingRecords            PackingRecord[]
   dispatchLines             DispatchDocumentLine[]
+  pickingShortages          PickingShortage[]
 
   @@index([orderId])
   @@index([productId])
   @@index([pickedQuantity])
   @@index([packedQuantity])
   @@index([shippedQuantity])
+}
+
+
+enum PickingShortageReason {
+  NOT_FOUND
+  DAMAGED
+  STOCK_DIFFERENCE
+  QUALITY_REJECTED
+  OTHER
+}
+
+model PickingShortage {
+  id              Int                    @id @default(autoincrement())
+  orderId         Int
+  orderItemId     Int
+  productId       Int
+  quantity        Int
+  reason          PickingShortageReason
+  note            String?
+  createdByUserId String?
+  createdByName   String
+  createdAt       DateTime               @default(now())
+
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([reason])
+  @@index([createdAt])
 }
 
 enum PurchaseOrderStatus {
