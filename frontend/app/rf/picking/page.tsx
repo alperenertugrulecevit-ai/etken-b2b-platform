@@ -458,6 +458,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
       },
       select: {
         id: true,
+        waveId: true,
         plannedLineCount: true,
         plannedQuantity: true,
         createdAt: true,
