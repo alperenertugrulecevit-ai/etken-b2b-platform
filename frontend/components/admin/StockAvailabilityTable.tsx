@@ -495,6 +495,10 @@ export default function StockAvailabilityTable({
               </th>
 
               <th className="p-4">
+                Barkod
+              </th>
+
+              <th className="p-4">
                 Ürün Kodu
               </th>
 
@@ -559,6 +563,10 @@ export default function StockAvailabilityTable({
                         row.handlingUnitBarcode
                       }
                     </button>
+                  </td>
+
+                  <td className="p-4 font-mono">
+                    {row.productBarcode || "-"}
                   </td>
 
                   <td className="p-4 font-bold text-blue-900">
@@ -628,7 +636,7 @@ export default function StockAvailabilityTable({
               0 && (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="p-12 text-center text-slate-500"
                 >
                   Seçilen filtrelere uygun
