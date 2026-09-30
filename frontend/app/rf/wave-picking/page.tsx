@@ -17,6 +17,10 @@ import { prisma } from "@/lib/prisma";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
+// RF Wave ekranı canlı operasyon verisini her açılışta yeniden okumalıdır.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function getWaveStatusLabel(
   status: WaveStatus
 ) {
