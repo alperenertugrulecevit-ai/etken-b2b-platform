@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { prepareWavePickingAction, startDirectPickingAction } from "./actions";
+import ColumnVisibilityMenu, { useColumnVisibility } from "@/components/admin/ColumnVisibilityMenu";
 
 type OrderRow = {
   id: number;
@@ -22,6 +23,14 @@ type OrderRow = {
 };
 
 type Warehouse = { id: number; code: string; name: string };
+const orderColumns = [
+  { key: "orderNo", label: "Sipariş No" }, { key: "orderType", label: "Sipariş Tipi" },
+  { key: "city", label: "İl" }, { key: "district", label: "İlçe" }, { key: "warehouse", label: "Depo" },
+  { key: "customer", label: "Müşteri" }, { key: "carrier", label: "Nakliyeci" }, { key: "orderDate", label: "Sipariş Tarihi" },
+  { key: "requestedDate", label: "Talep Tarihi" }, { key: "lineCount", label: "Kalem Sayısı" },
+  { key: "quantity", label: "Toplam Adet" }, { key: "amount", label: "Tutar" },
+];
+
 const typeLabels: Record<string, string> = {
   ECOMMERCE: "E-Ticaret",
   STORE: "Mağaza",
@@ -45,6 +54,7 @@ export default function OrderGroupingClient({
   const [warehouseId, setWarehouseId] = useState("");
   const [showMode, setShowMode] = useState(false);
   const [expanded, setExpanded] = useState<number[]>([]);
+  const columnVisibility = useColumnVisibility("etken:columns:order-grouping", orderColumns);
 
   const selectedOrders = useMemo(
     () => orders.filter((order) => selected.includes(order.id)),
@@ -80,6 +90,7 @@ export default function OrderGroupingClient({
       <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-950"><b>Zone bazlı toplama:</b> Personel bu ekrandan atanmaz. Sipariş başlatıldığında stok lokasyonlarına göre Zone görevleri oluşur; RF personeli Zone seçerek görev alır.</div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <ColumnVisibilityMenu columns={orderColumns} visible={columnVisibility.visible} onToggle={columnVisibility.toggle} onShowAll={columnVisibility.showAll} onReset={columnVisibility.reset} />
         <div className="font-semibold text-slate-600">
           {orders.length} onaylı sipariş · <span className="text-blue-800">{selected.length} seçili</span>
         </div>
@@ -121,18 +132,18 @@ export default function OrderGroupingClient({
                   aria-label="Tüm siparişleri seç"
                 />
               </th>
-              <th className="p-4">Sipariş No</th>
-              <th className="p-4">Sipariş Tipi</th>
-              <th className="p-4">İl</th>
-              <th className="p-4">İlçe</th>
-              <th className="p-4">Depo</th>
-              <th className="p-4">Müşteri</th>
-              <th className="p-4">Nakliyeci</th>
-              <th className="p-4">Sipariş Tarihi</th>
-              <th className="p-4">Talep Tarihi</th>
-              <th className="p-4">Kalem Sayısı</th>
-              <th className="p-4">Toplam Adet</th>
-              <th className="p-4">Tutar</th>
+              {columnVisibility.isVisible("orderNo") && <th className="p-4">Sipariş No</th>}
+              {columnVisibility.isVisible("orderType") && <th className="p-4">Sipariş Tipi</th>}
+              {columnVisibility.isVisible("city") && <th className="p-4">İl</th>}
+              {columnVisibility.isVisible("district") && <th className="p-4">İlçe</th>}
+              {columnVisibility.isVisible("warehouse") && <th className="p-4">Depo</th>}
+              {columnVisibility.isVisible("customer") && <th className="p-4">Müşteri</th>}
+              {columnVisibility.isVisible("carrier") && <th className="p-4">Nakliyeci</th>}
+              {columnVisibility.isVisible("orderDate") && <th className="p-4">Sipariş Tarihi</th>}
+              {columnVisibility.isVisible("requestedDate") && <th className="p-4">Talep Tarihi</th>}
+              {columnVisibility.isVisible("lineCount") && <th className="p-4">Kalem Sayısı</th>}
+              {columnVisibility.isVisible("quantity") && <th className="p-4">Toplam Adet</th>}
+              {columnVisibility.isVisible("amount") && <th className="p-4">Tutar</th>}
             </tr>
           </thead>
           <tbody>
@@ -146,10 +157,10 @@ export default function OrderGroupingClient({
                 <td className="p-4">
                   <input type="checkbox" checked={selected.includes(order.id)} onChange={() => toggle(order.id)} />
                 </td>
-                <td className="p-4 font-black text-blue-900">{order.orderNumber}</td>
-                <td className="p-4"><span className="rounded-full bg-violet-100 px-3 py-1 font-bold text-violet-800">{typeLabels[order.orderType] || order.orderType}</span></td>
-                <td className="p-4">{order.shippingAddress?.city || "-"}</td>
-                <td className="p-4">{order.shippingAddress?.district || "-"}</td>
+                {columnVisibility.isVisible("orderNo") && <td className="p-4 font-black text-blue-900">{order.orderNumber}</td>}
+                {columnVisibility.isVisible("orderType") && <td className="p-4"><span className="rounded-full bg-violet-100 px-3 py-1 font-bold text-violet-800">{typeLabels[order.orderType] || order.orderType}</span></td>}
+                {columnVisibility.isVisible("city") && <td className="p-4">{order.shippingAddress?.city || "-"}</td>}
+                {columnVisibility.isVisible("district") && <td className="p-4">{order.shippingAddress?.district || "-"}</td>}
                 <td className="p-4">
                   {order.fulfillmentWarehouse
                     ? <><div className="font-bold">{order.fulfillmentWarehouse.code}</div><div className="text-slate-500">{order.fulfillmentWarehouse.name}</div></>
