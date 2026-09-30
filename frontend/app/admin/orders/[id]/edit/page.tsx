@@ -91,6 +91,10 @@ export default async function EditOrderPage({
       },
 
       include: {
+        waveOrders:{select:{id:true}},
+        zonePickTasks:{select:{id:true}},
+        pickingAssignment:{select:{id:true,cancelledAt:true}},
+        fulfillment:{select:{pickingStatus:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true}},
         items: {
           orderBy: {
             id: "asc",
@@ -172,11 +176,23 @@ export default async function EditOrderPage({
     notFound();
   }
 
+  const hasOperationalPicking =
+    order.waveOrders.length > 0 ||
+    order.zonePickTasks.length > 0 ||
+    Boolean(order.pickingAssignment && !order.pickingAssignment.cancelledAt) ||
+    Boolean(order.fulfillment && (
+      order.fulfillment.pickingStatus !== "NOT_STARTED" ||
+      order.fulfillment.pickedQuantity > 0 ||
+      order.fulfillment.packedQuantity > 0 ||
+      order.fulfillment.shippedQuantity > 0
+    ));
+
   if (
     !editableStatuses.includes(
       order.status
     ) ||
-    order.stockDeducted
+    order.stockDeducted ||
+    hasOperationalPicking
   ) {
     redirect(
       `/admin/orders/${orderId}`
@@ -304,6 +320,10 @@ export default async function EditOrderPage({
             },
 
             include: {
+              waveOrders:{select:{id:true}},
+              zonePickTasks:{select:{id:true}},
+              pickingAssignment:{select:{id:true,cancelledAt:true}},
+              fulfillment:{select:{pickingStatus:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true}},
               items: {
                 select: {
                   productId: true,
@@ -327,11 +347,23 @@ export default async function EditOrderPage({
           );
         }
 
+        const hasOperationalPicking =
+          existingOrder.waveOrders.length > 0 ||
+          existingOrder.zonePickTasks.length > 0 ||
+          Boolean(existingOrder.pickingAssignment && !existingOrder.pickingAssignment.cancelledAt) ||
+          Boolean(existingOrder.fulfillment && (
+            existingOrder.fulfillment.pickingStatus !== "NOT_STARTED" ||
+            existingOrder.fulfillment.pickedQuantity > 0 ||
+            existingOrder.fulfillment.packedQuantity > 0 ||
+            existingOrder.fulfillment.shippedQuantity > 0
+          ));
+
         if (
           !editableStatuses.includes(
             existingOrder.status
           ) ||
-          existingOrder.stockDeducted
+          existingOrder.stockDeducted ||
+          hasOperationalPicking
         ) {
           throw new Error(
             "Bu sipariş artık güncellenemez."
