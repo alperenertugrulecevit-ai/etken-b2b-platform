@@ -544,6 +544,7 @@ export async function addOrdersToWave(
       orderIds: uniqueOrderIds,
       warehouseId: result.warehouseId,
       waveId,
+      allowPartialStock: true,
     });
     await tx.order.updateMany({
       where: { id: { in: uniqueOrderIds } },
