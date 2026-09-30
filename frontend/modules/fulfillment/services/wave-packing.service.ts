@@ -1072,7 +1072,7 @@ export class WavePackingService {
 
         const resolvedWarehouseId =
           targetUnit.warehouseId ??
-          targetUnit.shippingProfile.waveDistribution.wave.warehouseId;
+          targetUnit.shippingProfile.waveDistribution?.wave.warehouseId;
 
         if (!resolvedWarehouseId) {
           throw new Error(
