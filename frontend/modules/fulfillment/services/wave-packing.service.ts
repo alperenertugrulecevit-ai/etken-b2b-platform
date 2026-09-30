@@ -2,6 +2,7 @@ import {
   HandlingUnitPurpose,
   HandlingUnitStatus,
   OrderFulfillmentFlow,
+  OrderType,
   Prisma,
   ShippingHandlingUnitStatus,
   WaveDistributionStatus,
@@ -181,6 +182,11 @@ export class WavePackingService {
                       orderNumber: true,
                     },
                   },
+                  order: {
+                    select: {
+                      orderType: true,
+                    },
+                  },
                   orderItem: {
                     select: {
                       pickedQuantity:
@@ -248,6 +254,29 @@ export class WavePackingService {
                 line.availableQuantity >
                 0,
             );
+
+        const ecommerceOrderIds =
+          Array.from(
+            new Set(
+              availableLines
+                .filter(
+                  (line) =>
+                    line.order.orderType ===
+                    OrderType.ECOMMERCE,
+                )
+                .map(
+                  (line) => line.orderId,
+                ),
+            ),
+          );
+
+        if (
+          ecommerceOrderIds.length > 1
+        ) {
+          throw new Error(
+            "E-Ticaret Wave paketlemede siparişler birleştirilemez. Dağılım planını yenileyin; her E-Ticaret siparişi ayrı paketlenmelidir.",
+          );
+        }
 
         const availableQuantity =
           availableLines.reduce(
