@@ -264,12 +264,35 @@ export async function createStockMovementWithTransaction(
     physicalChange === 0 &&
     reservedChange < 0;
 
+  const isExistingOrderReservationCreate =
+    !product.isActive &&
+    orderId !== null &&
+    input.movementType === StockMovementType.RESERVATION_CREATE &&
+    physicalChange === 0 &&
+    reservedChange > 0
+      ? Boolean(
+          await db.orderItem.findFirst({
+            where: {
+              orderId,
+              productId: product.id,
+            },
+            select: { id: true },
+          })
+        )
+      : false;
+
   /*
    * Pasif ürünlerde yeni stok/rezerve hareketi oluşturulamaz.
-   * Ancak ürün pasife alınmadan önce oluşmuş bir sipariş rezervasyonunun
-   * çözülebilmesi gerekir; aksi halde rezervasyon kalıcı olarak kilitlenir.
+   * İki güvenli istisna vardır:
+   * 1) daha önce oluşmuş rezervasyonun çözülmesi,
+   * 2) aynı siparişte zaten bulunan pasif ürünün, sipariş güncellemesi
+   *    sırasında çözülen rezervasyonunun yeniden kurulması.
    */
-  if (!product.isActive && !isReservationRelease) {
+  if (
+    !product.isActive &&
+    !isReservationRelease &&
+    !isExistingOrderReservationCreate
+  ) {
     throw new Error(
       `${product.code} - ${product.name} ürünü pasif durumda.`
     );
