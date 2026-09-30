@@ -5,7 +5,7 @@ import ColumnVisibilityMenu, { useColumnVisibility } from "@/components/admin/Co
 import { reopenPickingShortageAction, refreshPickingReservationAction } from "@/app/admin/picking-operations/actions";
 
 const mainColumns=[
- {key:"date",label:"Toplama Görev Tarihi"},{key:"type",label:"Toplama Tipi"},{key:"orderType",label:"Sipariş Tipi"},
+ {key:"date",label:"Toplama Görev Tarihi"},{key:"warehouseCode",label:"Depo Kodu"},{key:"type",label:"Toplama Tipi"},{key:"orderType",label:"Sipariş Tipi"},
  {key:"person",label:"Toplama Personeli"},{key:"waveNo",label:"Wave No"},{key:"orderNo",label:"Sipariş No"},
  {key:"zone",label:"Zone"},{key:"planned",label:"Toplanacak Miktar"},{key:"picked",label:"Toplanan Miktar"},
  {key:"difference",label:"Fark"},{key:"percentage",label:"Tamamlanma Yüzdesi"},{key:"status",label:"Toplama Durumu"},
@@ -23,7 +23,7 @@ export default function PickingOperationsTable({groups}:{groups:any[]}){
  const detail=useColumnVisibility("etken:columns:picking-operations:detail",detailColumns);
  const [open,setOpen]=useState<string[]>([]);
  const mainValue=(g:any,key:string)=>{
-  switch(key){case"date":return g.dateText;case"type":return g.type;case"orderType":return g.orderType;case"person":return g.person;case"waveNo":return g.waveNo;case"orderNo":return g.orderNo;case"zone":return g.zone;case"planned":return g.planned;case"picked":return g.picked;case"difference":return Math.max(0,g.planned-g.picked-g.short);case"percentage":return `%${pct(g.picked+g.short,g.planned)}`;case"status":return g.status;default:return"-";}
+  switch(key){case"date":return g.dateText;case"warehouseCode":return g.warehouseCode;case"type":return g.type;case"orderType":return g.orderType;case"person":return g.person;case"waveNo":return g.waveNo;case"orderNo":return g.orderNo;case"zone":return g.zone;case"planned":return g.planned;case"picked":return g.picked;case"difference":return Math.max(0,g.planned-g.picked-g.short);case"percentage":return `%${pct(g.picked+g.short,g.planned)}`;case"status":return g.status;default:return"-";}
  };
  return <>
   <div className="mb-3 flex flex-wrap justify-end gap-2">
