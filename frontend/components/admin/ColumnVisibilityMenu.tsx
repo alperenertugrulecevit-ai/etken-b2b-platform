@@ -71,7 +71,7 @@ export default function ColumnVisibilityMenu({
     .filter((c): c is ColumnOption => Boolean(c));
 
   return (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block translate-x-[5cm] text-left">
       <button type="button" onClick={() => setOpen(v => !v)}
         className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700 hover:bg-slate-50">
         ⚙ {label}
@@ -83,9 +83,9 @@ export default function ColumnVisibilityMenu({
           <div className="max-h-80 space-y-2 overflow-auto">
             {ordered.map(column => (
               <div key={column.key} draggable={Boolean(onMove)}
-                onDragStart={() => setDragKey(column.key)}
+                onDragStart={event => { setDragKey(column.key); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", column.key); }}
                 onDragOver={event => event.preventDefault()}
-                onDrop={() => { if (dragKey && onMove) onMove(dragKey, column.key); setDragKey(null); }}
+                onDrop={event => { event.preventDefault(); const source = event.dataTransfer.getData("text/plain") || dragKey; if (source && onMove) onMove(source, column.key); setDragKey(null); }}
                 onDragEnd={() => setDragKey(null)}
                 className={`flex items-center gap-3 rounded-lg border border-transparent px-2 py-2 hover:border-slate-200 hover:bg-slate-50 ${dragKey === column.key ? "opacity-50" : ""}`}>
                 <span className="cursor-grab select-none text-slate-400" title="Sürükle">☰</span>
