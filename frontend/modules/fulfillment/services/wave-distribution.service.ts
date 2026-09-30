@@ -1,6 +1,7 @@
 import {
   FulfillmentProgressStatus,
   OrderFulfillmentFlow,
+  OrderType,
   Prisma,
   WaveStatus,
 } from "@prisma/client";
@@ -114,14 +115,20 @@ function createAddressSnapshot(order: {
   };
 }
 
-function createGroupKey(
-  customerId: number,
-  shippingAddressId: number | null,
-) {
+function createGroupKey(input: {
+  orderId: number;
+  orderType: OrderType;
+  customerId: number;
+  shippingAddressId: number | null;
+}) {
+  if (input.orderType === OrderType.ECOMMERCE) {
+    return `ECOMMERCE:${input.orderId}`;
+  }
+
   return [
-    customerId,
-    shippingAddressId ??
-      "CUSTOMER_ADDRESS",
+    "CUSTOMER",
+    input.customerId,
+    input.shippingAddressId ?? "CUSTOMER_ADDRESS",
   ].join(":");
 }
 
@@ -165,6 +172,7 @@ export class WaveDistributionService {
                       customerId: true,
                       shippingAddressId:
                         true,
+                      orderType: true,
                       customer: {
                         select: {
                           customerCode:
@@ -290,10 +298,12 @@ export class WaveDistributionService {
             );
 
           const groupKey =
-            createGroupKey(
-              snapshot.customerId,
-              snapshot.shippingAddressId,
-            );
+            createGroupKey({
+              orderId: waveOrder.order.id,
+              orderType: waveOrder.order.orderType,
+              customerId: snapshot.customerId,
+              shippingAddressId: snapshot.shippingAddressId,
+            });
 
           const group =
             groups.get(groupKey);
