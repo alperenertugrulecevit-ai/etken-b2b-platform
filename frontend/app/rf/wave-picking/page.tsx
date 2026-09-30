@@ -499,6 +499,38 @@ export default async function RFWavePickingPage() {
       })
     );
 
+  // Wave Zone planı aynı fiziksel stok satırını rezerve ettiği için
+  // kaynak önerisi de servis ile aynı kullanılabilirlik hesabını yapmalıdır.
+  // Böylece Wave'in kendi rezervasyonu lokasyon/THM yönlendirmesini gizlemez,
+  // fakat başka işlere ait rezervasyonlar kullanılabilir miktardan düşülür.
+  const sourceItemIds = sourceRecords.flatMap((unit) => unit.items.map((item) => item.id));
+  const waveIds = waves.map((wave) => wave.id);
+  const waveReservationLines = sourceItemIds.length > 0 && waveIds.length > 0
+    ? await prisma.zonePickTaskLine.findMany({
+        where: {
+          handlingUnitItemId: { in: sourceItemIds },
+          task: { waveId: { in: waveIds } },
+        },
+        select: {
+          handlingUnitItemId: true,
+          plannedQuantity: true,
+          pickedQuantity: true,
+          task: { select: { waveId: true } },
+        },
+      })
+    : [];
+
+  const waveReservationBySource = new Map<string, number>();
+  for (const line of waveReservationLines) {
+    if (!line.task.waveId) continue;
+    const key = `${line.task.waveId}:${line.handlingUnitItemId}`;
+    waveReservationBySource.set(
+      key,
+      (waveReservationBySource.get(key) ?? 0) +
+        Math.max(0, line.plannedQuantity - line.pickedQuantity),
+    );
+  }
+
   const sourceUnits:
     WavePoolSourceOption[] =
     sourceRecords.flatMap(
@@ -530,39 +562,31 @@ export default async function RFWavePickingPage() {
               unit.location.bin,
           });
 
-        return unit.items
-          .map(
-            (item) => ({
-              barcode:
-                unit.barcode,
+        return unit.items.flatMap((item) => {
+          // Bir kaynak satırı birden fazla açık Wave için önerilebilir.
+          // İstemci seçilen Wave + ürün ile doğru satırı filtreler.
+          return waves.flatMap((wave) => {
+            const ownWaveReservation =
+              waveReservationBySource.get(`${wave.id}:${item.id}`) ?? 0;
+            const reservedByOthers =
+              Math.max(0, item.reservedStock - ownWaveReservation);
+            const availableQuantity =
+              Math.max(0, item.quantity - reservedByOthers);
 
+            if (availableQuantity <= 0) return [];
+
+            return [{
+              barcode: unit.barcode,
               locationCode,
-
-              productId:
-                item.productId,
-
-              productCode:
-                item.product.code,
-
-              productBarcode:
-                item.product
-                  .barcode,
-
-              productName:
-                item.product.name,
-
-              // Lokasyon yönlendirmesinde fiziksel miktarı göster.
-              // Wave'in kendi Zone rezervasyonu bu kaynağı ekrandan gizlememeli;
-              // başka rezervasyonların gerçek uygunluk kontrolü submit sırasında yapılır.
-              availableQuantity:
-                Math.max(0, item.quantity),
-            })
-          )
-          .filter(
-            (item) =>
-              item.availableQuantity >
-              0
-          );
+              productId: item.productId,
+              productCode: item.product.code,
+              productBarcode: item.product.barcode,
+              productName: item.product.name,
+              availableQuantity,
+              waveId: wave.id,
+            }];
+          });
+        });
       }
     );
 
