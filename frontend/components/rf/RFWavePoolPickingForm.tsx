@@ -43,6 +43,7 @@ export type WavePoolTargetOption = {
 };
 
 export type WavePoolSourceOption = {
+  waveId: string;
   barcode: string;
   locationCode: string;
   productId: number;
