@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import ColumnVisibilityMenu, { useColumnVisibility } from "@/components/admin/ColumnVisibilityMenu";
 
 import {
   useMemo,
   useState,
 } from "react";
+
+const stockColumns=[
+ {key:"warehouse",label:"Depo"},{key:"location",label:"Lokasyon"},{key:"thm",label:"THM ID"},{key:"barcode",label:"Barkod"},
+ {key:"productCode",label:"Ürün Kodu"},{key:"productName",label:"Ürün Tanımı"},{key:"locationStock",label:"Lokasyon Stoğu"},
+ {key:"plannable",label:"Planlanabilir Stok"},{key:"blocked",label:"Bloke Stok"},{key:"reserved",label:"Rezerve Stok"},
+ {key:"available",label:"Kullanılabilir"},{key:"class",label:"Sınıf"},
+];
 
 export type StockAvailabilityRow = {
   itemId: number;
@@ -85,6 +93,8 @@ function getStatusLabel(
 export default function StockAvailabilityTable({
   rows,
 }: Props) {
+  const columnVisibility=useColumnVisibility("etken:columns:location-stock",stockColumns);
+
   const [
     search,
     setSearch,
@@ -478,172 +488,29 @@ export default function StockAvailabilityTable({
         </article>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow">
+      <div className="mt-6 flex justify-end"><ColumnVisibilityMenu columns={stockColumns} visible={columnVisibility.visible} order={columnVisibility.order} onToggle={columnVisibility.toggle} onMove={columnVisibility.move} onShowAll={columnVisibility.showAll} onReset={columnVisibility.reset}/></div>
+      <div className="mt-3 overflow-x-auto rounded-2xl bg-white shadow">
         <table className="w-full min-w-[1550px] text-left">
-          <thead className="bg-blue-950 text-white">
-            <tr>
-              <th className="p-4">
-                Depo
-              </th>
-
-              <th className="p-4">
-                Lokasyon
-              </th>
-
-              <th className="p-4">
-                THM ID
-              </th>
-
-              <th className="p-4">
-                Barkod
-              </th>
-
-              <th className="p-4">
-                Ürün Kodu
-              </th>
-
-              <th className="p-4">
-                Ürün Tanımı
-              </th>
-
-              <th className="p-4 text-right">
-                Lokasyon Stoğu
-              </th>
-
-              <th className="p-4 text-right">
-                Planlanabilir Stok
-              </th>
-
-              <th className="p-4 text-right">
-                Bloke Stok
-              </th>
-
-              <th className="p-4 text-right">
-                Rezerve Stok
-              </th>
-
-              <th className="p-4 text-right">
-                Kullanılabilir
-              </th>
-
-              <th className="p-4">
-                Sınıf
-              </th>
-            </tr>
-          </thead>
-
+          <thead className="bg-blue-950 text-white"><tr>{columnVisibility.orderedColumns.filter(col=>columnVisibility.isVisible(col.key)).map(col=><th key={col.key} className="p-4">{col.label}</th>)}</tr></thead>
           <tbody>
-            {filteredRows.map(
-              (row) => (
-                <tr
-                  key={row.itemId}
-                  className="border-b hover:bg-slate-50"
-                >
-                  <td className="p-4 font-bold">
-                    {row.warehouseCode ||
-                      "-"}
-                  </td>
-
-                  <td className="p-4 font-mono font-semibold">
-                    {row.locationCode ||
-                      "-"}
-                  </td>
-
-                  <td className="p-4">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedRow(
-                          row
-                        )
-                      }
-                      className="rounded-lg bg-slate-900 px-3 py-2 font-mono font-bold text-white hover:bg-slate-700"
-                    >
-                      {
-                        row.handlingUnitBarcode
-                      }
-                    </button>
-                  </td>
-
-                  <td className="p-4 font-mono">
-                    {row.productBarcode || "-"}
-                  </td>
-
-                  <td className="p-4 font-bold text-blue-900">
-                    {row.productCode}
-                  </td>
-
-                  <td className="p-4">
-                    {row.productName}
-                  </td>
-
-                  <td className="p-4 text-right text-lg font-bold">
-                    {formatNumber(
-                      row.locationStock
-                    )}
-                  </td>
-
-                  <td className="bg-green-50 p-4 text-right text-lg font-bold text-green-800">
-                    {formatNumber(
-                      row.plannableStock
-                    )}
-                  </td>
-
-                  <td className="bg-red-50 p-4 text-right text-lg font-bold text-red-800">
-                    {formatNumber(
-                      row.blockedStock
-                    )}
-                  </td>
-
-                  <td className="bg-orange-50 p-4 text-right text-lg font-bold text-orange-800">
-                    {formatNumber(
-                      row.reservedStock
-                    )}
-                  </td>
-
-                  <td className="bg-blue-50 p-4 text-right text-lg font-bold text-blue-800">
-                    {formatNumber(
-                      row.availableStock
-                    )}
-                  </td>
-
-                  <td className="p-4">
-                    <span
-                      className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-bold ${
-                        row.stockClass ===
-                        "PLANNABLE"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {row.stockClass ===
-                      "PLANNABLE"
-                        ? "Planlanabilir"
-                        : "Bloke"}
-                    </span>
-
-                    {row.blockReason && (
-                      <p className="mt-2 max-w-64 text-xs leading-5 text-slate-500">
-                        {row.blockReason}
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              )
-            )}
-
-            {filteredRows.length ===
-              0 && (
-              <tr>
-                <td
-                  colSpan={12}
-                  className="p-12 text-center text-slate-500"
-                >
-                  Seçilen filtrelere uygun
-                  stok kaydı bulunamadı.
-                </td>
-              </tr>
-            )}
+            {filteredRows.map(row=><tr key={row.itemId} className="border-b hover:bg-slate-50">{columnVisibility.orderedColumns.filter(col=>columnVisibility.isVisible(col.key)).map(col=>{
+              switch(col.key){
+                case"warehouse":return <td key={col.key} className="p-4 font-bold">{row.warehouseCode||"-"}</td>;
+                case"location":return <td key={col.key} className="p-4 font-mono font-semibold">{row.locationCode||"-"}</td>;
+                case"thm":return <td key={col.key} className="p-4"><button type="button" onClick={()=>setSelectedRow(row)} className="rounded-lg bg-slate-900 px-3 py-2 font-mono font-bold text-white hover:bg-slate-700">{row.handlingUnitBarcode}</button></td>;
+                case"barcode":return <td key={col.key} className="p-4 font-mono">{row.productBarcode||"-"}</td>;
+                case"productCode":return <td key={col.key} className="p-4 font-bold text-blue-900">{row.productCode}</td>;
+                case"productName":return <td key={col.key} className="p-4">{row.productName}</td>;
+                case"locationStock":return <td key={col.key} className="p-4 text-right text-lg font-bold">{formatNumber(row.locationStock)}</td>;
+                case"plannable":return <td key={col.key} className="bg-green-50 p-4 text-right text-lg font-bold text-green-800">{formatNumber(row.plannableStock)}</td>;
+                case"blocked":return <td key={col.key} className="bg-red-50 p-4 text-right text-lg font-bold text-red-800">{formatNumber(row.blockedStock)}</td>;
+                case"reserved":return <td key={col.key} className="bg-orange-50 p-4 text-right text-lg font-bold text-orange-800">{formatNumber(row.reservedStock)}</td>;
+                case"available":return <td key={col.key} className="bg-blue-50 p-4 text-right text-lg font-bold text-blue-800">{formatNumber(row.availableStock)}</td>;
+                case"class":return <td key={col.key} className="p-4"><span className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-bold ${row.stockClass==="PLANNABLE"?"bg-green-100 text-green-800":"bg-red-100 text-red-800"}`}>{row.stockClass==="PLANNABLE"?"Planlanabilir":"Bloke"}</span>{row.blockReason&&<p className="mt-2 max-w-64 text-xs leading-5 text-slate-500">{row.blockReason}</p>}</td>;
+                default:return null;
+              }
+            })}</tr>)}
+            {filteredRows.length===0&&<tr><td colSpan={Math.max(1,columnVisibility.orderedColumns.filter(col=>columnVisibility.isVisible(col.key)).length)} className="p-12 text-center text-slate-500">Seçilen filtrelere uygun stok kaydı bulunamadı.</td></tr>}
           </tbody>
         </table>
       </div>
