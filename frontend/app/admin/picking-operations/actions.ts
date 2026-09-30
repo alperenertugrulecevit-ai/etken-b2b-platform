@@ -65,8 +65,19 @@ export async function refreshPickingReservationAction(fd:FormData){
 
   const waveId=order.waveOrders[0]?.waveId??null;
   if(waveId){
+   const wave=await tx.wave.findUnique({where:{id:waveId},select:{warehouseId:true,orders:{select:{orderId:true}}}});
+   if(!wave)throw new Error("Wave bulunamadı.");
+   // Wave rezervasyon yenileme tüm Wave'i atomik olarak yeniden planlar.
+   // Böylece daha önce stoksuz olduğu için RF'de görünmeyen ürün, stok geldiyse
+   // kaynak THM + adres planı oluştuğu anda RF görev havuzuna girer.
+   await ZonePickingService.releaseWavePlan(tx,waveId);
+   await ZonePickingService.buildTasksForOrders(tx,{
+    orderIds:wave.orders.map(row=>row.orderId),
+    warehouseId:wave.warehouseId,
+    waveId,
+   });
    await tx.wave.update({where:{id:waveId},data:{status:WaveStatus.IN_PROGRESS,completedAt:null}});
-   await tx.waveOrder.update({where:{wave_order_unique:{waveId,orderId}},data:{isCompleted:false,completedAt:null}});
+   await tx.waveOrder.updateMany({where:{waveId},data:{isCompleted:false,completedAt:null}});
   }else{
    if(!order.fulfillmentWarehouseId)throw new Error("Siparişin toplama deposu bulunamadı.");
    await ZonePickingService.releaseOrderPlan(tx,orderId);
