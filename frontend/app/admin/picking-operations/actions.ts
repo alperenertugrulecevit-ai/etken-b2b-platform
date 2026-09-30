@@ -76,6 +76,7 @@ export async function refreshPickingReservationAction(fd:FormData){
     orderIds:wave.orders.map(row=>row.orderId),
     warehouseId:wave.warehouseId,
     waveId,
+    allowPartialStock:true,
    });
    await tx.wave.update({where:{id:waveId},data:{status:WaveStatus.IN_PROGRESS,completedAt:null}});
    await tx.waveOrder.updateMany({where:{waveId},data:{isCompleted:false,completedAt:null}});
