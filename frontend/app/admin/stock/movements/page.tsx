@@ -672,6 +672,14 @@ export default async function StockMovementsPage({
               </th>
 
               <th className="p-4">
+                Lokasyon / Adres
+              </th>
+
+              <th className="p-4">
+                THM
+              </th>
+
+              <th className="p-4">
                 Hareket Tipi
               </th>
 
@@ -741,6 +749,10 @@ export default async function StockMovementsPage({
                       }
                     </p>
                   </td>
+
+                  <td className="p-4 text-slate-500">-</td>
+
+                  <td className="p-4 text-slate-500">-</td>
 
                   <td className="p-4">
                     <span
@@ -855,7 +867,7 @@ export default async function StockMovementsPage({
             {movements.length === 0 && (
               <tr>
                 <td
-                  colSpan={12}
+                  colSpan={14}
                   className="p-12 text-center text-gray-500"
                 >
                   Seçilen filtrelere uygun
