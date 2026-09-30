@@ -50,6 +50,14 @@ export async function createOrder(
     formData.get("customerId")
   );
 
+  const warehouseId = Number(
+    formData.get("warehouseId")
+  );
+
+  if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+    throw new Error("Geçerli bir depo seçilmelidir.");
+  }
+
   const shippingAddressIdValue =
     String(
       formData.get(
@@ -134,6 +142,12 @@ export async function createOrder(
       );
     }
   }
+
+  const warehouse = await prisma.warehouse.findFirst({
+    where: { id: warehouseId, isActive: true, code: { not: "KYP001" } },
+    select: { id: true },
+  });
+  if (!warehouse) throw new Error("Seçilen depo aktif değil.");
 
   const carrier = await prisma.shippingCarrier.findFirst({ where: { id: carrierId, isActive: true }, select: { id: true } });
   if (!carrier) throw new Error("Nakliyeci bulunamadı veya pasif.");
@@ -339,6 +353,7 @@ export async function createOrder(
 
       customerId,
       shippingAddressId,
+      fulfillmentWarehouseId: warehouse.id,
       carrierId,
       status: "PENDING",
       orderType,
