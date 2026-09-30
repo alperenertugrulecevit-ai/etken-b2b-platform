@@ -90,7 +90,7 @@ export default function OrderGroupingClient({
       <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-950"><b>Zone bazlı toplama:</b> Personel bu ekrandan atanmaz. Sipariş başlatıldığında stok lokasyonlarına göre Zone görevleri oluşur; RF personeli Zone seçerek görev alır.</div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <ColumnVisibilityMenu columns={orderColumns} visible={columnVisibility.visible} onToggle={columnVisibility.toggle} onShowAll={columnVisibility.showAll} onReset={columnVisibility.reset} />
+        <ColumnVisibilityMenu columns={orderColumns} visible={columnVisibility.visible} order={columnVisibility.order} onToggle={columnVisibility.toggle} onMove={columnVisibility.move} onShowAll={columnVisibility.showAll} onReset={columnVisibility.reset} />
         <div className="font-semibold text-slate-600">
           {orders.length} onaylı sipariş · <span className="text-blue-800">{selected.length} seçili</span>
         </div>
@@ -132,18 +132,9 @@ export default function OrderGroupingClient({
                   aria-label="Tüm siparişleri seç"
                 />
               </th>
-              {columnVisibility.isVisible("orderNo") && <th className="p-4">Sipariş No</th>}
-              {columnVisibility.isVisible("orderType") && <th className="p-4">Sipariş Tipi</th>}
-              {columnVisibility.isVisible("city") && <th className="p-4">İl</th>}
-              {columnVisibility.isVisible("district") && <th className="p-4">İlçe</th>}
-              {columnVisibility.isVisible("warehouse") && <th className="p-4">Depo</th>}
-              {columnVisibility.isVisible("customer") && <th className="p-4">Müşteri</th>}
-              {columnVisibility.isVisible("carrier") && <th className="p-4">Nakliyeci</th>}
-              {columnVisibility.isVisible("orderDate") && <th className="p-4">Sipariş Tarihi</th>}
-              {columnVisibility.isVisible("requestedDate") && <th className="p-4">Talep Tarihi</th>}
-              {columnVisibility.isVisible("lineCount") && <th className="p-4">Kalem Sayısı</th>}
-              {columnVisibility.isVisible("quantity") && <th className="p-4">Toplam Adet</th>}
-              {columnVisibility.isVisible("amount") && <th className="p-4">Tutar</th>}
+              {columnVisibility.orderedColumns.filter(column => columnVisibility.isVisible(column.key)).map(column => (
+                <th key={column.key} className="p-4">{column.label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -157,26 +148,27 @@ export default function OrderGroupingClient({
                 <td className="p-4">
                   <input type="checkbox" checked={selected.includes(order.id)} onChange={() => toggle(order.id)} />
                 </td>
-                {columnVisibility.isVisible("orderNo") && <td className="p-4 font-black text-blue-900">{order.orderNumber}</td>}
-                {columnVisibility.isVisible("orderType") && <td className="p-4"><span className="rounded-full bg-violet-100 px-3 py-1 font-bold text-violet-800">{typeLabels[order.orderType] || order.orderType}</span></td>}
-                {columnVisibility.isVisible("city") && <td className="p-4">{order.shippingAddress?.city || "-"}</td>}
-                {columnVisibility.isVisible("district") && <td className="p-4">{order.shippingAddress?.district || "-"}</td>}
-                <td className="p-4">
-                  {order.fulfillmentWarehouse
-                    ? <><div className="font-bold">{order.fulfillmentWarehouse.code}</div><div className="text-slate-500">{order.fulfillmentWarehouse.name}</div></>
-                    : <span className="text-amber-700">Başlatırken atanacak</span>}
-                </td>
-                <td className="p-4"><div className="font-bold">{order.customer.companyName}</div><div className="text-slate-500">{order.customer.customerCode}</div></td>
-                <td className="p-4">{order.carrier ? <><div className="font-bold">{order.carrier.name}</div><div className="text-slate-500">{order.carrier.code}</div></> : "—"}</td>
-                <td className="p-4 whitespace-nowrap">{date(order.orderDate)}</td>
-                <td className="p-4 whitespace-nowrap">{date(order.requestedDate)}</td>
-                <td className="p-4">{order._count.items}</td>
-                <td className="p-4 font-bold">{order.plannedQuantity}</td>
-                <td className="p-4 whitespace-nowrap font-bold">{order.totalAmount.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
+                {columnVisibility.orderedColumns.filter(column => columnVisibility.isVisible(column.key)).map(column => {
+                  switch (column.key) {
+                    case "orderNo": return <td key={column.key} className="p-4 font-black text-blue-900">{order.orderNumber}</td>;
+                    case "orderType": return <td key={column.key} className="p-4"><span className="rounded-full bg-violet-100 px-3 py-1 font-bold text-violet-800">{typeLabels[order.orderType] || order.orderType}</span></td>;
+                    case "city": return <td key={column.key} className="p-4">{order.shippingAddress?.city || "-"}</td>;
+                    case "district": return <td key={column.key} className="p-4">{order.shippingAddress?.district || "-"}</td>;
+                    case "warehouse": return <td key={column.key} className="p-4">{order.fulfillmentWarehouse ? <><div className="font-bold">{order.fulfillmentWarehouse.code}</div><div className="text-slate-500">{order.fulfillmentWarehouse.name}</div></> : <span className="text-amber-700">Başlatırken atanacak</span>}</td>;
+                    case "customer": return <td key={column.key} className="p-4"><div className="font-bold">{order.customer.companyName}</div><div className="text-slate-500">{order.customer.customerCode}</div></td>;
+                    case "carrier": return <td key={column.key} className="p-4">{order.carrier ? <><div className="font-bold">{order.carrier.name}</div><div className="text-slate-500">{order.carrier.code}</div></> : "—"}</td>;
+                    case "orderDate": return <td key={column.key} className="p-4 whitespace-nowrap">{date(order.orderDate)}</td>;
+                    case "requestedDate": return <td key={column.key} className="p-4 whitespace-nowrap">{date(order.requestedDate)}</td>;
+                    case "lineCount": return <td key={column.key} className="p-4">{order._count.items}</td>;
+                    case "quantity": return <td key={column.key} className="p-4 font-bold">{order.plannedQuantity}</td>;
+                    case "amount": return <td key={column.key} className="p-4 whitespace-nowrap font-bold">{order.totalAmount.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>;
+                    default: return null;
+                  }
+                })}
               </tr>
               {expanded.includes(order.id) && (
                 <tr className="border-b bg-slate-50">
-                  <td colSpan={14} className="p-0">
+                  <td colSpan={2 + columnVisibility.orderedColumns.filter(column => columnVisibility.isVisible(column.key)).length} className="p-0">
                     <div className="overflow-x-auto p-4">
                       <div className="mb-3 grid gap-3 text-sm md:grid-cols-5">
                         <div><b>Firma Kodu:</b> {order.customer.customerCode}</div>
