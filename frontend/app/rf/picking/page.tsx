@@ -96,6 +96,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
     include: {
       zone: true,
       order: { select: { id: true, orderNumber: true } },
+      wave: { select: { id: true, waveNo: true } },
       warehouse: { select: { id: true, code: true } },
       lines: { orderBy: { sequence: "asc" }, include: { handlingUnitItem: { select: { handlingUnitId: true } } } },
     },
@@ -804,7 +805,13 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           </p>
 
           <h1 className="mt-1 text-2xl font-black">
-            {zoneTask ? `${zoneTask.zone.code} · ${zoneTask.zone.name} Toplama` : waveOnly ? "Wave Toplama" : "Sipariş Bazlı Toplama"}
+            {zoneTask
+              ? waveOnly && zoneTask.wave
+                ? `Wave ${zoneTask.wave.waveNo} · ${zoneTask.zone.code} · ${zoneTask.zone.name}`
+                : `${zoneTask.zone.code} · ${zoneTask.zone.name} Toplama`
+              : waveOnly
+                ? "Wave Toplama"
+                : "Sipariş Bazlı Toplama"}
           </h1>
         </div>
 
@@ -886,7 +893,15 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      {zoneTask && <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950"><b>Aktif Zone Görevi:</b> {zoneTask.zone.code} · {zoneTask.zone.name} · {zoneTask.order.orderNumber}. Yalnızca bu Zone içindeki kaynak lokasyonlardan toplama yapılabilir.</div>}
+      {zoneTask && (
+        <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950">
+          <b>{waveOnly ? "Aktif Wave:" : "Aktif Zone Görevi:"}</b>{" "}
+          {waveOnly && zoneTask.wave
+            ? `${zoneTask.wave.waveNo} · ${zoneTask.zone.code} · ${zoneTask.zone.name}`
+            : `${zoneTask.zone.code} · ${zoneTask.zone.name} · ${zoneTask.order.orderNumber}`}.
+          {" "}Yalnızca bu Zone içindeki kaynak lokasyonlardan toplama yapılabilir.
+        </div>
+      )}
 
       <RFPickingForm
         orders={orderOptions}
