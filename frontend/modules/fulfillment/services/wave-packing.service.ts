@@ -520,6 +520,8 @@ export class WavePackingService {
               distribution.waveId,
             purpose:
               HandlingUnitPurpose.SHIPPING,
+            warehouseId:
+              sourceUnit.warehouseId,
             status:
               HandlingUnitStatus.OPEN,
           },
@@ -1035,6 +1037,11 @@ export class WavePackingService {
                     select: {
                       distributionCode:
                         true,
+                      wave: {
+                        select: {
+                          warehouseId: true,
+                        },
+                      },
                     },
                   },
                 },
@@ -1063,9 +1070,25 @@ export class WavePackingService {
           );
         }
 
-        if(!targetUnit.warehouseId) throw new Error("Sevk THM depo bilgisi bulunamadı.");
+        const resolvedWarehouseId =
+          targetUnit.warehouseId ??
+          targetUnit.shippingProfile.waveDistribution.wave.warehouseId;
+
+        if (!resolvedWarehouseId) {
+          throw new Error(
+            "Sevk THM depo bilgisi bulunamadı. İlişkili Wave üzerinde de depo tanımlı değil.",
+          );
+        }
+
+        if (!targetUnit.warehouseId) {
+          await tx.handlingUnit.update({
+            where: { id: targetUnit.id },
+            data: { warehouseId: resolvedWarehouseId },
+          });
+        }
+
         const boxDefinition=await tx.shippingBoxDefinition.findFirst({
-          where:{tenantId:"tenant_etken",companyId:"company_etken_office",code:boxCode,isActive:true,warehouses:{some:{warehouseId:targetUnit.warehouseId}}},
+          where:{tenantId:"tenant_etken",companyId:"company_etken_office",code:boxCode,isActive:true,warehouses:{some:{warehouseId:resolvedWarehouseId}}},
           select:{id:true,code:true,boxType:true,dimensions:true,desi:true},
         });
         if(!boxDefinition) throw new Error(`${boxCode} koli/desi tanımı bu depo için bulunamadı veya pasif.`);
