@@ -329,6 +329,7 @@ export default async function StockMovementsPage({
             select: {
               id: true,
               code: true,
+              barcode: true,
               name: true,
             },
           },
@@ -663,6 +664,10 @@ export default async function StockMovementsPage({
               </th>
 
               <th className="p-4">
+                Barkod
+              </th>
+
+              <th className="p-4">
                 Ürün
               </th>
 
@@ -715,6 +720,10 @@ export default async function StockMovementsPage({
                     {formatDate(
                       movement.createdAt
                     )}
+                  </td>
+
+                  <td className="p-4 font-mono">
+                    {movement.product.barcode || "-"}
                   </td>
 
                   <td className="p-4">
@@ -846,7 +855,7 @@ export default async function StockMovementsPage({
             {movements.length === 0 && (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="p-12 text-center text-gray-500"
                 >
                   Seçilen filtrelere uygun
