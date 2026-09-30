@@ -76,6 +76,7 @@ export class OrderGroupingService {
               productCode: true,
               productName: true,
               quantity: true,
+              product: { select: { barcode: true } },
             },
             orderBy: { id: "asc" },
           },
