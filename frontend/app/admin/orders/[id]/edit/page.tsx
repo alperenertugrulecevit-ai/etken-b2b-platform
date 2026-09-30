@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   OrderStatus,
+  OrderType,
   StockMovementType,
 } from "@prisma/client";
 
@@ -84,6 +85,8 @@ export default async function EditOrderPage({
     order,
     customers,
     products,
+    carriers,
+    warehouses,
   ] = await Promise.all([
     prisma.order.findUnique({
       where: {
@@ -170,6 +173,12 @@ export default async function EditOrderPage({
         reservedStock: true,
       },
     }),
+    prisma.shippingCarrier.findMany({
+      where:{isActive:true},orderBy:{name:"asc"},select:{id:true,code:true,name:true},
+    }),
+    prisma.warehouse.findMany({
+      where:{isActive:true,code:{not:"KYP001"}},orderBy:{code:"asc"},select:{id:true,code:true,name:true},
+    }),
   ]);
 
   if (!order) {
@@ -207,6 +216,19 @@ export default async function EditOrderPage({
     const customerId = Number(
       formData.get("customerId")
     );
+
+    const warehouseId = Number(formData.get("warehouseId"));
+    if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+      throw new Error("Geçerli bir depo seçilmelidir.");
+    }
+
+    const carrierId = String(formData.get("carrierId") ?? "").trim();
+    if (!carrierId) throw new Error("Nakliyeci seçilmelidir.");
+
+    const orderTypeValue = String(formData.get("orderType") ?? "CUSTOMER").trim();
+    const orderType = Object.values(OrderType).includes(orderTypeValue as OrderType)
+      ? (orderTypeValue as OrderType)
+      : OrderType.CUSTOMER;
 
     const shippingAddressValue =
       String(
@@ -384,6 +406,16 @@ export default async function EditOrderPage({
           );
         }
 
+        const warehouse = await tx.warehouse.findFirst({
+          where:{id:warehouseId,isActive:true,code:{not:"KYP001"}},select:{id:true},
+        });
+        if(!warehouse) throw new Error("Seçilen depo aktif değil.");
+
+        const carrier = await tx.shippingCarrier.findFirst({
+          where:{id:carrierId,isActive:true},select:{id:true},
+        });
+        if(!carrier) throw new Error("Nakliyeci bulunamadı veya pasif.");
+
         /*
          * Sipariş daha önce rezerve edilmişse
          * yalnızca Etken'in kendi fiziksel stoklu
@@ -407,6 +439,8 @@ export default async function EditOrderPage({
               {
                 productId:
                   item.productId,
+
+                warehouseId: existingOrder.fulfillmentWarehouseId ?? warehouse.id,
 
                 orderId:
                   existingOrder.id,
@@ -612,6 +646,12 @@ export default async function EditOrderPage({
 
             shippingAddressId,
 
+            fulfillmentWarehouseId: warehouse.id,
+
+            carrierId: carrier.id,
+
+            orderType,
+
             requestedDate:
               requestedDateValue
                 ? new Date(
@@ -671,6 +711,8 @@ export default async function EditOrderPage({
               {
                 productId:
                   item.productId,
+
+                warehouseId: warehouse.id,
 
                 orderId:
                   existingOrder.id,
@@ -766,6 +808,11 @@ export default async function EditOrderPage({
       <OrderEditForm
         customers={customers}
         products={products}
+        carriers={carriers}
+        warehouses={warehouses}
+        initialOrderType={order.orderType}
+        initialWarehouseId={order.fulfillmentWarehouseId}
+        initialCarrierId={order.carrierId}
         initialCustomerId={
           order.customerId
         }
