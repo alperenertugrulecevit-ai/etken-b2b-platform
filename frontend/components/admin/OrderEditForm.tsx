@@ -30,6 +30,9 @@ type Product = {
   reservedStock: number;
 };
 
+type Carrier = { id: string; code: string; name: string };
+type Warehouse = { id: number; code: string; name: string };
+
 type InitialOrderLine = {
   id: number;
   productId: number;
@@ -45,6 +48,11 @@ type OrderLine = {
 type Props = {
   customers: Customer[];
   products: Product[];
+  carriers: Carrier[];
+  warehouses: Warehouse[];
+  initialOrderType: string;
+  initialWarehouseId: number | null;
+  initialCarrierId: string | null;
   initialCustomerId: number;
   initialShippingAddressId: number | null;
   initialRequestedDate: string;
@@ -64,6 +72,11 @@ function formatCurrency(value: number) {
 export default function OrderEditForm({
   customers,
   products,
+  carriers,
+  warehouses,
+  initialOrderType,
+  initialWarehouseId,
+  initialCarrierId,
   initialCustomerId,
   initialShippingAddressId,
   initialRequestedDate,
@@ -351,6 +364,36 @@ export default function OrderEditForm({
                     </option>
                   )
                 )}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-semibold">Sipariş Tipi</span>
+              <select name="orderType" defaultValue={initialOrderType} className="w-full rounded-xl border bg-white p-4" required>
+                <option value="CUSTOMER">Müşteri</option>
+                <option value="ECOMMERCE">E-Ticaret</option>
+                <option value="STORE">Mağaza</option>
+                <option value="OTHER">Diğer</option>
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-semibold">Depo Kodu</span>
+              <select name="warehouseId" defaultValue={initialWarehouseId ?? ""} className="w-full rounded-xl border bg-white p-4" required>
+                <option value="">Depo seçiniz</option>
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>{warehouse.code} — {warehouse.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-semibold">Nakliyeci</span>
+              <select name="carrierId" defaultValue={initialCarrierId ?? ""} className="w-full rounded-xl border bg-white p-4" required>
+                <option value="">Nakliyeci seçiniz</option>
+                {carriers.map((carrier) => (
+                  <option key={carrier.id} value={carrier.id}>{carrier.code} — {carrier.name}</option>
+                ))}
               </select>
             </label>
 
