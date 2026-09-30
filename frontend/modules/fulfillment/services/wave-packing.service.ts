@@ -1044,6 +1044,18 @@ export class WavePackingService {
                       },
                     },
                   },
+                  packingRecords: {
+                    orderBy: {
+                      createdAt: "desc",
+                    },
+                    select: {
+                      sourceHandlingUnit: {
+                        select: {
+                          warehouseId: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -1070,13 +1082,38 @@ export class WavePackingService {
           );
         }
 
+        const packingWarehouseIds =
+          targetUnit.shippingProfile.packingRecords
+            .map(
+              (record) =>
+                record.sourceHandlingUnit.warehouseId,
+            )
+            .filter(
+              (warehouseId): warehouseId is number =>
+                warehouseId !== null,
+            );
+
+        const distinctPackingWarehouseIds =
+          Array.from(
+            new Set(packingWarehouseIds),
+          );
+
+        if (
+          distinctPackingWarehouseIds.length > 1
+        ) {
+          throw new Error(
+            "Sevk THM birden fazla kaynak depodan paketlenmiş görünüyor. Depo otomatik belirlenemedi.",
+          );
+        }
+
         const resolvedWarehouseId =
           targetUnit.warehouseId ??
-          targetUnit.shippingProfile.waveDistribution?.wave.warehouseId;
+          targetUnit.shippingProfile.waveDistribution?.wave.warehouseId ??
+          distinctPackingWarehouseIds[0];
 
         if (!resolvedWarehouseId) {
           throw new Error(
-            "Sevk THM depo bilgisi bulunamadı. İlişkili Wave üzerinde de depo tanımlı değil.",
+            "Sevk THM depo bilgisi bulunamadı. Wave ve paketleme kaynak THM kayıtlarında depo bilgisi yok.",
           );
         }
 
