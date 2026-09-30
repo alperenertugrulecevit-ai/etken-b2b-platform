@@ -309,6 +309,8 @@ export default function RFWavePoolPickingForm({
       return sourceUnits
         .filter(
           (unit) =>
+            unit.waveId ===
+              selectedWaveId &&
             unit.productId ===
               selectedTask.productId &&
             unit.availableQuantity >
