@@ -67,6 +67,7 @@ export async function refreshPickingReservationAction(fd:FormData){
   if(waveId){
    const wave=await tx.wave.findUnique({where:{id:waveId},select:{warehouseId:true,orders:{select:{orderId:true}}}});
    if(!wave)throw new Error("Wave bulunamadı.");
+   if(!wave.warehouseId)throw new Error("Wave'in toplama deposu bulunamadı.");
    // Wave rezervasyon yenileme tüm Wave'i atomik olarak yeniden planlar.
    // Böylece daha önce stoksuz olduğu için RF'de görünmeyen ürün, stok geldiyse
    // kaynak THM + adres planı oluştuğu anda RF görev havuzuna girer.
