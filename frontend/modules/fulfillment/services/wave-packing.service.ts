@@ -1056,6 +1056,20 @@ export class WavePackingService {
                       },
                     },
                   },
+                  orders: {
+                    select: {
+                      order: {
+                        select: {
+                          fulfillmentWarehouseId: true,
+                          zonePickTasks: {
+                            select: {
+                              warehouseId: true,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -1106,14 +1120,41 @@ export class WavePackingService {
           );
         }
 
+        const orderWarehouseIds =
+          targetUnit.shippingProfile.orders.flatMap(
+            ({ order }) => [
+              order.fulfillmentWarehouseId,
+              ...order.zonePickTasks.map(
+                (task) => task.warehouseId,
+              ),
+            ],
+          ).filter(
+            (warehouseId): warehouseId is number =>
+              warehouseId !== null,
+          );
+
+        const distinctOrderWarehouseIds =
+          Array.from(
+            new Set(orderWarehouseIds),
+          );
+
+        if (
+          distinctOrderWarehouseIds.length > 1
+        ) {
+          throw new Error(
+            "Sevk THM sipariş/toplama kayıtlarında birden fazla depo görünüyor. Depo otomatik belirlenemedi.",
+          );
+        }
+
         const resolvedWarehouseId =
           targetUnit.warehouseId ??
           targetUnit.shippingProfile.waveDistribution?.wave.warehouseId ??
-          distinctPackingWarehouseIds[0];
+          distinctPackingWarehouseIds[0] ??
+          distinctOrderWarehouseIds[0];
 
         if (!resolvedWarehouseId) {
           throw new Error(
-            "Sevk THM depo bilgisi bulunamadı. Wave ve paketleme kaynak THM kayıtlarında depo bilgisi yok.",
+            "Sevk THM depo bilgisi THM, Wave, paketleme kaynağı, sipariş ve toplama görevi kayıtlarından çözülemedi.",
           );
         }
 
