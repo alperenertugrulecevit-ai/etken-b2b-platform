@@ -491,7 +491,7 @@ export default function StockAvailabilityTable({
       <div className="mt-6 flex justify-end"><ColumnVisibilityMenu columns={stockColumns} visible={columnVisibility.visible} order={columnVisibility.order} onToggle={columnVisibility.toggle} onMove={columnVisibility.move} onShowAll={columnVisibility.showAll} onReset={columnVisibility.reset}/></div>
       <div className="mt-3 overflow-x-auto rounded-2xl bg-white shadow">
         <table className="w-full min-w-[1550px] text-left">
-          <thead className="bg-blue-950 text-white"><tr>{columnVisibility.orderedColumns.filter(col=>columnVisibility.isVisible(col.key)).map(col=><th key={col.key} className="p-4">{col.label}</th>)}</tr></thead>
+          <thead className="bg-blue-950 text-white"><tr>{columnVisibility.orderedColumns.filter(col=>columnVisibility.isVisible(col.key)).map(col=><th key={col.key} draggable onDragStart={e=>{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",col.key)}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();columnVisibility.move(e.dataTransfer.getData("text/plain"),col.key)}} className="cursor-move select-none p-4">{col.label}</th>)}</tr></thead>
           <tbody>
             {filteredRows.map(row=><tr key={row.itemId} className="border-b hover:bg-slate-50">{columnVisibility.orderedColumns.filter(col=>columnVisibility.isVisible(col.key)).map(col=>{
               switch(col.key){
