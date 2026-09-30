@@ -128,6 +128,9 @@ export async function GET(
       .get("endDate")
       ?.trim() ?? "";
 
+  const warehouseIdNumber=Number(url.searchParams.get("warehouseId")??"");
+  const selectedWarehouseId=Number.isInteger(warehouseIdNumber)&&warehouseIdNumber>0?warehouseIdNumber:null;
+
   const parsedStartDate =
     createStartDate(startDate);
 
@@ -136,6 +139,8 @@ export async function GET(
 
   const where: Prisma.StockMovementWhereInput =
     {};
+
+  if(selectedWarehouseId) where.warehouseId=selectedWarehouseId;
 
   if (search) {
     where.OR = [
@@ -231,6 +236,7 @@ export async function GET(
       take: 10000,
 
       include: {
+        warehouse:{select:{code:true}},
         product: {
           select: {
             code: true,
@@ -248,6 +254,7 @@ export async function GET(
 
   const headers = [
     "Tarih",
+    "Depo Kodu",
     "Ürün Kodu",
     "Ürün Adı",
     "Hareket Tipi",
@@ -266,6 +273,8 @@ export async function GET(
       formatDate(
         movement.createdAt
       ),
+
+      movement.warehouse?.code??"",
 
       movement.product.code,
 
