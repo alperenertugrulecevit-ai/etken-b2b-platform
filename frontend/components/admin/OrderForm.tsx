@@ -36,11 +36,13 @@ type OrderLine = {
 };
 
 type Carrier = { id: string; code: string; name: string };
+type Warehouse = { id: number; code: string; name: string };
 
 type Props = {
   customers: Customer[];
   products: Product[];
   carriers: Carrier[];
+  warehouses: Warehouse[];
   action: (
     formData: FormData
   ) => void | Promise<void>;
@@ -57,6 +59,7 @@ export default function OrderForm({
   customers,
   products,
   carriers,
+  warehouses,
   action,
 }: Props) {
   const [customerId, setCustomerId] =
@@ -375,6 +378,20 @@ function addLine() {
                     </option>
                   )
                 )}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Depo Kodu
+              </span>
+              <select name="warehouseId" className="w-full rounded-xl border bg-white p-4" required>
+                <option value="">Depo seçiniz</option>
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.code} — {warehouse.name}
+                  </option>
+                ))}
               </select>
             </label>
 
