@@ -598,8 +598,14 @@ export default async function EditOrderPage({
             0
           );
 
-        const totalAmount =
-          subtotal + vatAmount;
+        const discountRate = customer.discountRate;
+        const discountAmount = subtotal * (discountRate / 100);
+        const discountedSubtotal = subtotal - discountAmount;
+        const adjustedVatAmount =
+          subtotal > 0
+            ? vatAmount * (discountedSubtotal / subtotal)
+            : 0;
+        const totalAmount = discountedSubtotal + adjustedVatAmount;
 
         const shippingAddressId =
           shippingAddressValue
@@ -663,13 +669,13 @@ export default async function EditOrderPage({
               customer
                 .paymentTermDays,
 
-            discountRate: 0,
+            discountRate,
 
-            discountAmount: 0,
+            discountAmount,
 
             subtotal,
 
-            vatAmount,
+            vatAmount: adjustedVatAmount,
 
             totalAmount,
 
@@ -683,6 +689,19 @@ export default async function EditOrderPage({
               create:
                 calculatedItems,
             },
+          },
+        });
+
+        await tx.customerAccountEntry.updateMany({
+          where: {
+            orderId: existingOrder.id,
+            entryType: "ORDER",
+            direction: "DEBIT",
+          },
+          data: {
+            customerId,
+            amount: Math.round((totalAmount + Number.EPSILON) * 100) / 100,
+            description: "Yönetim paneli sipariş güncelleme borç kaydı",
           },
         });
 
