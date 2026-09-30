@@ -478,9 +478,6 @@ export default function RFWavePoolPickingForm({
     }
   }, [
     state,
-    localPickedQuantities,
-    sourceUnits,
-    waves,
   ]);
 
   async function handleWaveShortage() {
