@@ -16,7 +16,14 @@ const n = (value: bigint | number) => Number(value).toLocaleString("tr-TR");
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string,string|undefined>> }) {
   const q = await searchParams;
   const user = await AuthorizationService.requirePermission("MANUAL_WAVE_REPORT_VIEW");
-  const scope = await WmsContextService.requireActiveContext(user.id, user.isAdminUser);
+  const selector = await WmsContextService.getSelectorData(user.id, user.isAdminUser);
+  const baseScope = selector.activeContext;
+  if (!baseScope) throw new Error("Kullanabileceğiniz aktif şirket ve depo bulunamadı.");
+  const allowedWarehouses = selector.companies.find(x=>x.id===baseScope.companyId)?.warehouses ?? [];
+  const requestedWarehouseId = Number(q.warehouseId ?? "");
+  const selectedWarehouse = allowedWarehouses.find(w=>w.id===requestedWarehouseId) ?? allowedWarehouses.find(w=>w.id===baseScope.warehouseId);
+  if (!selectedWarehouse) throw new Error("Kullanabileceğiniz depo bulunamadı.");
+  const scope = {...baseScope,warehouseId:selectedWarehouse.id,warehouseCode:selectedWarehouse.code,warehouseName:selectedWarehouse.name,logisticsCenterCode:selectedWarehouse.logisticsCenterCode,logisticsCenterName:selectedWarehouse.logisticsCenterName};
   const fromValue = q.from ?? istanbulToday();
   const toValue = q.to ?? q.from ?? istanbulToday();
   const filters = { from: day(q.from), to: day(q.to ?? q.from, true), waveId: q.waveId || undefined, operatorId: q.operatorId || undefined };
@@ -33,12 +40,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   params.set("from", fromValue);
   params.set("to", toValue);
   if (q.waveId) params.set("waveId", q.waveId);
+  params.set("warehouseId", String(scope.warehouseId));
   if (q.operatorId) params.set("operatorId", q.operatorId);
 
   const generalParams = new URLSearchParams();
   generalParams.set("from", fromValue);
   generalParams.set("to", toValue);
   if (q.waveId) generalParams.set("waveId", q.waveId);
+  generalParams.set("warehouseId", String(scope.warehouseId));
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -59,9 +68,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       </nav>
 
       <div className="mx-auto max-w-7xl space-y-5 p-6">
-        <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]">
           <label className="space-y-1 text-sm font-semibold text-slate-700"><span>Başlangıç Tarihi</span><input name="from" type="date" defaultValue={fromValue} className="w-full rounded-lg border border-slate-300 px-3 py-2.5" /></label>
           <label className="space-y-1 text-sm font-semibold text-slate-700"><span>Bitiş Tarihi</span><input name="to" type="date" defaultValue={toValue} className="w-full rounded-lg border border-slate-300 px-3 py-2.5" /></label>
+          <label className="space-y-1 text-sm font-semibold text-slate-700"><span>Depo Kodu</span><select name="warehouseId" defaultValue={scope.warehouseId} className="w-full rounded-lg border border-slate-300 px-3 py-2.5"><option value="">Tümü</option>{allowedWarehouses.map(w=><option key={w.id} value={w.id}>{w.code} - {w.name}</option>)}</select></label>
           <label className="space-y-1 text-sm font-semibold text-slate-700"><span>Wave</span><select name="waveId" defaultValue={q.waveId} className="w-full rounded-lg border border-slate-300 px-3 py-2.5"><option value="">Tümü</option>{waves.map(w=><option key={w.id} value={w.id}>{w.waveNo}</option>)}</select></label>
           <label className="space-y-1 text-sm font-semibold text-slate-700"><span>Operatör</span><select name="operatorId" defaultValue={q.operatorId} className="w-full rounded-lg border border-slate-300 px-3 py-2.5"><option value="">Tümü</option>{users.map(u=><option key={u.id} value={u.id}>{u.fullName||u.username}</option>)}</select></label>
           <button className="self-end rounded-lg bg-blue-600 px-8 py-2.5 font-bold text-white shadow hover:bg-blue-700">Raporu Getir</button>
@@ -100,7 +110,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 p-5"><h2 className="text-lg font-black text-slate-900">Saatlik Rapor</h2><p className="mt-1 text-sm text-slate-500">Saatler Europe/Istanbul yerel saatidir. Üretken toplamlar yalnızca AKTİF işlemleri içerir.</p></div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm"><thead className="bg-slate-50 text-slate-600"><tr>{["Yerel Saat","Dağıtılan Ürün","Ters Miktar","Aktif İşlem","Kullanıcı","Wave","Ürün"].map(x=><th className="px-5 py-3 text-left" key={x}>{x}</th>)}</tr></thead><tbody>{hourly.map((h,i)=><tr className="border-t border-slate-100 hover:bg-slate-50" key={i}><td className="px-5 py-3 font-semibold">{new Intl.DateTimeFormat("tr-TR",{dateStyle:"short",hour:"2-digit",timeZone:"UTC"}).format(h.localHour)}</td><td className="px-5 py-3 font-bold text-emerald-700">{n(h.activeQuantity)}</td><td className="px-5 py-3 text-rose-700">{n(h.reversedQuantity)}</td><td className="px-5 py-3">{n(h.activeTransactionCount)}</td><td className="px-5 py-3">{n(h.uniqueOperators)}</td><td className="px-5 py-3">{n(h.uniqueWaves)}</td><td className="px-5 py-3">{n(h.uniqueProducts)}</td></tr>)}</tbody></table>
+            <table className="w-full text-sm"><thead className="bg-slate-50 text-slate-600"><tr>{["Depo Kodu","Yerel Saat","Dağıtılan Ürün","Ters Miktar","Aktif İşlem","Kullanıcı","Wave","Ürün"].map(x=><th className="px-5 py-3 text-left" key={x}>{x}</th>)}</tr></thead><tbody>{hourly.map((h,i)=><tr className="border-t border-slate-100 hover:bg-slate-50" key={i}><td className="px-5 py-3 font-bold">{scope.warehouseCode}</td><td className="px-5 py-3 font-semibold">{new Intl.DateTimeFormat("tr-TR",{dateStyle:"short",hour:"2-digit",timeZone:"UTC"}).format(h.localHour)}</td><td className="px-5 py-3 font-bold text-emerald-700">{n(h.activeQuantity)}</td><td className="px-5 py-3 text-rose-700">{n(h.reversedQuantity)}</td><td className="px-5 py-3">{n(h.activeTransactionCount)}</td><td className="px-5 py-3">{n(h.uniqueOperators)}</td><td className="px-5 py-3">{n(h.uniqueWaves)}</td><td className="px-5 py-3">{n(h.uniqueProducts)}</td></tr>)}</tbody></table>
           </div>
           {!hourly.length&&<p className="p-8 text-center text-slate-500">Seçilen tarih aralığında saatlik dağıtım kaydı bulunamadı.</p>}
         </section>
