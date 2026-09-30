@@ -315,6 +315,35 @@ export default async function RFWavePickingPage() {
     }),
   ]);
 
+  // RF yalnızca gerçekten kaynak THM'ye planlanmış Wave satırlarını göstermelidir.
+  // Sipariş/Wave ihtiyacı tek başına RF toplama emri değildir.
+  const activeWaveTaskLines = waveRecords.length > 0
+    ? await prisma.zonePickTaskLine.findMany({
+        where: {
+          task: {
+            waveId: { in: waveRecords.map((wave) => wave.id) },
+            status: { in: ["OPEN", "CLAIMED", "IN_PROGRESS"] },
+          },
+          plannedQuantity: { gt: 0 },
+        },
+        select: {
+          handlingUnitItemId: true,
+          plannedQuantity: true,
+          pickedQuantity: true,
+          orderItem: { select: { productId: true } },
+          task: { select: { waveId: true } },
+        },
+      })
+    : [];
+
+  const plannedProductsByWave = new Map<string, Set<number>>();
+  for (const line of activeWaveTaskLines) {
+    if (!line.task.waveId || line.plannedQuantity <= line.pickedQuantity) continue;
+    const products = plannedProductsByWave.get(line.task.waveId) ?? new Set<number>();
+    products.add(line.orderItem.productId);
+    plannedProductsByWave.set(line.task.waveId, products);
+  }
+
   const waves: WavePoolOption[] =
     waveRecords
       .map((wave) => {
@@ -412,6 +441,9 @@ export default async function RFWavePickingPage() {
                   ),
               })
             )
+            .filter((task) =>
+              (plannedProductsByWave.get(wave.id) ?? new Set<number>()).has(task.productId)
+            )
             .sort(
               (
                 left,
@@ -508,31 +540,15 @@ export default async function RFWavePickingPage() {
   // kaynak önerisi de servis ile aynı kullanılabilirlik hesabını yapmalıdır.
   // Böylece Wave'in kendi rezervasyonu lokasyon/THM yönlendirmesini gizlemez,
   // fakat başka işlere ait rezervasyonlar kullanılabilir miktardan düşülür.
-  const sourceItemIds = sourceRecords.flatMap((unit) => unit.items.map((item) => item.id));
-  const waveIds = waves.map((wave) => wave.id);
-  const waveReservationLines = sourceItemIds.length > 0 && waveIds.length > 0
-    ? await prisma.zonePickTaskLine.findMany({
-        where: {
-          handlingUnitItemId: { in: sourceItemIds },
-          task: { waveId: { in: waveIds } },
-        },
-        select: {
-          handlingUnitItemId: true,
-          plannedQuantity: true,
-          pickedQuantity: true,
-          task: { select: { waveId: true } },
-        },
-      })
-    : [];
-
   const waveReservationBySource = new Map<string, number>();
-  for (const line of waveReservationLines) {
+  for (const line of activeWaveTaskLines) {
     if (!line.task.waveId) continue;
+    const remaining = Math.max(0, line.plannedQuantity - line.pickedQuantity);
+    if (remaining <= 0) continue;
     const key = `${line.task.waveId}:${line.handlingUnitItemId}`;
     waveReservationBySource.set(
       key,
-      (waveReservationBySource.get(key) ?? 0) +
-        Math.max(0, line.plannedQuantity - line.pickedQuantity),
+      (waveReservationBySource.get(key) ?? 0) + remaining,
     );
   }
 
@@ -573,10 +589,14 @@ export default async function RFWavePickingPage() {
           return waves.flatMap((wave) => {
             const ownWaveReservation =
               waveReservationBySource.get(`${wave.id}:${item.id}`) ?? 0;
+            if (ownWaveReservation <= 0) return [];
+
             const reservedByOthers =
               Math.max(0, item.reservedStock - ownWaveReservation);
-            const availableQuantity =
+            const physicalAvailable =
               Math.max(0, item.quantity - reservedByOthers);
+            const availableQuantity =
+              Math.min(ownWaveReservation, physicalAvailable);
 
             if (availableQuantity <= 0) return [];
 
