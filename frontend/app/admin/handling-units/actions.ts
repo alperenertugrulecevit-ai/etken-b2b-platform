@@ -109,10 +109,7 @@ function getBarcodePrefix(
     purpose ===
     HandlingUnitPurpose.SHIPPING
   ) {
-    return physicalType ===
-      HandlingUnitType.BOX
-      ? "SKOL"
-      : "SPAL";
+    return "SVK";
   }
 
   if (
