@@ -1,6 +1,7 @@
 import {
   Prisma,
   PrismaClient,
+  StockMovementType,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -258,7 +259,17 @@ export async function createStockMovementWithTransaction(
     );
   }
 
-  if (!product.isActive) {
+  const isReservationRelease =
+    input.movementType === StockMovementType.RESERVATION_RELEASE &&
+    physicalChange === 0 &&
+    reservedChange < 0;
+
+  /*
+   * Pasif ürünlerde yeni stok/rezerve hareketi oluşturulamaz.
+   * Ancak ürün pasife alınmadan önce oluşmuş bir sipariş rezervasyonunun
+   * çözülebilmesi gerekir; aksi halde rezervasyon kalıcı olarak kilitlenir.
+   */
+  if (!product.isActive && !isReservationRelease) {
     throw new Error(
       `${product.code} - ${product.name} ürünü pasif durumda.`
     );
