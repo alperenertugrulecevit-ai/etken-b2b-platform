@@ -18,7 +18,11 @@ export class ZonePickingService {
    let need=Math.max(0,item.quantity-item.pickedQuantity); if(!need) continue;
    const candidates=(byProduct.get(item.productId)??[]).filter(s=>(available.get(s.id)??0)>0).sort((a,b)=>(a.handlingUnit.location?.sortOrder??0)-(b.handlingUnit.location?.sortOrder??0));
    const total=candidates.reduce((n,s)=>n+(available.get(s.id)??0),0);
-   if(total<need && !input.allowPartialStock) throw new Error(`${order.orderNumber}: ürün ${item.productId} için seçilen depoda yeterli kullanılabilir fiziksel stok yok.`);\n   if(input.allowPartialStock){\n    if(total<=0) continue;\n    need=Math.min(need,total);\n   }
+   if(total<need && !input.allowPartialStock) throw new Error(`${order.orderNumber}: ürün ${item.productId} için seçilen depoda yeterli kullanılabilir fiziksel stok yok.`);
+   if(input.allowPartialStock){
+    if(total<=0) continue;
+    need=Math.min(need,total);
+   }
    for(const stock of candidates){
     if(!need) break; const loc=stock.handlingUnit.location!;
     if(!loc.zoneId||!loc.zone||!loc.zone.isActive) throw new Error(`${order.orderNumber}: ${loc.code} lokasyonu aktif bir Zone'a atanmadığı için toplama başlatılamaz.`);
