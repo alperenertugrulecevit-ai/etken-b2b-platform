@@ -156,7 +156,10 @@ export default async function EditOrderPage({
 
     prisma.product.findMany({
       where: {
-        isActive: true,
+        OR: [
+          { isActive: true },
+          { orderItems: { some: { orderId } } },
+        ],
       },
 
       orderBy: {
@@ -171,6 +174,7 @@ export default async function EditOrderPage({
         vat: true,
         stock: true,
         reservedStock: true,
+        isActive: true,
       },
     }),
     prisma.shippingCarrier.findMany({
@@ -479,17 +483,24 @@ export default async function EditOrderPage({
               id: {
                 in: productIds,
               },
-
-              isActive: true,
             },
           });
 
-        if (
-          selectedProducts.length !==
-          productIds.length
-        ) {
+        if (selectedProducts.length !== productIds.length) {
+          throw new Error("Siparişte geçersiz ürün bulunuyor.");
+        }
+
+        const existingProductIds = new Set(
+          existingOrder.items.map((item) => item.productId)
+        );
+
+        const newlyAddedInactiveProduct = selectedProducts.find(
+          (product) => !product.isActive && !existingProductIds.has(product.id)
+        );
+
+        if (newlyAddedInactiveProduct) {
           throw new Error(
-            "Siparişte pasif veya geçersiz ürün bulunuyor."
+            `${newlyAddedInactiveProduct.code} - ${newlyAddedInactiveProduct.name} ürünü pasif durumda ve siparişe yeni eklenemez.`
           );
         }
 
