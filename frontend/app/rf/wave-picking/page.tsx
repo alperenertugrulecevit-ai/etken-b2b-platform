@@ -293,6 +293,7 @@ export default async function RFWavePickingPage() {
           },
 
           select: {
+            id: true,
             productId: true,
             quantity: true,
             reservedStock: true,
