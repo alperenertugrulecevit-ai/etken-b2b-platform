@@ -152,6 +152,10 @@ export async function updateOrderStatus(
           },
 
           include: {
+            waveOrders: { select: { id: true } },
+            zonePickTasks: { select: { id: true, pickedQuantity: true, status: true } },
+            pickingAssignment: { select: { id: true, startedAt: true, completedAt: true, cancelledAt: true } },
+            fulfillment: { select: { pickingStatus: true, pickedQuantity: true, packedQuantity: true, shippedQuantity: true } },
 items: {
   select: {
     productId: true,
@@ -171,6 +175,36 @@ items: {
       if (!order) {
         throw new Error(
           "Sipariş bulunamadı."
+        );
+      }
+
+      const hasOperationalPicking =
+        order.waveOrders.length > 0 ||
+        order.zonePickTasks.length > 0 ||
+        Boolean(
+          order.pickingAssignment &&
+          !order.pickingAssignment.cancelledAt
+        ) ||
+        Boolean(
+          order.fulfillment &&
+          (
+            order.fulfillment.pickingStatus !== "NOT_STARTED" ||
+            order.fulfillment.pickedQuantity > 0 ||
+            order.fulfillment.packedQuantity > 0 ||
+            order.fulfillment.shippedQuantity > 0
+          )
+        );
+
+      if (
+        hasOperationalPicking &&
+        (
+          newStatus === OrderStatus.DRAFT ||
+          newStatus === OrderStatus.PENDING ||
+          newStatus === OrderStatus.CANCELLED
+        )
+      ) {
+        throw new Error(
+          "Sipariş toplama/Wave operasyonuna alınmış. Önce WMS Toplama Operasyonları İzleme ekranından operasyonu geri alın veya iptal edin."
         );
       }
 
@@ -589,11 +623,10 @@ items: {
               item.productId
             );
 
-          if (warehouseIds.length !== 1) {
-            throw new Error(
-              `${item.productCode} için rezervasyon deposu tekil olarak belirlenemedi.`
-            );
-          }
+          const reservationWarehouseId =
+            warehouseIds.length === 1
+              ? warehouseIds[0]
+              : order.fulfillmentWarehouseId ?? context.warehouseId;
 
           await createStockMovementWithTransaction(
             tx,
@@ -604,7 +637,7 @@ items: {
               orderId: order.id,
 
               warehouseId:
-                warehouseIds[0],
+                reservationWarehouseId,
 
               movementType:
                 StockMovementType.RESERVATION_RELEASE,
