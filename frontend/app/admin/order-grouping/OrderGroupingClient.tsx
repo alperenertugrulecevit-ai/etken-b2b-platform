@@ -16,7 +16,7 @@ type OrderRow = {
   carrier: { code: string; name: string } | null;
   shippingAddress: { city: string; district: string } | null;
   stockReserved: boolean;
-  items: { id: number; productCode: string; productName: string; quantity: number }[];
+  items: { id: number; productCode: string; productName: string; quantity: number; product: { barcode: string | null } }[];
   _count: { items: number };
   plannedQuantity: number;
 };
@@ -123,6 +123,8 @@ export default function OrderGroupingClient({
               </th>
               <th className="p-4">Sipariş No</th>
               <th className="p-4">Sipariş Tipi</th>
+              <th className="p-4">İl</th>
+              <th className="p-4">İlçe</th>
               <th className="p-4">Depo</th>
               <th className="p-4">Müşteri</th>
               <th className="p-4">Nakliyeci</th>
@@ -146,6 +148,8 @@ export default function OrderGroupingClient({
                 </td>
                 <td className="p-4 font-black text-blue-900">{order.orderNumber}</td>
                 <td className="p-4"><span className="rounded-full bg-violet-100 px-3 py-1 font-bold text-violet-800">{typeLabels[order.orderType] || order.orderType}</span></td>
+                <td className="p-4">{order.shippingAddress?.city || "-"}</td>
+                <td className="p-4">{order.shippingAddress?.district || "-"}</td>
                 <td className="p-4">
                   {order.fulfillmentWarehouse
                     ? <><div className="font-bold">{order.fulfillmentWarehouse.code}</div><div className="text-slate-500">{order.fulfillmentWarehouse.name}</div></>
@@ -161,7 +165,7 @@ export default function OrderGroupingClient({
               </tr>
               {expanded.includes(order.id) && (
                 <tr className="border-b bg-slate-50">
-                  <td colSpan={12} className="p-0">
+                  <td colSpan={14} className="p-0">
                     <div className="overflow-x-auto p-4">
                       <div className="mb-3 grid gap-3 text-sm md:grid-cols-5">
                         <div><b>Firma Kodu:</b> {order.customer.customerCode}</div>
@@ -172,18 +176,18 @@ export default function OrderGroupingClient({
                       </div>
                       <table className="w-full min-w-[800px] border-collapse text-sm">
                         <thead><tr className="bg-white text-slate-700">
-                          <th className="border p-2">Kalem No</th><th className="border p-2">Ürün Kodu</th><th className="border p-2 text-left">Ürün Tanımı</th><th className="border p-2">Sipariş Miktarı</th><th className="border p-2">Rezervasyon Miktarı</th><th className="border p-2">Karşılama Oranı</th>
+                          <th className="border p-2">Kalem No</th><th className="border p-2">Barkod</th><th className="border p-2">Ürün Kodu</th><th className="border p-2 text-left">Ürün Tanımı</th><th className="border p-2">Sipariş Miktarı</th><th className="border p-2">Rezervasyon Miktarı</th><th className="border p-2">Karşılama Oranı</th>
                         </tr></thead>
                         <tbody>
                           {order.items.map((item, index) => {
                             const reserved = order.stockReserved ? item.quantity : 0;
                             const ratio = item.quantity > 0 ? Math.round((reserved / item.quantity) * 100) : 0;
                             return <tr key={item.id} className="bg-white">
-                              <td className="border p-2 text-center">{index + 1}</td><td className="border p-2 text-center">{item.productCode}</td><td className="border p-2">{item.productName}</td><td className="border p-2 text-center">{item.quantity}</td><td className="border p-2 text-center">{reserved}</td><td className="border p-2 text-center font-bold">{ratio}%</td>
+                              <td className="border p-2 text-center">{index + 1}</td><td className="border p-2 text-center">{item.product.barcode || "-"}</td><td className="border p-2 text-center">{item.productCode}</td><td className="border p-2">{item.productName}</td><td className="border p-2 text-center">{item.quantity}</td><td className="border p-2 text-center">{reserved}</td><td className="border p-2 text-center font-bold">{ratio}%</td>
                             </tr>;
                           })}
                         </tbody>
-                        <tfoot><tr className="bg-white font-black"><td className="border p-2" colSpan={3}>Toplam</td><td className="border p-2 text-center">{order.plannedQuantity}</td><td className="border p-2 text-center">{order.stockReserved ? order.plannedQuantity : 0}</td><td className="border p-2 text-center">{order.stockReserved ? "100%" : "0%"}</td></tr></tfoot>
+                        <tfoot><tr className="bg-white font-black"><td className="border p-2" colSpan={4}>Toplam</td><td className="border p-2 text-center">{order.plannedQuantity}</td><td className="border p-2 text-center">{order.stockReserved ? order.plannedQuantity : 0}</td><td className="border p-2 text-center">{order.stockReserved ? "100%" : "0%"}</td></tr></tfoot>
                       </table>
                     </div>
                   </td>
