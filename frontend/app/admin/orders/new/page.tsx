@@ -5,7 +5,7 @@ import OrderForm from "@/components/admin/OrderForm";
 import { createOrder } from "../actions";
 
 export default async function NewOrderPage() {
-  const [customers, products, carriers] = await Promise.all([
+  const [customers, products, carriers, warehouses] = await Promise.all([
     prisma.customer.findMany({
       where: {
         isActive: true,
@@ -76,6 +76,11 @@ export default async function NewOrderPage() {
       orderBy: { name: "asc" },
       select: { id: true, code: true, name: true },
     }),
+    prisma.warehouse.findMany({
+      where: { isActive: true, code: { not: "KYP001" } },
+      orderBy: { code: "asc" },
+      select: { id: true, code: true, name: true },
+    }),
   ]);
 
   return (
@@ -118,6 +123,7 @@ export default async function NewOrderPage() {
         customers={customers}
         products={products}
         carriers={carriers}
+        warehouses={warehouses}
         action={createOrder}
       />
     </section>
