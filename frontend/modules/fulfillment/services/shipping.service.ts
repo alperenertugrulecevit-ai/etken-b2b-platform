@@ -415,6 +415,23 @@ export class ShippingService {
                   plannedQuantity: true,
                   packedQuantity: true,
                   shippedQuantity: true,
+                  wave: {
+                    select: {
+                      warehouseId: true,
+                    },
+                  },
+                },
+              },
+              packingRecords: {
+                orderBy: {
+                  createdAt: "desc",
+                },
+                select: {
+                  sourceHandlingUnit: {
+                    select: {
+                      warehouseId: true,
+                    },
+                  },
                 },
               },
               dispatchDocument: {
@@ -431,6 +448,16 @@ export class ShippingService {
                   orderNumber: true,
                   packedQuantity: true,
                   shippedQuantity: true,
+                  order: {
+                    select: {
+                      fulfillmentWarehouseId: true,
+                      zonePickTasks: {
+                        select: {
+                          warehouseId: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
               items: {
@@ -470,6 +497,81 @@ export class ShippingService {
               ? "Bu Sevk THM daha önce sevk edilmiş."
               : "Sevk THM sevkiyata hazır durumda değil."
           );
+        }
+
+        const packingWarehouseIds =
+          shippingUnit.packingRecords
+            .map(
+              (record) =>
+                record.sourceHandlingUnit.warehouseId
+            )
+            .filter(
+              (warehouseId): warehouseId is number =>
+                warehouseId !== null
+            );
+
+        const distinctPackingWarehouseIds =
+          Array.from(
+            new Set(packingWarehouseIds)
+          );
+
+        if (
+          distinctPackingWarehouseIds.length > 1
+        ) {
+          throw new Error(
+            "Sevk THM birden fazla kaynak depodan paketlenmiş görünüyor. Depo otomatik belirlenemedi."
+          );
+        }
+
+        const orderWarehouseIds =
+          shippingUnit.orders
+            .flatMap(({ order }) => [
+              order.fulfillmentWarehouseId,
+              ...order.zonePickTasks.map(
+                (task) => task.warehouseId
+              ),
+            ])
+            .filter(
+              (warehouseId): warehouseId is number =>
+                warehouseId !== null
+            );
+
+        const distinctOrderWarehouseIds =
+          Array.from(
+            new Set(orderWarehouseIds)
+          );
+
+        if (
+          distinctOrderWarehouseIds.length > 1
+        ) {
+          throw new Error(
+            "Sevk THM sipariş/toplama kayıtlarında birden fazla depo görünüyor. Depo otomatik belirlenemedi."
+          );
+        }
+
+        const resolvedWarehouseId =
+          shippingUnit.handlingUnit.warehouseId ??
+          shippingUnit.waveDistribution?.wave.warehouseId ??
+          distinctPackingWarehouseIds[0] ??
+          distinctOrderWarehouseIds[0];
+
+        if (!resolvedWarehouseId) {
+          throw new Error(
+            "Sevk THM depo bilgisi THM, Wave, paketleme kaynağı, sipariş ve toplama görevi kayıtlarından çözülemedi."
+          );
+        }
+
+        if (
+          !shippingUnit.handlingUnit.warehouseId
+        ) {
+          await tx.handlingUnit.update({
+            where: {
+              id: shippingUnit.handlingUnit.id,
+            },
+            data: {
+              warehouseId: resolvedWarehouseId,
+            },
+          });
         }
 
         // İrsaliye paketleme/evrak adımında önceden kesilmiş olabilir.
@@ -957,10 +1059,9 @@ export class ShippingService {
             shipment,
           ] of quantitiesByProduct
         ) {
-          if(!shippingUnit.handlingUnit.warehouseId) throw new Error("Sevk THM depo bilgisi bulunamadı.");
           await createStockMovementWithTransaction(tx,{
             productId,
-            warehouseId:shippingUnit.handlingUnit.warehouseId,
+            warehouseId:resolvedWarehouseId,
             shippingHandlingUnitId:shippingUnit.id,
             movementType:StockMovementType.SALE_SHIPMENT,
             physicalChange:-shipment.quantity,
