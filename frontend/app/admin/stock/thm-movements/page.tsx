@@ -93,6 +93,7 @@ type Props = {
     startDate?: string | string[];
     endDate?: string | string[];
     page?: string | string[];
+    warehouseId?: string | string[];
   }>;
 };
 
@@ -310,12 +311,14 @@ function buildPageUrl({
   operationType,
   startDate,
   endDate,
+  warehouseId,
   page,
 }: {
   q: string;
   operationType: string[];
   startDate: string;
   endDate: string;
+  warehouseId: string;
   page: number;
 }) {
   const params =
@@ -336,6 +339,8 @@ function buildPageUrl({
       startDate
     );
   }
+
+  if (warehouseId) params.set("warehouseId",warehouseId);
 
   if (endDate) {
     params.set(
@@ -382,6 +387,10 @@ export default async function ThmMovementsPage({
       query.endDate
     );
 
+  const warehouseIdValue=normalizeSearchValue(query.warehouseId);
+  const warehouseIdNumber=Number(warehouseIdValue);
+  const selectedWarehouseId=Number.isInteger(warehouseIdNumber)&&warehouseIdNumber>0?warehouseIdNumber:null;
+
   const requestedPage =
     parsePage(
       query.page
@@ -420,6 +429,8 @@ export default async function ThmMovementsPage({
       },
     ],
   });
+
+  if (selectedWarehouseId) filters.push({warehouseId:selectedWarehouseId});
 
   if (selectedOperationTypes.length) {
     filters.push({ operationType: { in: selectedOperationTypes } });
@@ -538,6 +549,8 @@ export default async function ThmMovementsPage({
         AND:
           filters,
       };
+
+  const warehouses=await prisma.warehouse.findMany({where:{isActive:true,code:{not:"KYP001"}},orderBy:{code:"asc"},select:{id:true,code:true,name:true}});
 
   const totalCount =
     await prisma.wmsOperationLog.count({
@@ -1101,7 +1114,7 @@ export default async function ThmMovementsPage({
           method="get"
           className="mt-7 rounded-2xl bg-white p-5 shadow-sm"
         >
-          <div className="grid gap-4 lg:grid-cols-5">
+          <div className="grid gap-4 lg:grid-cols-6">
             <label className="block lg:col-span-2">
               <span className="mb-2 block text-sm font-bold text-slate-700">
                 Arama
@@ -1145,6 +1158,14 @@ export default async function ThmMovementsPage({
                     </option>
                   )
                 )}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-slate-700">Depo Kodu</span>
+              <select name="warehouseId" defaultValue={warehouseIdValue} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3">
+                <option value="">Tüm Depolar</option>
+                {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} - {w.name}</option>)}
               </select>
             </label>
 
@@ -1205,6 +1226,8 @@ export default async function ThmMovementsPage({
                     Tarih
                   </th>
 
+                  <th className="px-4 py-4">Depo Kodu</th>
+
                   <th className="px-4 py-4">
                     İşlem
                   </th>
@@ -1263,7 +1286,7 @@ export default async function ThmMovementsPage({
                   <tr>
                     <td
                       colSpan={
-                        14
+                        15
                       }
                       className="px-6 py-16 text-center text-slate-500"
                     >
@@ -1310,6 +1333,10 @@ export default async function ThmMovementsPage({
                             {formatDate(
                               log.createdAt
                             )}
+                          </td>
+
+                          <td className="whitespace-nowrap px-4 py-4 font-bold text-slate-700">
+                            {log.warehouseCode ?? "-"}
                           </td>
 
                           <td className="px-4 py-4">
