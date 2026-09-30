@@ -77,7 +77,7 @@ export default function ColumnVisibilityMenu({
         ⚙ {label}
       </button>
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+        <div className="absolute left-1/2 z-[100] mt-2 w-80 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
           <div className="font-black text-slate-900">Kolon Düzeni</div>
           <p className="mb-3 mt-1 text-xs text-slate-500">☰ tutamacından sürükleyerek sırayı değiştirin.</p>
           <div className="max-h-80 space-y-2 overflow-auto">
