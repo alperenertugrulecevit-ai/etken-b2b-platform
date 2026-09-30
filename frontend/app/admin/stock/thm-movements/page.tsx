@@ -1548,6 +1548,7 @@ export default async function ThmMovementsPage({
                     startDateValue,
                   endDate:
                     endDateValue,
+                  warehouseId: warehouseIdValue,
                   page:
                     currentPage -
                     1,
@@ -1572,6 +1573,7 @@ export default async function ThmMovementsPage({
                     startDateValue,
                   endDate:
                     endDateValue,
+                  warehouseId: warehouseIdValue,
                   page:
                     currentPage +
                     1,
