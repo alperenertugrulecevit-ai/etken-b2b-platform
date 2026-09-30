@@ -14,6 +14,7 @@ type SearchParams = Promise<{
   startDate?: string;
   endDate?: string;
   page?: string;
+  warehouseId?: string;
 }>;
 
 type Props = {
@@ -194,6 +195,10 @@ export default async function StockMovementsPage({
   const endDate =
     query.endDate?.trim() ?? "";
 
+  const warehouseIdValue=query.warehouseId?.trim()??"";
+  const warehouseIdNumber=Number(warehouseIdValue);
+  const selectedWarehouseId=Number.isInteger(warehouseIdNumber)&&warehouseIdNumber>0?warehouseIdNumber:null;
+
   const requestedPage = Number(
     query.page ?? "1"
   );
@@ -212,6 +217,8 @@ export default async function StockMovementsPage({
 
   const where: Prisma.StockMovementWhereInput =
     {};
+
+  if (selectedWarehouseId) where.warehouseId=selectedWarehouseId;
 
   if (search) {
     where.OR = [
@@ -308,7 +315,7 @@ export default async function StockMovementsPage({
     (safeCurrentPage - 1) *
     PAGE_SIZE;
 
-  const [movements, totals] =
+  const [movements, totals, warehouses] =
     await Promise.all([
       prisma.stockMovement.findMany({
         where,
@@ -326,6 +333,7 @@ export default async function StockMovementsPage({
         take: PAGE_SIZE,
 
         include: {
+          warehouse: { select: { code: true } },
           product: {
             select: {
               id: true,
@@ -353,6 +361,7 @@ export default async function StockMovementsPage({
           reservedChange: true,
         },
       }),
+      prisma.warehouse.findMany({where:{isActive:true,code:{not:"KYP001"}},orderBy:{code:"asc"},select:{id:true,code:true,name:true}}),
     ]);
 
   /*
@@ -419,6 +428,7 @@ export default async function StockMovementsPage({
     movementType: movementTypes,
     startDate,
     endDate,
+    warehouseId: warehouseIdValue,
   };
 
   const previousPageUrl =
@@ -571,7 +581,7 @@ export default async function StockMovementsPage({
       {/* FİLTRELER */}
 
       <form className="mt-8 rounded-2xl bg-white p-6 shadow">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-6">
           <label className="xl:col-span-2">
             <span className="mb-2 block text-sm font-semibold">
               Arama
@@ -607,6 +617,14 @@ export default async function StockMovementsPage({
                   {getMovementLabel(type)}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-semibold">Depo Kodu</span>
+            <select name="warehouseId" defaultValue={warehouseIdValue} className="w-full rounded-xl border bg-white p-4">
+              <option value="">Tüm Depolar</option>
+              {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} - {w.name}</option>)}
             </select>
           </label>
 
@@ -656,7 +674,7 @@ export default async function StockMovementsPage({
 
       {/* HAREKET TABLOSU */}
       <StockMovementsTable rows={movements.map(movement=>({
-        id:movement.id,date:formatDate(movement.createdAt),barcode:movement.product.barcode||"-",productId:movement.product.id,
+        id:movement.id,date:formatDate(movement.createdAt),warehouseCode:movement.warehouse?.code??"-",barcode:movement.product.barcode||"-",productId:movement.product.id,
         productCode:movement.product.code,productName:movement.product.name,location:"-",thm:"-",type:movement.movementType,
         document:movement.documentNumber||"-",orderId:movement.order?.id??null,orderNumber:movement.order?.orderNumber??null,
         physicalChange:movement.physicalChange,reservedChange:movement.reservedChange,physicalBalance:movement.physicalBalanceAfter,
