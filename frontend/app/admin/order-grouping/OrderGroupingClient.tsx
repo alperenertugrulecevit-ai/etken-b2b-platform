@@ -133,7 +133,7 @@ export default function OrderGroupingClient({
                 />
               </th>
               {columnVisibility.orderedColumns.filter(column => columnVisibility.isVisible(column.key)).map(column => (
-                <th key={column.key} className="p-4">{column.label}</th>
+                <th key={column.key} draggable onDragStart={e=>{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",column.key)}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();columnVisibility.move(e.dataTransfer.getData("text/plain"),column.key)}} className="cursor-move select-none p-4">{column.label}</th>
               ))}
             </tr>
           </thead>
