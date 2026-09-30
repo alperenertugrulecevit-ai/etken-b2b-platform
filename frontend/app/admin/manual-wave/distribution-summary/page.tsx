@@ -20,7 +20,14 @@ export default async function Page({
 }) {
   const q = await searchParams;
   const user = await AuthorizationService.requirePermission("MANUAL_WAVE_REPORT_VIEW");
-  const scope = await WmsContextService.requireActiveContext(user.id, user.isAdminUser);
+  const selector = await WmsContextService.getSelectorData(user.id, user.isAdminUser);
+  const baseScope = selector.activeContext;
+  if (!baseScope) throw new Error("Kullanabileceğiniz aktif şirket ve depo bulunamadı.");
+  const allowedWarehouses = selector.companies.find(x=>x.id===baseScope.companyId)?.warehouses ?? [];
+  const requestedWarehouseId = Number(q.warehouseId ?? "");
+  const selectedWarehouse = allowedWarehouses.find(w=>w.id===requestedWarehouseId) ?? allowedWarehouses.find(w=>w.id===baseScope.warehouseId);
+  if (!selectedWarehouse) throw new Error("Kullanabileceğiniz depo bulunamadı.");
+  const scope = {...baseScope,warehouseId:selectedWarehouse.id,warehouseCode:selectedWarehouse.code,warehouseName:selectedWarehouse.name,logisticsCenterCode:selectedWarehouse.logisticsCenterCode,logisticsCenterName:selectedWarehouse.logisticsCenterName};
 
   const filters = {
     from: day(q.from),
@@ -52,6 +59,7 @@ export default async function Page({
   if (q.from) reportParams.set("from", q.from);
   if (q.to) reportParams.set("to", q.to);
   if (q.waveId) reportParams.set("waveId", q.waveId);
+  reportParams.set("warehouseId", String(scope.warehouseId));
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -72,7 +80,7 @@ export default async function Page({
       </nav>
 
       <div className="mx-auto max-w-7xl space-y-5 p-6">
-        <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[1fr_1fr_1fr_auto]">
+        <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]">
           <label className="space-y-1 text-sm font-semibold text-slate-700">
             <span>Başlangıç Tarihi</span>
             <input name="from" type="date" defaultValue={q.from} className="w-full rounded-lg border border-slate-300 px-3 py-2.5" />
@@ -144,12 +152,12 @@ export default async function Page({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-600">
-                <tr>{["Kullanıcı", "Dağıtılan Ürün", "Farklı THM", "Wave", "İşlem Sayısı"].map((x) => <th key={x} className="border-t border-slate-200 px-5 py-3 text-left">{x}</th>)}</tr>
+                <tr>{["Depo Kodu","Kullanıcı", "Dağıtılan Ürün", "Farklı THM", "Wave", "İşlem Sayısı"].map((x) => <th key={x} className="border-t border-slate-200 px-5 py-3 text-left">{x}</th>)}</tr>
               </thead>
               <tbody>
                 {operators.map((o) => (
                   <tr key={o.operatorId} className="border-t border-slate-100">
-                    <td className="px-5 py-3 font-semibold">{o.operatorName}</td>
+                    <td className="px-5 py-3 font-bold">{scope.warehouseCode}</td><td className="px-5 py-3 font-semibold">{o.operatorName}</td>
                     <td className="px-5 py-3 font-bold text-emerald-700">{n(o.activeQuantity)}</td>
                     <td className="px-5 py-3">{n(o.uniqueHandlingUnits ?? 0)}</td>
                     <td className="px-5 py-3">{n(o.uniqueWaves)}</td>
