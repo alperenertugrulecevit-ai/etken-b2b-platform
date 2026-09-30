@@ -126,7 +126,11 @@ function calculateOverallProgress(wave: {
   );
 }
 
-export default async function AdminWavesPage() {
+export default async function AdminWavesPage({searchParams}:{searchParams:Promise<{warehouseId?:string}>}) {
+  const query=await searchParams;
+  const warehouseIdNumber=Number(query.warehouseId??"");
+  const selectedWarehouseId=Number.isInteger(warehouseIdNumber)&&warehouseIdNumber>0?warehouseIdNumber:null;
+  const waveWhere=selectedWarehouseId?{warehouseId:selectedWarehouseId}:{};
   const [
     waves,
     totalWaveCount,
@@ -136,8 +140,10 @@ export default async function AdminWavesPage() {
     completedWaveCount,
     orderSummary,
     assignmentCount,
+    warehouses,
   ] = await Promise.all([
     prisma.wave.findMany({
+      where: waveWhere,
       orderBy: [
         {
           priority: "desc",
@@ -148,6 +154,7 @@ export default async function AdminWavesPage() {
       ],
 
       include: {
+        warehouse:{select:{code:true}},
         _count: {
           select: {
             orders: true,
@@ -157,22 +164,25 @@ export default async function AdminWavesPage() {
       },
     }),
 
-    prisma.wave.count(),
+    prisma.wave.count({where:waveWhere}),
 
     prisma.wave.count({
       where: {
+        ...waveWhere,
         status: WaveStatus.DRAFT,
       },
     }),
 
     prisma.wave.count({
       where: {
+        ...waveWhere,
         status: WaveStatus.READY,
       },
     }),
 
     prisma.wave.count({
       where: {
+        ...waveWhere,
         status: {
           in: [
             WaveStatus.RELEASED,
@@ -185,11 +195,13 @@ export default async function AdminWavesPage() {
 
     prisma.wave.count({
       where: {
+        ...waveWhere,
         status: WaveStatus.COMPLETED,
       },
     }),
 
     prisma.wave.aggregate({
+      where: waveWhere,
       _sum: {
         plannedOrderCount: true,
         plannedLineCount: true,
@@ -200,11 +212,14 @@ export default async function AdminWavesPage() {
 
     prisma.waveAssignment.count({
       where: {
+        ...(selectedWarehouseId?{wave:{warehouseId:selectedWarehouseId}}:{}),
+        ...waveWhere,
         status: {
           in: ["ASSIGNED", "ACTIVE", "WAITING"],
         },
       },
     }),
+    prisma.warehouse.findMany({where:{isActive:true,code:{not:"KYP001"}},orderBy:{code:"asc"},select:{id:true,code:true,name:true}}),
   ]);
 
   const totalPlannedOrderCount =
@@ -379,6 +394,11 @@ export default async function AdminWavesPage() {
         </article>
       </div>
 
+      <form className="mt-8 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <label className="text-sm font-bold text-slate-700"><span className="mb-1 block">Depo Kodu</span><select name="warehouseId" defaultValue={selectedWarehouseId??""} className="rounded-xl border border-slate-300 bg-white px-4 py-3"><option value="">Tüm Depolar</option>{warehouses.map(w=><option key={w.id} value={w.id}>{w.code} - {w.name}</option>)}</select></label>
+        <button className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white">Filtrele</button>
+      </form>
+
       <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 p-6">
           <div>
@@ -400,7 +420,7 @@ export default async function AdminWavesPage() {
           <table className="w-full min-w-[1450px] text-left">
             <thead className="bg-blue-900 text-white">
               <tr>
-                <th className="p-4">Wave No</th>
+                <th className="p-4">Depo Kodu</th><th className="p-4">Wave No</th>
                 <th className="p-4">Wave Adı</th>
                 <th className="p-4">Tip</th>
                 <th className="p-4">Öncelik</th>
@@ -425,6 +445,7 @@ export default async function AdminWavesPage() {
                     key={wave.id}
                     className="border-b border-slate-100 transition hover:bg-slate-50"
                   >
+                    <td className="whitespace-nowrap p-4 font-bold">{wave.warehouse?.code??"-"}</td>
                     <td className="whitespace-nowrap p-4">
                       <p className="font-bold text-blue-900">
                         {wave.waveNo}
@@ -548,7 +569,7 @@ export default async function AdminWavesPage() {
               {waves.length === 0 && (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="p-12 text-center"
                   >
                     <div className="text-5xl">
