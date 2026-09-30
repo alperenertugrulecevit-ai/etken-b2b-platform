@@ -160,6 +160,10 @@ export default async function OrderDetailPage({
       include: {
         customer: true,
         shippingAddress: true,
+        waveOrders:{select:{id:true}},
+        zonePickTasks:{select:{id:true}},
+        pickingAssignment:{select:{id:true,cancelledAt:true}},
+        fulfillment:{select:{pickingStatus:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true}},
 
         items: {
           orderBy: {
@@ -184,6 +188,22 @@ export default async function OrderDetailPage({
   if (!order) {
     notFound();
   }
+
+  const hasOperationalPicking =
+    order.waveOrders.length > 0 ||
+    order.zonePickTasks.length > 0 ||
+    Boolean(order.pickingAssignment && !order.pickingAssignment.cancelledAt) ||
+    Boolean(order.fulfillment && (
+      order.fulfillment.pickingStatus !== "NOT_STARTED" ||
+      order.fulfillment.pickedQuantity > 0 ||
+      order.fulfillment.packedQuantity > 0 ||
+      order.fulfillment.shippedQuantity > 0
+    ));
+
+  const canModifyBeforePicking =
+    ["DRAFT","PENDING","APPROVED"].includes(order.status) &&
+    !order.stockDeducted &&
+    !hasOperationalPicking;
 
   // Finansal özet sipariş anında sunucuda
   // kaydedilen iskonto ve KDV değerlerini kullanır.
@@ -281,9 +301,7 @@ export default async function OrderDetailPage({
         </div>
 
 <div className="flex flex-wrap gap-3">
-  {["DRAFT", "PENDING"].includes(order.status) &&
-    !order.stockReserved &&
-    !order.stockDeducted && (
+  {canModifyBeforePicking && (
       <Link
         href={`/admin/orders/${order.id}/edit`}
         className="rounded-xl bg-blue-900 px-5 py-3 font-semibold text-white hover:bg-blue-800"
