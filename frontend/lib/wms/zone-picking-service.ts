@@ -101,8 +101,18 @@ export class ZonePickingService {
       if(remaining>0){
         const src=await tx.handlingUnitItem.findUnique({where:{id:line.handlingUnitItemId},select:{productId:true,handlingUnit:{select:{warehouseId:true}}}});
         if(!src?.handlingUnit.warehouseId) throw new Error("Wave rezervasyonunun depo bilgisi bulunamadı.");
-        const changed=await tx.handlingUnitItem.updateMany({where:{id:line.handlingUnitItemId,reservedStock:{gte:remaining}},data:{reservedStock:{decrement:remaining}}});
-        if(changed.count!==1) throw new Error("Wave rezervasyonu THM ve merkezi stok arasında uyumsuz.");
+        const sourceItem=await tx.handlingUnitItem.findUnique({
+          where:{id:line.handlingUnitItemId},
+          select:{reservedStock:true},
+        });
+        if(!sourceItem) throw new Error("Wave rezervasyonunun kaynak THM satırı bulunamadı.");
+        const releasable=Math.min(remaining,Math.max(0,sourceItem.reservedStock));
+        if(releasable>0){
+          await tx.handlingUnitItem.update({
+            where:{id:line.handlingUnitItemId},
+            data:{reservedStock:{decrement:releasable}},
+          });
+        }
       }
     }
   }
