@@ -99,8 +99,12 @@ function getStatusClass(status: string) {
   );
 }
 
-export default async function AdminOrdersPage() {
-  const orders = await prisma.order.findMany({
+export default async function AdminOrdersPage({searchParams}:{searchParams:Promise<{warehouseId?:string}>}) {
+  const query=await searchParams;
+  const warehouseIdNumber=Number(query.warehouseId??"");
+  const selectedWarehouseId=Number.isInteger(warehouseIdNumber)&&warehouseIdNumber>0?warehouseIdNumber:null;
+  const [orders,warehouses] = await Promise.all([prisma.order.findMany({
+    where:selectedWarehouseId?{fulfillmentWarehouseId:selectedWarehouseId}:{},
     orderBy: {
       orderDate: "desc",
     },
@@ -123,13 +127,15 @@ export default async function AdminOrdersPage() {
         },
       },
 
+      fulfillmentWarehouse:{select:{code:true}},
+
       _count: {
         select: {
           items: true,
         },
       },
     },
-  });
+  }),prisma.warehouse.findMany({where:{isActive:true,code:{not:"KYP001"}},orderBy:{code:"asc"},select:{id:true,code:true,name:true}})]);
 
   return (
     <section className="p-4 sm:p-6 lg:p-10">
@@ -156,10 +162,14 @@ export default async function AdminOrdersPage() {
         </div>
       </div>
 
+      <form className="mt-6 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-5 shadow"><label className="text-sm font-bold"><span className="mb-1 block">Depo Kodu</span><select name="warehouseId" defaultValue={selectedWarehouseId??""} className="rounded-xl border bg-white px-4 py-3"><option value="">Tüm Depolar</option>{warehouses.map(w=><option key={w.id} value={w.id}>{w.code} - {w.name}</option>)}</select></label><button className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white">Filtrele</button></form>
+
       <div className="-mx-4 mt-6 overflow-x-auto bg-white shadow sm:mx-0 sm:mt-8 sm:rounded-2xl lg:mt-10">
         <table className="w-full min-w-[1450px] text-left text-sm">
           <thead className="bg-blue-900 text-white">
             <tr>
+              <th className="p-4">Depo Kodu</th>
+
               <th className="p-4">
                 Sipariş No
               </th>
@@ -216,6 +226,8 @@ export default async function AdminOrdersPage() {
                 key={order.id}
                 className="border-b hover:bg-slate-50"
               >
+                <td className="p-4 font-bold">{order.fulfillmentWarehouse?.code??"-"}</td>
+
                 <td className="p-4 font-bold text-blue-900">
                   {order.orderNumber}
                 </td>
@@ -328,7 +340,7 @@ export default async function AdminOrdersPage() {
             {orders.length === 0 && (
               <tr>
                 <td
-                  colSpan={12}
+                  colSpan={13}
                   className="p-10 text-center text-gray-500"
                 >
                   Henüz sipariş oluşturulmadı.
