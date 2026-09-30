@@ -28,12 +28,17 @@ export default async function PickingOperationsPage(){
  for(const wave of waves){
   const items=wave.orders.flatMap(x=>x.order.items.map(i=>({...i,orderId:x.order.id,orderNumber:x.order.orderNumber})));
   const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+i.pickedQuantity,0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
-  groups.push({key:wave.id,date:wave.createdAt,type:"Wave Toplama",person:person(wave.assignments[0]?.user),waveNo:wave.waveNo,orderNo:"-",zone:"-",planned,picked,short,status:planned<=picked+short?"Tamamlandı":"Devam Ediyor",items});
+  // Bu ekran yalnızca aktif veya müdahale gerektiren toplama operasyonlarını gösterir.
+  // Toplama + geçerli eksik kapatma planlanan miktarı karşıladığında görev tamamlanmıştır
+  // ve Wave durum kaydı henüz kapanmamış olsa bile aktif izleme listesinden çıkar.
+  if(planned<=picked+short) continue;
+  groups.push({key:wave.id,date:wave.createdAt,type:"Wave Toplama",person:person(wave.assignments[0]?.user),waveNo:wave.waveNo,orderNo:"-",zone:"-",planned,picked,short,status:"Devam Ediyor",items});
  }
  for(const task of directTasks){
   const items=task.order.items.map(i=>({...i,orderId:task.order.id,orderNumber:task.order.orderNumber}));
   const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+i.pickedQuantity,0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
-  groups.push({key:task.id,date:task.createdAt,type:"Sipariş Bazlı",person:person(task.claimedBy),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:planned<=picked+short?"Tamamlandı":"Devam Ediyor",items});
+  if(planned<=picked+short) continue;
+  groups.push({key:task.id,date:task.createdAt,type:"Sipariş Bazlı",person:person(task.claimedBy),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:"Devam Ediyor",items});
  }
  groups.sort((a,b)=>b.date.getTime()-a.date.getTime());
  return <main className="p-6">
