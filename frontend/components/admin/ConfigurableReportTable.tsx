@@ -1,0 +1,8 @@
+"use client";
+import { ReactNode } from "react";
+import ColumnVisibilityMenu,{ColumnOption,useColumnVisibility} from "@/components/admin/ColumnVisibilityMenu";
+export type ReportRow={key:string|number;cells:Record<string,ReactNode>};
+export default function ConfigurableReportTable({storageKey,columns,rows,tableId,minWidth="1100px",emptyText,totalRow}:{storageKey:string;columns:ColumnOption[];rows:ReportRow[];tableId:string;minWidth?:string;emptyText:string;totalRow?:Record<string,ReactNode>}){
+ const s=useColumnVisibility(storageKey,columns),shown=s.orderedColumns.filter(c=>s.isVisible(c.key));
+ return <><div className="mt-4 flex justify-end"><ColumnVisibilityMenu columns={columns} visible={s.visible} order={s.order} onToggle={s.toggle} onMove={s.move} onShowAll={s.showAll} onReset={s.reset}/></div><div className="mt-3 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><table id={tableId} className="w-full" style={{minWidth}}><thead><tr>{shown.map(c=><th key={c.key} className="whitespace-nowrap border-b border-slate-200 bg-slate-100 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-700">{c.label}</th>)}</tr></thead><tbody>{rows.map(r=><tr key={r.key} className="hover:bg-slate-50">{shown.map(c=><td key={c.key} className="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{r.cells[c.key]??"-"}</td>)}</tr>)}{rows.length===0?<tr><td colSpan={Math.max(1,shown.length)} className="p-10 text-center text-slate-500">{emptyText}</td></tr>:totalRow?<tr className="bg-slate-100 font-bold">{shown.map(c=><td key={c.key} className="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{totalRow[c.key]??"-"}</td>)}</tr>:null}</tbody></table></div></>;
+}
