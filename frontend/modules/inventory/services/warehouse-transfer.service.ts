@@ -318,15 +318,33 @@ export class WarehouseTransferService {
     const sourceLoc = fullLocationCode(source.location);
     const targetLoc = fullLocationCode(targetLocation);
 
-    await moveWarehouseStock(tx, {
-      productId: item.productId, quantity: input.quantity,
-      sourceWarehouseId: source.warehouseId!, targetWarehouseId: targetWarehouse.id,
-      tenantId: source.tenantId, companyId: source.companyId,
-    });
-    await moveLocationStock(tx, {
-      productId: item.productId, quantity: input.quantity,
-      sourceLocationId: source.locationId!, targetLocationId: targetLocation.id,
-    });
+    if (source.warehouse.code === LOST_WAREHOUSE_CODE) {
+      // KYP001 özet stokları geçmiş kayıp/uzlaştırma işlemleri nedeniyle THM'den
+      // düşük olabilir. Kayıp depodan geri dönüşte fiziksel gerçek kaynak THM'dir.
+      // Kaynak özetleri negatife düşürmeden mevcut kadar azalt, hedefe THM'den
+      // çıkan miktarın tamamını ekle.
+      await moveLostStockLedgers(tx, {
+        productId: item.productId,
+        quantity: input.quantity,
+        sourceWarehouseId: source.warehouseId,
+        targetWarehouseId: targetWarehouse.id,
+        sourceLocationId: source.locationId,
+        targetLocationId: targetLocation.id,
+        tenantId: source.tenantId,
+        companyId: source.companyId,
+        reservedToRelease: 0,
+      });
+    } else {
+      await moveWarehouseStock(tx, {
+        productId: item.productId, quantity: input.quantity,
+        sourceWarehouseId: source.warehouseId!, targetWarehouseId: targetWarehouse.id,
+        tenantId: source.tenantId, companyId: source.companyId,
+      });
+      await moveLocationStock(tx, {
+        productId: item.productId, quantity: input.quantity,
+        sourceLocationId: source.locationId!, targetLocationId: targetLocation.id,
+      });
+    }
 
     const sourceAfter = item.quantity - input.quantity;
     if (sourceAfter === 0 && item.reservedStock === 0) {
@@ -407,15 +425,29 @@ export class WarehouseTransferService {
     const targetLoc = fullLocationCode(targetLocation);
 
     for (const item of source.items) {
-      await moveWarehouseStock(tx, {
-        productId: item.productId, quantity: item.quantity,
-        sourceWarehouseId: source.warehouseId!, targetWarehouseId: targetWarehouse.id,
-        tenantId: source.tenantId, companyId: source.companyId,
-      });
-      await moveLocationStock(tx, {
-        productId: item.productId, quantity: item.quantity,
-        sourceLocationId: source.locationId!, targetLocationId: targetLocation.id,
-      });
+      if (source.warehouse.code === LOST_WAREHOUSE_CODE) {
+        await moveLostStockLedgers(tx, {
+          productId: item.productId,
+          quantity: item.quantity,
+          sourceWarehouseId: source.warehouseId,
+          targetWarehouseId: targetWarehouse.id,
+          sourceLocationId: source.locationId,
+          targetLocationId: targetLocation.id,
+          tenantId: source.tenantId,
+          companyId: source.companyId,
+          reservedToRelease: 0,
+        });
+      } else {
+        await moveWarehouseStock(tx, {
+          productId: item.productId, quantity: item.quantity,
+          sourceWarehouseId: source.warehouseId!, targetWarehouseId: targetWarehouse.id,
+          tenantId: source.tenantId, companyId: source.companyId,
+        });
+        await moveLocationStock(tx, {
+          productId: item.productId, quantity: item.quantity,
+          sourceLocationId: source.locationId!, targetLocationId: targetLocation.id,
+        });
+      }
       await writeStockPair(tx, {
         productId: item.productId, quantity: item.quantity, documentNumber: doc,
         sourceWarehouseId: source.warehouseId!, targetWarehouseId: targetWarehouse.id,
