@@ -245,7 +245,9 @@ export default function RFWavePoolPickingForm({
             String(
               task.productId
             ) ===
-            selectedProductId
+              selectedProductId &&
+            task.remainingQuantity >
+              0
         ) ??
         visibleTasks.find(
           (task) =>
@@ -425,17 +427,60 @@ export default function RFWavePoolPickingForm({
       })
     );
 
-    setSourceBarcode("");
+    const completedProductId = state.productId;
+    const currentSourceBarcode = state.sourceBarcode.trim().toUpperCase();
+    const currentWave = waves.find((wave) => wave.id === state.waveId) ?? null;
+
+    const remainingTasks = (currentWave?.tasks ?? [])
+      .map((task) => {
+        const localKey = `${state.waveId}:${task.productId}`;
+        const pickedAfterScan =
+          task.pickedQuantity +
+          (localPickedQuantities[localKey] ?? 0) +
+          (task.productId === completedProductId ? state.pickedQuantity : 0);
+
+        return {
+          ...task,
+          remainingQuantity: Math.max(0, task.plannedQuantity - pickedAfterScan),
+        };
+      })
+      .filter((task) => task.remainingQuantity > 0);
+
+    const sameSourceTask =
+      remainingTasks.find((task) =>
+        sourceUnits.some(
+          (unit) =>
+            unit.waveId === state.waveId &&
+            unit.barcode.trim().toUpperCase() === currentSourceBarcode &&
+            unit.productId === task.productId &&
+            unit.availableQuantity > 0
+        )
+      ) ?? null;
+
     setProductBarcode("");
 
-    window.setTimeout(
-      () => {
+    if (sameSourceTask && currentSourceBarcode) {
+      setSelectedProductId(String(sameSourceTask.productId));
+      setSourceBarcode(currentSourceBarcode);
+
+      window.setTimeout(() => {
+        productInputRef.current?.focus();
+        productInputRef.current?.setSelectionRange(0, 0);
+      }, 50);
+    } else {
+      setSelectedProductId("");
+      setSourceBarcode("");
+
+      window.setTimeout(() => {
         sourceInputRef.current?.focus();
-      },
-      50
-    );
+        sourceInputRef.current?.setSelectionRange(0, 0);
+      }, 50);
+    }
   }, [
     state,
+    localPickedQuantities,
+    sourceUnits,
+    waves,
   ]);
 
   async function handleWaveShortage() {
@@ -965,22 +1010,7 @@ export default function RFWavePoolPickingForm({
                     .value
                 );
 
-                const task =
-                  visibleTasks.find(
-                    (
-                      item
-                    ) =>
-                      String(
-                        item.productId
-                      ) ===
-                      event.target
-                        .value
-                  );
-
-                setProductBarcode(
-                  task?.productBarcode ??
-                    ""
-                );
+                setProductBarcode("");
               }}
               className="w-full rounded-xl border border-slate-300 bg-white p-4 font-bold"
               required
