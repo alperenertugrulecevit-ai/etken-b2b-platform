@@ -81,7 +81,7 @@ export default async function OrderGroupingPage({ searchParams }: Props) {
           <input name="lineCount" type="number" min="1" defaultValue={Number.isInteger(lineCount) && lineCount > 0 ? lineCount : ""} placeholder="Örn. 3" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
         </label>
         <div className="flex items-end">
-          <button className="w-full rounded-xl bg-slate-900 px-5 py-3 font-black text-white hover:bg-slate-800">Filtrele</button>
+          <button type="submit" className="w-full rounded-xl bg-slate-900 px-5 py-3 font-black text-white hover:bg-slate-800">Listele</button>
         </div>
       </form>
 
