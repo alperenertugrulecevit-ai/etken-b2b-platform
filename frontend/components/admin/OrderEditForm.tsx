@@ -28,6 +28,7 @@ type Product = {
   vat: number;
   stock: number;
   reservedStock: number;
+  isActive: boolean;
 };
 
 type Carrier = { id: string; code: string; name: string };
@@ -519,6 +520,7 @@ export default function OrderEditForm({
                           >
                             {productOption.code} —{" "}
                             {productOption.name}{" "}
+                            {!productOption.isActive ? " [PASİF - MEVCUT SİPARİŞ SATIRI]" : ""}{" "}
                             (Kullanılabilir:{" "}
                             {productOption.stock -
                               productOption.reservedStock}
