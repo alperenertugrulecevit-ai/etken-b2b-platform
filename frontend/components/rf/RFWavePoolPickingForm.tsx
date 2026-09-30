@@ -102,11 +102,6 @@ export default function RFWavePoolPickingForm({
       null
     );
 
-  const quantityInputRef =
-    useRef<HTMLInputElement>(
-      null
-    );
-
   const [
     selectedWaveId,
     setSelectedWaveId,
@@ -134,11 +129,6 @@ export default function RFWavePoolPickingForm({
     productBarcode,
     setProductBarcode,
   ] = useState("");
-
-  const [
-    quantity,
-    setQuantity,
-  ] = useState("1");
 
   const [shortageOpen,setShortageOpen]=useState(false);
   const [shortageQuantity,setShortageQuantity]=useState("1");
@@ -340,6 +330,7 @@ export default function RFWavePoolPickingForm({
         );
     }, [
       selectedTask,
+      selectedWaveId,
       sourceUnits,
     ]);
 
@@ -436,7 +427,6 @@ export default function RFWavePoolPickingForm({
 
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     window.setTimeout(
       () => {
@@ -481,7 +471,6 @@ export default function RFWavePoolPickingForm({
     setSelectedProductId("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     window.setTimeout(
       () => {
@@ -495,7 +484,6 @@ export default function RFWavePoolPickingForm({
     setTargetBarcode("");
     setSourceBarcode("");
     setProductBarcode("");
-    setQuantity("1");
 
     window.setTimeout(
       () => {
@@ -556,29 +544,19 @@ export default function RFWavePoolPickingForm({
     event.preventDefault();
 
     if (
-      productBarcode.trim()
+      productBarcode.trim() &&
+      !isPending &&
+      selectedWave &&
+      targetBarcode.trim() &&
+      sourceBarcode.trim() &&
+      selectedTask &&
+      selectedTask.remainingQuantity > 0
     ) {
-      quantityInputRef.current?.focus();
-      quantityInputRef.current?.select();
+      formRef.current?.requestSubmit();
     }
   }
 
   const formRef = useRef<HTMLFormElement>(null);
-
-  function handleQuantityKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    if (
-      isPending ||
-      !selectedWave ||
-      !targetBarcode.trim() ||
-      !sourceBarcode.trim() ||
-      !productBarcode.trim() ||
-      !selectedTask ||
-      selectedTask.remainingQuantity === 0
-    ) return;
-    formRef.current?.requestSubmit();
-  }
 
   return (
     <div className="space-y-5">
@@ -594,8 +572,8 @@ export default function RFWavePoolPickingForm({
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Wave seç → Toplama THM → Kaynak THM → Ürün → Adet. Wave içindeki
-              sipariş ihtiyaçları sistem tarafından birlikte yönetilir.
+              Wave seç → Toplama THM barkodunu okut → sistemin gösterdiği adrese git →
+              Stok THM&apos;ini okut → ürünü okut. Her ürün okutması 1 adet toplar.
             </p>
           </div>
 
@@ -928,6 +906,36 @@ export default function RFWavePoolPickingForm({
               </p>
             )}
 
+            {selectedTarget && selectedTask && (
+              <div className="mt-4 rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-5">
+                <p className="text-xs font-black uppercase tracking-widest text-emerald-700">
+                  Sıradaki Toplama Noktası
+                </p>
+                {suggestedSources.length > 0 ? (
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="rounded-xl bg-white p-4">
+                      <p className="text-xs font-black uppercase text-slate-500">Adres / Lokasyon</p>
+                      <p className="mt-2 text-xl font-black text-slate-950">{suggestedSources[0].locationCode}</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-4">
+                      <p className="text-xs font-black uppercase text-slate-500">Stok THM</p>
+                      <p className="mt-2 text-xl font-black text-blue-950">{suggestedSources[0].barcode}</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-4">
+                      <p className="text-xs font-black uppercase text-slate-500">Ürün / Kalan</p>
+                      <p className="mt-2 font-black text-slate-950">{selectedTask.productCode}</p>
+                      <p className="mt-1 text-sm font-bold text-slate-700">{selectedTask.productName} · {selectedTask.remainingQuantity} adet</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-xl border border-red-300 bg-red-50 p-4 text-red-900">
+                    <p className="font-black">Bu Wave ürünü için kullanılabilir Stok THM / adres bulunamadı.</p>
+                    <p className="mt-1 text-sm font-semibold">Kaynak rezervasyon ve THM stok planı kontrol edilmelidir.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <p className="mt-2 text-xs leading-5 text-slate-500">
               Aynı Toplama THM birden fazla
               SKU için sabit kalır. Farklı
@@ -1188,39 +1196,7 @@ export default function RFWavePoolPickingForm({
             />
           </label>
 
-          <label className="block">
-            <span className="mb-2 block text-sm font-black text-slate-800">
-              6. Toplama Miktarı
-            </span>
-
-            <input
-              ref={
-                quantityInputRef
-              }
-              name="quantity"
-              type="number"
-              min={1}
-              max={
-                selectedTask
-                  ?.remainingQuantity
-              }
-              step={1}
-              value={
-                quantity
-              }
-              onChange={(
-                event
-              ) =>
-                setQuantity(
-                  event.target.value
-                )
-              }
-              onKeyDown={handleQuantityKeyDown}
-              enterKeyHint="done"
-              className="w-full rounded-xl border-2 border-blue-300 bg-blue-50 p-4 text-lg font-black"
-              required
-            />
-          </label>
+          <input type="hidden" name="quantity" value="1" />
         </div>
 
         <div className="mt-6 grid gap-3">
