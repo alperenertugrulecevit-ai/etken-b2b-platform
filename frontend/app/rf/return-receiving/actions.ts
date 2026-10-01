@@ -27,8 +27,8 @@ export async function rfReceiveReturnItem(_prev:ReturnReceiveState,formData:Form
    const hu=await tx.handlingUnit.findUnique({where:{barcode:handlingUnitBarcode},select:{id:true,barcode:true,status:true,purpose:true,warehouseId:true,locationId:true}});
    if(!hu)throw new Error(`${handlingUnitBarcode} THM bulunamadı.`);
    if(!hu.warehouseId)throw new Error(`${handlingUnitBarcode} THM depo bilgisi bulunmuyor.`);
-   if(![HandlingUnitStatus.OPEN,HandlingUnitStatus.EMPTY,HandlingUnitStatus.STORED].includes(hu.status))throw new Error("Hedef THM stok girişine uygun durumda değil.");
-   if(![HandlingUnitPurpose.STOCK,HandlingUnitPurpose.RECEIVING].includes(hu.purpose))throw new Error("Hedef THM STOCK veya RECEIVING amaçlı olmalıdır.");
+   if(hu.status!==HandlingUnitStatus.OPEN&&hu.status!==HandlingUnitStatus.EMPTY&&hu.status!==HandlingUnitStatus.STORED)throw new Error("Hedef THM stok girişine uygun durumda değil.");
+   if(hu.purpose!==HandlingUnitPurpose.STOCK&&hu.purpose!==HandlingUnitPurpose.RECEIVING)throw new Error("Hedef THM STOCK veya RECEIVING amaçlı olmalıdır.");
    const qty=1;
    await createStockMovementWithTransaction(tx,{warehouseId:hu.warehouseId,productId:item.productId,orderId:ro.originalOrderId,movementType:StockMovementType.SALE_RETURN,physicalChange:qty,reservedChange:0,documentNumber:ro.deliveryNoteNumber,description:`İade giriş ${ro.returnNumber}; referans çıkış ${ro.originalOrder.orderNumber}; irsaliye ${ro.deliveryNoteNumber} / ${deliveryNoteDate}; hedef THM ${hu.barcode}.`});
    await tx.handlingUnitItem.upsert({where:{handling_unit_product_unique:{handlingUnitId:hu.id,productId:item.productId}},update:{quantity:{increment:qty}},create:{handlingUnitId:hu.id,productId:item.productId,quantity:qty,reservedStock:0}});
