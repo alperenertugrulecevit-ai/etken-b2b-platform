@@ -34,6 +34,8 @@ type PurchaseOrderOption = {
   status: string;
   supplierName: string;
   expectedDate: string | null;
+  deliveryNoteNumber: string;
+  deliveryNoteDate: string;
 
   items: PurchaseOrderItemOption[];
 };
@@ -90,6 +92,12 @@ export default function RFReceivingForm({
   const purchaseInputRef =
     useRef<HTMLInputElement>(null);
 
+  const deliveryNoteInputRef =
+    useRef<HTMLInputElement>(null);
+
+  const deliveryNoteDateInputRef =
+    useRef<HTMLInputElement>(null);
+
   const handlingUnitInputRef =
     useRef<HTMLInputElement>(null);
 
@@ -105,6 +113,16 @@ export default function RFReceivingForm({
   const [
     purchaseNumber,
     setPurchaseNumber,
+  ] = useState("");
+
+  const [
+    deliveryNoteNumber,
+    setDeliveryNoteNumber,
+  ] = useState("");
+
+  const [
+    deliveryNoteDate,
+    setDeliveryNoteDate,
   ] = useState("");
 
   const [
@@ -310,7 +328,19 @@ export default function RFReceivingForm({
   useEffect(() => {
     setProductBarcode("");
     setQuantity("1");
-  }, [normalizedPurchaseNumber]);
+
+    if (selectedPurchaseOrder) {
+      setDeliveryNoteNumber(
+        selectedPurchaseOrder.deliveryNoteNumber
+      );
+      setDeliveryNoteDate(
+        selectedPurchaseOrder.deliveryNoteDate
+      );
+    } else {
+      setDeliveryNoteNumber("");
+      setDeliveryNoteDate("");
+    }
+  }, [normalizedPurchaseNumber, selectedPurchaseOrder]);
 
   useEffect(() => {
     if (!state.success) {
@@ -433,6 +463,8 @@ export default function RFReceivingForm({
 
   function clearForm() {
     setPurchaseNumber("");
+    setDeliveryNoteNumber("");
+    setDeliveryNoteDate("");
     setHandlingUnitBarcode("");
     setProductBarcode("");
     setQuantity("1");
@@ -449,6 +481,8 @@ export default function RFReceivingForm({
 
   function changePurchaseOrder() {
     setPurchaseNumber("");
+    setDeliveryNoteNumber("");
+    setDeliveryNoteDate("");
     setProductBarcode("");
     setQuantity("1");
     setShowMessage(false);
@@ -480,6 +514,26 @@ export default function RFReceivingForm({
     event.preventDefault();
 
     if (selectedPurchaseOrder) {
+      deliveryNoteInputRef.current?.focus();
+    }
+  }
+
+  function handleDeliveryNoteKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (deliveryNoteNumber.trim()) {
+      deliveryNoteDateInputRef.current?.focus();
+    }
+  }
+
+  function handleDeliveryNoteDateKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (deliveryNoteDate) {
       handlingUnitInputRef.current?.focus();
     }
   }
@@ -539,6 +593,8 @@ export default function RFReceivingForm({
 
   const canSubmit =
     Boolean(selectedPurchaseOrder) &&
+    Boolean(deliveryNoteNumber.trim()) &&
+    Boolean(deliveryNoteDate) &&
     Boolean(selectedHandlingUnit) &&
     Boolean(selectedPurchaseItem) &&
     Number.isInteger(
@@ -564,7 +620,7 @@ export default function RFReceivingForm({
           </h2>
 
           <p className="mt-1 text-xs text-slate-500">
-            Sipariş → THM → Ürün → Miktar
+            Sipariş → İrsaliye → İrsaliye Tarihi → THM → Ürün → Miktar
           </p>
         </div>
 
@@ -795,9 +851,48 @@ export default function RFReceivingForm({
           )}
         </label>
 
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block">
+            <span className="mb-2 block text-sm font-black">
+              2. İrsaliye No *
+            </span>
+            <input
+              ref={deliveryNoteInputRef}
+              name="deliveryNoteNumber"
+              value={deliveryNoteNumber}
+              onChange={(event) =>
+                setDeliveryNoteNumber(event.target.value.toUpperCase())
+              }
+              onKeyDown={handleDeliveryNoteKeyDown}
+              autoComplete="off"
+              placeholder="İrsaliye numarasını gir / okut"
+              className="w-full rounded-xl border-2 border-slate-300 p-4 font-mono text-xl font-bold uppercase focus:border-blue-700 focus:outline-none"
+              disabled={isPending || !selectedPurchaseOrder}
+              required
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-black">
+              3. İrsaliye Tarihi *
+            </span>
+            <input
+              ref={deliveryNoteDateInputRef}
+              name="deliveryNoteDate"
+              type="date"
+              value={deliveryNoteDate}
+              onChange={(event) => setDeliveryNoteDate(event.target.value)}
+              onKeyDown={handleDeliveryNoteDateKeyDown}
+              className="w-full rounded-xl border-2 border-slate-300 p-4 text-xl font-bold focus:border-blue-700 focus:outline-none"
+              disabled={isPending || !selectedPurchaseOrder}
+              required
+            />
+          </label>
+        </div>
+
         <label className="block">
           <span className="mb-2 block text-sm font-black">
-            2. Hedef Koli / Palet
+            4. Hedef Koli / Palet
           </span>
 
           <input
@@ -871,7 +966,7 @@ export default function RFReceivingForm({
 
         <label className="block">
           <span className="mb-2 block text-sm font-black">
-            3. Ürün Barkodu
+            5. Ürün Barkodu
           </span>
 
           <input
