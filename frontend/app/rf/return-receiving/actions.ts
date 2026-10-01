@@ -7,13 +7,13 @@ import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 
 export type ReturnReceiveState={success:boolean;message:string;returnNumber:string;productCode:string;productName:string;receivedQuantity:number;remainingQuantity:number;status:string;handlingUnitBarcode:string};
-export const initialReturnReceiveState:ReturnReceiveState={success:false,message:"",returnNumber:"",productCode:"",productName:"",receivedQuantity:0,remainingQuantity:0,status:"",handlingUnitBarcode:""};
+const emptyReturnReceiveState=():ReturnReceiveState=>({success:false,message:"",returnNumber:"",productCode:"",productName:"",receivedQuantity:0,remainingQuantity:0,status:"",handlingUnitBarcode:""});
 const norm=(v:FormDataEntryValue|null)=>String(v??"").trim().toUpperCase();
 
 export async function rfReceiveReturnItem(_prev:ReturnReceiveState,formData:FormData):Promise<ReturnReceiveState>{
  await AuthorizationService.requireRfAccess("RECEIVING_EXECUTE");
  const returnNumber=norm(formData.get("returnNumber")),deliveryNoteNumber=norm(formData.get("deliveryNoteNumber")),deliveryNoteDate=String(formData.get("deliveryNoteDate")??"").trim(),handlingUnitBarcode=norm(formData.get("handlingUnitBarcode")),productBarcode=norm(formData.get("productBarcode"));
- if(!returnNumber||!deliveryNoteNumber||!deliveryNoteDate||!handlingUnitBarcode||!productBarcode)return {...initialReturnReceiveState,message:"İade siparişi, irsaliye no, irsaliye tarihi, hedef THM ve ürün barkodu zorunludur."};
+ if(!returnNumber||!deliveryNoteNumber||!deliveryNoteDate||!handlingUnitBarcode||!productBarcode)return {...emptyReturnReceiveState(),message:"İade siparişi, irsaliye no, irsaliye tarihi, hedef THM ve ürün barkodu zorunludur."};
  try{
   const result=await prisma.$transaction(async tx=>{
    const ro=await tx.returnOrder.findUnique({where:{returnNumber},include:{originalOrder:{select:{id:true,orderNumber:true,fulfillmentWarehouseId:true}},items:true}});
@@ -43,5 +43,5 @@ export async function rfReceiveReturnItem(_prev:ReturnReceiveState,formData:Form
   },{maxWait:10000,timeout:30000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   revalidatePath("/rf/return-receiving");revalidatePath("/admin/returns");revalidatePath("/admin/stock/movements");revalidatePath("/admin/stock/general");
   return {success:true,message:`${result.productCode} - ${result.productName}: 1 adet iade stoğa alındı.`,returnNumber,productCode:result.productCode,productName:result.productName,receivedQuantity:result.receivedQuantity,remainingQuantity:result.remainingQuantity,status:result.status,handlingUnitBarcode};
- }catch(e){console.error("RF iade giriş hatası:",e);return {...initialReturnReceiveState,message:e instanceof Error?e.message:"İade giriş işlemi tamamlanamadı."}}
+ }catch(e){console.error("RF iade giriş hatası:",e);return {...emptyReturnReceiveState(),message:e instanceof Error?e.message:"İade giriş işlemi tamamlanamadı."}}
 }
