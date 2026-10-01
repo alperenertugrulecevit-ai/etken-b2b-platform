@@ -557,7 +557,11 @@ export async function rfPickOrderItem(
           );
         }
 
-        if (!order.stockReserved) {
+        // Aktif Zone görevi kendi kaynak THM rezervasyonuna sahiptir.
+        // Merkezi order.stockReserved bayrağı eksik stok/preflight akışında false
+        // olabilir; planlı Zone toplamasını bu eski bayrakla engelleme.
+        // Zone görevi olmayan legacy/görevsiz toplamada merkezi rezervasyon şartı korunur.
+        if (!zoneTask && !order.stockReserved) {
           throw new Error(
             `${order.orderNumber} siparişinde stok rezervasyonu bulunmuyor.`,
           );
