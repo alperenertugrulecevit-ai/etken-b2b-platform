@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ZonePickTaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
-import { claimZoneTask, releaseZoneTask } from "./actions";
+import { claimZoneTaskById, releaseZoneTask } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,41 @@ export default async function RFZonePickingPage() {
 
     {mine.length>0&&<div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4"><h2 className="font-black text-blue-950">Üzerimdeki Görevler</h2><div className="mt-3 grid gap-3">{mine.map(t=><div key={t.id} className="rounded-xl bg-white p-4 shadow-sm"><div className="font-black">{t.zone.code} · {t.zone.name}</div><div className="mt-1 text-sm text-slate-600">{t.warehouse.code} · {t.wave?.waveNo||"Sipariş Bazlı"} · {t.order.orderNumber}</div><div className="mt-3 flex gap-2"><Link href={`/rf/picking?zoneTaskId=${t.id}`} className="rounded-lg bg-blue-900 px-4 py-2 font-bold text-white">Devam Et</Link><form action={releaseZoneTask}><input type="hidden" name="taskId" value={t.id}/><button className="rounded-lg border border-red-300 px-4 py-2 font-bold text-red-700">Görevi Bırak</button></form></div></div>)}</div></div>}
 
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{zones.map(z=>{const lines=z.pickTasks.reduce((a,t)=>a+t.plannedLineCount,0), qty=z.pickTasks.reduce((a,t)=>a+t.plannedQuantity,0); return <article key={z.id} className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex justify-between gap-3"><div><div className="text-sm font-bold text-blue-700">{z.warehouse.code}</div><h2 className="text-xl font-black">{z.code} · {z.name}</h2></div><span className="h-fit rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-green-800">{z.pickTasks.length} görev</span></div><div className="mt-4 grid grid-cols-2 gap-3 text-center"><div className="rounded-xl bg-slate-50 p-3"><b className="text-xl">{lines}</b><div className="text-xs text-slate-500">Satır</div></div><div className="rounded-xl bg-slate-50 p-3"><b className="text-xl">{qty}</b><div className="text-xs text-slate-500">Adet</div></div></div><div className="mt-4 rounded-xl bg-blue-50 p-3 text-sm font-semibold text-blue-900">Görev seçimi WMS tarafından otomatik yapılır. Öncelik: kritik/acil → termin → Wave önceliği → oluşturulma sırası.</div><form action={claimZoneTask} className="mt-3"><input type="hidden" name="zoneId" value={z.id}/><button className="w-full rounded-xl bg-blue-900 px-4 py-4 text-lg font-black text-white">BU ZONE'DAN GÖREV AL</button></form></article>})}</div>
+    <div className="grid gap-4">
+      {zones.map(z=>{
+        const lines=z.pickTasks.reduce((a,t)=>a+t.plannedLineCount,0);
+        const qty=z.pickTasks.reduce((a,t)=>a+t.plannedQuantity,0);
+        return <article key={z.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <div className="border-b bg-slate-50 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-xs font-black uppercase tracking-wider text-blue-700">Zone Bilgisi</div>
+                <h2 className="mt-1 text-xl font-black text-slate-950">{z.code} · {z.name}</h2>
+                <div className="mt-1 text-sm font-semibold text-slate-600">{z.warehouse.code} · {z.warehouse.name}</div>
+              </div>
+              <div className="flex gap-2">
+                <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-green-800">{z.pickTasks.length} açık görev</span>
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-800">{lines} satır · {qty} adet</span>
+              </div>
+            </div>
+          </div>
+          <div className="divide-y">
+            {z.pickTasks.map(t=><div key={t.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.wave?.waveNo ? "Wave Toplama" : "Sipariş Bazlı Toplama"}</div>
+                <div className="mt-1 text-lg font-black text-slate-950">{t.wave?.waveNo ?? t.order.orderNumber}</div>
+                {t.wave?.waveNo&&<div className="mt-1 text-sm font-semibold text-slate-600">Sipariş: {t.order.orderNumber}</div>}
+                <div className="mt-1 text-sm text-slate-600">{t.plannedLineCount} satır · {t.plannedQuantity} adet</div>
+              </div>
+              <form action={claimZoneTaskById}>
+                <input type="hidden" name="taskId" value={t.id}/>
+                <button className="w-full rounded-xl bg-blue-900 px-7 py-3 text-lg font-black text-white sm:w-auto">SEÇ</button>
+              </form>
+            </div>)}
+          </div>
+        </article>
+      })}
+    </div>
     {zones.length===0&&<div className="rounded-2xl border bg-white p-10 text-center text-slate-500">Şu anda alınabilir açık Zone görevi yok.</div>}
   </section>;
 }
