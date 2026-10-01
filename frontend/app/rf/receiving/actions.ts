@@ -136,6 +136,14 @@ export async function rfReceivePurchaseItem(
     formData.get("purchaseNumber")
   );
 
+  const deliveryNoteNumber = normalizeValue(
+    formData.get("deliveryNoteNumber")
+  );
+
+  const deliveryNoteDateValue = String(
+    formData.get("deliveryNoteDate") ?? ""
+  ).trim();
+
   const handlingUnitBarcode =
     normalizeValue(
       formData.get(
@@ -154,6 +162,28 @@ export async function rfReceivePurchaseItem(
   if (!purchaseNumber) {
     return createErrorState(
       "Satın alma sipariş numarasını okutun."
+    );
+  }
+
+  if (!deliveryNoteNumber) {
+    return createErrorState(
+      "İrsaliye No zorunludur."
+    );
+  }
+
+  if (!deliveryNoteDateValue) {
+    return createErrorState(
+      "İrsaliye Tarihi zorunludur."
+    );
+  }
+
+  const deliveryNoteDate = new Date(
+    `${deliveryNoteDateValue}T12:00:00`
+  );
+
+  if (Number.isNaN(deliveryNoteDate.getTime())) {
+    return createErrorState(
+      "İrsaliye Tarihi geçerli değil."
     );
   }
 
@@ -191,6 +221,8 @@ export async function rfReceivePurchaseItem(
                 id: true,
                 purchaseNumber: true,
                 status: true,
+                deliveryNoteNumber: true,
+                deliveryNoteDate: true,
                 supplier: {
                   select: {
                     name: true,
@@ -223,6 +255,30 @@ export async function rfReceivePurchaseItem(
           if (!purchaseOrder) {
             throw new Error(
               `${purchaseNumber} numaralı satın alma siparişi bulunamadı.`
+            );
+          }
+
+          if (!purchaseOrder.deliveryNoteNumber || !purchaseOrder.deliveryNoteDate) {
+            throw new Error(
+              `${purchaseOrder.purchaseNumber} siparişinde İrsaliye No / İrsaliye Tarihi eksik. Önce satın alma belgesini tamamlayın.`
+            );
+          }
+
+          if (
+            purchaseOrder.deliveryNoteNumber.trim().toUpperCase() !==
+            deliveryNoteNumber
+          ) {
+            throw new Error(
+              `İrsaliye No siparişle eşleşmiyor. Beklenen: ${purchaseOrder.deliveryNoteNumber}.`
+            );
+          }
+
+          const expectedDeliveryDate =
+            purchaseOrder.deliveryNoteDate.toISOString().slice(0, 10);
+
+          if (expectedDeliveryDate !== deliveryNoteDateValue) {
+            throw new Error(
+              `İrsaliye Tarihi siparişle eşleşmiyor. Beklenen: ${expectedDeliveryDate}.`
             );
           }
 
@@ -353,10 +409,12 @@ export async function rfReceivePurchaseItem(
               physicalChange: quantity,
               reservedChange: 0,
               documentNumber:
-                purchaseOrder.purchaseNumber,
+                deliveryNoteNumber,
               description:
                 `${handlingUnit.barcode} taşıma birimine RF mal kabulü. ` +
-                `Tedarikçi: ${purchaseOrder.supplier.name}.`,
+                `Tedarikçi: ${purchaseOrder.supplier.name}. ` +
+                `Satın alma: ${purchaseOrder.purchaseNumber}. ` +
+                `İrsaliye: ${deliveryNoteNumber} / ${deliveryNoteDateValue}.`,
             }
           );
 
@@ -467,7 +525,8 @@ export async function rfReceivePurchaseItem(
               description:
                 `${handlingUnit.barcode} THM üzerine RF mal kabulü yapıldı. ` +
                 `Tedarikçi: ${purchaseOrder.supplier.name}. ` +
-                `Satın alma siparişi: ${purchaseOrder.purchaseNumber}.`,
+                `Satın alma siparişi: ${purchaseOrder.purchaseNumber}. ` +
+                `İrsaliye: ${deliveryNoteNumber} / ${deliveryNoteDateValue}.`,
 
               metadata: {
                 supplierName:
@@ -475,6 +534,10 @@ export async function rfReceivePurchaseItem(
 
                 purchaseNumber:
                   purchaseOrder.purchaseNumber,
+
+                deliveryNoteNumber,
+                deliveryNoteDate:
+                  deliveryNoteDate.toISOString(),
 
                 handlingUnitId:
                   handlingUnit.id,
