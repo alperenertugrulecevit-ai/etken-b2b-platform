@@ -166,6 +166,35 @@ export class OrderPickingPreflightService {
         },
       });
     }
+
+    const affectedOrderIds = [...new Set(shortages.map(row => row.orderId))];
+    for (const orderId of affectedOrderIds) {
+      const items = await tx.orderItem.findMany({
+        where: { orderId },
+        select: {
+          quantity: true,
+          pickedQuantity: true,
+          pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } },
+        },
+      });
+      const planned = items.reduce((sum, item) => sum + item.quantity, 0);
+      const picked = items.reduce((sum, item) => sum + Math.min(item.quantity, item.pickedQuantity), 0);
+      const closed = items.reduce(
+        (sum, item) => sum + Math.min(item.quantity, item.pickedQuantity + item.pickingShortages.reduce((n, row) => n + row.quantity, 0)),
+        0,
+      );
+      await tx.orderFulfillment.updateMany({
+        where: { orderId },
+        data: {
+          pickedQuantity: picked,
+          pickingStatus: closed >= planned ? "COMPLETED" : "IN_PROGRESS",
+          ...(closed >= planned ? { pickingCompletedAt: new Date() } : {}),
+        },
+      });
+      if (closed >= planned) {
+        await tx.order.update({ where: { id: orderId }, data: { status: OrderStatus.PICKING } });
+      }
+    }
   }
 
   static async holdOrders(input: { orderIds: number[]; actorId: string; actorName: string }) {
