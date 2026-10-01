@@ -69,6 +69,8 @@ export default async function RFReceivingPage() {
         purchaseNumber: true,
         status: true,
         expectedDate: true,
+        deliveryNoteNumber: true,
+        deliveryNoteDate: true,
 
         supplier: {
           select: {
@@ -168,6 +170,13 @@ export default async function RFReceivingPage() {
           purchaseOrder.expectedDate
             ? purchaseOrder.expectedDate.toISOString()
             : null,
+
+        deliveryNoteNumber:
+          purchaseOrder.deliveryNoteNumber ?? "",
+        deliveryNoteDate:
+          purchaseOrder.deliveryNoteDate
+            ? purchaseOrder.deliveryNoteDate.toISOString().slice(0, 10)
+            : "",
 
         items:
           purchaseOrder.items.map(
