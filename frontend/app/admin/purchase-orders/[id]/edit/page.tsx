@@ -72,6 +72,8 @@ export default async function EditPurchaseOrderPage({
         supplierId: true,
         status: true,
         expectedDate: true,
+        deliveryNoteNumber: true,
+        deliveryNoteDate: true,
         supplierNote: true,
         internalNote: true,
 
@@ -169,6 +171,14 @@ export default async function EditPurchaseOrderPage({
           initialExpectedDate={
             formatDateForInput(
               purchaseOrder.expectedDate
+            )
+          }
+          initialDeliveryNoteNumber={
+            purchaseOrder.deliveryNoteNumber ?? ""
+          }
+          initialDeliveryNoteDate={
+            formatDateForInput(
+              purchaseOrder.deliveryNoteDate
             )
           }
           initialSupplierNote={
