@@ -18,9 +18,20 @@ type OrderRow = {
   carrier: { code: string; name: string } | null;
   shippingAddress: { city: string; district: string } | null;
   stockReserved: boolean;
-  items: { id: number; productCode: string; productName: string; quantity: number; product: { barcode: string | null } }[];
+  items: {
+    id: number;
+    productId: number;
+    productCode: string;
+    productName: string;
+    quantity: number;
+    reservedQuantity: number;
+    reservationRate: number;
+    product: { id: number; barcode: string | null };
+  }[];
   _count: { items: number };
   plannedQuantity: number;
+  reservedQuantity: number;
+  reservationStatus: "FULL" | "PARTIAL" | "NONE";
 };
 
 type Warehouse = { id: number; code: string; name: string };
@@ -29,7 +40,7 @@ const orderColumns = [
   { key: "city", label: "İl" }, { key: "district", label: "İlçe" }, { key: "warehouse", label: "Depo" },
   { key: "customer", label: "Müşteri" }, { key: "carrier", label: "Nakliyeci" }, { key: "orderDate", label: "Sipariş Tarihi" },
   { key: "requestedDate", label: "Talep Tarihi" }, { key: "lineCount", label: "Kalem Sayısı" },
-  { key: "quantity", label: "Toplam Adet" }, { key: "amount", label: "Tutar" },
+  { key: "quantity", label: "Toplam Adet" }, { key: "reservation", label: "Rezervasyon" }, { key: "amount", label: "Tutar" },
 ];
 
 const typeLabels: Record<string, string> = {
