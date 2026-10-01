@@ -457,7 +457,7 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
             claimedByUserId: currentUser.id,
           },
         ],
-        order: { status: { in: [OrderStatus.PREPARING, OrderStatus.PICKING] }, stockReserved: true, stockDeducted: false },
+        order: { status: { in: [OrderStatus.PREPARING, OrderStatus.PICKING] }, stockDeducted: false },
         ...(waveOnly ? { waveId: { not: null } } : { waveId: null }),
       },
       select: {
