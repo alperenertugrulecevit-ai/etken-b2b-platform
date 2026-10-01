@@ -60,6 +60,7 @@ export async function createWaveAction(formData: FormData) {
   const selectedOrderIds = Array.from(new Set(orderIds(formData)));
   const warehouseId = Number(formData.get("warehouseId"));
   const groupedFlow = selectedOrderIds.length > 0;
+  const allowPartialStock = formData.get("allowPartialStock") === "true";
 
   const displayName = currentUser.employee
     ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
@@ -150,6 +151,7 @@ export async function createWaveAction(formData: FormData) {
           orderIds: selectedOrderIds,
           warehouseId: warehouse.id,
           waveId: wave.id,
+          allowPartialStock,
         });
         await tx.order.updateMany({
           where: { id: { in: selectedOrderIds } },
@@ -181,7 +183,8 @@ export async function createWaveAction(formData: FormData) {
         }
         await tx.wave.delete({ where: { id: wave.id } });
       }).catch(() => undefined);
-      throw error;
+      const message = error instanceof Error ? error.message : "Wave oluşturulamadı.";
+      redirect(`/admin/order-grouping?error=${encodeURIComponent(message)}`);
     }
 
     revalidatePath("/admin/order-grouping");
