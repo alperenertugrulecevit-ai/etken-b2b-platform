@@ -122,6 +122,32 @@ export default function PurchaseOrderCreateForm({
 
         <label>
           <span className="mb-2 block text-sm font-semibold">
+            İrsaliye No *
+          </span>
+          <input
+            name="deliveryNoteNumber"
+            type="text"
+            required
+            autoComplete="off"
+            placeholder="İrsaliye / belge numarasını girin"
+            className="w-full rounded-xl border p-4 uppercase"
+          />
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-semibold">
+            İrsaliye Tarihi *
+          </span>
+          <input
+            name="deliveryNoteDate"
+            type="date"
+            required
+            className="w-full rounded-xl border p-4"
+          />
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-semibold">
             Satın Alma Numarası
           </span>
 
