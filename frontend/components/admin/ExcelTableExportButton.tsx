@@ -4,7 +4,7 @@ export default function ExcelTableExportButton({ tableId, fileName }: { tableId:
   function download() {
     const table = document.getElementById(tableId) as HTMLTableElement | null;
     if (!table) return;
-    const lines = Array.from(table.rows).map((row) =>
+    const lines = Array.from(table.rows).filter((row) => row.dataset.exportIgnore !== "true").map((row) =>
       Array.from(row.cells)
         .map((cell) => {
           const value = (cell.textContent ?? "").trim().replace(/"/g, '""');
