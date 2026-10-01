@@ -167,7 +167,7 @@ export class OrderGroupingService {
       });
       const plannedQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
       const reservedQuantity = items.reduce((sum, item) => sum + item.reservedQuantity, 0);
-      const reservationStatus =
+      const reservationStatus: "FULL" | "PARTIAL" | "NONE" =
         plannedQuantity > 0 && reservedQuantity >= plannedQuantity
           ? "FULL"
           : reservedQuantity > 0
