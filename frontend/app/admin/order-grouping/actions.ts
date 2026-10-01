@@ -6,12 +6,29 @@ import { redirect } from "next/navigation";
 
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { OrderGroupingService } from "@/lib/wms/order-grouping-service";
+import { OrderPickingPreflightService } from "@/lib/wms/order-picking-preflight-service";
+import { prisma } from "@/lib/prisma";
 
 function idsFrom(formData: FormData) {
   return formData
     .getAll("orderId")
     .map((value) => Number(value))
     .filter((value) => Number.isInteger(value) && value > 0);
+}
+
+export async function checkPickingStockAction(orderIds: number[], warehouseId: number) {
+  await AuthorizationService.requirePermission("WAVE_MANAGE");
+  if (!Number.isInteger(warehouseId) || warehouseId <= 0) throw new Error("Toplama deposunu seçmelisiniz.");
+  return OrderPickingPreflightService.check(prisma, { orderIds, warehouseId });
+}
+
+export async function holdShortageOrdersAction(orderIds: number[]) {
+  const user = await AuthorizationService.requirePermission("WAVE_MANAGE");
+  const actorName = user.employee ? `${user.employee.firstName} ${user.employee.lastName}` : user.username;
+  const result = await OrderPickingPreflightService.holdOrders({ orderIds, actorId: user.id, actorName });
+  revalidatePath("/admin/order-grouping");
+  revalidatePath("/admin/orders");
+  return result;
 }
 
 function errorUrl(message: string) {
@@ -36,6 +53,7 @@ export async function startDirectPickingAction(formData: FormData) {
       warehouseId,
       assignedById: user.id,
       assignedByName: displayName,
+      allowPartialStock: formData.get("allowPartialStock") === "true",
     });
   } catch (error) {
     redirect(errorUrl(error instanceof Error ? error.message : "Toplama başlatılamadı."));
@@ -58,6 +76,7 @@ export async function prepareWavePickingAction(formData: FormData) {
     orderIds: orderIds.join(","),
     warehouseId: String(warehouseId),
     source: "order-grouping",
+    allowPartialStock: formData.get("allowPartialStock") === "true" ? "true" : "false",
   });
   redirect(`/admin/waves/new?${params.toString()}`);
 }

@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
+import { OrderPickingPreflightService } from "@/lib/wms/order-picking-preflight-service";
 import {
   assignUserToWave,
   changeWaveStatus,
@@ -60,6 +61,7 @@ export async function createWaveAction(formData: FormData) {
   const selectedOrderIds = Array.from(new Set(orderIds(formData)));
   const warehouseId = Number(formData.get("warehouseId"));
   const groupedFlow = selectedOrderIds.length > 0;
+  const allowPartialStock = formData.get("allowPartialStock") === "true";
 
   const displayName = currentUser.employee
     ? `${currentUser.employee.firstName} ${currentUser.employee.lastName}`
@@ -146,11 +148,30 @@ export async function createWaveAction(formData: FormData) {
       // Wave RF ekranı Zone görev havuzunu kullanır. Wave oluşturulduğu anda
       // fiziksel stok rezervasyonlarını ve Zone görevlerini gerçekten üret.
       await prisma.$transaction(async (tx) => {
+        const preflight = await OrderPickingPreflightService.check(tx, {
+          orderIds: selectedOrderIds,
+          warehouseId: warehouse.id,
+        });
+        if (preflight.shortages.length > 0 && !allowPartialStock) {
+          const first = preflight.shortages[0];
+          throw new Error(`${first.orderNumber}: ${first.productCode} - ${first.productName} için stok yetersiz. Gerekli: ${first.requestedQuantity}, toplanabilir: ${first.availableQuantity}, eksik: ${first.shortageQuantity}.`);
+        }
+
         await ZonePickingService.buildTasksForOrders(tx, {
           orderIds: selectedOrderIds,
           warehouseId: warehouse.id,
           waveId: wave.id,
+          allowPartialStock,
         });
+
+        if (allowPartialStock && preflight.shortages.length > 0) {
+          await OrderPickingPreflightService.applyConfirmedShortages(tx, preflight.shortages, {
+            userId: currentUser.id,
+            userName: displayName,
+            source: "ORDER_GROUPING_WAVE",
+          });
+        }
+
         await tx.order.updateMany({
           where: { id: { in: selectedOrderIds } },
           data: { stockReserved: true },
@@ -181,7 +202,8 @@ export async function createWaveAction(formData: FormData) {
         }
         await tx.wave.delete({ where: { id: wave.id } });
       }).catch(() => undefined);
-      throw error;
+      const message = error instanceof Error ? error.message : "Wave oluşturulamadı.";
+      redirect(`/admin/order-grouping?error=${encodeURIComponent(message)}`);
     }
 
     revalidatePath("/admin/order-grouping");

@@ -8,6 +8,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
+import { OrderPickingPreflightService } from "@/lib/wms/order-picking-preflight-service";
 
 const ACTIVE_WAVE_STATUSES: WaveStatus[] = [
   WaveStatus.DRAFT,
@@ -117,6 +118,7 @@ export class OrderGroupingService {
       select: {
         id: true,
         orderNumber: true,
+        stockReserved: true,
         items: { select: { pickedQuantity: true, pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } } } },
         zonePickTasks: {
           select: { lines: { select: { pickedQuantity: true } } },
@@ -160,7 +162,7 @@ export class OrderGroupingService {
           data: {
             status: OrderStatus.APPROVED,
             fulfillmentWarehouseId: null,
-            stockReserved: false,
+            stockReserved: order.stockReserved,
             statusHistory: {
               create: {
                 status: OrderStatus.APPROVED,
@@ -213,6 +215,7 @@ export class OrderGroupingService {
     warehouseId: number;
     assignedById: string;
     assignedByName: string;
+    allowPartialStock?: boolean;
   }) {
     const orderIds = Array.from(new Set(input.orderIds));
     if (orderIds.length === 0) throw new Error("En az bir sipariş seçmelisiniz.");
@@ -258,6 +261,12 @@ export class OrderGroupingService {
         }
       }
 
+      const preflight = await OrderPickingPreflightService.check(tx, { orderIds, warehouseId: warehouse.id });
+      if (preflight.shortages.length > 0 && !input.allowPartialStock) {
+        const first = preflight.shortages[0];
+        throw new Error(`${first.orderNumber}: ${first.productCode} - ${first.productName} için stok yetersiz. Gerekli: ${first.requestedQuantity}, toplanabilir: ${first.availableQuantity}, eksik: ${first.shortageQuantity}.`);
+      }
+
       for (const order of orders) {
         // Defensive cleanup for legacy/orphan RF tasks left by a previously
         // cancelled picking plan. A freshly grouped order must start clean.
@@ -301,7 +310,14 @@ export class OrderGroupingService {
         });
       }
 
-      const zonePlan = await ZonePickingService.buildTasksForOrders(tx, { orderIds, warehouseId: warehouse.id });
+      const zonePlan = await ZonePickingService.buildTasksForOrders(tx, { orderIds, warehouseId: warehouse.id, allowPartialStock: input.allowPartialStock });
+      if (input.allowPartialStock && preflight.shortages.length > 0) {
+        await OrderPickingPreflightService.applyConfirmedShortages(tx, preflight.shortages, {
+          userId: input.assignedById,
+          userName: input.assignedByName,
+          source: "ORDER_GROUPING_DIRECT",
+        });
+      }
       return { count: orders.length, warehouseCode: warehouse.code, ...zonePlan };
     });
   }

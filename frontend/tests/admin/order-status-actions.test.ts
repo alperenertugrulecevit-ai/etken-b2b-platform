@@ -143,6 +143,11 @@ function createOrder(
     stockDeducted: false,
     stockReservedAt: null,
     stockDeductedAt: null,
+    fulfillmentWarehouseId: null,
+    waveOrders: [],
+    zonePickTasks: [],
+    pickingAssignment: null,
+    fulfillment: null,
     items: [
       {
         productId: 1,
