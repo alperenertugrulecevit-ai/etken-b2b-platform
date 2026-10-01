@@ -1,5 +1,7 @@
 import {
   FulfillmentProgressStatus,
+  HandlingUnitPurpose,
+  HandlingUnitStatus,
   OrderFulfillmentFlow,
   OrderStatus,
   OrderType,
@@ -74,10 +76,11 @@ export class OrderGroupingService {
           items: {
             select: {
               id: true,
+              productId: true,
               productCode: true,
               productName: true,
               quantity: true,
-              product: { select: { barcode: true } },
+              product: { select: { id: true, barcode: true } },
             },
             orderBy: { id: "asc" },
           },
@@ -92,15 +95,95 @@ export class OrderGroupingService {
 
     ]);
 
-    return {
-      orders: orders
-        .filter((order) => !filters.lineCount || order._count.items === filters.lineCount)
-        .map((order) => ({
-          ...order,
-          plannedQuantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
-        })),
-      warehouses,
-    };
+    const visibleOrders = orders.filter(
+      (order) => !filters.lineCount || order._count.items === filters.lineCount
+    );
+    const productIds = Array.from(
+      new Set(visibleOrders.flatMap((order) => order.items.map((item) => item.product.id)))
+    );
+    const warehouseIds = Array.from(
+      new Set(
+        visibleOrders
+          .map((order) => order.fulfillmentWarehouseId)
+          .filter((id): id is number => id !== null)
+      )
+    );
+
+    const sourceRows =
+      productIds.length > 0 && warehouseIds.length > 0
+        ? await prisma.handlingUnitItem.findMany({
+            where: {
+              productId: { in: productIds },
+              quantity: { gt: 0 },
+              handlingUnit: {
+                purpose: HandlingUnitPurpose.STOCK,
+                assignedOrderId: null,
+                assignedWaveId: null,
+                warehouseId: { in: warehouseIds },
+                status: {
+                  in: [
+                    HandlingUnitStatus.OPEN,
+                    HandlingUnitStatus.CLOSED,
+                    HandlingUnitStatus.STORED,
+                  ],
+                },
+                warehouse: { isActive: true, code: { not: "KYP001" } },
+                location: { is: { isActive: true } },
+              },
+            },
+            select: {
+              productId: true,
+              quantity: true,
+              reservedStock: true,
+              handlingUnit: { select: { warehouseId: true } },
+            },
+          })
+        : [];
+
+    const availableByWarehouseProduct = new Map<string, number>();
+    for (const row of sourceRows) {
+      if (row.handlingUnit.warehouseId === null) continue;
+      const key = `${row.handlingUnit.warehouseId}:${row.productId}`;
+      availableByWarehouseProduct.set(
+        key,
+        (availableByWarehouseProduct.get(key) ?? 0) +
+          Math.max(0, row.quantity - row.reservedStock)
+      );
+    }
+
+    const screenOrders = visibleOrders.map((order) => {
+      const warehouseId = order.fulfillmentWarehouseId;
+      const items = order.items.map((item) => {
+        const key = warehouseId === null ? "" : `${warehouseId}:${item.product.id}`;
+        const available = key ? Math.max(0, availableByWarehouseProduct.get(key) ?? 0) : 0;
+        const reservedQuantity = Math.min(item.quantity, available);
+        if (key) availableByWarehouseProduct.set(key, available - reservedQuantity);
+        return {
+          ...item,
+          reservedQuantity,
+          reservationRate:
+            item.quantity > 0 ? Math.round((reservedQuantity / item.quantity) * 100) : 100,
+        };
+      });
+      const plannedQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+      const reservedQuantity = items.reduce((sum, item) => sum + item.reservedQuantity, 0);
+      const reservationStatus =
+        plannedQuantity > 0 && reservedQuantity >= plannedQuantity
+          ? "FULL"
+          : reservedQuantity > 0
+            ? "PARTIAL"
+            : "NONE";
+
+      return {
+        ...order,
+        items,
+        plannedQuantity,
+        reservedQuantity,
+        reservationStatus,
+      };
+    });
+
+    return { orders: screenOrders, warehouses };
   }
 
 
