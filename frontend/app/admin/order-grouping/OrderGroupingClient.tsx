@@ -209,6 +209,10 @@ export default function OrderGroupingClient({
                     case "requestedDate": return <td key={column.key} className="p-4 whitespace-nowrap">{date(order.requestedDate)}</td>;
                     case "lineCount": return <td key={column.key} className="p-4">{order._count.items}</td>;
                     case "quantity": return <td key={column.key} className="p-4 font-bold">{order.plannedQuantity}</td>;
+                    case "reservation": {
+                      const label = order.reservationStatus === "FULL" ? "Tam Rezerve" : order.reservationStatus === "PARTIAL" ? "Kısmi Rezerve" : "Rezerve Değil";
+                      return <td key={column.key} className="p-4 whitespace-nowrap"><div className="font-black">{label}</div><div className="text-xs text-slate-500">{order.reservedQuantity} / {order.plannedQuantity}</div></td>;
+                    }
                     case "amount": return <td key={column.key} className="p-4 whitespace-nowrap font-bold">{order.totalAmount.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>;
                     default: return null;
                   }
@@ -223,7 +227,7 @@ export default function OrderGroupingClient({
                         <div><b>İl:</b> {order.shippingAddress?.city || "-"}</div>
                         <div><b>İlçe:</b> {order.shippingAddress?.district || "-"}</div>
                         <div><b>Sipariş Miktarı:</b> {order.plannedQuantity}</div>
-                        <div><b>Rezervasyon:</b> {order.stockReserved ? order.plannedQuantity : 0}</div>
+                        <div><b>Rezervasyon:</b> {order.reservedQuantity} / {order.plannedQuantity} — {order.reservationStatus === "FULL" ? "Tam Rezerve" : order.reservationStatus === "PARTIAL" ? "Kısmi Rezerve" : "Rezerve Değil"}</div>
                       </div>
                       <table className="w-full min-w-[800px] border-collapse text-sm">
                         <thead><tr className="bg-white text-slate-700">
@@ -231,14 +235,14 @@ export default function OrderGroupingClient({
                         </tr></thead>
                         <tbody>
                           {order.items.map((item, index) => {
-                            const reserved = order.stockReserved ? item.quantity : 0;
-                            const ratio = item.quantity > 0 ? Math.round((reserved / item.quantity) * 100) : 0;
+                            const reserved = item.reservedQuantity;
+                            const ratio = item.reservationRate;
                             return <tr key={item.id} className="bg-white">
                               <td className="border p-2 text-center">{index + 1}</td><td className="border p-2 text-center">{item.product.barcode || "-"}</td><td className="border p-2 text-center">{item.productCode}</td><td className="border p-2">{item.productName}</td><td className="border p-2 text-center">{item.quantity}</td><td className="border p-2 text-center">{reserved}</td><td className="border p-2 text-center font-bold">{ratio}%</td>
                             </tr>;
                           })}
                         </tbody>
-                        <tfoot><tr className="bg-white font-black"><td className="border p-2" colSpan={4}>Toplam</td><td className="border p-2 text-center">{order.plannedQuantity}</td><td className="border p-2 text-center">{order.stockReserved ? order.plannedQuantity : 0}</td><td className="border p-2 text-center">{order.stockReserved ? "100%" : "0%"}</td></tr></tfoot>
+                        <tfoot><tr className="bg-white font-black"><td className="border p-2" colSpan={4}>Toplam</td><td className="border p-2 text-center">{order.plannedQuantity}</td><td className="border p-2 text-center">{order.reservedQuantity}</td><td className="border p-2 text-center">{order.plannedQuantity > 0 ? `${Math.round((order.reservedQuantity / order.plannedQuantity) * 100)}%` : "100%"}</td></tr></tfoot>
                       </table>
                     </div>
                   </td>
