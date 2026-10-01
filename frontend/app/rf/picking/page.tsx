@@ -153,7 +153,11 @@ export default async function RFPickingPage({ searchParams }: { searchParams: Pr
           ],
         },
 
-        stockReserved: true,
+        // Zone görevi seçildiğinde gerçek toplama rezervasyonu ZonePickTaskLine /
+        // HandlingUnitItem üzerinde tutulur. Merkezi stockReserved bayrağı eksik stok
+        // kapatılırken false olabilir; bu durum aktif Zone görevinin siparişini
+        // RF formundan düşürmemelidir.
+        ...(zoneTask ? {} : { stockReserved: true }),
         stockDeducted: false,
         ...(zoneTask ? {} : { OR: [
           { pickingAssignment: { is: { userId: currentUser.id, completedAt: null, cancelledAt: null } } },
