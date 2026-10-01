@@ -38,6 +38,14 @@ export async function createPurchaseOrder(
     formData.get("expectedDate") ?? ""
   ).trim();
 
+  const deliveryNoteNumber = String(
+    formData.get("deliveryNoteNumber") ?? ""
+  ).trim().toUpperCase();
+
+  const deliveryNoteDateValue = String(
+    formData.get("deliveryNoteDate") ?? ""
+  ).trim();
+
   const supplierNote =
     String(
       formData.get("supplierNote") ?? ""
@@ -56,6 +64,31 @@ export async function createPurchaseOrder(
       success: false,
       message:
         "Lütfen geçerli bir tedarikçi seçin.",
+    };
+  }
+
+  if (!deliveryNoteNumber) {
+    return {
+      success: false,
+      message: "İrsaliye No zorunludur.",
+    };
+  }
+
+  if (!deliveryNoteDateValue) {
+    return {
+      success: false,
+      message: "İrsaliye Tarihi zorunludur.",
+    };
+  }
+
+  const deliveryNoteDate = new Date(
+    `${deliveryNoteDateValue}T12:00:00`
+  );
+
+  if (Number.isNaN(deliveryNoteDate.getTime())) {
+    return {
+      success: false,
+      message: "İrsaliye Tarihi geçerli değil.",
     };
   }
 
@@ -128,6 +161,8 @@ export async function createPurchaseOrder(
                 supplier.id,
               status: "DRAFT",
               expectedDate,
+              deliveryNoteNumber,
+              deliveryNoteDate,
 
               paymentTermDays:
                 supplier.paymentTermDays,
