@@ -1,4 +1,4 @@
-import { HandlingUnitPurpose, HandlingUnitStatus, OrderStatus, Prisma, PrismaClient, StockMovementType } from "@prisma/client";
+import { HandlingUnitPurpose, HandlingUnitStatus, OrderStatus, PickingShortageReason, Prisma, PrismaClient, StockMovementType, WmsOperationType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
@@ -80,6 +80,92 @@ export class OrderPickingPreflightService {
       }
     }
     return { ok: shortages.length === 0, warehouseId: input.warehouseId, shortages };
+  }
+
+  static async applyConfirmedShortages(
+    tx: Prisma.TransactionClient,
+    shortages: PickingStockShortage[],
+    actor: { userId: string; userName: string; source: string },
+  ) {
+    for (const shortage of shortages) {
+      const existing = await tx.pickingShortage.aggregate({
+        where: { orderItemId: shortage.orderItemId, status: "ACTIVE" },
+        _sum: { quantity: true },
+      });
+      const alreadyClosed = existing._sum.quantity ?? 0;
+      const quantity = Math.max(0, shortage.shortageQuantity - alreadyClosed);
+      if (!quantity) continue;
+
+      await tx.pickingShortage.create({
+        data: {
+          orderId: shortage.orderId,
+          orderItemId: shortage.orderItemId,
+          productId: shortage.productId,
+          quantity,
+          reason: PickingShortageReason.STOCK_DIFFERENCE,
+          status: "ACTIVE",
+          note: "Sipariş Gruplama stok ön kontrolünde eksik stokla başlatma onayı verildi.",
+          createdByUserId: actor.userId,
+          createdByName: actor.userName,
+        },
+      });
+
+      const movements = await tx.stockMovement.findMany({
+        where: {
+          orderId: shortage.orderId,
+          productId: shortage.productId,
+          movementType: { in: [StockMovementType.RESERVATION_CREATE, StockMovementType.RESERVATION_RELEASE] },
+          warehouseId: { not: null },
+        },
+        select: { warehouseId: true, reservedChange: true },
+      });
+      const byWarehouse = new Map<number, number>();
+      for (const movement of movements) {
+        if (movement.warehouseId === null) continue;
+        byWarehouse.set(movement.warehouseId, (byWarehouse.get(movement.warehouseId) ?? 0) + movement.reservedChange);
+      }
+
+      let remainingRelease = quantity;
+      for (const [warehouseId, netReserved] of byWarehouse.entries()) {
+        if (remainingRelease <= 0) break;
+        const release = Math.min(remainingRelease, Math.max(0, netReserved));
+        if (!release) continue;
+        await createStockMovementWithTransaction(tx, {
+          productId: shortage.productId,
+          orderId: shortage.orderId,
+          warehouseId,
+          movementType: StockMovementType.RESERVATION_RELEASE,
+          physicalChange: 0,
+          reservedChange: -release,
+          documentNumber: shortage.orderNumber,
+          description: `Eksik stokla toplama başlatıldı; ${release} adet sipariş rezervasyonu serbest bırakıldı.`,
+        });
+        remainingRelease -= release;
+      }
+
+      await tx.wmsOperationLog.create({
+        data: {
+          operationType: WmsOperationType.PICKING,
+          module: actor.source,
+          entityType: "PICKING_SHORTAGE",
+          entityId: shortage.orderItemId,
+          operatorId: actor.userId,
+          operatorName: actor.userName,
+          orderId: shortage.orderId,
+          orderNumber: shortage.orderNumber,
+          productId: shortage.productId,
+          productCode: shortage.productCode,
+          productName: shortage.productName,
+          quantity,
+          description: `${shortage.productCode} için ${quantity} adet stok farkı, operatör onayıyla eksik toplama olarak açıldı.`,
+          metadata: {
+            requestedQuantity: shortage.requestedQuantity,
+            availableQuantity: shortage.availableQuantity,
+            shortageQuantity: quantity,
+          },
+        },
+      });
+    }
   }
 
   static async holdOrders(input: { orderIds: number[]; actorId: string; actorName: string }) {
