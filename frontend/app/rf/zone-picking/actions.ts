@@ -91,3 +91,10 @@ export async function claimZoneTaskById(formData: FormData) {
 
   return { taskId };
 }
+
+
+export async function selectZoneTask(formData: FormData): Promise<void> {
+  const { taskId } = await claimZoneTaskById(formData);
+  revalidatePath("/rf/zone-picking");
+  redirect(`/rf/picking?zoneTaskId=${encodeURIComponent(taskId)}`);
+}
