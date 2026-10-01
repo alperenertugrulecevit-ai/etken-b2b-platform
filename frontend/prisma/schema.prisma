@@ -453,6 +453,7 @@ model Order {
   pickingAssignment          OrderPickingAssignment?
   zonePickTasks              ZonePickTask[]
   consolidationTask          ConsolidationTask?
+  returnOrders               ReturnOrder[]
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -600,6 +601,7 @@ model OrderItem {
   packingRecords            PackingRecord[]
   dispatchLines             DispatchDocumentLine[]
   pickingShortages          PickingShortage[]
+  returnOrderItems          ReturnOrderItem[]
 
   @@index([orderId])
   @@index([productId])
@@ -3734,4 +3736,68 @@ model ShipmentHandlingUnitEvent {
   @@index([shipmentId, createdAt])
   @@index([shippingHandlingUnitId, createdAt])
   @@index([eventType, createdAt])
+}
+
+
+enum ReturnOrderStatus {
+  OPEN
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum ReturnOrderSource {
+  ETKEN
+  CUSTOMER
+}
+
+model ReturnOrder {
+  id                  String            @id @default(cuid())
+  returnNumber        String            @unique
+  originalOrderId     Int
+  source              ReturnOrderSource
+  customerDocumentNo  String
+  deliveryNoteNumber  String
+  deliveryNoteDate    DateTime
+  status              ReturnOrderStatus @default(OPEN)
+  note                String?
+  createdByUserId     String?
+  createdByName       String?
+  receivedAt          DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  originalOrder Order             @relation(fields: [originalOrderId], references: [id], onDelete: Restrict)
+  items         ReturnOrderItem[]
+
+  @@index([originalOrderId])
+  @@index([customerDocumentNo])
+  @@index([deliveryNoteNumber])
+  @@index([deliveryNoteDate])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ReturnOrderItem {
+  id               String @id @default(cuid())
+  returnOrderId    String
+  orderItemId      Int
+  productId        Int
+  productCode      String
+  productBarcode   String
+  productName      String
+  expectedQuantity Int
+  receivedQuantity Int    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  returnOrder ReturnOrder @relation(fields: [returnOrderId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@unique([returnOrderId, orderItemId])
+  @@index([returnOrderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([productCode])
+  @@index([productBarcode])
 }
