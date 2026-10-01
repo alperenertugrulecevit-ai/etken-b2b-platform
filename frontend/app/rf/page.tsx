@@ -7,6 +7,7 @@ type Group = {
 
 const groups: Group[] = [
   { title: "Mal Kabul", subtitle: "Mal Kabul İşlemleri", icon: "📥", href: "/rf/receiving", permissionCodes: ["RECEIVING_EXECUTE"] },
+  { title: "İade Giriş", subtitle: "Sevk Sonrası İade Mal Kabul", icon: "↩️", href: "/rf/return-receiving", permissionCodes: ["RECEIVING_EXECUTE"] },
   { title: "Çıkış", subtitle: "Toplama ve Dağılım", icon: "📤", href: "/rf/operations/outbound", permissionCodes: ["PICKING_EXECUTE"] },
   { title: "Konsolidasyon", subtitle: "Zone Birleştirme", icon: "🧩", href: "/rf/consolidation", permissionCodes: ["PICKING_EXECUTE"] },
   { title: "Transfer", subtitle: "Adresleme ve Transfer", icon: "🔄", href: "/rf/operations/transfer", permissionCodes: ["PUTAWAY_EXECUTE","TRANSFER_EXECUTE","HANDLING_UNIT_MANAGE"] },
