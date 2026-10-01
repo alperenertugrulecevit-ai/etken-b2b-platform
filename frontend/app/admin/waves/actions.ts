@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
+import { OrderPickingPreflightService } from "@/lib/wms/order-picking-preflight-service";
 import {
   assignUserToWave,
   changeWaveStatus,
@@ -147,12 +148,30 @@ export async function createWaveAction(formData: FormData) {
       // Wave RF ekranı Zone görev havuzunu kullanır. Wave oluşturulduğu anda
       // fiziksel stok rezervasyonlarını ve Zone görevlerini gerçekten üret.
       await prisma.$transaction(async (tx) => {
+        const preflight = await OrderPickingPreflightService.check(tx, {
+          orderIds: selectedOrderIds,
+          warehouseId: warehouse.id,
+        });
+        if (preflight.shortages.length > 0 && !allowPartialStock) {
+          const first = preflight.shortages[0];
+          throw new Error(`${first.orderNumber}: ${first.productCode} - ${first.productName} için stok yetersiz. Gerekli: ${first.requestedQuantity}, toplanabilir: ${first.availableQuantity}, eksik: ${first.shortageQuantity}.`);
+        }
+
         await ZonePickingService.buildTasksForOrders(tx, {
           orderIds: selectedOrderIds,
           warehouseId: warehouse.id,
           waveId: wave.id,
           allowPartialStock,
         });
+
+        if (allowPartialStock && preflight.shortages.length > 0) {
+          await OrderPickingPreflightService.applyConfirmedShortages(tx, preflight.shortages, {
+            userId: currentUser.id,
+            userName: displayName,
+            source: "ORDER_GROUPING_WAVE",
+          });
+        }
+
         await tx.order.updateMany({
           where: { id: { in: selectedOrderIds } },
           data: { stockReserved: true },
