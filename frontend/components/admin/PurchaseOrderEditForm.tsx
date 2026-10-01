@@ -22,6 +22,8 @@ type Props = {
   suppliers: Supplier[];
   initialSupplierId: number;
   initialExpectedDate: string;
+  initialDeliveryNoteNumber: string;
+  initialDeliveryNoteDate: string;
   initialSupplierNote: string;
   initialInternalNote: string;
 };
@@ -37,6 +39,8 @@ export default function PurchaseOrderEditForm({
   suppliers,
   initialSupplierId,
   initialExpectedDate,
+  initialDeliveryNoteNumber,
+  initialDeliveryNoteDate,
   initialSupplierNote,
   initialInternalNote,
 }: Props) {
@@ -134,6 +138,32 @@ export default function PurchaseOrderEditForm({
             defaultValue={
               initialExpectedDate
             }
+            className="w-full rounded-xl border p-4"
+          />
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-semibold">
+            İrsaliye No *
+          </span>
+          <input
+            name="deliveryNoteNumber"
+            defaultValue={initialDeliveryNoteNumber}
+            required
+            autoComplete="off"
+            className="w-full rounded-xl border p-4 uppercase"
+          />
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-semibold">
+            İrsaliye Tarihi *
+          </span>
+          <input
+            name="deliveryNoteDate"
+            type="date"
+            defaultValue={initialDeliveryNoteDate}
+            required
             className="w-full rounded-xl border p-4"
           />
         </label>
