@@ -31,6 +31,7 @@ const groups:MenuGroup[]=[
   {href:"/admin/barcode-printers",icon:"🖨️",label:"Barkod Yazıcıları",permissionCodes:["HANDLING_UNIT_MANAGE"]},
   {href:"/admin/stock/sku-labels",icon:"🏷️",label:"SKU Etiketi Yazdır",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/sku-control",icon:"🔎",label:"SKU Stok Kontrol",permissionCodes:["INVENTORY_VIEW"]},
+  {href:"/admin/stock/general",icon:"📊",label:"Genel Stok Raporu",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/historical",icon:"🕘",label:"Eski Tarihli Stok Raporu",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/movements",icon:"📋",label:"Stok Hareketleri",permissionCodes:["INVENTORY_VIEW"]},
   {href:"/admin/stock/thm-movements",icon:"🔄",label:"THM Hareketleri",permissionCodes:["INVENTORY_VIEW"]},
