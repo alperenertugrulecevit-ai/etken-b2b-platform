@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ZonePickTaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
-import { claimZoneTaskById, releaseZoneTask } from "./actions";
+import { releaseZoneTask, selectZoneTask } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +59,7 @@ export default async function RFZonePickingPage() {
                 {t.wave?.waveNo&&<div className="mt-1 text-sm font-semibold text-slate-600">Sipariş: {t.order.orderNumber}</div>}
                 <div className="mt-1 text-sm text-slate-600">{t.plannedLineCount} satır · {t.plannedQuantity} adet</div>
               </div>
-              <form action={claimZoneTaskById}>
+              <form action={selectZoneTask}>
                 <input type="hidden" name="taskId" value={t.id}/>
                 <button className="w-full rounded-xl bg-blue-900 px-7 py-3 text-lg font-black text-white sm:w-auto">SEÇ</button>
               </form>
