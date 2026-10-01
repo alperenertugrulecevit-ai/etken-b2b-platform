@@ -56,6 +56,7 @@ export default async function NewWavePage({ searchParams }: NewWavePageProps) {
   const orderIds = typeof query.orderIds === "string" ? query.orderIds : "";
   const warehouseId = typeof query.warehouseId === "string" ? query.warehouseId : "";
   const groupedFlow = query.source === "order-grouping" && orderIds.length > 0;
+  const allowPartialStock = query.allowPartialStock === "true";
   const selectedCount = orderIds ? orderIds.split(",").filter(Boolean).length : 0;
 
   return (
@@ -93,6 +94,13 @@ export default async function NewWavePage({ searchParams }: NewWavePageProps) {
           </div>
         )}
 
+        {groupedFlow && allowPartialStock && (
+          <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+            <p className="font-black">Eksik stok onayı verildi</p>
+            <p className="mt-1 text-sm">Bu Wave, Sipariş Gruplama ekranında operatör onayıyla kısmi stokla başlatılacaktır. Mevcut stok için görev oluşturulur; karşılanamayan miktar eksik toplama sürecinde kapatılabilir.</p>
+          </div>
+        )}
+
         <form
           action={createWaveAction}
           className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow"
@@ -101,6 +109,7 @@ export default async function NewWavePage({ searchParams }: NewWavePageProps) {
             <>
               <input type="hidden" name="orderIds" value={orderIds} />
               <input type="hidden" name="warehouseId" value={warehouseId} />
+              <input type="hidden" name="allowPartialStock" value={allowPartialStock ? "true" : "false"} />
             </>
           )}
           <div className="border-b border-slate-200 bg-slate-50 px-7 py-5">
