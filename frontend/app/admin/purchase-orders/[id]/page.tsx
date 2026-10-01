@@ -231,6 +231,24 @@ export default async function PurchaseOrderDetailPage({
                 </p>
               </div>
 
+              <div className="rounded-xl bg-blue-50 p-4">
+                <p className="text-sm text-gray-500">
+                  İrsaliye No
+                </p>
+                <p className="mt-2 font-bold text-blue-900">
+                  {purchaseOrder.deliveryNoteNumber || "Belirtilmedi"}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-blue-50 p-4">
+                <p className="text-sm text-gray-500">
+                  İrsaliye Tarihi
+                </p>
+                <p className="mt-2 font-semibold">
+                  {formatDate(purchaseOrder.deliveryNoteDate)}
+                </p>
+              </div>
+
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-sm text-gray-500">
                   Vade
