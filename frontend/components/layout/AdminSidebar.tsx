@@ -26,6 +26,7 @@ const groups:MenuGroup[]=[
   {href:"/admin/customers",icon:"👥",label:"Müşteri Yönetimi",permissionCodes:["CUSTOMER_VIEW","CUSTOMER_MANAGE"]},
   {href:"/admin/orders",icon:"🛒",label:"Sipariş Yönetimi",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
   {href:"/admin/purchase-orders",icon:"🧾",label:"Satın Alma",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
+  {href:"/admin/returns",icon:"↩️",label:"İade Giriş Yönetimi",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
  ]},
  {title:"Stok Yönetimi",icon:"🗄️",items:[
   {href:"/admin/barcode-printers",icon:"🖨️",label:"Barkod Yazıcıları",permissionCodes:["HANDLING_UNIT_MANAGE"]},
