@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { prepareWavePickingAction, startDirectPickingAction } from "./actions";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { checkPickingStockAction, holdShortageOrdersAction, prepareWavePickingAction, startDirectPickingAction } from "./actions";
+import type { PickingStockShortage } from "@/lib/wms/order-picking-preflight-service";
 import ColumnVisibilityMenu, { useColumnVisibility } from "@/components/admin/ColumnVisibilityMenu";
 
 type OrderRow = {
@@ -54,6 +55,14 @@ export default function OrderGroupingClient({
   const [warehouseId, setWarehouseId] = useState("");
   const [showMode, setShowMode] = useState(false);
   const [expanded, setExpanded] = useState<number[]>([]);
+  const [shortages, setShortages] = useState<PickingStockShortage[]>([]);
+  const [pendingMode, setPendingMode] = useState<"direct" | "wave" | null>(null);
+  const [preflightError, setPreflightError] = useState("");
+  const [isChecking, startChecking] = useTransition();
+  const directFormRef = useRef<HTMLFormElement>(null);
+  const waveFormRef = useRef<HTMLFormElement>(null);
+  const directPartialRef = useRef<HTMLInputElement>(null);
+  const wavePartialRef = useRef<HTMLInputElement>(null);
   const columnVisibility = useColumnVisibility("etken:columns:order-grouping", orderColumns);
 
   const selectedOrders = useMemo(
@@ -78,7 +87,46 @@ export default function OrderGroupingClient({
     else if (assigned.length > 1) setWarehouseId("");
   }, [selectedOrders]);
 
-  const hidden = (
+  const submitMode = (mode: "direct" | "wave", allowPartialStock: boolean) => {
+    const partialRef = mode === "direct" ? directPartialRef : wavePartialRef;
+    const formRef = mode === "direct" ? directFormRef : waveFormRef;
+    if (partialRef.current) partialRef.current.value = allowPartialStock ? "true" : "false";
+    formRef.current?.requestSubmit();
+  };
+
+  const preflightAndStart = (mode: "direct" | "wave") => {
+    if (!warehouseId || selected.length === 0) return;
+    setPreflightError("");
+    startChecking(async () => {
+      try {
+        const result = await checkPickingStockAction(selected, Number(warehouseId));
+        if (result.shortages.length === 0) {
+          setShowMode(false);
+          submitMode(mode, false);
+          return;
+        }
+        setPendingMode(mode);
+        setShortages(result.shortages);
+        setShowMode(false);
+      } catch (error) {
+        setPreflightError(error instanceof Error ? error.message : "Stok kontrolü yapılamadı.");
+      }
+    });
+  };
+
+  const holdShortages = () => {
+    const deficientOrderIds = Array.from(new Set(shortages.map(row => row.orderId)));
+    startChecking(async () => {
+      try {
+        await holdShortageOrdersAction(deficientOrderIds);
+        window.location.href = `/admin/order-grouping?success=${encodeURIComponent(`${deficientOrderIds.length} sipariş Bekliyor durumuna alındı ve açık rezervasyonları çözüldü.`)}`;
+      } catch (error) {
+        setPreflightError(error instanceof Error ? error.message : "Siparişler beklemeye alınamadı.");
+      }
+    });
+  };
+
+  const hiddenInputs = (
     <>
       {selected.map((id) => <input key={id} type="hidden" name="orderId" value={id} />)}
       <input type="hidden" name="warehouseId" value={warehouseId} />
@@ -205,6 +253,19 @@ export default function OrderGroupingClient({
         </table>
       </div>
 
+      <form ref={directFormRef} action={startDirectPickingAction} className="hidden">
+        {hiddenInputs}
+        <input ref={directPartialRef} type="hidden" name="allowPartialStock" defaultValue="false" />
+      </form>
+      <form ref={waveFormRef} action={prepareWavePickingAction} className="hidden">
+        {hiddenInputs}
+        <input ref={wavePartialRef} type="hidden" name="allowPartialStock" defaultValue="false" />
+      </form>
+
+      {preflightError && (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-bold text-red-800">⚠ {preflightError}</div>
+      )}
+
       {showMode && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
           <div className="w-full max-w-xl rounded-3xl bg-white p-7 shadow-2xl">
@@ -212,21 +273,15 @@ export default function OrderGroupingClient({
             <p className="mt-2 text-slate-600">{selected.length} sipariş seçildi. Toplama emrinin RF terminaline nasıl gönderileceğini seçin.</p>
 
             <div className="mt-6 grid gap-4">
-              <form action={startDirectPickingAction}>
-                {hidden}
-                <button className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50 p-5 text-left hover:border-blue-500">
-                  <span className="block text-lg font-black text-blue-950">Sipariş Bazlı Toplama</span>
-                  <span className="mt-1 block text-sm text-blue-800">Her sipariş stok lokasyonlarına göre Zone görevlerine bölünür ve ortak RF görev havuzuna gönderilir.</span>
-                </button>
-              </form>
+              <button type="button" disabled={isChecking} onClick={() => preflightAndStart("direct")} className="w-full rounded-2xl border-2 border-blue-200 bg-blue-50 p-5 text-left hover:border-blue-500 disabled:opacity-50">
+                <span className="block text-lg font-black text-blue-950">Sipariş Bazlı Toplama</span>
+                <span className="mt-1 block text-sm text-blue-800">Her sipariş stok lokasyonlarına göre Zone görevlerine bölünür ve ortak RF görev havuzuna gönderilir.</span>
+              </button>
 
-              <form action={prepareWavePickingAction}>
-                {hidden}
-                <button disabled={selected.length < 2} className="w-full rounded-2xl border-2 border-violet-200 bg-violet-50 p-5 text-left hover:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50">
-                  <span className="block text-lg font-black text-violet-950">Wave Toplama</span>
-                  <span className="mt-1 block text-sm text-violet-800">En az 2 sipariş ile Yeni Wave Oluştur ekranına geçilir.</span>
-                </button>
-              </form>
+              <button type="button" onClick={() => preflightAndStart("wave")} disabled={selected.length < 2 || isChecking} className="w-full rounded-2xl border-2 border-violet-200 bg-violet-50 p-5 text-left hover:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50">
+                <span className="block text-lg font-black text-violet-950">Wave Toplama</span>
+                <span className="mt-1 block text-sm text-violet-800">En az 2 sipariş ile Yeni Wave Oluştur ekranına geçilir.</span>
+              </button>
             </div>
 
             {selected.length < 2 && <p className="mt-4 text-sm font-bold text-amber-700">Wave toplama için en az 2 sipariş seçilmelidir.</p>}
@@ -234,6 +289,36 @@ export default function OrderGroupingClient({
             <button type="button" onClick={() => setShowMode(false)} className="mt-6 w-full rounded-xl border border-slate-300 px-5 py-3 font-bold text-slate-700">
               Vazgeç
             </button>
+          </div>
+        </div>
+      )}
+
+      {shortages.length > 0 && pendingMode && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl">
+            <h2 className="text-2xl font-black text-amber-950">Eksik stok uyarısı</h2>
+            <p className="mt-2 text-slate-700">
+              Seçilen siparişlerde mevcut WMS toplanabilir stok, sipariş ihtiyacının altına düşmüş. Siparişleri eksik toplama riskiyle yine de başlatabilir veya stok eksiği bulunan siparişleri Bekliyor durumuna alabilirsiniz.
+            </p>
+            <div className="mt-5 space-y-3">
+              {shortages.map((row) => (
+                <div key={`${row.orderItemId}:${row.productId}`} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="font-black text-slate-950">{row.orderNumber} nolu siparişin içeriğindeki {row.productCode} kodlu ürün eksik rezerve olmuştur. Sipariş yine de başlatılsın mı?</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-700">{row.productName}</p>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+                    <div className="rounded-xl bg-white p-3"><div className="text-slate-500">İhtiyaç</div><b className="text-lg">{row.requestedQuantity}</b></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-slate-500">Toplanabilir</div><b className="text-lg">{row.availableQuantity}</b></div>
+                    <div className="rounded-xl bg-white p-3"><div className="text-slate-500">Eksik</div><b className="text-lg text-red-700">{row.shortageQuantity}</b></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <button type="button" disabled={isChecking} onClick={() => { const mode = pendingMode; setShortages([]); setPendingMode(null); submitMode(mode, true); }} className="rounded-xl bg-blue-900 px-5 py-3 font-black text-white disabled:opacity-50">Yine de Başlat</button>
+              <button type="button" disabled={isChecking} onClick={holdShortages} className="rounded-xl bg-amber-600 px-5 py-3 font-black text-white disabled:opacity-50">Beklet</button>
+              <button type="button" disabled={isChecking} onClick={() => { setShortages([]); setPendingMode(null); }} className="rounded-xl border border-slate-300 px-5 py-3 font-black text-slate-700">Vazgeç</button>
+            </div>
+            <p className="mt-4 text-xs font-semibold text-slate-500">Beklet seçeneği yalnızca stok eksiği bulunan siparişleri PENDING / Bekliyor durumuna alır ve açık merkezi rezervasyonlarını çözer.</p>
           </div>
         </div>
       )}
