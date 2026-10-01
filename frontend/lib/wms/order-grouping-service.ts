@@ -160,7 +160,7 @@ export class OrderGroupingService {
           data: {
             status: OrderStatus.APPROVED,
             fulfillmentWarehouseId: null,
-            stockReserved: false,
+            stockReserved: order.stockReserved,
             statusHistory: {
               create: {
                 status: OrderStatus.APPROVED,
@@ -213,6 +213,7 @@ export class OrderGroupingService {
     warehouseId: number;
     assignedById: string;
     assignedByName: string;
+    allowPartialStock?: boolean;
   }) {
     const orderIds = Array.from(new Set(input.orderIds));
     if (orderIds.length === 0) throw new Error("En az bir sipariş seçmelisiniz.");
@@ -301,7 +302,7 @@ export class OrderGroupingService {
         });
       }
 
-      const zonePlan = await ZonePickingService.buildTasksForOrders(tx, { orderIds, warehouseId: warehouse.id });
+      const zonePlan = await ZonePickingService.buildTasksForOrders(tx, { orderIds, warehouseId: warehouse.id, allowPartialStock: input.allowPartialStock });
       return { count: orders.length, warehouseCode: warehouse.code, ...zonePlan };
     });
   }
