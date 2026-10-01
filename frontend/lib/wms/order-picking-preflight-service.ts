@@ -6,6 +6,69 @@ import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 type Db = PrismaClient | Prisma.TransactionClient;
 const SOURCE_STATUSES: HandlingUnitStatus[] = [HandlingUnitStatus.OPEN, HandlingUnitStatus.CLOSED, HandlingUnitStatus.STORED];
 
+
+async function releaseOrderReservation(
+  tx: Prisma.TransactionClient,
+  input: { orderId: number; orderNumber: string; productId: number; warehouseId: number; quantity: number; description: string },
+) {
+  if (input.quantity <= 0) return;
+  const [warehouseStock, product] = await Promise.all([
+    tx.warehouseProductStock.findUnique({
+      where: { warehouse_product_stock_unique: { warehouseId: input.warehouseId, productId: input.productId } },
+      select: { physicalStock: true, reservedStock: true },
+    }),
+    tx.product.findUnique({
+      where: { id: input.productId },
+      select: { tenantId: true, companyId: true, stock: true, reservedStock: true },
+    }),
+  ]);
+  if (!product) throw new Error("Rezervasyonu çözülecek ürün bulunamadı.");
+
+  const releasable = Math.min(
+    input.quantity,
+    Math.max(0, warehouseStock?.reservedStock ?? 0),
+    Math.max(0, product.reservedStock),
+  );
+
+  if (releasable > 0) {
+    await createStockMovementWithTransaction(tx, {
+      productId: input.productId,
+      orderId: input.orderId,
+      warehouseId: input.warehouseId,
+      movementType: StockMovementType.RESERVATION_RELEASE,
+      physicalChange: 0,
+      reservedChange: -releasable,
+      documentNumber: input.orderNumber,
+      description: input.description,
+    });
+  }
+
+  const reconciliation = input.quantity - releasable;
+  if (reconciliation > 0) {
+    const current = await tx.warehouseProductStock.findUnique({
+      where: { warehouse_product_stock_unique: { warehouseId: input.warehouseId, productId: input.productId } },
+      select: { physicalStock: true, reservedStock: true },
+    });
+    await tx.stockMovement.create({
+      data: {
+        tenantId: product.tenantId,
+        companyId: product.companyId,
+        warehouseId: input.warehouseId,
+        productId: input.productId,
+        orderId: input.orderId,
+        movementType: StockMovementType.RESERVATION_RELEASE,
+        physicalChange: 0,
+        reservedChange: -reconciliation,
+        physicalBalanceAfter: current?.physicalStock ?? 0,
+        reservedBalanceAfter: current?.reservedStock ?? 0,
+        availableBalanceAfter: Math.max(0, (current?.physicalStock ?? 0) - (current?.reservedStock ?? 0)),
+        documentNumber: input.orderNumber,
+        description: `${input.description} Kayıp/uzlaştırma nedeniyle stok özetinde daha önce çözülmüş ${reconciliation} adet sipariş rezervasyonu hareket bazında kapatıldı.`,
+      },
+    });
+  }
+}
+
 export type PickingStockShortage = {
   orderId: number; orderNumber: string; orderItemId: number; productId: number;
   productCode: string; productName: string; requestedQuantity: number;
@@ -130,14 +193,12 @@ export class OrderPickingPreflightService {
         if (remainingRelease <= 0) break;
         const release = Math.min(remainingRelease, Math.max(0, netReserved));
         if (!release) continue;
-        await createStockMovementWithTransaction(tx, {
+        await releaseOrderReservation(tx, {
           productId: shortage.productId,
           orderId: shortage.orderId,
           warehouseId,
-          movementType: StockMovementType.RESERVATION_RELEASE,
-          physicalChange: 0,
-          reservedChange: -release,
-          documentNumber: shortage.orderNumber,
+          quantity: release,
+          orderNumber: shortage.orderNumber,
           description: `Eksik stokla toplama başlatıldı; ${release} adet sipariş rezervasyonu serbest bırakıldı.`,
         });
         remainingRelease -= release;
@@ -242,10 +303,12 @@ export class OrderPickingPreflightService {
         }
         for (const reservation of net.values()) {
           if (reservation.quantity <= 0) continue;
-          await createStockMovementWithTransaction(tx, {
-            productId: reservation.productId, orderId: order.id, warehouseId: reservation.warehouseId,
-            movementType: StockMovementType.RESERVATION_RELEASE, physicalChange: 0, reservedChange: -reservation.quantity,
-            documentNumber: order.orderNumber,
+          await releaseOrderReservation(tx, {
+            productId: reservation.productId,
+            orderId: order.id,
+            warehouseId: reservation.warehouseId,
+            quantity: reservation.quantity,
+            orderNumber: order.orderNumber,
             description: `${order.orderNumber} stok yetersizliği nedeniyle Bekliyor durumuna alındı; açık rezervasyon çözüldü.`,
           });
         }
