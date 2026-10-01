@@ -1,6 +1,8 @@
 "use client";
 import { useActionState,useEffect,useRef,useState } from "react";
-import { initialReturnReceiveState,rfReceiveReturnItem } from "@/app/rf/return-receiving/actions";
+import { rfReceiveReturnItem,type ReturnReceiveState } from "@/app/rf/return-receiving/actions";
+
+const initialReturnReceiveState:ReturnReceiveState={success:false,message:"",returnNumber:"",productCode:"",productName:"",receivedQuantity:0,remainingQuantity:0,status:"",handlingUnitBarcode:""};
 
 type ReturnData={returnNumber:string;orderNumber:string;customerName:string;deliveryNoteNumber:string;deliveryNoteDate:string;status:string;items:{id:string;productCode:string;productBarcode:string;productName:string;expectedQuantity:number;receivedQuantity:number}[]};
 type Hu={id:number;barcode:string;warehouseCode:string;locationCode:string};
