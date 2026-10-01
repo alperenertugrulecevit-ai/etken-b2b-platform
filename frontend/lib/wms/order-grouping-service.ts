@@ -118,6 +118,7 @@ export class OrderGroupingService {
       select: {
         id: true,
         orderNumber: true,
+        stockReserved: true,
         items: { select: { pickedQuantity: true, pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } } } },
         zonePickTasks: {
           select: { lines: { select: { pickedQuantity: true } } },
