@@ -2,14 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import SkuStockTable from "@/components/admin/SkuStockTable";
 
-type Props={searchParams:Promise<{warehouseId?:string|string[];productCodes?:string|string[];addCode?:string;thm?:string|string[]}>};
+type Props={searchParams:Promise<{warehouseId?:string|string[];productCodes?:string|string[];addCode?:string;thm?:string|string[];run?:string}>};
 const arr=(v:string|string[]|undefined)=>Array.isArray(v)?v:v?[v]:[];
 
 export default async function SkuStockControlPage({searchParams}:Props){
  await AuthorizationService.requirePermission("INVENTORY_VIEW");
  const q=await searchParams;
  const warehouseIds=arr(q.warehouseId).map(Number).filter(Number.isInteger);
- const thm=arr(q.thm)[0]?.trim().toUpperCase()??"";
+ const thm=arr(q.thm)[0]?.trim().toUpperCase()??"";\n const hasRun=q.run==="1"||Boolean(q.addCode);
  const codes=Array.from(new Set([...arr(q.productCodes).flatMap(x=>x.split(",")),...arr(q.addCode)].map(x=>x.trim().toUpperCase()).filter(Boolean)));
 
  const [warehouses,products]=await Promise.all([
@@ -95,9 +95,9 @@ export default async function SkuStockControlPage({searchParams}:Props){
      <input name="thm" defaultValue={thm} placeholder="THM barkodunu yazın / okutun" className="mt-2 w-full rounded-xl border p-3 uppercase"/>
     </div>
    </div>
-   <div className="mt-5 flex flex-wrap gap-3"><button className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white">Listele / Sorgula</button><a href="/admin/stock/sku-control" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700">Temizle</a></div>
+   <input type="hidden" name="run" value="1"/><div className="mt-5 flex flex-wrap gap-3"><button className="rounded-xl bg-blue-900 px-6 py-3 font-bold text-white">Listele / Sorgula</button><a href="/admin/stock/sku-control" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700">Temizle</a></div>
    <div id="stock-product-picker" popover="auto" className="m-auto max-h-[70vh] w-[min(720px,92vw)] overflow-auto rounded-2xl border bg-white p-5 shadow-2xl"><h2 className="mb-3 text-xl font-bold">Ürün Seç</h2>{products.map(p=><button key={p.code} type="submit" name="addCode" value={p.code} className="block w-full rounded-lg border-b p-3 text-left hover:bg-slate-50"><b>{p.code}</b> · {p.name}</button>)}</div>
   </form>
-  <SkuStockTable rows={stocks.map(s=>({id:s.id,warehouse:`${s.warehouse.code} - ${s.warehouse.name}`,barcode:s.product.barcode??"-",productCode:s.product.code,productName:s.product.name,thm:(thmsByStockKey.get(`${s.warehouseId}:${s.productId}`)??[]).join(", ")||"-",location:(locationsByStockKey.get(`${s.warehouseId}:${s.productId}`)??[]).join(", ")||"-",physical:s.physicalStock,reserved:s.reservedStock,available:s.physicalStock-s.reservedStock}))}/>
+  <SkuStockTable rows={stocks.map(s=>({id:s.id,warehouse:`${s.warehouse.code} - ${s.warehouse.name}`,barcode:s.product.barcode??"-",productCode:s.product.code,productName:s.product.name,thm:(thmsByStockKey.get(`${s.warehouseId}:${s.productId}`)??[]).join("\\n")||"-",location:(locationsByStockKey.get(`${s.warehouseId}:${s.productId}`)??[]).join(", ")||"-",physical:s.physicalStock,reserved:s.reservedStock,available:s.physicalStock-s.reservedStock}))}/>
  </main>
 }
