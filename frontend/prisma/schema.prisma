@@ -666,8 +666,10 @@ model PurchaseOrder {
   supplierId      Int
   status          PurchaseOrderStatus @default(DRAFT)
   orderDate       DateTime            @default(now())
-  expectedDate    DateTime?
-  paymentTermDays Int                 @default(0)
+  expectedDate       DateTime?
+  deliveryNoteNumber String?
+  deliveryNoteDate   DateTime?
+  paymentTermDays    Int                 @default(0)
   discountRate    Float               @default(0)
   subtotal        Float               @default(0)
   discountAmount  Float               @default(0)
@@ -688,6 +690,8 @@ model PurchaseOrder {
   @@index([status])
   @@index([orderDate])
   @@index([expectedDate])
+  @@index([deliveryNoteNumber])
+  @@index([deliveryNoteDate])
 }
 
 model PurchaseOrderItem {
