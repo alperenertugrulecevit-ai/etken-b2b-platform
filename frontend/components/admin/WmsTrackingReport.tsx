@@ -2,6 +2,7 @@ import { Prisma, WmsOperationType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import ExcelTableExportButton from "@/components/admin/ExcelTableExportButton";
 import ConfigurableReportTable from "@/components/admin/ConfigurableReportTable";
+import ReceivingTrackingTable from "@/components/admin/ReceivingTrackingTable";
 
 type Kind="receiving"|"picking";
 type SearchParams=Promise<{startDate?:string;endDate?:string;productCode?:string;orderNumber?:string;personnel?:string;companyCode?:string;companyName?:string;warehouseId?:string}>;
@@ -41,11 +42,16 @@ export default async function WmsTrackingReport({kind,searchParams}:{kind:Kind;s
   if(personnel)where.operatorName={contains:personnel,mode:"insensitive"};
   if(companyCode||companyName){where.purchaseOrderId={not:null}; const purchases=await prisma.purchaseOrder.findMany({where:{...(companyCode?{supplier:{taxNumber:{contains:companyCode,mode:"insensitive"}}}:{}),...(companyName?{supplier:{name:{contains:companyName,mode:"insensitive"}}}:{})},select:{id:true}});where.purchaseOrderId={in:purchases.map(x=>x.id)}}
   const rows=await prisma.wmsOperationLog.findMany({where,orderBy:{createdAt:"desc"}});
-  const total=rows.reduce((s,r)=>s+(r.quantity??0),0);
-  return <section className="p-4 sm:p-6 lg:p-10"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Giriş Takip Raporu</h1><p className="mt-2 text-slate-500">Mal kabul giriş okutmalarını sipariş, ürün ve personel bazında takip edin.</p></div><ExcelTableExportButton tableId="wms-receiving-tracking-table" fileName="giris-takip-raporu.csv"/></div><Filters kind={kind} startDate={startDate} endDate={endDate} productCode={productCode} orderNumber={orderNumber} personnel={personnel} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} warehouses={warehouses}/>
-   <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><table id="wms-receiving-tracking-table" className="w-full min-w-[1100px]"><thead><tr>{["Giriş Okutma Tarihi","Depo Kodu","Personel","Giriş Sipariş No","THM","Ürün Kodu","Ürün Tanımı","Miktar"].map(x=><th key={x} className={th}>{x}</th>)}</tr></thead><tbody>
-   {rows.map(r=><tr key={r.id}><td className={td}>{fmt(r.createdAt)}</td><td className={td}>{r.warehouseCode??"-"}</td><td className={td}>{r.operatorName??"-"}</td><td className={td}>{r.purchaseNumber??"-"}</td><td className={td}>{r.targetBarcode??r.barcode??"-"}</td><td className={td}>{r.productCode??"-"}</td><td className={td}>{r.productName??"-"}</td><td className={td}>{n(r.quantity??0)}</td></tr>)}
-   {rows.length===0?<tr><td colSpan={8} className="p-10 text-center text-slate-500">Filtreye uygun giriş okutma kaydı bulunamadı.</td></tr>:<tr className="bg-slate-100 font-bold"><td className={td}>Toplam</td><td className={td}>-</td><td className={td}>{n(new Set(rows.map(r=>r.purchaseNumber).filter(Boolean)).size)}</td><td className={td}>{n(new Set(rows.map(r=>r.targetBarcode??r.barcode).filter(Boolean)).size)}</td><td className={td}>{n(new Set(rows.map(r=>r.productCode).filter(Boolean)).size)}</td><td className={td}>-</td><td className={td}>{n(total)}</td></tr>}</tbody></table></div></section>
+  const purchaseIds=[...new Set(rows.map(r=>r.purchaseOrderId).filter((id):id is number=>id!==null))];
+  const purchases=purchaseIds.length?await prisma.purchaseOrder.findMany({where:{id:{in:purchaseIds}},select:{id:true,deliveryNoteNumber:true,deliveryNoteDate:true,supplier:{select:{taxNumber:true,name:true}}}}):[];
+  const purchaseMap=new Map(purchases.map(p=>[p.id,p]));
+  const reportRows=rows.map(r=>{
+   const po=r.purchaseOrderId?purchaseMap.get(r.purchaseOrderId):undefined;
+   return {id:r.id,date:fmt(r.createdAt),warehouseCode:r.warehouseCode??"-",person:r.operatorName??"-",orderNo:r.purchaseNumber??"-",supplierCode:po?.supplier.taxNumber??"-",supplierName:po?.supplier.name??"-",deliveryNoteNumber:po?.deliveryNoteNumber??"-",deliveryNoteDate:po?.deliveryNoteDate?new Intl.DateTimeFormat("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Istanbul"}).format(po.deliveryNoteDate):"-",thm:r.targetBarcode??r.barcode??"-",productCode:r.productCode??"-",productName:r.productName??"-",quantity:r.quantity??0};
+  });
+  return <section className="p-4 sm:p-6 lg:p-10"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Giriş Takip Raporu</h1><p className="mt-2 text-slate-500">Mal kabul giriş okutmalarını sipariş, tedarikçi, irsaliye, ürün ve personel bazında takip edin.</p></div><ExcelTableExportButton tableId="wms-receiving-tracking-table" fileName="giris-takip-raporu.csv"/></div><Filters kind={kind} startDate={startDate} endDate={endDate} productCode={productCode} orderNumber={orderNumber} personnel={personnel} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} warehouses={warehouses}/>
+   <ReceivingTrackingTable rows={reportRows}/>
+  </section>
  }
  const where:Prisma.PickingRecordWhereInput={};
  if(selectedWarehouseId)where.sourceHandlingUnit={warehouseId:selectedWarehouseId};
