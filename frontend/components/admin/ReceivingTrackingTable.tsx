@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import ColumnVisibilityMenu,{ColumnOption,useColumnVisibility} from "@/components/admin/ColumnVisibilityMenu";
 
 export type ReceivingTrackingRow={
-  id:string;
+  id:string|number;
   date:string;
   warehouseCode:string;
   person:string;
