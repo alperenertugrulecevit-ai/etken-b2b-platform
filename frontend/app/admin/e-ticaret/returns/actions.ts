@@ -27,7 +27,7 @@ function refresh(){
   for(const p of ["/admin/e-ticaret/returns","/admin/e-ticaret/return-reconciliation","/admin/stock/movements","/admin/stock/general","/admin/wms-reports/receiving-tracking","/admin/wms-reports/receipt-summary","/admin/wms-reports/receipt-detail"]) revalidatePath(p);
 }
 
-export async function matchCargoPreReceiptToOrder(formData:FormData){
+export async function matchEcommercePreReceiptToOrder(formData:FormData){
   await AuthorizationService.requireAdminPortalAccess();
   const preReceiptId=String(formData.get("preReceiptId")??"");
   const orderNumber=norm(formData.get("orderNumber"));
@@ -36,7 +36,6 @@ export async function matchCargoPreReceiptToOrder(formData:FormData){
   await prisma.$transaction(async tx=>{
     const pre=await tx.ecommerceReturnPreReceipt.findUnique({where:{id:preReceiptId}});
     if(!pre) throw new Error("Ön kabul bulunamadı.");
-    if(pre.mode!=="CARGO_BARCODE") throw new Error("Bu işlem yalnız kargo barkodu ön kabulü için kullanılabilir.");
     if(pre.outcome==="RETURNED_TO_CARRIER"||pre.outcome==="RETURN_TO_CARRIER") throw new Error("Kargoya geri teslim sürecindeki gönderi eşleştirilemez.");
 
     const order=await tx.order.findUnique({where:{orderNumber},include:{items:{include:{product:{select:{barcode:true}}}}}});
@@ -47,7 +46,7 @@ export async function matchCargoPreReceiptToOrder(formData:FormData){
     if(!er){
       const returnNumber=`ETI-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${randomUUID().replaceAll("-","").slice(0,8).toUpperCase()}`;
       er=await tx.ecommerceReturn.create({data:{
-        returnNumber,originalOrderId:order.id,status:EcommerceReturnStatus.PRE_RECEIVED,refundStatus:EcommerceReturnRefundStatus.WAITING,
+        returnNumber,originalOrderId:order.id,externalReturnCode:pre.mode==="RETURN_CODE"?pre.scannedCode:null,status:EcommerceReturnStatus.PRE_RECEIVED,refundStatus:EcommerceReturnRefundStatus.WAITING,
         items:{create:order.items.filter(i=>Math.max(i.shippedQuantity,i.packedQuantity)>0).map(i=>({
           orderItemId:i.id,productId:i.productId,productCode:i.productCode,productBarcode:i.product.barcode,productName:i.productName,
           expectedQuantity:Math.max(i.shippedQuantity,i.packedQuantity),
@@ -56,7 +55,7 @@ export async function matchCargoPreReceiptToOrder(formData:FormData){
     }
     await tx.ecommerceReturnPreReceipt.update({where:{id:pre.id},data:{
       originalOrderId:order.id,ecommerceReturnId:er.id,matchStatus:EcommerceReturnPreReceiptMatchStatus.MATCHED,
-      outcome:EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN,
+      outcome:pre.mode==="RETURN_CODE"?EcommerceReturnPreReceiptOutcome.RETURN_ENTRY_PENDING:EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN,
     }});
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:30000});
   refresh();
