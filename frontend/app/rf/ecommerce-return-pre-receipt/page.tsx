@@ -5,7 +5,8 @@ import RFEcommerceReturnPreReceiptForm from "@/components/rf/RFEcommerceReturnPr
 
 export const dynamic="force-dynamic";
 
-export default async function Page(){
+export default async function Page({searchParams}:{searchParams:Promise<{late?:string}>}){
+  const params=await searchParams;
   await AuthorizationService.requireRfAccess("RECEIVING_EXECUTE");
   const [warehouses,carriers,recent]=await Promise.all([
     prisma.warehouse.findMany({where:{isActive:true},orderBy:{code:"asc"},select:{id:true,code:true,name:true}}),
@@ -14,6 +15,6 @@ export default async function Page(){
   ]);
   return <section>
     <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-700">E-Ticaret İade</p><h1 className="text-2xl font-black">Kargo İade Ön Kabul</h1></div><Link href="/rf" className="rounded-xl border px-4 py-2 font-bold">RF Menü</Link></div>
-    <RFEcommerceReturnPreReceiptForm warehouses={warehouses} carriers={carriers} recent={recent.map(x=>({...x,receivedAt:x.receivedAt.toISOString()}))}/>
+    <RFEcommerceReturnPreReceiptForm lateDetected={params.late==="1"} warehouses={warehouses} carriers={carriers} recent={recent.map(x=>({...x,receivedAt:x.receivedAt.toISOString()}))}/>
   </section>;
 }
