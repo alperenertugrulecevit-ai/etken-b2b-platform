@@ -38,18 +38,29 @@ export default async function WmsTrackingReport({kind,searchParams}:{kind:Kind;s
   if(selectedWarehouseId)where.warehouseId=selectedWarehouseId;
   if(from||to)where.createdAt={...(from?{gte:from}:{}),...(to?{lte:to}:{})};
   if(productCode)where.productCode={contains:productCode,mode:"insensitive"};
-  if(orderNumber)where.purchaseNumber={contains:orderNumber,mode:"insensitive"};
   if(personnel)where.operatorName={contains:personnel,mode:"insensitive"};
-  if(companyCode||companyName){where.purchaseOrderId={not:null}; const purchases=await prisma.purchaseOrder.findMany({where:{...(companyCode?{supplier:{taxNumber:{contains:companyCode,mode:"insensitive"}}}:{}),...(companyName?{supplier:{name:{contains:companyName,mode:"insensitive"}}}:{})},select:{id:true}});where.purchaseOrderId={in:purchases.map(x=>x.id)}}
+
   const rows=await prisma.wmsOperationLog.findMany({where,orderBy:{createdAt:"desc"}});
   const purchaseIds=[...new Set(rows.map(r=>r.purchaseOrderId).filter((id):id is number=>id!==null))];
   const purchases=purchaseIds.length?await prisma.purchaseOrder.findMany({where:{id:{in:purchaseIds}},select:{id:true,deliveryNoteNumber:true,deliveryNoteDate:true,supplier:{select:{taxNumber:true,name:true}}}}):[];
   const purchaseMap=new Map(purchases.map(p=>[p.id,p]));
+
+  const returnNumbers=[...new Set(rows.map(r=>{
+    const meta=r.metadata&&typeof r.metadata==="object"&&!Array.isArray(r.metadata)?r.metadata as Record<string,unknown>:null;
+    return typeof meta?.returnNumber==="string"?meta.returnNumber:null;
+  }).filter((v):v is string=>Boolean(v)))];
+  const returns=returnNumbers.length?await prisma.returnOrder.findMany({where:{returnNumber:{in:returnNumbers}},select:{returnNumber:true,deliveryNoteNumber:true,deliveryNoteDate:true,originalOrder:{select:{customer:{select:{customerCode:true,companyName:true}}}}}}):[];
+  const returnMap=new Map(returns.map(r=>[r.returnNumber,r]));
+
   const reportRows=rows.map(r=>{
    const po=r.purchaseOrderId?purchaseMap.get(r.purchaseOrderId):undefined;
-   return {id:r.id,date:fmt(r.createdAt),warehouseCode:r.warehouseCode??"-",person:r.operatorName??"-",orderNo:r.purchaseNumber??"-",supplierCode:po?.supplier.taxNumber??"-",supplierName:po?.supplier.name??"-",deliveryNoteNumber:po?.deliveryNoteNumber??"-",deliveryNoteDate:po?.deliveryNoteDate?new Intl.DateTimeFormat("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Istanbul"}).format(po.deliveryNoteDate):"-",thm:r.targetBarcode??r.barcode??"-",productCode:r.productCode??"-",productName:r.productName??"-",quantity:r.quantity??0};
-  });
-  return <section className="p-4 sm:p-6 lg:p-10"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Giriş Takip Raporu</h1><p className="mt-2 text-slate-500">Mal kabul giriş okutmalarını sipariş, tedarikçi, irsaliye, ürün ve personel bazında takip edin.</p></div><ExcelTableExportButton tableId="wms-receiving-tracking-table" fileName="giris-takip-raporu.csv"/></div><Filters kind={kind} startDate={startDate} endDate={endDate} productCode={productCode} orderNumber={orderNumber} personnel={personnel} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} warehouses={warehouses}/>
+   const meta=r.metadata&&typeof r.metadata==="object"&&!Array.isArray(r.metadata)?r.metadata as Record<string,unknown>:null;
+   const returnNumber=typeof meta?.returnNumber==="string"?meta.returnNumber:null;
+   const ro=returnNumber?returnMap.get(returnNumber):undefined;
+   const isReturn=r.module==="RF_RETURN_RECEIVING"||Boolean(ro);
+   return {id:r.id,date:fmt(r.createdAt),warehouseCode:r.warehouseCode??"-",person:r.operatorName??"-",movementType:isReturn?"İade Girişi":"Mal Kabul",orderNo:isReturn?(returnNumber??r.orderNumber??"-"):(r.purchaseNumber??"-"),supplierCode:isReturn?(ro?.originalOrder.customer.customerCode??"-"):(po?.supplier.taxNumber??"-"),supplierName:isReturn?(ro?.originalOrder.customer.companyName??"-"):(po?.supplier.name??"-"),deliveryNoteNumber:isReturn?(ro?.deliveryNoteNumber??"-"):(po?.deliveryNoteNumber??"-"),deliveryNoteDate:(isReturn?ro?.deliveryNoteDate:po?.deliveryNoteDate)?new Intl.DateTimeFormat("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Istanbul"}).format((isReturn?ro?.deliveryNoteDate:po?.deliveryNoteDate)!):"-",thm:r.targetBarcode??r.barcode??"-",productCode:r.productCode??"-",productName:r.productName??"-",quantity:r.quantity??0};
+  }).filter(r=>(!orderNumber||r.orderNo.toLocaleLowerCase("tr-TR").includes(orderNumber.toLocaleLowerCase("tr-TR")))&&(!companyCode||r.supplierCode.toLocaleLowerCase("tr-TR").includes(companyCode.toLocaleLowerCase("tr-TR")))&&(!companyName||r.supplierName.toLocaleLowerCase("tr-TR").includes(companyName.toLocaleLowerCase("tr-TR"))));
+  return <section className="p-4 sm:p-6 lg:p-10"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Giriş Takip Raporu</h1><p className="mt-2 text-slate-500">Mal kabul ve iade giriş okutmalarını sipariş, hareket tipi, firma, irsaliye, ürün ve personel bazında takip edin.</p></div><ExcelTableExportButton tableId="wms-receiving-tracking-table" fileName="giris-takip-raporu.csv"/></div><Filters kind={kind} startDate={startDate} endDate={endDate} productCode={productCode} orderNumber={orderNumber} personnel={personnel} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} warehouses={warehouses}/>
    <ReceivingTrackingTable rows={reportRows}/>
   </section>
  }
