@@ -524,6 +524,7 @@ export async function rfPickOrderItem(
                 productCode: true,
                 productName: true,
                 quantity: true,
+                cancelledQuantity: true,
                 pickedQuantity: true,
 
                 product: {
@@ -617,7 +618,7 @@ export async function rfPickOrderItem(
           (item) =>
             (item.product.barcode.trim().toUpperCase() === productBarcode ||
               item.product.code.trim().toUpperCase() === productBarcode) &&
-            item.pickedQuantity < item.quantity,
+            item.pickedQuantity < Math.max(0, item.quantity - item.cancelledQuantity),
         );
 
         if (!orderItem) {
@@ -632,8 +633,12 @@ export async function rfPickOrderItem(
           );
         }
 
+        const effectiveLineQuantity = Math.max(
+          0,
+          orderItem.quantity - orderItem.cancelledQuantity,
+        );
         const lineRemainingQuantity =
-          orderItem.quantity - orderItem.pickedQuantity;
+          effectiveLineQuantity - orderItem.pickedQuantity;
 
         if (quantity > lineRemainingQuantity) {
           throw new Error(
@@ -1018,8 +1023,8 @@ export async function rfPickOrderItem(
         perfMark("directShippingItem");
         const updatedOrderItems = order.items.map((item) =>
           item.id === updatedOrderItem.id
-            ? { quantity: updatedOrderItem.quantity, pickedQuantity: updatedOrderItem.pickedQuantity }
-            : { quantity: item.quantity, pickedQuantity: item.pickedQuantity },
+            ? { quantity: Math.max(0, updatedOrderItem.quantity - orderItem.cancelledQuantity), pickedQuantity: updatedOrderItem.pickedQuantity }
+            : { quantity: Math.max(0, item.quantity - item.cancelledQuantity), pickedQuantity: item.pickedQuantity },
         );
 
         const sourceTotalQuantity =
@@ -1160,11 +1165,24 @@ export async function rfPickOrderItem(
             ...(pickingCompleted ? { pickingCompletedAt: new Date() } : {}),
           },
         });
-        const nextOrderStatus =
+        let nextOrderStatus =
           order.status === OrderStatus.APPROVED || order.status === OrderStatus.PREPARING
             ? OrderStatus.PICKING
             : order.status;
-        if (nextOrderStatus !== order.status) {
+        if (pickingCompleted) {
+          const progress = await FulfillmentService.refreshOrderProgress(tx, {
+            orderId: order.id,
+            flowType: pickingFlow.flowType,
+            waveId: pickingFlow.waveId,
+          });
+          if (progress.shipped >= progress.planned && progress.planned > 0) {
+            nextOrderStatus = OrderStatus.SHIPPED;
+          } else if (progress.packed >= progress.planned && progress.planned > 0) {
+            nextOrderStatus = OrderStatus.READY_TO_SHIP;
+          } else if (progress.picked >= progress.planned && progress.planned > 0) {
+            nextOrderStatus = OrderStatus.PACKING;
+          }
+        } else if (nextOrderStatus !== order.status) {
           await tx.order.update({
             where: { id: order.id },
             data: { status: nextOrderStatus },
