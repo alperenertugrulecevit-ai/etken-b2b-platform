@@ -71,6 +71,8 @@ const groups:MenuGroup[]=[
  ]},
  {title:"E-Ticaret Yönetimi",icon:"🛍️",items:[
   {href:"/admin/e-ticaret/packaging",icon:"📦",label:"E-Ticaret Paketleme",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
+  {href:"/admin/e-ticaret/returns",icon:"↩️",label:"E-Ticaret İade Giriş",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
+  {href:"/admin/e-ticaret/return-reconciliation",icon:"🤝",label:"Kargo İade Mutabakatı",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
   {href:"/admin/e-ticaret/documents",icon:"🖨️",label:"E-Ticaret Evrak Basım",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
  ]},
  {title:"Sevkiyat Planlama",icon:"🚚",items:[
