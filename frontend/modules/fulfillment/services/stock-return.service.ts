@@ -15,6 +15,7 @@ import {
   WmsOperationType,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
 
 type Actor={userId:string;displayName:string;terminalCode?:string|null};
@@ -139,6 +140,7 @@ export class StockReturnService{
    }
 
    await tx.stockReturnEvent.create({data:{orderId:order.id,orderItemId:item.id,productId:item.productId,reason:input.reason,stage,quantity:1,sourceHandlingUnitId:source.id,targetHandlingUnitId:target.id,targetLocationId:location.id,productCode:item.productCode,productBarcode:item.product.barcode,productName:item.productName,sourceBarcode:source.barcode,targetBarcode:target.barcode,targetLocationCode:location.code,operatorId:input.actor.userId,operatorName:input.actor.displayName,terminalCode:input.actor.terminalCode??null}});
+   await createStockMovementWithTransaction(tx,{warehouseId:source.warehouseId,productId:item.productId,orderId:order.id,movementType:StockMovementType.STOCK_RETURN,physicalChange:0,reservedChange:0,documentNumber:order.orderNumber,description:`Sevk öncesi stoğa geri alma; neden ${input.reason}; aşama ${stage}; kaynak ${source.barcode}; hedef ${target.barcode}; adres ${locationBarcode(location)}.`});
    await tx.wmsOperationLog.create({data:{operationType:WmsOperationType.ITEM_TRANSFER,module:"RF_STOCK_RETURN",entityType:"ORDER",entityId:order.id,operatorId:input.actor.userId,operatorName:input.actor.displayName,terminalCode:input.actor.terminalCode??null,barcode:order.orderNumber,sourceBarcode:source.barcode,targetBarcode:target.barcode,orderId:order.id,orderNumber:order.orderNumber,productId:item.productId,productCode:item.productCode,productName:item.productName,quantity:1,warehouseId:source.warehouseId,targetLocationId:location.id,targetLocationCode:location.code,previousStatus:stage,newStatus:"STOCK",description:`${item.productCode} 1 adet sevk öncesi stoğa geri alındı.`,metadata:{reason:input.reason,stage}}});
 
    const flow=order.fulfillment?.flowType??OrderFulfillmentFlow.DIRECT_ORDER;
