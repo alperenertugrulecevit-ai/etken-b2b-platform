@@ -1165,7 +1165,7 @@ export async function rfPickOrderItem(
             ...(pickingCompleted ? { pickingCompletedAt: new Date() } : {}),
           },
         });
-        let nextOrderStatus =
+        let nextOrderStatus: OrderStatus =
           order.status === OrderStatus.APPROVED || order.status === OrderStatus.PREPARING
             ? OrderStatus.PICKING
             : order.status;
