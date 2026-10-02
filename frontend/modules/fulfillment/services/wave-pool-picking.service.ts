@@ -255,6 +255,12 @@ export class WavePoolPickingService {
           );
         }
 
+        if (!sourceUnit.warehouseId) {
+          throw new Error(
+            `${sourceUnit.barcode} kaynak THM'sinin depo bilgisi bulunamadı.`
+          );
+        }
+
         if (
           sourceUnit.purpose !==
           HandlingUnitPurpose.STOCK
@@ -728,7 +734,7 @@ export class WavePoolPickingService {
 
           await createStockMovementWithTransaction(tx, {
             productId: sourceItem.product.id,
-            warehouseId: sourceUnit.warehouseId ?? undefined,
+            warehouseId: sourceUnit.warehouseId,
             orderId: line.orderId,
             movementType: StockMovementType.STOCK_PICKING,
             physicalChange: 0,
