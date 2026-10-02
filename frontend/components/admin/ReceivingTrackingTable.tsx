@@ -8,6 +8,7 @@ export type ReceivingTrackingRow={
   date:string;
   warehouseCode:string;
   person:string;
+  movementType:string;
   orderNo:string;
   supplierCode:string;
   supplierName:string;
@@ -23,6 +24,7 @@ const columns:ColumnOption[]=[
   {key:"date",label:"Giriş Okutma Tarihi"},
   {key:"warehouseCode",label:"Depo Kodu"},
   {key:"person",label:"Personel"},
+  {key:"movementType",label:"Hareket Tipi"},
   {key:"orderNo",label:"Giriş Sipariş No"},
   {key:"supplierCode",label:"Tedarikçi Kodu"},
   {key:"supplierName",label:"Tedarikçi İsmi"},
@@ -49,6 +51,7 @@ export default function ReceivingTrackingTable({rows}:{rows:ReceivingTrackingRow
   const distinct=(key:keyof ReceivingTrackingRow)=>new Set(filtered.map(r=>r[key]).filter(v=>v!==""&&v!=="-")).size;
   const totals:Record<string,string|number>={
     date:"Toplam",
+    movementType:distinct("movementType"),
     orderNo:distinct("orderNo"),
     supplierCode:distinct("supplierCode"),
     supplierName:distinct("supplierName"),
