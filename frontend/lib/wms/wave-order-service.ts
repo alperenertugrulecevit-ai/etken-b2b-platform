@@ -48,6 +48,7 @@ export type AssignedWaveOrderItem = {
   waveOrderId: string;
   orderId: number;
   orderNumber: string;
+  orderStatus: OrderStatus;
 
   customerCode: string | null;
   customerName: string | null;
@@ -214,6 +215,7 @@ export async function getWaveOrderManagementData(
           id: true,
           orderId: true,
           orderNumber: true,
+          order: { select: { status: true } },
 
           customerCode: true,
           customerName: true,
@@ -354,6 +356,7 @@ export async function getWaveOrderManagementData(
       waveOrderId: waveOrder.id,
       orderId: waveOrder.orderId,
       orderNumber: waveOrder.orderNumber,
+      orderStatus: waveOrder.order.status,
 
       customerCode:
         waveOrder.customerCode,
