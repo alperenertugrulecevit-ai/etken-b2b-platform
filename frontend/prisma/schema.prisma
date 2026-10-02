@@ -3921,6 +3921,8 @@ model EcommerceReturn {
   originalOrder Order                       @relation(fields: [originalOrderId], references: [id], onDelete: Restrict)
   items         EcommerceReturnItem[]
   preReceipts   EcommerceReturnPreReceipt[]
+  inspections   EcommerceReturnInspection[]
+  refunds       EcommerceReturnRefund[]
 
   @@index([originalOrderId])
   @@index([externalReturnCode])
@@ -3950,12 +3952,63 @@ model EcommerceReturnItem {
 
   ecommerceReturn EcommerceReturn @relation(fields: [ecommerceReturnId], references: [id], onDelete: Cascade)
   orderItem       OrderItem       @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  inspections     EcommerceReturnInspection[]
 
   @@unique([ecommerceReturnId, orderItemId])
   @@index([orderItemId])
   @@index([productId])
   @@index([qualityResult])
   @@index([refundStatus])
+}
+
+model EcommerceReturnInspection {
+  id                   String                       @id @default(cuid())
+  ecommerceReturnId    String
+  ecommerceReturnItemId String
+  productId            Int
+  qualityResult        EcommerceReturnQualityResult
+  refundStatus         EcommerceReturnRefundStatus
+  refundAmount         Float                        @default(0)
+  targetHandlingUnitId Int
+  targetHandlingUnitBarcode String
+  targetLocationId     Int
+  targetLocationCode   String
+  customerReason       String?
+  qualityNote          String?
+  inspectedByUserId    String?
+  inspectedByName      String?
+  inspectedAt          DateTime                     @default(now())
+
+  ecommerceReturn     EcommerceReturn     @relation(fields: [ecommerceReturnId], references: [id], onDelete: Cascade)
+  ecommerceReturnItem EcommerceReturnItem @relation(fields: [ecommerceReturnItemId], references: [id], onDelete: Cascade)
+
+  @@index([ecommerceReturnId, inspectedAt])
+  @@index([ecommerceReturnItemId])
+  @@index([productId])
+  @@index([qualityResult])
+  @@index([refundStatus])
+}
+
+model EcommerceReturnRefund {
+  id                String                      @id @default(cuid())
+  ecommerceReturnId String
+  amount            Float
+  status            EcommerceReturnRefundStatus @default(WAITING)
+  provider          String?
+  providerReference String?
+  requestedByUserId String?
+  requestedByName   String?
+  requestedAt       DateTime?
+  completedAt       DateTime?
+  errorMessage      String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  ecommerceReturn EcommerceReturn @relation(fields: [ecommerceReturnId], references: [id], onDelete: Cascade)
+
+  @@index([ecommerceReturnId, createdAt])
+  @@index([status])
+  @@index([providerReference])
 }
 
 enum StockReturnReason {
