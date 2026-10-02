@@ -9,6 +9,7 @@ import {
   ShipmentHandlingUnitStatus,
   ShipmentStatus,
   ShippingHandlingUnitStatus,
+  StockMovementType,
   StockReturnReason,
   StockReturnStage,
   WarehouseLocationType,
