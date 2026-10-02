@@ -16,8 +16,9 @@ export async function rfReceiveReturnItem(_prev:ReturnReceiveState,formData:Form
  if(!returnNumber||!deliveryNoteNumber||!deliveryNoteDate||!handlingUnitBarcode||!productBarcode)return {...emptyReturnReceiveState(),message:"İade siparişi, irsaliye no, irsaliye tarihi, hedef THM ve ürün barkodu zorunludur."};
  try{
   const result=await prisma.$transaction(async tx=>{
-   const ro=await tx.returnOrder.findUnique({where:{returnNumber},include:{originalOrder:{select:{id:true,orderNumber:true,fulfillmentWarehouseId:true}},items:true}});
+   const ro=await tx.returnOrder.findUnique({where:{returnNumber},include:{originalOrder:{select:{id:true,orderNumber:true,orderType:true,fulfillmentWarehouseId:true}},items:true}});
    if(!ro)throw new Error(`${returnNumber} iade giriş siparişi bulunamadı.`);
+   if(ro.originalOrder.orderType==="ECOMMERCE")throw new Error("E-Ticaret iadeleri RF İade Giriş ekranından alınamaz. Kargo İade Ön Kabul ve E-Ticaret İade Giriş sürecini kullanın.");
    if(ro.status===ReturnOrderStatus.CANCELLED||ro.status===ReturnOrderStatus.RECEIVED)throw new Error("İade giriş siparişi mal kabule açık değil.");
    if(ro.deliveryNoteNumber.trim().toUpperCase()!==deliveryNoteNumber)throw new Error(`İrsaliye No eşleşmiyor. Beklenen: ${ro.deliveryNoteNumber}.`);
    if(ro.deliveryNoteDate.toISOString().slice(0,10)!==deliveryNoteDate)throw new Error(`İrsaliye Tarihi eşleşmiyor. Beklenen: ${ro.deliveryNoteDate.toISOString().slice(0,10)}.`);
