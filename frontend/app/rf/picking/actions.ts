@@ -7,6 +7,7 @@ import {
   OrderStatus,
   PickingShortageReason,
   Prisma,
+  StockMovementType,
   WmsOperationType,
 } from "@prisma/client";
 
@@ -1172,6 +1173,19 @@ export async function rfPickOrderItem(
 
         perfMark("fulfillmentProgress");
         const targetTypeLabel = isWavePicking ? "Toplama THM" : "Sevk THM";
+
+        await createStockMovementWithTransaction(tx, {
+          productId: orderItem.productId,
+          warehouseId: sourceUnit.warehouseId ?? undefined,
+          orderId: order.id,
+          movementType: StockMovementType.STOCK_PICKING,
+          physicalChange: 0,
+          reservedChange: 0,
+          documentNumber: order.orderNumber,
+          description:
+            `Toplama; ${orderItem.productCode} 1 adet; kaynak ${sourceUnit.barcode}; hedef ${targetUnit.barcode}; ` +
+            `akış ${pickingFlow.flowType}${pickingFlow.waveNo ? `; Wave ${pickingFlow.waveNo}` : ""}.`,
+        });
 
         await tx.wmsOperationLog.create({
           data: {
