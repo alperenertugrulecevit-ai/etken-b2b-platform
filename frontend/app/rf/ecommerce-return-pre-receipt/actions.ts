@@ -53,8 +53,8 @@ export async function createEcommerceReturnPreReceipt(_prev:PreReceiptState,form
       let originalOrderId:number|null=null;
       let orderNumber:string|undefined;
       let ecommerceReturnId:string|null=null;
-      let matchStatus=EcommerceReturnPreReceiptMatchStatus.UNMATCHED;
-      let outcome=mode===EcommerceReturnPreReceiptMode.RETURN_CODE
+      let matchStatus:EcommerceReturnPreReceiptMatchStatus=EcommerceReturnPreReceiptMatchStatus.UNMATCHED;
+      let outcome:EcommerceReturnPreReceiptOutcome=mode===EcommerceReturnPreReceiptMode.RETURN_CODE
         ? EcommerceReturnPreReceiptOutcome.CARRIER_STATUS_UNVERIFIED
         : EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN;
 
