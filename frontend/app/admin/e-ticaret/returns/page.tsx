@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import EcommerceReturnReceivingPanel from "@/components/admin/EcommerceReturnReceivingPanel";
@@ -26,7 +27,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{code?:s
  const returnProductIds=pre?.ecommerceReturn?.items.map(i=>i.productId)??[];
  const returnProducts=returnProductIds.length?await prisma.product.findMany({where:{id:{in:returnProductIds}},select:{id:true,imageUrl:true}}):[];
  const productImageById=new Map(returnProducts.map(p=>[p.id,p.imageUrl] as const));
- const recentWhere:any={};
+ const recentWhere:Prisma.EcommerceReturnWhereInput={};
  if(orderNo)recentWhere.originalOrder={orderNumber:{contains:orderNo,mode:"insensitive"}};
  if(date){const from=new Date(`${date}T00:00:00+03:00`),to=new Date(`${date}T23:59:59.999+03:00`);recentWhere.createdAt={gte:from,lte:to};}
  if(carrierFilter||returnCodeFilter)recentWhere.preReceipts={some:{...(carrierFilter?{carrier:{name:{contains:carrierFilter,mode:"insensitive"}}}:{}),...(returnCodeFilter?{OR:[{returnCode:{contains:returnCodeFilter,mode:"insensitive"}},{scannedCode:{contains:returnCodeFilter,mode:"insensitive"}}]}:{})}};
