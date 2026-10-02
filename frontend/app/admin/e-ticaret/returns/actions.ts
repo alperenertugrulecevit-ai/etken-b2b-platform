@@ -172,3 +172,14 @@ export async function createRefundApprovalRecord(formData:FormData){
   });
   refresh();
 }
+
+
+export type EcommerceReturnProcessState={success:boolean;message:string};
+export async function processEcommerceReturnItemState(_prev:EcommerceReturnProcessState,formData:FormData):Promise<EcommerceReturnProcessState>{
+  try{
+    await processEcommerceReturnItem(formData);
+    return {success:true,message:"Ürün kabul edildi. Stok, kalite ve finans uygunluk kayıtları güncellendi."};
+  }catch(error){
+    return {success:false,message:error instanceof Error?error.message:"E-Ticaret iade girişi tamamlanamadı."};
+  }
+}
