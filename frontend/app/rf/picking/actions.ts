@@ -1355,6 +1355,8 @@ export async function rfPickOrderItem(
       },
     );
 
+    revalidatePath("/admin/stock/movements");
+
     perfMark("transactionCommit");
     console.info("[RF_PICKING_PERF]", JSON.stringify({
       orderNumber,
