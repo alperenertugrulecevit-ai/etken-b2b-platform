@@ -95,8 +95,6 @@ export class StockReturnService{
    const locationCandidates=await tx.warehouseLocation.findMany({where:{warehouseId:operationWarehouseId,isActive:true},select:{id:true,code:true,aisle:true,section:true,level:true,bin:true,locationType:true}});
    const location=locationCandidates.find(x=>n(x.code)===targetLocationCode||locationBarcode(x)===targetLocationCode);
    if(!location)throw new Error("Hedef adres bu depoda bulunamadı veya pasif.");
-   const targetHasStock=target.items.some(x=>x.quantity>0);
-   if(targetHasStock&&target.locationId!==null&&target.locationId!==location.id)throw new Error("Hedef THM içinde stok bulunduğu için mevcut adresinden farklı bir adrese taşınamaz.");
    if(input.reason===StockReturnReason.DAMAGED){
     const damagedLocationTypes: WarehouseLocationType[] = [WarehouseLocationType.QUALITY, WarehouseLocationType.QUARANTINE, WarehouseLocationType.RETURN];
     if(!damagedLocationTypes.includes(location.locationType))throw new Error("Hasarlı ürün QUALITY, QUARANTINE veya RETURN tipindeki bir adrese alınmalıdır.");
