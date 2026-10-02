@@ -59,7 +59,8 @@ export default function CartPage() {
   const grossTotal =
     netTotal + vatTotal;
 
-  const canCheckout =\n    cart.length > 0;
+  const canCheckout =
+    cart.length > 0;
 
   return (
     <>
@@ -309,7 +310,11 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">\n                  ✓ Fiyatlar KDV dahil gösterilir.\n                </div>\n\n                {canCheckout ? (
+                <div className="mt-6 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
+                  ✓ Fiyatlar KDV dahil gösterilir.
+                </div>
+
+                {canCheckout ? (
                   <Link
                     href="/checkout"
                     className="mt-6 block w-full rounded-xl bg-[#202B38] py-3 text-center text-sm font-bold text-white hover:bg-[#111923]"
@@ -336,7 +341,9 @@ export default function CartPage() {
                   Sepeti Temizle
                 </button>
 
-                <p className="mt-5 text-xs leading-5 text-gray-500">\n                  Sipariş onayında güncel fiyat ve kullanılabilir stok yeniden kontrol edilir.\n                </p>
+                <p className="mt-5 text-xs leading-5 text-gray-500">
+                  Sipariş onayında güncel fiyat ve kullanılabilir stok yeniden kontrol edilir.
+                </p>
               </aside>
             </div>
           )}
