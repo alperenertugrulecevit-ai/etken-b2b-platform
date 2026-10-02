@@ -14,6 +14,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{code?:s
  const code=String(params.code??"").trim().toUpperCase();
  const pre=code?await prisma.ecommerceReturnPreReceipt.findFirst({
    where:{scannedCode:code},
+   orderBy:{receivedAt:"desc"},
    include:{
      carrier:true,warehouse:true,
      originalOrder:{include:{customer:true}},
