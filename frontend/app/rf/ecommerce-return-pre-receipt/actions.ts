@@ -44,11 +44,12 @@ export async function createEcommerceReturnPreReceipt(_prev:PreReceiptState,form
       if(!warehouse) throw new Error("Aktif depo bulunamadı.");
       if(!carrier) throw new Error("Aktif kargo firması bulunamadı.");
 
-      const duplicate=await tx.ecommerceReturnPreReceipt.findUnique({
-        where:{carrierId_mode_scannedCode:{carrierId,mode,scannedCode}},
-        select:{preReceiptNumber:true,receivedAt:true},
+      const duplicate=await tx.ecommerceReturnPreReceipt.findFirst({
+        where:{carrierId,mode,scannedCode},
+        orderBy:{receivedAt:"desc"},
+        select:{preReceiptNumber:true,receivedAt:true,outcome:true},
       });
-      if(duplicate) throw new Error(`${scannedCode} daha önce ${duplicate.preReceiptNumber} ile ön kabule alınmış.`);
+      if(duplicate&&duplicate.outcome!==EcommerceReturnPreReceiptOutcome.RETURNED_TO_CARRIER) throw new Error(`${scannedCode} daha önce ${duplicate.preReceiptNumber} ile ön kabule alınmış.`);
 
       let originalOrderId:number|null=null;
       let orderNumber:string|undefined;
