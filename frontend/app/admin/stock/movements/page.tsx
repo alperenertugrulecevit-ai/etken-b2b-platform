@@ -54,7 +54,8 @@ function getMovementLabel(type: string) {
     RESERVATION_CREATE: "Rezervasyon Oluşturma",
     RESERVATION_RELEASE: "Rezervasyon Çözme",
     SALE_SHIPMENT: "Satış Sevkiyatı",
-    SALE_RETURN: "Satış İadesi",
+    SALE_RETURN: "İade Girişi",
+    STOCK_RETURN: "Stoğa Geri Alma",
     COUNT_INCREASE: "Sayım Fazlası",
     COUNT_DECREASE: "Sayım Eksiği",
     TRANSFER_IN: "Transfer Girişi",
@@ -91,6 +92,9 @@ function getMovementClass(type: string) {
 
     SALE_RETURN:
       "bg-green-100 text-green-700",
+
+    STOCK_RETURN:
+      "bg-cyan-100 text-cyan-800",
 
     COUNT_INCREASE:
       "bg-emerald-100 text-emerald-700",
