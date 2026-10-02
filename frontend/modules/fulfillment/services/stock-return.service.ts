@@ -14,10 +14,12 @@ import {
   StockReturnStage,
   WarehouseLocationType,
   WmsOperationType,
+  WaveStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
+import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 
 type Actor={userId:string;displayName:string;terminalCode?:string|null};
 type Input={orderNumber:string;sourceBarcode:string;productBarcode:string;targetBarcode:string;targetLocationCode:string;reason:StockReturnReason;actor:Actor};
@@ -147,7 +149,27 @@ export class StockReturnService{
 
    const flow=order.fulfillment?.flowType??OrderFulfillmentFlow.DIRECT_ORDER;
    const progress=await FulfillmentService.refreshOrderProgress(tx,{orderId:order.id,flowType:flow,waveId:order.fulfillment?.waveId??null});
-   if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0)await tx.order.update({where:{id:order.id},data:{status:OrderStatus.CANCELLED,stockReserved:false}});
+
+   // Yanlış toplama talebi iptal etmez. Fiziksel ürün stoğa döndüğü anda
+   // ilgili siparişin eski Zone planını bırakıp kalan ihtiyacı yeniden planla.
+   // Böylece görev hem RF toplama havuzuna hem operasyon izleme ekranına geri gelir.
+   if(input.reason===StockReturnReason.WRONG_PICK){
+    const waveId=order.fulfillment?.waveId??null;
+    await ZonePickingService.releaseOrderPlan(tx,order.id);
+    await ZonePickingService.buildTasksForOrders(tx,{
+     orderIds:[order.id],
+     warehouseId:operationWarehouseId,
+     waveId,
+     allowPartialStock:true,
+    });
+    if(waveId){
+     await tx.wave.updateMany({where:{id:waveId,status:{not:WaveStatus.CANCELLED}},data:{status:WaveStatus.IN_PROGRESS,completedAt:null}});
+     await tx.waveOrder.updateMany({where:{waveId,orderId:order.id},data:{isCompleted:false,completedAt:null}});
+    }
+    await tx.order.update({where:{id:order.id},data:{status:OrderStatus.PICKING,stockReserved:true}});
+   }else if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0){
+    await tx.order.update({where:{id:order.id},data:{status:OrderStatus.CANCELLED,stockReserved:false}});
+   }
    return {orderNumber:order.orderNumber,productCode:item.productCode,productName:item.productName,stage,reason:input.reason,targetBarcode:target.barcode,targetLocationCode:location.code,remainingDemand:Math.max(0,item.quantity-item.cancelledQuantity-(CUSTOMER_REASONS.includes(input.reason)?1:0)-(item.pickedQuantity-1))};
   },{maxWait:10000,timeout:30000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
  }
