@@ -31,6 +31,7 @@ export async function createEcommerceReturnPreReceipt(_prev:PreReceiptState,form
   const modeRaw=norm(formData.get("mode"));
   const scannedCode=norm(formData.get("scannedCode"));
   const terminalCode=norm(formData.get("terminalCode"))||null;
+  const lateDetected=String(formData.get("lateDetected")??"")==="1";
   if(!carrierId||!Number.isInteger(warehouseId)||warehouseId<=0||!scannedCode) return {success:false,message:"Depo, kargo firması ve barkod zorunludur."};
   const mode=modeRaw==="CARGO_BARCODE"?EcommerceReturnPreReceiptMode.CARGO_BARCODE:EcommerceReturnPreReceiptMode.RETURN_CODE;
 
@@ -90,6 +91,7 @@ export async function createEcommerceReturnPreReceipt(_prev:PreReceiptState,form
         cargoBarcode:mode===EcommerceReturnPreReceiptMode.CARGO_BARCODE?scannedCode:null,
         originalOrderId,ecommerceReturnId,matchStatus,outcome,
         carrierStatus:"ENTEGRASYON_BEKLIYOR",
+        lateDetected,
         receivedByUserId:profile.id,
         receivedByName:profile.employee?`${profile.employee.firstName} ${profile.employee.lastName}`:profile.username,
         terminalCode,
