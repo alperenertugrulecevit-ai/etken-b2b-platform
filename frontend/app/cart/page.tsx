@@ -6,7 +6,6 @@ import Header from "@/components/layout/Header";
 import {
   useCart,
 } from "@/context/CartContext";
-import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
 function formatCurrency(
   value: number
@@ -60,17 +59,7 @@ export default function CartPage() {
   const grossTotal =
     netTotal + vatTotal;
 
-  const remainingAmount =
-    Math.max(
-      0,
-      B2B_CONSTANTS
-        .MINIMUM_ORDER_NET_AMOUNT -
-        netTotal
-    );
-
-  const canCheckout =
-    cart.length > 0 &&
-    remainingAmount <= 0;
+  const canCheckout =\n    cart.length > 0;
 
   return (
     <>
@@ -320,41 +309,7 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                {remainingAmount >
-                0 ? (
-                  <div className="mt-6 rounded-xl bg-red-50 p-4 text-red-700">
-                    Minimum sipariş
-                    tutarı KDV hariç{" "}
-                    <strong>
-                      {formatCurrency(
-                        B2B_CONSTANTS
-                          .MINIMUM_ORDER_NET_AMOUNT
-                      )}{" "}
-                      ₺
-                    </strong>
-                    ’dir.
-
-                    <p className="mt-2 text-sm">
-                      Devam etmek için
-                      sepetinize{" "}
-                      <strong>
-                        {formatCurrency(
-                          remainingAmount
-                        )}{" "}
-                        ₺
-                      </strong>{" "}
-                      daha ürün
-                      ekleyin.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-6 rounded-xl bg-green-50 p-4 font-semibold text-green-700">
-                    ✓ Minimum sipariş
-                    tutarı karşılandı.
-                  </div>
-                )}
-
-                {canCheckout ? (
+                <div className="mt-6 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">\n                  ✓ Fiyatlar KDV dahil gösterilir.\n                </div>\n\n                {canCheckout ? (
                   <Link
                     href="/checkout"
                     className="mt-6 block w-full rounded-xl bg-[#202B38] py-3 text-center text-sm font-bold text-white hover:bg-[#111923]"
@@ -381,14 +336,7 @@ export default function CartPage() {
                   Sepeti Temizle
                 </button>
 
-                <p className="mt-5 text-xs leading-5 text-gray-500">
-                  Fiyatlar KDV
-                  hariçtir. Sipariş
-                  onayında güncel fiyat
-                  ve kullanılabilir stok
-                  yeniden kontrol
-                  edilir.
-                </p>
+                <p className="mt-5 text-xs leading-5 text-gray-500">\n                  Sipariş onayında güncel fiyat ve kullanılabilir stok yeniden kontrol edilir.\n                </p>
               </aside>
             </div>
           )}
