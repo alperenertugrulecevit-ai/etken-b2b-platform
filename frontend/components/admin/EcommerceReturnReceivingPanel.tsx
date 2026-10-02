@@ -12,6 +12,7 @@ export default function EcommerceReturnReceivingPanel({preReceiptId,returnNumber
  const [thm,setThm]=useState("");
  const [location,setLocation]=useState("");
  const productRef=useRef<HTMLInputElement>(null);
+ const formRef=useRef<HTMLFormElement>(null);
  const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
  useEffect(()=>{if(state.success){setProduct("");requestAnimationFrame(()=>productRef.current?.focus())}},[state]);
  const complete=items.reduce((s,i)=>s+i.receivedQuantity,0), total=items.reduce((s,i)=>s+i.expectedQuantity,0);
@@ -19,7 +20,7 @@ export default function EcommerceReturnReceivingPanel({preReceiptId,returnNumber
   <div className="grid grid-cols-3 gap-4">
    <section className="rounded-2xl border bg-white p-5 shadow-sm"><p className="text-xs font-bold text-slate-500">İADE DOSYASI</p><h2 className="mt-1 text-xl font-black">{returnNumber}</h2><dl className="mt-4 space-y-2 text-sm"><div><b>Sipariş:</b> {orderNumber}</div><div><b>Müşteri:</b> {customerName}</div><div><b>İlerleme:</b> {complete}/{total}</div></dl></section>
    <section className="col-span-2 rounded-2xl border bg-white p-5 shadow-sm"><h2 className="text-lg font-black">Kalite ve Ürün Kabul</h2><p className="mt-1 text-sm text-slate-500">Kalite sonucu, hedef THM ve adresi belirleyin; ürün barkodu okutulduğunda işlem otomatik gönderilir.</p>
-    <form action={action} className="mt-4 grid grid-cols-2 gap-3">
+    <form ref={formRef} action={action} className="mt-4 grid grid-cols-2 gap-3">
      <input type="hidden" name="preReceiptId" value={preReceiptId}/>
      <label className="text-sm font-bold">Kalite Sonucu<select name="qualityResult" value={quality} onChange={e=>setQuality(e.target.value)} className="mt-1 w-full rounded-xl border p-3"><option value="SELLABLE">Satılabilir</option><option value="PACKAGING_DAMAGED">Ambalaj Hasarlı</option><option value="PRODUCT_DAMAGED">Ürün Hasarlı</option><option value="MISSING_PART">Eksik Parça</option><option value="USED">Kullanılmış</option><option value="WRONG_PRODUCT">Yanlış Ürün</option><option value="REVIEW_REQUIRED">İnceleme Bekliyor</option></select></label>
      <label className="text-sm font-bold">Müşteri İade Nedeni<input name="customerReason" className="mt-1 w-full rounded-xl border p-3" placeholder="Varsa iade nedeni"/></label>
@@ -27,7 +28,7 @@ export default function EcommerceReturnReceivingPanel({preReceiptId,returnNumber
      <label className="text-sm font-bold">Hedef Adres<input name="targetLocationCode" value={location} onChange={e=>setLocation(e.target.value.toUpperCase())} required className="mt-1 w-full rounded-xl border p-3 font-mono font-bold uppercase" placeholder="Adres barkodu"/></label>
      <label className="col-span-2 text-sm font-bold">Kalite Notu<input name="qualityNote" className="mt-1 w-full rounded-xl border p-3" placeholder="Opsiyonel açıklama"/></label>
      <label className="col-span-2 text-sm font-black text-blue-800">Ürün Barkodu
-      <input ref={productRef} name="productBarcode" value={product} onChange={e=>{const v=e.target.value.toUpperCase();setProduct(v);if(timer.current)clearTimeout(timer.current);if(v.trim()&&thm.trim()&&location.trim())timer.current=setTimeout(()=>e.currentTarget.form?.requestSubmit(),220)}} autoFocus autoComplete="off" required className="mt-1 w-full rounded-xl border-2 border-blue-500 p-4 text-xl font-black uppercase outline-none" placeholder="Ürünü okutun..."/>
+      <input ref={productRef} name="productBarcode" value={product} onChange={e=>{const v=e.target.value.toUpperCase();setProduct(v);if(timer.current)clearTimeout(timer.current);if(v.trim()&&thm.trim()&&location.trim())timer.current=setTimeout(()=>formRef.current?.requestSubmit(),220)}} autoFocus autoComplete="off" required className="mt-1 w-full rounded-xl border-2 border-blue-500 p-4 text-xl font-black uppercase outline-none" placeholder="Ürünü okutun..."/>
      </label>
      <button disabled={pending} className="col-span-2 rounded-xl bg-blue-700 p-4 text-lg font-black text-white disabled:bg-slate-400">{pending?"İşleniyor...":"Ürünü Kabul Et"}</button>
     </form>
