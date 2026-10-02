@@ -170,6 +170,7 @@ export class FulfillmentService {
         items: {
           select: {
             quantity: true,
+            cancelledQuantity: true,
           },
         },
       },
@@ -180,7 +181,7 @@ export class FulfillmentService {
     }
 
     const plannedQuantity = order.items.reduce(
-      (total, item) => total + item.quantity,
+      (total, item) => total + Math.max(0, item.quantity - item.cancelledQuantity),
       0,
     );
 
@@ -700,6 +701,7 @@ export class FulfillmentService {
         items: {
           select: {
             quantity: true,
+            cancelledQuantity: true,
             pickedQuantity: true,
             packedQuantity: true,
             shippedQuantity: true,
@@ -713,12 +715,14 @@ export class FulfillmentService {
     }
 
     const totals = order.items.reduce(
-      (result, item) => ({
-        planned: result.planned + item.quantity,
-        picked: result.picked + Math.min(item.pickedQuantity, item.quantity),
-        packed: result.packed + Math.min(item.packedQuantity, item.quantity),
-        shipped: result.shipped + Math.min(item.shippedQuantity, item.quantity),
-      }),
+      (result, item) => {
+        const required = Math.max(0, item.quantity - item.cancelledQuantity);
+        return {
+        planned: result.planned + required,
+        picked: result.picked + Math.min(item.pickedQuantity, required),
+        packed: result.packed + Math.min(item.packedQuantity, required),
+        shipped: result.shipped + Math.min(item.shippedQuantity, required),
+      };},
       {
         planned: 0,
         picked: 0,
