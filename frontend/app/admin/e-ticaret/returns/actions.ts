@@ -228,3 +228,14 @@ export async function markEcommerceRefundCompleted(formData:FormData){
   });
   refresh();
 }
+
+
+export async function closeEcommerceReturnWithoutRefund(formData:FormData){
+  await AuthorizationService.requireAdminPortalAccess();
+  const ecommerceReturnId=String(formData.get("ecommerceReturnId")??"");
+  const er=await prisma.ecommerceReturn.findUnique({where:{id:ecommerceReturnId}});
+  if(!er) throw new Error("E-Ticaret iade dosyası bulunamadı.");
+  if(er.status!==EcommerceReturnStatus.WAREHOUSE_COMPLETED||er.refundStatus!==EcommerceReturnRefundStatus.REJECTED) throw new Error("İade dosyası para iadesiz kapatmaya uygun değil.");
+  await prisma.ecommerceReturn.update({where:{id:er.id},data:{status:EcommerceReturnStatus.COMPLETED,financeCompletedAt:new Date()}});
+  refresh();
+}
