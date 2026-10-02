@@ -9,6 +9,6 @@ export default async function Page(){
   prisma.handlingUnit.findMany({where:{purpose:{in:[HandlingUnitPurpose.STOCK,HandlingUnitPurpose.RECEIVING]},status:{in:[HandlingUnitStatus.OPEN,HandlingUnitStatus.EMPTY,HandlingUnitStatus.STORED]},warehouseId:{not:null},parentUnitId:null},select:{barcode:true,purpose:true,warehouseId:true},orderBy:{barcode:"asc"},take:1000}),
   prisma.warehouseLocation.findMany({where:{isActive:true},select:{code:true,aisle:true,section:true,level:true,bin:true,warehouseId:true,locationType:true},orderBy:[{warehouseId:"asc"},{sortOrder:"asc"},{code:"asc"}],take:2000})
  ]);
- const rfLocations=locations.map(x=>({...x,scanCode:[x.code,x.aisle,x.section,x.level,x.bin].map(v=>v.trim()).filter(Boolean).join("-")}));
+ const rfLocations=locations.map(x=>({...x,scanCode:[x.code,x.section,x.level,x.bin].map(v=>v.trim()).filter(Boolean).join("-")}));
  return <RFStockReturnForm targets={targets} locations={rfLocations}/>;
 }
