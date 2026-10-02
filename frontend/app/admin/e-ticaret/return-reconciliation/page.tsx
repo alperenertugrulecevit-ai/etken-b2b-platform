@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { EcommerceReturnPreReceiptMatchStatus, EcommerceReturnPreReceiptMode, EcommerceReturnPreReceiptOutcome, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import ExcelTableExportButton from "@/components/admin/ExcelTableExportButton";
@@ -14,9 +14,9 @@ export default async function Page({searchParams}:{searchParams:Promise<{startDa
  const where:Prisma.EcommerceReturnPreReceiptWhereInput={};
  if(startDate||endDate)where.receivedAt={...(startDate?{gte:start(startDate)}:{}),...(endDate?{lte:end(endDate)}:{})};
  if(carrierId)where.carrierId=carrierId;
- if(mode)where.mode=mode as Prisma.EnumEcommerceReturnPreReceiptModeFilter;
- if(matchStatus)where.matchStatus=matchStatus as Prisma.EnumEcommerceReturnPreReceiptMatchStatusFilter;
- if(outcome)where.outcome=outcome as Prisma.EnumEcommerceReturnPreReceiptOutcomeFilter;
+ if(mode)where.mode=mode as EcommerceReturnPreReceiptMode;
+ if(matchStatus)where.matchStatus=matchStatus as EcommerceReturnPreReceiptMatchStatus;
+ if(outcome)where.outcome=outcome as EcommerceReturnPreReceiptOutcome;
  if(late==="1")where.lateDetected=true; else if(late==="0")where.lateDetected=false;
  if(code)where.OR=[{scannedCode:{contains:code,mode:"insensitive"}},{preReceiptNumber:{contains:code,mode:"insensitive"}},{originalOrder:{orderNumber:{contains:code,mode:"insensitive"}}}];
  const [rows,carriers]=await Promise.all([
