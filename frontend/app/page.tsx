@@ -301,7 +301,7 @@ export default async function Home() {
       <ProductSection
         title="Sizin için seçtiklerimiz"
         eyebrow="ÖNE ÇIKAN ÜRÜNLER"
-        description="Kurumsal müşterilerimiz için öne çıkan ürünler"
+        description="En çok tercih edilen ürünleri hemen keşfedin"
         products={
           featured
         }
@@ -322,7 +322,7 @@ export default async function Home() {
       <ProductSection
         title="Ofis Kırtasiye"
         eyebrow="OFİSİNİZ İÇİN"
-        description="Günlük ofis kullanımının temel ürünleri"
+        description="Ofis, okul ve günlük kullanım için kırtasiye ürünleri"
         products={
           officeProducts
         }
@@ -332,7 +332,7 @@ export default async function Home() {
       <ProductSection
         title="Temizlik ve Hijyen"
         eyebrow="PROFESYONEL HİJYEN"
-        description="İşletmeler için temizlik ve hijyen çözümleri"
+        description="Ev ve iş yeriniz için temizlik ve hijyen ürünleri"
         products={
           cleaningProducts
         }
@@ -342,7 +342,7 @@ export default async function Home() {
       <ProductSection
         title="Kahve, Çay ve Mutfak"
         eyebrow="OFİS İKRAM"
-        description="Çalışma alanlarının ikram ürünleri"
+        description="Kahve, çay ve mutfak ihtiyaçlarınız tek yerde"
         products={
           foodProducts
         }
@@ -481,7 +481,7 @@ function CorporateSolution() {
       title:
         "Güvenli Sipariş",
       description:
-        "Kontrollü B2B süreç",
+        "Güvenli alışveriş süreci",
       icon:
         "secure",
       iconClassName:
@@ -499,7 +499,7 @@ function CorporateSolution() {
             </span>
 
             <h2 className="mt-1.5 text-[19px] font-black leading-tight sm:text-[21px]">
-              Toplu satın alma ihtiyaçlarınız için yanınızdayız.
+              Bireysel alışverişin yanında kurumsal ihtiyaçlarınız için de yanınızdayız.
             </h2>
 
             <p className="mt-2 max-w-[430px] text-[10px] leading-4 text-slate-300">
