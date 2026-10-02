@@ -316,9 +316,9 @@ describe(
       );
     });
 
-    it("KDV hariç 500 TL altındaki siparişi reddeder", async () => {
+    it("KDV hariç 1.000 TL altındaki siparişi reddeder", async () => {
       setDatabaseFixtures({
-        price: 499.99,
+        price: 999.99,
         discountRate: 0,
       });
 
@@ -328,7 +328,7 @@ describe(
           createInput()
         )
       ).rejects.toThrow(
-        "Minimum sipariş tutarı KDV hariç 500 TL'dir."
+        "Minimum sipariş tutarı KDV hariç 1000 TL'dir."
       );
 
       expect(
@@ -338,7 +338,7 @@ describe(
 
     it("cari bakiye kredi limitini aşıyorsa siparişi reddeder", async () => {
       setDatabaseFixtures({
-        price: 900,
+        price: 1200,
         discountRate: 0,
         creditLimit: 1500,
       });
@@ -364,7 +364,7 @@ describe(
 
     it("fiyat, iskonto ve KDV tutarlarını hesaplayarak sipariş oluşturur", async () => {
       setDatabaseFixtures({
-        price: 600,
+        price: 1200,
         vat: 20,
         discountRate: 10,
       });
@@ -408,10 +408,10 @@ describe(
           "satinalma",
         paymentTermDays: 30,
         discountRate: 10,
-        subtotal: 600,
-        discountAmount: 60,
-        vatAmount: 108,
-        totalAmount: 648,
+        subtotal: 1200,
+        discountAmount: 120,
+        vatAmount: 216,
+        totalAmount: 1296,
         customerNote:
           "Kapıya teslim",
         accountEntries: {
@@ -421,7 +421,7 @@ describe(
               CustomerAccountEntryDirection.DEBIT,
             entryType:
               CustomerAccountEntryType.ORDER,
-            amount: 648,
+            amount: 1296,
             description:
               "B2B sipariş borç kaydı",
             dueDate:
@@ -443,11 +443,11 @@ describe(
               productName:
                 "Test Ürünü",
               quantity: 1,
-              unitPrice: 600,
+              unitPrice: 1200,
               vatRate: 20,
-              lineNet: 600,
-              vatAmount: 120,
-              lineTotal: 720,
+              lineNet: 1200,
+              vatAmount: 240,
+              lineTotal: 1440,
             },
           ],
         },

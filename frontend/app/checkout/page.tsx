@@ -1,47 +1,35 @@
-import { UserType } from "@prisma/client";
+import { CustomerType, UserType } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 import B2BCheckoutForm from "@/components/b2b/B2BCheckoutForm";
+import EcommerceCheckoutForm from "@/components/ecommerce/EcommerceCheckoutForm";
 import Header from "@/components/layout/Header";
 import { prisma } from "@/lib/prisma";
 import { SessionService } from "@/modules/auth/services/session.service";
 import { getCustomerAddressWhere } from "@/modules/b2b/services/customer-user-access.service";
 
 export const metadata = {
-  title:
-    "Sipariş Onayı | ETKEN Ofis",
+  title: "Güvenli Ödeme | ETKEN Ofis",
 };
 
 export default async function CheckoutPage() {
-  const user =
-    await SessionService.getCurrentUser();
+  const user = await SessionService.getCurrentUser();
 
-  if (
-    !user ||
-    user.userType !==
-      UserType.CUSTOMER ||
-    !user.customerId ||
-    !user.customer ||
-    !user.customer.isActive
-  ) {
-    redirect(
-      "/customer-login"
-    );
+  const isCorporateCustomer =
+    user?.userType === UserType.CUSTOMER &&
+    Boolean(user.customerId) &&
+    Boolean(user.customer?.isActive);
+
+  if (isCorporateCustomer && user?.mustChangePassword) {
+    redirect("/change-password?returnTo=%2Fcheckout");
   }
 
-  if (
-    user.mustChangePassword
-  ) {
-    redirect(
-      "/change-password?returnTo=%2Fcheckout"
-    );
-  }
-
-  const customer =
-    await prisma.customer.findFirst({
+  if (isCorporateCustomer && user?.customerId) {
+    const customer = await prisma.customer.findFirst({
       where: {
         id: user.customerId,
         isActive: true,
+        customerType: CustomerType.CORPORATE,
       },
       select: {
         discountRate: true,
@@ -49,14 +37,7 @@ export default async function CheckoutPage() {
         paymentTermDays: true,
         addresses: {
           where: getCustomerAddressWhere(user),
-          orderBy: [
-            {
-              isDefault: "desc",
-            },
-            {
-              title: "asc",
-            },
-          ],
+          orderBy: [{ isDefault: "desc" }, { title: "asc" }],
           select: {
             id: true,
             title: true,
@@ -69,41 +50,41 @@ export default async function CheckoutPage() {
       },
     });
 
-  if (!customer) {
-    redirect(
-      "/customer-login"
-    );
+    if (customer) {
+      return (
+        <>
+          <Header />
+          <main className="min-h-screen bg-slate-100">
+            <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+              <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Kurumsal Sipariş</p>
+              <h1 className="mt-2 text-4xl font-black text-slate-900">Sipariş Onayı</h1>
+              <p className="mb-8 mt-2 text-slate-500">
+                Kurumsal siparişlerde minimum sepet tutarı KDV hariç 1.000 TL’dir.
+              </p>
+              <B2BCheckoutForm
+                addresses={customer.addresses}
+                discountRate={customer.discountRate}
+                creditLimit={customer.creditLimit}
+                paymentTermDays={customer.paymentTermDays}
+              />
+            </div>
+          </main>
+        </>
+      );
+    }
   }
 
   return (
     <>
       <Header />
       <main className="min-h-screen bg-slate-100">
-        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <p className="text-sm font-bold uppercase tracking-wide text-blue-700">
-            Güvenli Sipariş
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <p className="text-sm font-black uppercase tracking-wide text-[#EF4B23]">Güvenli Alışveriş</p>
+          <h1 className="mt-2 text-3xl font-black text-slate-900 sm:text-4xl">Siparişini Tamamla</h1>
+          <p className="mb-8 mt-2 text-slate-500">
+            Üye olmadan teslimat ve fatura bilgilerinizi girerek sipariş oluşturabilirsiniz.
           </p>
-          <h1 className="mt-2 text-4xl font-black text-slate-900">
-            Sipariş Onayı
-          </h1>
-          <p className="mt-2 mb-8 text-slate-500">
-            Teslimat ve ödeme bilgilerinizi kontrol ederek siparişinizi tamamlayın.
-          </p>
-
-          <B2BCheckoutForm
-            addresses={
-              customer.addresses
-            }
-            discountRate={
-              customer.discountRate
-            }
-            creditLimit={
-              customer.creditLimit
-            }
-            paymentTermDays={
-              customer.paymentTermDays
-            }
-          />
+          <EcommerceCheckoutForm />
         </div>
       </main>
     </>

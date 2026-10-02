@@ -9,7 +9,7 @@ import { SITE_CONFIG } from "@/modules/site/constants/site.constants";
 const siteUrl = `https://${SITE_CONFIG.domain}`;
 
 const siteDescription =
-  "Etken Ofis; işletmeler için ofis kırtasiye, temizlik ve hijyen, gıda ve mutfak, ambalaj ve paketleme ile iş güvenliği ürünlerinde kurumsal tedarik platformudur.";
+  "Etken Ofis; ofis kırtasiye, temizlik ve hijyen, gıda ve mutfak, ambalaj ve paketleme ürünlerini online satın alabileceğiniz e-ticaret mağazasıdır.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   applicationName: SITE_CONFIG.brandName,
 
   title: {
-    default: "Etken Ofis | Kurumsal Tedarik Platformu",
+    default: "Etken Ofis | Online Alışveriş",
     template: "%s | Etken Ofis",
   },
 
@@ -25,7 +25,8 @@ export const metadata: Metadata = {
 
   keywords: [
     "Etken Ofis",
-    "kurumsal tedarik",
+    "online alışveriş",
+    "e-ticaret",
     "ofis malzemeleri",
     "ofis kırtasiye",
     "B2B tedarik",
@@ -81,20 +82,20 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: SITE_CONFIG.brandName,
 
-    title: "Etken Ofis | Kurumsal Tedarik Platformu",
+    title: "Etken Ofis | Online Alışveriş",
     description: siteDescription,
 
     images: [
       {
         url: "/etken-ofis-logo.png",
-        alt: "Etken Ofis Kurumsal Tedarik",
+        alt: "Etken Ofis Online Alışveriş",
       },
     ],
   },
 
   twitter: {
     card: "summary",
-    title: "Etken Ofis | Kurumsal Tedarik Platformu",
+    title: "Etken Ofis | Online Alışveriş",
     description: siteDescription,
     images: ["/etken-ofis-logo.png"],
   },
@@ -141,7 +142,7 @@ const websiteJsonLd = {
 
   url: siteUrl,
   name: "Etken Ofis",
-  alternateName: "Etken Ofis Kurumsal Tedarik",
+  alternateName: "Etken Ofis Online Mağaza",
 
   publisher: {
     "@id": `${siteUrl}/#organization`,
