@@ -180,8 +180,14 @@ export async function createStockMovementWithTransaction(
       reservedChange,
     });
 
+  const isAuditOnlyStockReturn =
+    input.movementType === StockMovementType.STOCK_RETURN &&
+    physicalChange === 0 &&
+    reservedChange === 0;
+
   if (
-    !changesValidation.success
+    !changesValidation.success &&
+    !isAuditOnlyStockReturn
   ) {
     throw new Error(
       changesValidation.message
