@@ -93,28 +93,66 @@ export default async function WmsOrderReport({kind,searchParams}:{kind:ReportKin
     totalRow={{date:"Toplam",line:n(rows.length),ordered:n(totals.ordered),picked:n(totals.picked),pickingDiff:n(Math.max(totals.ordered-totals.picked,0)),packed:n(totals.packed),packingDiff:n(Math.max(totals.picked-totals.packed,0))}}/>
    </section>
  }
- const where:Prisma.PurchaseOrderWhereInput={};
- if(selectedWarehouseId)where.stockMovements={some:{warehouseId:selectedWarehouseId}};
- if(orderNumber)where.purchaseNumber={contains:orderNumber,mode:"insensitive"};
- if(productCode)where.items={some:{productCode:{contains:productCode,mode:"insensitive"}}};
- if(companyCode)where.supplier={taxNumber:{contains:companyCode,mode:"insensitive"}};
- if(companyName)where.supplier={name:{contains:companyName,mode:"insensitive"}};
- if(status==="OPEN")where.status={notIn:["RECEIVED","CANCELLED"]}; else if(status)where.status=status as Prisma.EnumPurchaseOrderStatusFilter;
- if(from||to)where.orderDate={...(from?{gte:from}:{}),...(to?{lte:to}:{})};
+ const purchaseWhere:Prisma.PurchaseOrderWhereInput={};
+ if(selectedWarehouseId)purchaseWhere.stockMovements={some:{warehouseId:selectedWarehouseId}};
+ if(orderNumber)purchaseWhere.purchaseNumber={contains:orderNumber,mode:"insensitive"};
+ if(productCode)purchaseWhere.items={some:{productCode:{contains:productCode,mode:"insensitive"}}};
+ if(companyCode)purchaseWhere.supplier={taxNumber:{contains:companyCode,mode:"insensitive"}};
+ if(companyName)purchaseWhere.supplier={name:{contains:companyName,mode:"insensitive"}};
+ if(status==="OPEN")purchaseWhere.status={notIn:["RECEIVED","CANCELLED"]}; else if(status)purchaseWhere.status=status as Prisma.EnumPurchaseOrderStatusFilter;
+ if(from||to)purchaseWhere.orderDate={...(from?{gte:from}:{}),...(to?{lte:to}:{})};
  const receiptItemWhere=productCode?{productCode:{contains:productCode,mode:"insensitive" as const}}:undefined;
- const orders=await prisma.purchaseOrder.findMany({where,orderBy:{orderDate:"desc"},include:{supplier:{select:{name:true,taxNumber:true}},stockMovements:{where:{warehouseId:{not:null}},select:{warehouse:{select:{code:true}}}},items:{where:receiptItemWhere,orderBy:{id:"asc"}}}});
- if(kind==="receipt-summary"){
-  const rows=orders.map(o=>{const warehouseCode=[...new Set(o.stockMovements.map(m=>m.warehouse?.code).filter((x):x is string=>Boolean(x)))].join(", ")||"-";const ordered=o.items.reduce((s,x)=>s+x.orderedQuantity,0),received=o.items.reduce((s,x)=>s+x.receivedQuantity,0);return{o,warehouseCode,ordered,received}});
-  const totals=rows.reduce((a,r)=>({ordered:a.ordered+r.ordered,received:a.received+r.received}),{ordered:0,received:0});
-  return <section className="p-4 sm:p-6 lg:p-10"><div className="flex justify-end"><ExcelTableExportButton tableId="wms-receipt-summary-table" fileName="giris-siparis-durum-raporu.csv"/></div><Filters title={m.title} orderLabel={m.orderLabel} startDate={startDate} endDate={endDate} orderNumber={orderNumber} status={status} productCode={productCode} shipment={shipment} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} movementType={movementType} warehouses={warehouses}/>
-   <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><table id="wms-receipt-summary-table" className="w-full min-w-[1000px]"><thead><tr>{["Sipariş Oluşturma Tarihi","Depo Kodu","Satın Alma Sipariş No","İrsaliye No","İrsaliye Tarihi","Tedarikçi Kodu","Tedarikçi Adı","Sipariş Miktarı","Giriş Miktarı","Giriş Farkı","Sipariş Durumu"].map(x=><th key={x} className={th}>{x}</th>)}</tr></thead>
-   <tbody>{rows.map(({o,warehouseCode,ordered,received})=><tr key={o.id} className="hover:bg-slate-50"><td className={td}>{fmtDate(o.orderDate)}</td><td className={td}>{warehouseCode}</td><td className={td+" font-bold text-blue-900"}>{o.purchaseNumber}</td><td className={td}>{o.deliveryNoteNumber??"-"}</td><td className={td}>{o.deliveryNoteDate?fmtDate(o.deliveryNoteDate):"-"}</td><td className={td}>{o.supplier.taxNumber??"-"}</td><td className={td}>{o.supplier.name}</td><td className={td}>{n(ordered)}</td><td className={td}>{n(received)}</td><td className={td}>{n(Math.max(ordered-received,0))}</td><td className={td}>{receiptStatus(o.status)}</td></tr>)}
-   {rows.length===0?<tr><td colSpan={11} className="p-10 text-center text-slate-500">Filtreye uygun giriş siparişi bulunamadı.</td></tr>:<tr className="bg-slate-100 font-bold"><td className={td}>Toplam</td><td className={td}>{n(rows.length)} sipariş</td><td className={td}>-</td><td className={td}>-</td><td className={td}>{n(totals.ordered)}</td><td className={td}>{n(totals.received)}</td><td className={td}>{n(Math.max(totals.ordered-totals.received,0))}</td><td className={td}>-</td></tr>}</tbody></table></div></section>
+
+ const includePurchases=movementType!=="SALE_RETURN";
+ const includeReturns=movementType!=="PURCHASE_RECEIPT";
+ const purchases=includePurchases?await prisma.purchaseOrder.findMany({where:purchaseWhere,orderBy:{orderDate:"desc"},include:{supplier:{select:{name:true,taxNumber:true}},stockMovements:{where:{warehouseId:{not:null}},select:{warehouse:{select:{code:true}}}},items:{where:receiptItemWhere,orderBy:{id:"asc"}}}}):[];
+
+ const returnWhere:Prisma.ReturnOrderWhereInput={};
+ if(orderNumber)returnWhere.returnNumber={contains:orderNumber,mode:"insensitive"};
+ if(productCode)returnWhere.items={some:{productCode:{contains:productCode,mode:"insensitive"}}};
+ if(companyCode)returnWhere.originalOrder={customer:{customerCode:{contains:companyCode,mode:"insensitive"}}};
+ if(companyName)returnWhere.originalOrder={customer:{companyName:{contains:companyName,mode:"insensitive"}}};
+ if(status==="OPEN")returnWhere.status={in:["OPEN","PARTIALLY_RECEIVED"]}; else if(status&&["OPEN","PARTIALLY_RECEIVED","RECEIVED","CANCELLED"].includes(status))returnWhere.status=status as Prisma.EnumReturnOrderStatusFilter;
+ if(from||to)returnWhere.createdAt={...(from?{gte:from}:{}),...(to?{lte:to}:{})};
+ const returnsRaw=includeReturns?await prisma.returnOrder.findMany({where:returnWhere,orderBy:{createdAt:"desc"},include:{originalOrder:{select:{customer:{select:{customerCode:true,companyName:true}}}},items:{where:receiptItemWhere,orderBy:{createdAt:"asc"}}}}):[];
+ const returnNumbers=returnsRaw.map(r=>r.returnNumber);
+ const returnLogs=returnNumbers.length?await prisma.wmsOperationLog.findMany({where:{module:"RF_RETURN_RECEIVING",operationType:"RECEIVING"},select:{warehouseId:true,warehouseCode:true,metadata:true}}):[];
+ const returnWarehouseMap=new Map<string,Set<string>>();
+ const returnWarehouseIdMap=new Map<string,Set<number>>();
+ for(const log of returnLogs){
+  const meta=log.metadata&&typeof log.metadata==="object"&&!Array.isArray(log.metadata)?log.metadata as Record<string,unknown>:null;
+  const rn=typeof meta?.returnNumber==="string"?meta.returnNumber:null;
+  if(!rn||!returnNumbers.includes(rn))continue;
+  if(log.warehouseCode){const set=returnWarehouseMap.get(rn)??new Set<string>();set.add(log.warehouseCode);returnWarehouseMap.set(rn,set)}
+  if(log.warehouseId){const set=returnWarehouseIdMap.get(rn)??new Set<number>();set.add(log.warehouseId);returnWarehouseIdMap.set(rn,set)}
  }
- const rows=orders.flatMap(o=>{const warehouseCode=[...new Set(o.stockMovements.map(m=>m.warehouse?.code).filter((x):x is string=>Boolean(x)))].join(", ")||"-";return o.items.map((x,index)=>({o,x,line:index+1,warehouseCode}))});
- const totals=rows.reduce((a,r)=>({ordered:a.ordered+r.x.orderedQuantity,received:a.received+r.x.receivedQuantity}),{ordered:0,received:0});
+ const returns=selectedWarehouseId?returnsRaw.filter(r=>returnWarehouseIdMap.get(r.returnNumber)?.has(selectedWarehouseId)):returnsRaw;
+ const returnStatus=(v:string)=>({OPEN:"Açık",PARTIALLY_RECEIVED:"Kısmi İade Girişi",RECEIVED:"İade Girişi Tamamlandı",CANCELLED:"İptal"} as Record<string,string>)[v]??v;
+
+ const summaryRows=[
+  ...purchases.map(o=>{const warehouseCode=[...new Set(o.stockMovements.map(m=>m.warehouse?.code).filter((x):x is string=>Boolean(x)))].join(", ")||"-";const ordered=o.items.reduce((s,x)=>s+x.orderedQuantity,0),received=o.items.reduce((s,x)=>s+x.receivedQuantity,0);return{key:`P-${o.id}`,date:o.orderDate,warehouseCode,orderNo:o.purchaseNumber,deliveryNoteNumber:o.deliveryNoteNumber??"-",deliveryNoteDate:o.deliveryNoteDate,companyCode:o.supplier.taxNumber??"-",companyName:o.supplier.name,ordered,received,status:receiptStatus(o.status),movementType:"Mal Kabul"}}),
+  ...returns.map(o=>{const warehouseCode=[...(returnWarehouseMap.get(o.returnNumber)??new Set<string>())].join(", ")||"-";const ordered=o.items.reduce((s,x)=>s+x.expectedQuantity,0),received=o.items.reduce((s,x)=>s+x.receivedQuantity,0);return{key:`R-${o.id}`,date:o.createdAt,warehouseCode,orderNo:o.returnNumber,deliveryNoteNumber:o.deliveryNoteNumber,deliveryNoteDate:o.deliveryNoteDate,companyCode:o.originalOrder.customer.customerCode,companyName:o.originalOrder.customer.companyName,ordered,received,status:returnStatus(o.status),movementType:"İade Girişi"}})
+ ].sort((a,b)=>b.date.getTime()-a.date.getTime());
+
+ if(kind==="receipt-summary"){
+  const totals=summaryRows.reduce((a,r)=>({ordered:a.ordered+r.ordered,received:a.received+r.received}),{ordered:0,received:0});
+  return <section className="p-4 sm:p-6 lg:p-10"><div className="flex justify-end"><ExcelTableExportButton tableId="wms-receipt-summary-table" fileName="giris-siparis-durum-raporu.csv"/></div><Filters title={m.title} orderLabel={m.orderLabel} startDate={startDate} endDate={endDate} orderNumber={orderNumber} status={status} productCode={productCode} shipment={shipment} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} movementType={movementType} warehouses={warehouses}/>
+   <ConfigurableReportTable storageKey="etken:columns:receipt-summary-report" tableId="wms-receipt-summary-table" minWidth="1350px" emptyText="Filtreye uygun giriş siparişi bulunamadı."
+    columns={[{key:"date",label:"Sipariş Oluşturma Tarihi"},{key:"movementType",label:"Hareket Tipi"},{key:"warehouseCode",label:"Depo Kodu"},{key:"orderNo",label:"Giriş Sipariş No"},{key:"deliveryNoteNumber",label:"İrsaliye No"},{key:"deliveryNoteDate",label:"İrsaliye Tarihi"},{key:"companyCode",label:"Firma / Tedarikçi Kodu"},{key:"companyName",label:"Firma / Tedarikçi Adı"},{key:"ordered",label:"Sipariş Miktarı"},{key:"received",label:"Giriş Miktarı"},{key:"diff",label:"Giriş Farkı"},{key:"status",label:"Sipariş Durumu"}]}
+    rows={summaryRows.map(r=>({key:r.key,cells:{date:fmtDate(r.date),movementType:r.movementType,warehouseCode:r.warehouseCode,orderNo:r.orderNo,deliveryNoteNumber:r.deliveryNoteNumber,deliveryNoteDate:r.deliveryNoteDate?fmtDate(r.deliveryNoteDate):"-",companyCode:r.companyCode,companyName:r.companyName,ordered:n(r.ordered),received:n(r.received),diff:n(Math.max(r.ordered-r.received,0)),status:r.status}}))}
+    totalRow={{date:"Toplam",orderNo:n(summaryRows.length),ordered:n(totals.ordered),received:n(totals.received),diff:n(Math.max(totals.ordered-totals.received,0))}}/>
+  </section>
+ }
+
+ const detailRows=[
+  ...purchases.flatMap(o=>{const warehouseCode=[...new Set(o.stockMovements.map(m=>m.warehouse?.code).filter((x):x is string=>Boolean(x)))].join(", ")||"-";return o.items.map((x,index)=>({key:`P-${x.id}`,date:o.orderDate,movementType:"Mal Kabul",warehouseCode,orderNo:o.purchaseNumber,deliveryNoteNumber:o.deliveryNoteNumber??"-",deliveryNoteDate:o.deliveryNoteDate,companyCode:o.supplier.taxNumber??"-",companyName:o.supplier.name,line:index+1,productCode:x.productCode,productName:x.productName,ordered:x.orderedQuantity,received:x.receivedQuantity,status:receiptStatus(o.status)}))}),
+  ...returns.flatMap(o=>{const warehouseCode=[...(returnWarehouseMap.get(o.returnNumber)??new Set<string>())].join(", ")||"-";return o.items.map((x,index)=>({key:`R-${x.id}`,date:o.createdAt,movementType:"İade Girişi",warehouseCode,orderNo:o.returnNumber,deliveryNoteNumber:o.deliveryNoteNumber,deliveryNoteDate:o.deliveryNoteDate,companyCode:o.originalOrder.customer.customerCode,companyName:o.originalOrder.customer.companyName,line:index+1,productCode:x.productCode,productName:x.productName,ordered:x.expectedQuantity,received:x.receivedQuantity,status:returnStatus(o.status)}))})
+ ].sort((a,b)=>b.date.getTime()-a.date.getTime());
+ const totals=detailRows.reduce((a,r)=>({ordered:a.ordered+r.ordered,received:a.received+r.received}),{ordered:0,received:0});
  return <section className="p-4 sm:p-6 lg:p-10"><div className="flex justify-end"><ExcelTableExportButton tableId="wms-receipt-detail-table" fileName="giris-siparis-detay-raporu.csv"/></div><Filters title={m.title} orderLabel={m.orderLabel} startDate={startDate} endDate={endDate} orderNumber={orderNumber} status={status} productCode={productCode} shipment={shipment} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} movementType={movementType} warehouses={warehouses}/>
-  <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><table id="wms-receipt-detail-table" className="w-full min-w-[1350px]"><thead><tr>{["Sipariş Oluşturma Tarihi","Depo Kodu","Satın Alma Sipariş No","İrsaliye No","İrsaliye Tarihi","Tedarikçi Kodu","Tedarikçi Adı","Kalem No","Ürün Kodu","Ürün Tanımı","Sipariş Miktarı","Giriş Miktarı","Giriş Farkı","Sipariş Durumu"].map(x=><th key={x} className={th}>{x}</th>)}</tr></thead>
-  <tbody>{rows.map(({o,x,line,warehouseCode})=><tr key={x.id} className="hover:bg-slate-50"><td className={td}>{fmtDate(o.orderDate)}</td><td className={td}>{warehouseCode}</td><td className={td+" font-bold text-blue-900"}>{o.purchaseNumber}</td><td className={td}>{o.deliveryNoteNumber??"-"}</td><td className={td}>{o.deliveryNoteDate?fmtDate(o.deliveryNoteDate):"-"}</td><td className={td}>{o.supplier.taxNumber??"-"}</td><td className={td}>{o.supplier.name}</td><td className={td}>{line}</td><td className={td}>{x.productCode}</td><td className={td+" max-w-[360px] whitespace-normal"}>{x.productName}</td><td className={td}>{n(x.orderedQuantity)}</td><td className={td}>{n(x.receivedQuantity)}</td><td className={td}>{n(Math.max(x.orderedQuantity-x.receivedQuantity,0))}</td><td className={td}>{receiptStatus(o.status)}</td></tr>)}
-  {rows.length===0?<tr><td colSpan={14} className="p-10 text-center text-slate-500">Filtreye uygun giriş sipariş detayı bulunamadı.</td></tr>:<tr className="bg-slate-100 font-bold"><td className={td}>Toplam</td><td className={td}>-</td><td className={td}>-</td><td className={td}>-</td><td className={td}>{n(rows.length)}</td><td className={td}>-</td><td className={td}>-</td><td className={td}>{n(totals.ordered)}</td><td className={td}>{n(totals.received)}</td><td className={td}>{n(Math.max(totals.ordered-totals.received,0))}</td><td className={td}>-</td></tr>}</tbody></table></div></section>
+  <ConfigurableReportTable storageKey="etken:columns:receipt-detail-report" tableId="wms-receipt-detail-table" minWidth="1550px" emptyText="Filtreye uygun giriş sipariş detayı bulunamadı."
+   columns={[{key:"date",label:"Sipariş Oluşturma Tarihi"},{key:"movementType",label:"Hareket Tipi"},{key:"warehouseCode",label:"Depo Kodu"},{key:"orderNo",label:"Giriş Sipariş No"},{key:"deliveryNoteNumber",label:"İrsaliye No"},{key:"deliveryNoteDate",label:"İrsaliye Tarihi"},{key:"companyCode",label:"Firma / Tedarikçi Kodu"},{key:"companyName",label:"Firma / Tedarikçi Adı"},{key:"line",label:"Kalem No"},{key:"productCode",label:"Ürün Kodu"},{key:"productName",label:"Ürün Tanımı"},{key:"ordered",label:"Sipariş Miktarı"},{key:"received",label:"Giriş Miktarı"},{key:"diff",label:"Giriş Farkı"},{key:"status",label:"Sipariş Durumu"}]}
+   rows={detailRows.map(r=>({key:r.key,cells:{date:fmtDate(r.date),movementType:r.movementType,warehouseCode:r.warehouseCode,orderNo:r.orderNo,deliveryNoteNumber:r.deliveryNoteNumber,deliveryNoteDate:r.deliveryNoteDate?fmtDate(r.deliveryNoteDate):"-",companyCode:r.companyCode,companyName:r.companyName,line:r.line,productCode:r.productCode,productName:r.productName,ordered:n(r.ordered),received:n(r.received),diff:n(Math.max(r.ordered-r.received,0)),status:r.status}}))}
+   totalRow={{date:"Toplam",line:n(detailRows.length),ordered:n(totals.ordered),received:n(totals.received),diff:n(Math.max(totals.ordered-totals.received,0))}}/>
+ </section>
 }
