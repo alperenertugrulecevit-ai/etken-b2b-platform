@@ -71,7 +71,7 @@ export class StockReturnService{
   if(!orderNumber||!sourceBarcode||!productBarcode||!targetBarcode||!targetLocationCode)throw new Error("Sipariş, kaynak THM/SVK, ürün, hedef stok THM ve hedef adres zorunludur.");
   if(sourceBarcode===targetBarcode)throw new Error("Kaynak ve hedef THM aynı olamaz.");
   return prisma.$transaction(async tx=>{
-   const order=await tx.order.findUnique({where:{orderNumber},select:{id:true,orderNumber:true,status:true,fulfillment:{select:{flowType:true,waveId:true}},items:{where:{OR:[{product:{barcode:productBarcode}},{productCode:productBarcode}]},select:{id:true,productId:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,product:{select:{barcode:true}}}}}});
+   const order=await tx.order.findUnique({where:{orderNumber},select:{id:true,orderNumber:true,status:true,fulfillmentWarehouseId:true,fulfillment:{select:{flowType:true,waveId:true}},items:{where:{OR:[{product:{barcode:productBarcode}},{productCode:productBarcode}]},select:{id:true,productId:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,product:{select:{barcode:true}}}}}});
    if(!order)throw new Error("Çıkış siparişi bulunamadı.");
    if(order.status===OrderStatus.SHIPPED||order.status===OrderStatus.DELIVERED)throw new Error("Sipariş SEVK EDİLDİ. Bu işlem yerine İade Giriş kullanılmalıdır.");
    if(order.status===OrderStatus.CANCELLED)throw new Error("İptal edilmiş sipariş geri alma işlemine açık değildir.");
@@ -81,15 +81,18 @@ export class StockReturnService{
    if(CUSTOMER_REASONS.includes(input.reason)&&item.cancelledQuantity>=item.quantity)throw new Error("Bu sipariş kalemi tamamen iptal edilmiş.");
 
    const source=await tx.handlingUnit.findUnique({where:{barcode:sourceBarcode},select:{id:true,barcode:true,purpose:true,warehouseId:true,items:{where:{productId:item.productId},select:{id:true,quantity:true}}}});
-   if(!source||!source.warehouseId)throw new Error("Kaynak THM/SVK bulunamadı veya depo bilgisi yok.");
+   if(!source)throw new Error("Kaynak THM/SVK bulunamadı.");
    const sourceItem=source.items[0]; if(!sourceItem||sourceItem.quantity<=0)throw new Error("Kaynak THM/SVK içinde okutulan ürün bulunmuyor.");
 
    const target=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,purpose:true,status:true,warehouseId:true,parentUnitId:true,locationId:true,items:{select:{quantity:true}}}});
    if(!target)throw new Error("Hedef stok THM bulunamadı.");
    if(target.parentUnitId!==null)throw new Error("Hedef THM başka bir THM'ye bağlıdır.");
    if(target.status!==HandlingUnitStatus.OPEN&&target.status!==HandlingUnitStatus.EMPTY&&target.status!==HandlingUnitStatus.STORED)throw new Error("Hedef THM stok geri almaya uygun değil.");
-   if(target.warehouseId!==source.warehouseId)throw new Error("Kaynak ve hedef THM aynı depoda olmalıdır.");
-   const locationCandidates=await tx.warehouseLocation.findMany({where:{warehouseId:source.warehouseId,isActive:true},select:{id:true,code:true,aisle:true,section:true,level:true,bin:true,locationType:true}});
+   const operationWarehouseId=source.warehouseId??order.fulfillmentWarehouseId??target.warehouseId;
+   if(!operationWarehouseId)throw new Error("Sipariş, kaynak THM/SVK ve hedef THM üzerinden depo bilgisi belirlenemedi.");
+   if(source.warehouseId!==null&&source.warehouseId!==operationWarehouseId)throw new Error("Kaynak THM siparişin operasyon deposunda değildir.");
+   if(target.warehouseId!==operationWarehouseId)throw new Error("Hedef THM siparişin operasyon deposunda değildir.");
+   const locationCandidates=await tx.warehouseLocation.findMany({where:{warehouseId:operationWarehouseId,isActive:true},select:{id:true,code:true,aisle:true,section:true,level:true,bin:true,locationType:true}});
    const location=locationCandidates.find(x=>n(x.code)===targetLocationCode||locationBarcode(x)===targetLocationCode);
    if(!location)throw new Error("Hedef adres bu depoda bulunamadı veya pasif.");
    const targetHasStock=target.items.some(x=>x.quantity>0);
@@ -141,8 +144,8 @@ export class StockReturnService{
    }
 
    await tx.stockReturnEvent.create({data:{orderId:order.id,orderItemId:item.id,productId:item.productId,reason:input.reason,stage,quantity:1,sourceHandlingUnitId:source.id,targetHandlingUnitId:target.id,targetLocationId:location.id,productCode:item.productCode,productBarcode:item.product.barcode,productName:item.productName,sourceBarcode:source.barcode,targetBarcode:target.barcode,targetLocationCode:location.code,operatorId:input.actor.userId,operatorName:input.actor.displayName,terminalCode:input.actor.terminalCode??null}});
-   await createStockMovementWithTransaction(tx,{warehouseId:source.warehouseId,productId:item.productId,orderId:order.id,movementType:StockMovementType.STOCK_RETURN,physicalChange:0,reservedChange:0,documentNumber:order.orderNumber,description:`Sevk öncesi stoğa geri alma; neden ${input.reason}; aşama ${stage}; kaynak ${source.barcode}; hedef ${target.barcode}; adres ${locationBarcode(location)}.`});
-   await tx.wmsOperationLog.create({data:{operationType:WmsOperationType.ITEM_TRANSFER,module:"RF_STOCK_RETURN",entityType:"ORDER",entityId:order.id,operatorId:input.actor.userId,operatorName:input.actor.displayName,terminalCode:input.actor.terminalCode??null,barcode:order.orderNumber,sourceBarcode:source.barcode,targetBarcode:target.barcode,orderId:order.id,orderNumber:order.orderNumber,productId:item.productId,productCode:item.productCode,productName:item.productName,quantity:1,warehouseId:source.warehouseId,targetLocationId:location.id,targetLocationCode:location.code,previousStatus:stage,newStatus:"STOCK",description:`${item.productCode} 1 adet sevk öncesi stoğa geri alındı.`,metadata:{reason:input.reason,stage}}});
+   await createStockMovementWithTransaction(tx,{warehouseId:operationWarehouseId,productId:item.productId,orderId:order.id,movementType:StockMovementType.STOCK_RETURN,physicalChange:0,reservedChange:0,documentNumber:order.orderNumber,description:`Sevk öncesi stoğa geri alma; neden ${input.reason}; aşama ${stage}; kaynak ${source.barcode}; hedef ${target.barcode}; adres ${locationBarcode(location)}.`});
+   await tx.wmsOperationLog.create({data:{operationType:WmsOperationType.ITEM_TRANSFER,module:"RF_STOCK_RETURN",entityType:"ORDER",entityId:order.id,operatorId:input.actor.userId,operatorName:input.actor.displayName,terminalCode:input.actor.terminalCode??null,barcode:order.orderNumber,sourceBarcode:source.barcode,targetBarcode:target.barcode,orderId:order.id,orderNumber:order.orderNumber,productId:item.productId,productCode:item.productCode,productName:item.productName,quantity:1,warehouseId:operationWarehouseId,targetLocationId:location.id,targetLocationCode:location.code,previousStatus:stage,newStatus:"STOCK",description:`${item.productCode} 1 adet sevk öncesi stoğa geri alındı.`,metadata:{reason:input.reason,stage}}});
 
    const flow=order.fulfillment?.flowType??OrderFulfillmentFlow.DIRECT_ORDER;
    const progress=await FulfillmentService.refreshOrderProgress(tx,{orderId:order.id,flowType:flow,waveId:order.fulfillment?.waveId??null});
