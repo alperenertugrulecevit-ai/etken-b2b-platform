@@ -42,7 +42,7 @@ export async function matchEcommercePreReceiptToOrder(formData:FormData){
     if(!order||order.orderType!==OrderType.ECOMMERCE) throw new Error("E-Ticaret siparişi bulunamadı.");
     if(!["SHIPPED","DELIVERED","READY_TO_SHIP"].includes(order.status)) throw new Error("Sipariş kargoya/sevke çıkmış bir E-Ticaret siparişi değil.");
 
-    let er=await tx.ecommerceReturn.findFirst({where:{originalOrderId:order.id,preReceipts:{some:{id:pre.id}}}});
+    let er=await tx.ecommerceReturn.findFirst({where:pre.mode==="RETURN_CODE"?{originalOrderId:order.id,externalReturnCode:pre.scannedCode}:{originalOrderId:order.id,status:{in:[EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING]}}});
     if(!er){
       const returnNumber=`ETI-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${randomUUID().replaceAll("-","").slice(0,8).toUpperCase()}`;
       er=await tx.ecommerceReturn.create({data:{
