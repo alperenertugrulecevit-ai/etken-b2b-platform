@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import EcommerceReturnReceivingPanel from "@/components/admin/EcommerceReturnReceivingPanel";
-import { createRefundApprovalRecord, markEcommerceRefundCompleted, matchCargoPreReceiptToOrder, resolveEcommerceReturnInspectionRefund } from "./actions";
+import { createRefundApprovalRecord, markEcommerceRefundCompleted, matchEcommercePreReceiptToOrder, resolveEcommerceReturnInspectionRefund } from "./actions";
 
 export const dynamic="force-dynamic";
 
