@@ -34,6 +34,13 @@ export class ZonePickingService {
   }
   for(const p of plans.values()){
    let existing=await tx.zonePickTask.findFirst({where:{orderId:p.orderId,zoneId:p.zoneId,waveId:input.waveId??null}});
+   // Tamamlanmış eski görev geçmiş kaydıdır. Yanlış toplama sonrası aynı sipariş/Zone
+   // yeniden planlandığında bu görevin picked satırlarını yeni plana taşımayız.
+   // Aksi halde 3/3 tamamlanmış eski görev yeni 2 adetlik ihtiyacı görünmez kılar.
+   if(existing?.status===ZonePickTaskStatus.COMPLETED){
+    await tx.zonePickTask.delete({where:{id:existing.id}});
+    existing=null;
+   }
    const data={warehouseId:input.warehouseId,zoneId:p.zoneId,orderId:p.orderId,waveId:input.waveId??null,status:ZonePickTaskStatus.OPEN,plannedLineCount:p.lines.length,plannedQuantity:p.lines.reduce((n,l)=>n+l.quantity,0)};
    if(existing){
     const oldLines=await tx.zonePickTaskLine.findMany({where:{taskId:existing.id},select:{handlingUnitItemId:true,plannedQuantity:true,pickedQuantity:true}});
