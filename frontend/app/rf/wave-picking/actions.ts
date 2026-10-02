@@ -416,6 +416,10 @@ export async function rfWavePoolPickAction(
       "/admin/handling-units"
     );
 
+    revalidatePath(
+      "/admin/stock/movements"
+    );
+
     return {
       success: true,
 
