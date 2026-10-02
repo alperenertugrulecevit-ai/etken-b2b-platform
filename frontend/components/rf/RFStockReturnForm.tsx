@@ -4,7 +4,7 @@ import Link from"next/link";
 import{lookupStockReturnOrder,returnStockOne,type StockReturnLookupState,type StockReturnScanState}from"@/app/rf/stock-return/actions";
 
 type Target={barcode:string;purpose:string;warehouseId:number|null};
-type Location={code:string;warehouseId:number;locationType:string};
+type Location={code:string;scanCode:string;warehouseId:number;locationType:string};
 const lookupInitial:StockReturnLookupState={ok:false,message:""};
 const scanInitial:StockReturnScanState={ok:false,message:""};
 
@@ -29,7 +29,7 @@ export default function RFStockReturnForm({targets,locations}:{targets:Target[];
    <datalist id="stock-return-sources">{lookup.order.sources.map(x=><option key={x.barcode} value={x.barcode}>{x.stage}</option>)}</datalist>
    <datalist id="stock-return-products">{lookup.order.items.filter(x=>x.pickedQuantity>0).flatMap(x=>[<option key={x.id} value={x.productBarcode}>{x.productCode} · Toplanan {x.pickedQuantity}</option>,<option key={"c"+x.id} value={x.productCode}>{x.productName}</option>])}</datalist>
    <datalist id="stock-return-targets">{targets.map(x=><option key={x.barcode} value={x.barcode}>{x.purpose}</option>)}</datalist>
-   <datalist id="stock-return-locations">{validLocations.map(x=><option key={x.warehouseId+"-"+x.code} value={x.code}>{x.locationType}</option>)}</datalist>
+   <datalist id="stock-return-locations">{validLocations.map(x=><option key={x.warehouseId+"-"+x.code} value={x.scanCode}>{x.locationType}</option>)}</datalist>
    <form action={scanAction} className="mt-4 rounded-2xl border bg-white p-4 shadow-sm">
     <input type="hidden" name="orderNumber" value={lookup.order.orderNumber}/>
     <label className="block"><b>2. İşlem Nedeni</b><select name="reason" value={reason} onChange={e=>setReason(e.target.value)} className="mt-2 w-full rounded-xl border-2 p-4 text-lg font-bold"><option value="CUSTOMER_PARTIAL_CANCEL">Müşteri Kısmi İptal</option><option value="CUSTOMER_FULL_CANCEL">Müşteri Tam İptal</option><option value="WRONG_PICK">Yanlış Toplama</option><option value="DAMAGED">Hasarlı Ürün</option><option value="OPERATION_CORRECTION">Operasyon Düzeltme</option></select></label>
