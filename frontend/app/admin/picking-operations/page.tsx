@@ -23,7 +23,7 @@ export default async function PickingOperationsPage({searchParams}:{searchParams
    where:{status:{in:["OPEN","CLAIMED","IN_PROGRESS"]},waveId:null,...(selectedWarehouseId?{warehouseId:selectedWarehouseId}:{})},
    orderBy:{createdAt:"desc"},take:100,
    select:{id:true,createdAt:true,status:true,warehouse:{select:{code:true}},zone:{select:{code:true}},claimedBy:{select:{username:true,employee:{select:{firstName:true,lastName:true}}}},
-    order:{select:{id:true,orderNumber:true,orderType:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,pickedQuantity:true,product:{select:{barcode:true}},pickingShortages:{where:{status:"ACTIVE"},select:{id:true,quantity:true,reason:true}}}}}}}
+    order:{select:{id:true,orderNumber:true,orderType:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,product:{select:{barcode:true}},pickingShortages:{where:{status:"ACTIVE"},select:{id:true,quantity:true,reason:true}}}}}}}
   }),
   prisma.warehouse.findMany({where:{isActive:true,code:{not:"KYP001"}},orderBy:{code:"asc"},select:{id:true,code:true,name:true}})
  ]);
@@ -41,7 +41,7 @@ export default async function PickingOperationsPage({searchParams}:{searchParams
  }
  for(const task of directTasks){
   const items=task.order.items.map(i=>({...i,orderId:task.order.id,orderNumber:task.order.orderNumber,orderType:task.order.orderType}));
-  const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+i.pickedQuantity,0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
+  const planned=items.reduce((s,i)=>s+Math.max(0,i.quantity-(i.cancelledQuantity??0)),0),picked=items.reduce((s,i)=>s+Math.min(i.pickedQuantity,Math.max(0,i.quantity-(i.cancelledQuantity??0))),0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
   if(planned<=picked+short) continue;
   groups.push({key:task.id,date:task.createdAt,warehouseCode:task.warehouse?.code??"-",type:"Sipariş Bazlı",orderType:typeLabel[task.order.orderType]??task.order.orderType,person:person(task.claimedBy),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:"Devam Ediyor",items});
  }
