@@ -51,14 +51,20 @@ export default async function WmsTrackingReport({kind,searchParams}:{kind:Kind;s
   }).filter((v):v is string=>Boolean(v)))];
   const returns=returnNumbers.length?await prisma.returnOrder.findMany({where:{returnNumber:{in:returnNumbers}},select:{returnNumber:true,deliveryNoteNumber:true,deliveryNoteDate:true,originalOrder:{select:{customer:{select:{customerCode:true,companyName:true}}}}}}):[];
   const returnMap=new Map(returns.map(r=>[r.returnNumber,r]));
+  const ecommerceReturns=returnNumbers.length?await prisma.ecommerceReturn.findMany({where:{returnNumber:{in:returnNumbers}},select:{returnNumber:true,originalOrder:{select:{customer:{select:{customerCode:true,companyName:true}}}},preReceipts:{take:1,orderBy:{receivedAt:"asc"},select:{preReceiptNumber:true}}}}):[];
+  const ecommerceReturnMap=new Map(ecommerceReturns.map(r=>[r.returnNumber,r]));
 
   const reportRows=rows.map(r=>{
    const po=r.purchaseOrderId?purchaseMap.get(r.purchaseOrderId):undefined;
    const meta=r.metadata&&typeof r.metadata==="object"&&!Array.isArray(r.metadata)?r.metadata as Record<string,unknown>:null;
    const returnNumber=typeof meta?.returnNumber==="string"?meta.returnNumber:null;
    const ro=returnNumber?returnMap.get(returnNumber):undefined;
-   const isReturn=r.module==="RF_RETURN_RECEIVING"||Boolean(ro);
-   return {id:r.id,date:fmt(r.createdAt),warehouseCode:r.warehouseCode??"-",person:r.operatorName??"-",movementType:isReturn?"İade Girişi":"Mal Kabul",orderNo:isReturn?(returnNumber??r.orderNumber??"-"):(r.purchaseNumber??"-"),supplierCode:isReturn?(ro?.originalOrder.customer.customerCode??"-"):(po?.supplier.taxNumber??"-"),supplierName:isReturn?(ro?.originalOrder.customer.companyName??"-"):(po?.supplier.name??"-"),deliveryNoteNumber:isReturn?(ro?.deliveryNoteNumber??"-"):(po?.deliveryNoteNumber??"-"),deliveryNoteDate:(isReturn?ro?.deliveryNoteDate:po?.deliveryNoteDate)?new Intl.DateTimeFormat("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Istanbul"}).format((isReturn?ro?.deliveryNoteDate:po?.deliveryNoteDate)!):"-",thm:r.targetBarcode??r.barcode??"-",productCode:r.productCode??"-",productName:r.productName??"-",quantity:r.quantity??0};
+   const ero=returnNumber?ecommerceReturnMap.get(returnNumber):undefined;
+   const isReturn=r.module==="RF_RETURN_RECEIVING"||r.module==="ECOMMERCE_RETURN"||Boolean(ro)||Boolean(ero);
+   const returnCustomer=ro?.originalOrder.customer??ero?.originalOrder.customer;
+   const returnDocument=ro?.deliveryNoteNumber??ero?.preReceipts[0]?.preReceiptNumber??"-";
+   const returnDate=ro?.deliveryNoteDate;
+   return {id:r.id,date:fmt(r.createdAt),warehouseCode:r.warehouseCode??"-",person:r.operatorName??"-",movementType:isReturn?"İade Girişi":"Mal Kabul",orderNo:isReturn?(returnNumber??r.orderNumber??"-"):(r.purchaseNumber??"-"),supplierCode:isReturn?(returnCustomer?.customerCode??"-"):(po?.supplier.taxNumber??"-"),supplierName:isReturn?(returnCustomer?.companyName??"-"):(po?.supplier.name??"-"),deliveryNoteNumber:isReturn?returnDocument:(po?.deliveryNoteNumber??"-"),deliveryNoteDate:returnDate?new Intl.DateTimeFormat("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Istanbul"}).format(returnDate):(po?.deliveryNoteDate?new Intl.DateTimeFormat("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Istanbul"}).format(po.deliveryNoteDate):"-"),thm:r.targetBarcode??r.barcode??"-",productCode:r.productCode??"-",productName:r.productName??"-",quantity:r.quantity??0};
   }).filter(r=>(!orderNumber||r.orderNo.toLocaleLowerCase("tr-TR").includes(orderNumber.toLocaleLowerCase("tr-TR")))&&(!companyCode||r.supplierCode.toLocaleLowerCase("tr-TR").includes(companyCode.toLocaleLowerCase("tr-TR")))&&(!companyName||r.supplierName.toLocaleLowerCase("tr-TR").includes(companyName.toLocaleLowerCase("tr-TR"))));
   return <section className="p-4 sm:p-6 lg:p-10"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Giriş Takip Raporu</h1><p className="mt-2 text-slate-500">Mal kabul ve iade giriş okutmalarını sipariş, hareket tipi, firma, irsaliye, ürün ve personel bazında takip edin.</p></div><ExcelTableExportButton tableId="wms-receiving-tracking-table" fileName="giris-takip-raporu.csv"/></div><Filters kind={kind} startDate={startDate} endDate={endDate} productCode={productCode} orderNumber={orderNumber} personnel={personnel} companyCode={companyCode} companyName={companyName} warehouseId={warehouseId} warehouses={warehouses}/>
    <ReceivingTrackingTable rows={reportRows}/>
