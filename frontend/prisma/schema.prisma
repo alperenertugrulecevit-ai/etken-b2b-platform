@@ -3894,7 +3894,7 @@ model EcommerceReturnPreReceipt {
   originalOrder   Order?           @relation(fields: [originalOrderId], references: [id], onDelete: SetNull)
   ecommerceReturn EcommerceReturn? @relation(fields: [ecommerceReturnId], references: [id], onDelete: SetNull)
 
-  @@unique([carrierId, mode, scannedCode])
+  @@index([carrierId, mode, scannedCode])
   @@index([warehouseId, receivedAt])
   @@index([carrierId, receivedAt])
   @@index([originalOrderId])
