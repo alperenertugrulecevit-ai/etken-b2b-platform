@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  OrderStatus,
   WaveStatus,
 } from "@prisma/client";
 import { notFound } from "next/navigation";
@@ -608,7 +609,11 @@ export default async function WaveOrdersPage({
                           </td>
 
                           <td className="px-4 py-4">
-                            {waveOrder.isCompleted ? (
+                            {waveOrder.orderStatus === OrderStatus.CANCELLED ? (
+                              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">
+                                İptal
+                              </span>
+                            ) : waveOrder.isCompleted ? (
                               <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">
                                 Tamamlandı
                               </span>
