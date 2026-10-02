@@ -9,10 +9,11 @@ export const dynamic="force-dynamic";
 
 const statusLabel=(v:string)=>({PRE_RECEIVED:"Ön Kabul",RECEIVING:"İade Giriş Devam Ediyor",QUALITY_CONTROL:"Kalite Kontrol",PARTIALLY_COMPLETED:"Kısmi Tamamlandı",WAREHOUSE_COMPLETED:"Depo İşlemi Tamamlandı",FINANCE_PENDING:"Finans Bekliyor",COMPLETED:"Tamamlandı",REJECTED:"Reddedildi",CANCELLED:"İptal",WAITING:"Bekliyor",ELIGIBLE:"İadeye Uygun",REVIEW_REQUIRED:"İnceleme Bekliyor",REQUESTED:"İade Talebi Oluşturuldu",REFUNDED:"Para İadesi Yapıldı"}[v]??v);
 
-export default async function Page({searchParams}:{searchParams:Promise<{code?:string}>}){
+export default async function Page({searchParams}:{searchParams:Promise<{code?:string;orderNo?:string;date?:string;carrier?:string;returnCode?:string}>}){
  await AuthorizationService.requireAdminPortalAccess();
  const params=await searchParams;
  const code=String(params.code??"").trim().toUpperCase();
+ const orderNo=String(params.orderNo??"").trim().toUpperCase(),date=String(params.date??"").trim(),carrierFilter=String(params.carrier??"").trim(),returnCodeFilter=String(params.returnCode??"").trim().toUpperCase();
  const pre=code?await prisma.ecommerceReturnPreReceipt.findFirst({
    where:{scannedCode:code},
    orderBy:{receivedAt:"desc"},
@@ -25,12 +26,17 @@ export default async function Page({searchParams}:{searchParams:Promise<{code?:s
  const returnProductIds=pre?.ecommerceReturn?.items.map(i=>i.productId)??[];
  const returnProducts=returnProductIds.length?await prisma.product.findMany({where:{id:{in:returnProductIds}},select:{id:true,imageUrl:true}}):[];
  const productImageById=new Map(returnProducts.map(p=>[p.id,p.imageUrl] as const));
- const recent=await prisma.ecommerceReturn.findMany({take:30,orderBy:{createdAt:"desc"},include:{originalOrder:{select:{orderNumber:true,customer:{select:{companyName:true}}}},preReceipts:{take:1,orderBy:{receivedAt:"desc"},include:{carrier:true}},items:true}});
+ const recentWhere:any={};
+ if(orderNo)recentWhere.originalOrder={orderNumber:{contains:orderNo,mode:"insensitive"}};
+ if(date){const from=new Date(`${date}T00:00:00+03:00`),to=new Date(`${date}T23:59:59.999+03:00`);recentWhere.createdAt={gte:from,lte:to};}
+ if(carrierFilter||returnCodeFilter)recentWhere.preReceipts={some:{...(carrierFilter?{carrier:{name:{contains:carrierFilter,mode:"insensitive"}}}:{}),...(returnCodeFilter?{OR:[{returnCode:{contains:returnCodeFilter,mode:"insensitive"}},{scannedCode:{contains:returnCodeFilter,mode:"insensitive"}}]}:{})}};
+ const recent=await prisma.ecommerceReturn.findMany({where:recentWhere,take:100,orderBy:{createdAt:"desc"},include:{originalOrder:{select:{orderNumber:true,customer:{select:{companyName:true}}}},preReceipts:{take:1,orderBy:{receivedAt:"desc"},include:{carrier:true}},items:true}});
+ const openedComplete=Boolean(pre?.ecommerceReturn&&["WAREHOUSE_COMPLETED","FINANCE_PENDING","COMPLETED","REJECTED","CANCELLED"].includes(pre.ecommerceReturn.status));
 
  return <div className="min-w-[1100px] p-6">
   <div className="mb-5 flex items-start justify-between"><div><p className="text-sm font-bold text-slate-500">E-Ticaret Yönetimi / İade</p><h1 className="text-3xl font-black">E-Ticaret İade Giriş</h1><p className="mt-1 text-sm text-slate-500">Ön kabul → eşleştirme → ürün okutma → kalite → stok → finans.</p></div><Link href="/admin/e-ticaret/return-reconciliation" className="rounded-xl border px-4 py-3 font-black">Kargo İade Mutabakatı</Link></div>
 
-  <EcommerceReturnLookup initialCode={code}/>
+  <EcommerceReturnLookup initialCode={code} locked={openedComplete}/>
 
   {code&&!pre&&<div className="mt-4 rounded-2xl border-2 border-red-300 bg-red-50 p-5 text-red-950"><h2 className="text-lg font-black">⚠ Ön kabul bulunamadı</h2><p className="mt-1 font-semibold">Ön kabul yapılmadan E-Ticaret İade Giriş'e devam edilemez. Şimdi oluşturulacak kayıt mutabakat raporunda Geç Ön Kabul olarak işaretlenecek.</p><Link href="/rf/ecommerce-return-pre-receipt?late=1" className="mt-3 inline-block rounded-xl bg-red-700 px-4 py-3 font-black text-white">Geç Ön Kabul Yap</Link></div>}
 
@@ -50,6 +56,9 @@ export default async function Page({searchParams}:{searchParams:Promise<{code?:s
    <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs font-semibold text-blue-900">Gerçek ödeme sağlayıcısı entegrasyonu bağlanana kadar finans kaydı manuel referansla kapatılır; sistem banka/kart işlemi yaptığını varsaymaz.</p></section>}
   </div>}
 
-  <section className="mt-6 rounded-2xl border bg-white p-5"><h2 className="mb-3 text-lg font-black">Son E-Ticaret İadeleri</h2>{recent.length?<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{["İade No","Sipariş","Müşteri","Ön Kabul","Durum","Finans","Beklenen","Gelen"].map(x=><th key={x} className="border-b p-2 text-left">{x}</th>)}</tr></thead><tbody>{recent.map(r=><tr key={r.id}><td className="p-2 font-bold">{r.returnNumber}</td><td className="p-2">{r.originalOrder.orderNumber}</td><td className="p-2">{r.originalOrder.customer.companyName}</td><td className="p-2">{r.preReceipts[0]?.preReceiptNumber??"-"}</td><td className="p-2">{statusLabel(r.status)}</td><td className="p-2">{statusLabel(r.refundStatus)}</td><td className="p-2">{r.items.reduce((s,i)=>s+i.expectedQuantity,0)}</td><td className="p-2">{r.items.reduce((s,i)=>s+i.receivedQuantity,0)}</td></tr>)}</tbody></table></div>:<p className="text-slate-500">Henüz E-Ticaret iade kaydı yok.</p>}</section>
+  <section className="mt-6 rounded-2xl border bg-white p-5"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">Son E-Ticaret İadeleri</h2><Link href="/admin/e-ticaret/returns" className="rounded-lg border px-4 py-2 text-sm font-black">Filtreleri Temizle</Link></div>
+   {recent.length?<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{["İade No","Tarih","Sipariş","Müşteri","Kargo","İade Kodu","Ön Kabul","Durum","Finans","Beklenen","Gelen"].map(x=><th key={x} className="border-b p-2 text-left">{x}</th>)}</tr>
+   <tr className="bg-slate-50"><th></th><th className="p-1"><form><input type="hidden" name="orderNo" value={orderNo}/><input type="hidden" name="carrier" value={carrierFilter}/><input type="hidden" name="returnCode" value={returnCodeFilter}/><input name="date" type="date" defaultValue={date} className="w-full rounded border p-2" /></form></th><th className="p-1"><form><input type="hidden" name="date" value={date}/><input type="hidden" name="carrier" value={carrierFilter}/><input type="hidden" name="returnCode" value={returnCodeFilter}/><input name="orderNo" defaultValue={orderNo} className="w-full rounded border p-2" placeholder="Sipariş No" /></form></th><th></th><th className="p-1"><form><input type="hidden" name="date" value={date}/><input type="hidden" name="orderNo" value={orderNo}/><input type="hidden" name="returnCode" value={returnCodeFilter}/><input name="carrier" defaultValue={carrierFilter} className="w-full rounded border p-2" placeholder="Kargo" /></form></th><th className="p-1"><form><input type="hidden" name="date" value={date}/><input type="hidden" name="orderNo" value={orderNo}/><input type="hidden" name="carrier" value={carrierFilter}/><input name="returnCode" defaultValue={returnCodeFilter} className="w-full rounded border p-2" placeholder="İade Kodu" /></form></th><th></th><th></th><th></th><th></th><th></th></tr></thead>
+   <tbody>{recent.map(r=>{const p=r.preReceipts[0];return <tr key={r.id}><td className="p-2 font-bold">{r.returnNumber}</td><td className="p-2">{r.createdAt.toLocaleString("tr-TR")}</td><td className="p-2">{r.originalOrder.orderNumber}</td><td className="p-2">{r.originalOrder.customer.companyName}</td><td className="p-2">{p?.carrier.name??"-"}</td><td className="p-2 font-mono">{p?.returnCode??p?.scannedCode??"-"}</td><td className="p-2">{p?.preReceiptNumber??"-"}</td><td className="p-2">{statusLabel(r.status)}</td><td className="p-2">{statusLabel(r.refundStatus)}</td><td className="p-2">{r.items.reduce((s,i)=>s+i.expectedQuantity,0)}</td><td className="p-2">{r.items.reduce((s,i)=>s+i.receivedQuantity,0)}</td></tr>})}</tbody></table></div>:<p className="text-slate-500">Filtreye uygun E-Ticaret iade kaydı yok.</p>}</section>
  </div>;
 }
