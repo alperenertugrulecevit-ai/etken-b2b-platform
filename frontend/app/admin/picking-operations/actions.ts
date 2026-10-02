@@ -59,7 +59,7 @@ export async function refreshPickingReservationAction(fd:FormData){
    waveOrders:{where:{wave:{status:{in:[WaveStatus.RELEASED,WaveStatus.IN_PROGRESS,WaveStatus.PAUSED]}}},select:{waveId:true}}
   }});
   if(!order)throw new Error("Sipariş bulunamadı.");
-  if(["PACKING","READY_TO_SHIP","SHIPPED","DELIVERED","CANCELLED"].includes(order.status))throw new Error("Sipariş paketleme/sevk aşamasına geçtiği için rezervasyon yenilenemez.");
+  if(["SHIPPED","DELIVERED","CANCELLED"].includes(order.status))throw new Error("Sipariş sevk edildiği/teslim edildiği veya iptal olduğu için rezervasyon yenilenemez.");
   const open=order.items.reduce((sum,item)=>sum+Math.max(0,item.quantity-item.cancelledQuantity-item.pickedQuantity-item.pickingShortages.reduce((a,r)=>a+r.quantity,0)),0);
   if(open<=0)throw new Error("Siparişte yeniden rezerve edilecek açık toplama ihtiyacı yok.");
 
