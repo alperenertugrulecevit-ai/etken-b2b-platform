@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import EcommerceReturnReceivingPanel from "@/components/admin/EcommerceReturnReceivingPanel";
+import EcommerceReturnLookup from "@/components/admin/EcommerceReturnLookup";
 import { closeEcommerceReturnWithoutRefund, createRefundApprovalRecord, markEcommerceRefundCompleted, matchEcommercePreReceiptToOrder, resolveEcommerceReturnInspectionRefund } from "./actions";
 
 export const dynamic="force-dynamic";
@@ -18,7 +19,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{code?:s
    include:{
      carrier:true,warehouse:true,
      originalOrder:{include:{customer:true}},
-     ecommerceReturn:{include:{items:true,refunds:{orderBy:{createdAt:"desc"}},inspections:{orderBy:{inspectedAt:"desc"},include:{ecommerceReturnItem:{select:{productCode:true,productName:true}}}}}},
+     ecommerceReturn:{include:{items:{include:{product:{select:{imageUrl:true}}}},refunds:{orderBy:{createdAt:"desc"}},inspections:{orderBy:{inspectedAt:"desc"},include:{ecommerceReturnItem:{select:{productCode:true,productName:true}}}}}},
    },
  }):null;
  const recent=await prisma.ecommerceReturn.findMany({take:30,orderBy:{createdAt:"desc"},include:{originalOrder:{select:{orderNumber:true,customer:{select:{companyName:true}}}},preReceipts:{take:1,orderBy:{receivedAt:"desc"},include:{carrier:true}},items:true}});
@@ -26,7 +27,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{code?:s
  return <div className="min-w-[1100px] p-6">
   <div className="mb-5 flex items-start justify-between"><div><p className="text-sm font-bold text-slate-500">E-Ticaret Yönetimi / İade</p><h1 className="text-3xl font-black">E-Ticaret İade Giriş</h1><p className="mt-1 text-sm text-slate-500">Ön kabul → eşleştirme → ürün okutma → kalite → stok → finans.</p></div><Link href="/admin/e-ticaret/return-reconciliation" className="rounded-xl border px-4 py-3 font-black">Kargo İade Mutabakatı</Link></div>
 
-  <form className="rounded-2xl border bg-white p-5 shadow-sm"><label className="text-sm font-black">İade Kodu / Kargo Barkodu</label><div className="mt-2 flex gap-2"><input name="code" defaultValue={code} autoFocus className="flex-1 rounded-xl border-2 border-blue-500 px-4 py-3 text-lg font-bold uppercase" placeholder="Ön kabulde okutulan barkodu okutun..."/><button className="rounded-xl bg-blue-700 px-6 font-black text-white">İadeyi Aç</button></div></form>
+  <EcommerceReturnLookup initialCode={code}/>
 
   {code&&!pre&&<div className="mt-4 rounded-2xl border-2 border-red-300 bg-red-50 p-5 text-red-950"><h2 className="text-lg font-black">⚠ Ön kabul bulunamadı</h2><p className="mt-1 font-semibold">Ön kabul yapılmadan E-Ticaret İade Giriş'e devam edilemez. Şimdi oluşturulacak kayıt mutabakat raporunda Geç Ön Kabul olarak işaretlenecek.</p><Link href="/rf/ecommerce-return-pre-receipt?late=1" className="mt-3 inline-block rounded-xl bg-red-700 px-4 py-3 font-black text-white">Geç Ön Kabul Yap</Link></div>}
 
@@ -37,7 +38,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{code?:s
 
    {!pre.ecommerceReturn&&pre.outcome!=="RETURN_TO_CARRIER"&&pre.outcome!=="RETURNED_TO_CARRIER"&&<section className="rounded-2xl border border-amber-300 bg-amber-50 p-5"><h2 className="text-lg font-black">{pre.mode==="CARGO_BARCODE"?"Teslim edilemeyen gönderiyi siparişle eşleştir":"İade kodunu siparişle doğrula"}</h2><p className="mt-1 text-sm font-semibold">{pre.mode==="CARGO_BARCODE"?"Kargo barkodu mevcut sistemde doğrudan sipariş takip numarasıyla tutulmadığı için sipariş numarasıyla doğrulama zorunludur.":"İade kodu otomatik eşleşmediyse yetkili kullanıcı sipariş numarasıyla kontrollü olarak eşleştirebilir."}</p><form action={matchEcommercePreReceiptToOrder} className="mt-3 flex gap-2"><input type="hidden" name="preReceiptId" value={pre.id}/><input name="orderNumber" required className="flex-1 rounded-xl border p-3 font-mono font-bold uppercase" placeholder="SIP..."/><button className="rounded-xl bg-amber-600 px-5 font-black text-white">Siparişle Eşleştir</button></form></section>}
 
-   {pre.ecommerceReturn&&pre.originalOrder&&["RETURN_ENTRY_PENDING","UNDELIVERED_RETURN"].includes(pre.outcome)&&<EcommerceReturnReceivingPanel preReceiptId={pre.id} returnNumber={pre.ecommerceReturn.returnNumber} orderNumber={pre.originalOrder.orderNumber} customerName={pre.originalOrder.customer.companyName} items={pre.ecommerceReturn.items.map(i=>({id:i.id,productCode:i.productCode,productBarcode:i.productBarcode,productName:i.productName,expectedQuantity:i.expectedQuantity,receivedQuantity:i.receivedQuantity,acceptedQuantity:i.acceptedQuantity,rejectedQuantity:i.rejectedQuantity,refundStatus:i.refundStatus,refundAmount:i.refundAmount}))}/>}
+   {pre.ecommerceReturn&&pre.originalOrder&&["RETURN_ENTRY_PENDING","UNDELIVERED_RETURN"].includes(pre.outcome)&&<EcommerceReturnReceivingPanel preReceiptId={pre.id} returnNumber={pre.ecommerceReturn.returnNumber} orderNumber={pre.originalOrder.orderNumber} customerName={pre.originalOrder.customer.companyName} items={pre.ecommerceReturn.items.map(i=>({id:i.id,productCode:i.productCode,productBarcode:i.productBarcode,productName:i.productName,imageUrl:i.product.imageUrl,expectedQuantity:i.expectedQuantity,receivedQuantity:i.receivedQuantity,acceptedQuantity:i.acceptedQuantity,rejectedQuantity:i.rejectedQuantity,refundStatus:i.refundStatus,refundAmount:i.refundAmount}))}/>}
 
    {pre.ecommerceReturn&&pre.ecommerceReturn.inspections.some(x=>x.refundStatus==="REVIEW_REQUIRED")&&<section className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-5"><h2 className="text-lg font-black">Finans / Kalite İncelemesi</h2><p className="mt-1 text-sm font-semibold">Satılabilir dışı kalite sonucu alan birimler otomatik para iadesine geçmez. Yetkili kullanıcı birim bazında karar verir.</p><div className="mt-3 space-y-2">{pre.ecommerceReturn.inspections.filter(x=>x.refundStatus==="REVIEW_REQUIRED").map(x=><div key={x.id} className="flex items-center justify-between rounded-xl bg-white p-3"><div><b>{x.ecommerceReturnItem.productCode} - {x.ecommerceReturnItem.productName}</b><br/><span className="text-xs">{x.qualityResult} · {x.targetHandlingUnitBarcode} · {x.targetLocationCode}</span></div><div className="flex gap-2"><form action={resolveEcommerceReturnInspectionRefund}><input type="hidden" name="inspectionId" value={x.id}/><input type="hidden" name="decision" value="APPROVE"/><button className="rounded-lg bg-emerald-600 px-3 py-2 font-black text-white">Para İadesini Onayla</button></form><form action={resolveEcommerceReturnInspectionRefund}><input type="hidden" name="inspectionId" value={x.id}/><input type="hidden" name="decision" value="REJECT"/><button className="rounded-lg bg-red-600 px-3 py-2 font-black text-white">Reddet</button></form></div></div>)}</div></section>}
 
