@@ -1,0 +1,14 @@
+import { prisma } from "@/lib/prisma";
+import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { markReturnToCarrier } from "./actions";
+export const dynamic="force-dynamic";
+const label=(v:string)=>({MATCHED:"Eşleşti",UNMATCHED:"Eşleşmedi",CONFLICT:"Çakışma",RETURN_ENTRY_PENDING:"İade Giriş Bekliyor",UNDELIVERED_RETURN:"Teslim Edilemeyen",RETURN_TO_CARRIER:"Kargoya Geri Verilecek",RETURNED_TO_CARRIER:"Kargoya Geri Verildi",CARRIER_STATUS_UNVERIFIED:"Kargo Durumu Doğrulanamadı"}[v]??v);
+export default async function Page(){
+ await AuthorizationService.requireAdminPortalAccess();
+ const rows=await prisma.ecommerceReturnPreReceipt.findMany({take:250,orderBy:{receivedAt:"desc"},include:{warehouse:{select:{code:true}},carrier:{select:{name:true}},originalOrder:{select:{orderNumber:true}},ecommerceReturn:{select:{returnNumber:true,status:true}}}});
+ const late=rows.filter(x=>x.lateDetected).length, unmatched=rows.filter(x=>x.matchStatus==="UNMATCHED").length, waiting=rows.filter(x=>!x.ecommerceReturn&&x.outcome!=="RETURNED_TO_CARRIER").length;
+ return <div className="p-6"><div><p className="text-sm font-bold text-slate-500">E-Ticaret Yönetimi / İade</p><h1 className="text-3xl font-black">Kargo İade Mutabakatı</h1></div>
+ <div className="my-5 grid grid-cols-4 gap-3">{[["Ön Kabul",rows.length],["Geç Ön Kabul",late],["Eşleşmeyen",unmatched],["İşlem Bekleyen",waiting]].map(([a,b])=><div key={String(a)} className="rounded-2xl border bg-white p-4"><p className="text-sm font-bold text-slate-500">{a}</p><p className="text-3xl font-black">{b}</p></div>)}</div>
+ <div className="overflow-x-auto rounded-2xl border bg-white"><table className="w-full text-sm"><thead className="bg-slate-100"><tr>{["Tarih","Depo","Kargo","Okutma Tipi","Barkod","Sipariş","Ön Kabul No","Eşleşme","Sonuç","İade Giriş","İşlem"].map(x=><th key={x} className="border-b p-3 text-left">{x}</th>)}</tr></thead><tbody>{rows.map(r=><tr key={r.id}><td className="border-b p-3">{r.receivedAt.toLocaleString("tr-TR")}</td><td className="border-b p-3">{r.warehouse.code}</td><td className="border-b p-3">{r.carrier.name}</td><td className="border-b p-3">{r.mode==="RETURN_CODE"?"İade Kodu":"Kargo Barkodu"}</td><td className="border-b p-3 font-mono font-bold">{r.scannedCode}</td><td className="border-b p-3">{r.originalOrder?.orderNumber??"-"}</td><td className="border-b p-3">{r.preReceiptNumber}</td><td className="border-b p-3">{label(r.matchStatus)}</td><td className="border-b p-3">{label(r.outcome)}</td><td className="border-b p-3">{r.ecommerceReturn?.status??"-"}</td><td className="border-b p-3">{r.outcome==="RETURN_TO_CARRIER"?<form action={markReturnToCarrier}><input type="hidden" name="id" value={r.id}/><button className="rounded-lg bg-amber-600 px-3 py-2 font-black text-white">Kargoya Teslim Et</button></form>:r.outcome==="RETURNED_TO_CARRIER"?"Tamamlandı":"-"}</td></tr>)}</tbody></table></div>
+ </div>;
+}
