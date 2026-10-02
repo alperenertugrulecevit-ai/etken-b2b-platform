@@ -25,7 +25,8 @@ export const metadata: Metadata = {
 
   keywords: [
     "Etken Ofis",
-    "online alışveriş",\n    "e-ticaret",
+    "online alışveriş",
+    "e-ticaret",
     "ofis malzemeleri",
     "ofis kırtasiye",
     "B2B tedarik",
