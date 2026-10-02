@@ -257,9 +257,15 @@ model Brand {
   updatedAt DateTime @updatedAt
 }
 
+enum CustomerType {
+  CORPORATE
+  INDIVIDUAL
+}
+
 model Customer {
   id                    Int                    @id @default(autoincrement())
   customerCode          String                 @unique
+  customerType          CustomerType           @default(CORPORATE)
   companyName           String
   taxOffice             String?
   taxNumber             String?                @unique
@@ -314,6 +320,7 @@ model CustomerAddress {
 
   @@unique([customerId, addressCode])
   @@index([customerId])
+  @@index([customerType])
 }
 
 enum OrderStatus {
@@ -347,6 +354,7 @@ enum ProductCompetitorMatchStatus {
 enum OrderSource {
   ADMIN
   B2B
+  ECOMMERCE
   IMPORT
   API
 }
@@ -361,6 +369,7 @@ enum OrderType {
 enum B2BPaymentMethod {
   BANK_TRANSFER
   CURRENT_ACCOUNT
+  CREDIT_CARD
 }
 
 enum CustomerAccountEntryDirection {
@@ -423,6 +432,15 @@ model Order {
   totalAmount       Float             @default(0)
   customerNote      String?
   internalNote      String?
+  ecommerceEmail    String?
+  ecommercePhone    String?
+  invoiceType       String?
+  invoiceName       String?
+  invoiceTaxOffice  String?
+  invoiceTaxNumber  String?
+  paymentStatus     String?
+  paymentProvider   String?
+  paymentReference  String?
   stockReserved     Boolean           @default(false)
   stockDeducted     Boolean           @default(false)
   stockReservedAt   DateTime?
@@ -462,6 +480,7 @@ model Order {
   @@index([shippingAddressId])
   @@index([placedByUserId])
   @@index([source, status])
+  @@index([orderType, source, status])
   @@index([orderType, status])
   @@index([fulfillmentWarehouseId, status])
   @@index([carrierId])
