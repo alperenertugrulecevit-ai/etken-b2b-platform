@@ -80,7 +80,7 @@ export async function processEcommerceReturnItem(formData:FormData){
     }});
     if(!pre) throw new Error("Ön kabul bulunamadı.");
     if(!pre.ecommerceReturn||!pre.originalOrder) throw new Error("Gönderi sipariş/iade ile eşleşmeden ürün kabulü yapılamaz.");
-    if(![EcommerceReturnPreReceiptOutcome.RETURN_ENTRY_PENDING,EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN].includes(pre.outcome)) throw new Error("Bu ön kabul iade girişine uygun değil.");
+    if(pre.outcome!==EcommerceReturnPreReceiptOutcome.RETURN_ENTRY_PENDING&&pre.outcome!==EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN) throw new Error("Bu ön kabul iade girişine uygun değil.");
     if(pre.ecommerceReturn.status===EcommerceReturnStatus.COMPLETED||pre.ecommerceReturn.status===EcommerceReturnStatus.CANCELLED) throw new Error("İade dosyası işleme kapalı.");
 
     const item=pre.ecommerceReturn.items.find(i=>i.productBarcode.trim().toUpperCase()===productBarcode||i.productCode.trim().toUpperCase()===productBarcode);
@@ -90,7 +90,7 @@ export async function processEcommerceReturnItem(formData:FormData){
     const hu=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,warehouseId:true,status:true,purpose:true}});
     if(!hu) throw new Error(`${targetBarcode} hedef THM bulunamadı.`);
     if(hu.warehouseId!==pre.warehouseId) throw new Error("Hedef THM ön kabul deposunda değil.");
-    if(![HandlingUnitStatus.OPEN,HandlingUnitStatus.EMPTY,HandlingUnitStatus.STORED].includes(hu.status)) throw new Error("Hedef THM iade girişine uygun durumda değil.");
+    if(hu.status!==HandlingUnitStatus.OPEN&&hu.status!==HandlingUnitStatus.EMPTY&&hu.status!==HandlingUnitStatus.STORED) throw new Error("Hedef THM iade girişine uygun durumda değil.");
 
     const locations=await tx.warehouseLocation.findMany({where:{warehouseId:pre.warehouseId,isActive:true},select:{id:true,code:true,section:true,level:true,bin:true,locationType:true}});
     const matches=locations.filter(l=>locationScanCode(l)===targetLocationCode||l.code.trim().toUpperCase()===targetLocationCode);
@@ -162,7 +162,7 @@ export async function createRefundApprovalRecord(formData:FormData){
     if(er.refundStatus===EcommerceReturnRefundStatus.REVIEW_REQUIRED) throw new Error("Kalite/finans incelemesi bekleyen ürünler var.");
     const amount=er.items.reduce((s,i)=>s+i.refundAmount,0);
     if(amount<=0) throw new Error("Para iadesine uygun tutar bulunamadı.");
-    if(er.refunds.some(r=>[EcommerceReturnRefundStatus.REQUESTED,EcommerceReturnRefundStatus.REFUNDED].includes(r.status))) throw new Error("Bu iade için aktif/tamamlanmış finans kaydı zaten var.");
+    if(er.refunds.some(r=>r.status===EcommerceReturnRefundStatus.REQUESTED||r.status===EcommerceReturnRefundStatus.REFUNDED)) throw new Error("Bu iade için aktif/tamamlanmış finans kaydı zaten var.");
     await tx.ecommerceReturnRefund.create({data:{
       ecommerceReturnId:er.id,amount,status:EcommerceReturnRefundStatus.REQUESTED,provider:"MANUAL_PENDING_INTEGRATION",
       requestedByUserId:profile.id,requestedByName:profile.employee?`${profile.employee.firstName} ${profile.employee.lastName}`:profile.username,requestedAt:new Date(),
