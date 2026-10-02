@@ -20,6 +20,7 @@ import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.s
 type Actor={userId:string;displayName:string;terminalCode?:string|null};
 type Input={orderNumber:string;sourceBarcode:string;productBarcode:string;targetBarcode:string;targetLocationCode:string;reason:StockReturnReason;actor:Actor};
 const n=(v:string)=>v.trim().toUpperCase();
+const locationBarcode=(x:{code:string;aisle:string;section:string;level:string;bin:string})=>[x.code,x.aisle,x.section,x.level,x.bin].map(n).filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join("-");
 const CUSTOMER_REASONS:StockReturnReason[]=[StockReturnReason.CUSTOMER_PARTIAL_CANCEL,StockReturnReason.CUSTOMER_FULL_CANCEL];
 
 async function recalcShipment(tx:Prisma.TransactionClient,shipmentId:string){
@@ -81,13 +82,16 @@ export class StockReturnService{
    if(!source||!source.warehouseId)throw new Error("Kaynak THM/SVK bulunamadı veya depo bilgisi yok.");
    const sourceItem=source.items[0]; if(!sourceItem||sourceItem.quantity<=0)throw new Error("Kaynak THM/SVK içinde okutulan ürün bulunmuyor.");
 
-   const target=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,purpose:true,status:true,warehouseId:true,parentUnitId:true}});
+   const target=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,purpose:true,status:true,warehouseId:true,parentUnitId:true,locationId:true,items:{select:{quantity:true}}}});
    if(!target)throw new Error("Hedef stok THM bulunamadı.");
    if(target.parentUnitId!==null)throw new Error("Hedef THM başka bir THM'ye bağlıdır.");
    if(target.status!==HandlingUnitStatus.OPEN&&target.status!==HandlingUnitStatus.EMPTY&&target.status!==HandlingUnitStatus.STORED)throw new Error("Hedef THM stok geri almaya uygun değil.");
    if(target.warehouseId!==source.warehouseId)throw new Error("Kaynak ve hedef THM aynı depoda olmalıdır.");
-   const location=await tx.warehouseLocation.findFirst({where:{warehouseId:source.warehouseId,code:targetLocationCode,isActive:true},select:{id:true,code:true,locationType:true}});
+   const locationCandidates=await tx.warehouseLocation.findMany({where:{warehouseId:source.warehouseId,isActive:true},select:{id:true,code:true,aisle:true,section:true,level:true,bin:true,locationType:true}});
+   const location=locationCandidates.find(x=>n(x.code)===targetLocationCode||locationBarcode(x)===targetLocationCode);
    if(!location)throw new Error("Hedef adres bu depoda bulunamadı veya pasif.");
+   const targetHasStock=target.items.some(x=>x.quantity>0);
+   if(targetHasStock&&target.locationId!==null&&target.locationId!==location.id)throw new Error("Hedef THM içinde stok bulunduğu için mevcut adresinden farklı bir adrese taşınamaz.");
    if(input.reason===StockReturnReason.DAMAGED){
     const damagedLocationTypes: WarehouseLocationType[] = [WarehouseLocationType.QUALITY, WarehouseLocationType.QUARANTINE, WarehouseLocationType.RETURN];
     if(!damagedLocationTypes.includes(location.locationType))throw new Error("Hasarlı ürün QUALITY, QUARANTINE veya RETURN tipindeki bir adrese alınmalıdır.");
@@ -140,7 +144,7 @@ export class StockReturnService{
    const flow=order.fulfillment?.flowType??OrderFulfillmentFlow.DIRECT_ORDER;
    const progress=await FulfillmentService.refreshOrderProgress(tx,{orderId:order.id,flowType:flow,waveId:order.fulfillment?.waveId??null});
    if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0)await tx.order.update({where:{id:order.id},data:{status:OrderStatus.CANCELLED,stockReserved:false}});
-   return {orderNumber:order.orderNumber,productCode:item.productCode,productName:item.productName,stage,reason:input.reason,targetBarcode:target.barcode,targetLocationCode:location.code,remainingDemand:Math.max(0,item.quantity-item.cancelledQuantity-(CUSTOMER_REASONS.includes(input.reason)?1:0))};
+   return {orderNumber:order.orderNumber,productCode:item.productCode,productName:item.productName,stage,reason:input.reason,targetBarcode:target.barcode,targetLocationCode:location.code,remainingDemand:Math.max(0,item.quantity-item.cancelledQuantity-(CUSTOMER_REASONS.includes(input.reason)?1:0)-(item.pickedQuantity-1))};
   },{maxWait:10000,timeout:30000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
  }
 }
