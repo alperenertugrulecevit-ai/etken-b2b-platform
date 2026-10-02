@@ -22,7 +22,7 @@ import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.s
 type Actor={userId:string;displayName:string;terminalCode?:string|null};
 type Input={orderNumber:string;sourceBarcode:string;productBarcode:string;targetBarcode:string;targetLocationCode:string;reason:StockReturnReason;actor:Actor};
 const n=(v:string)=>v.trim().toUpperCase();
-const locationBarcode=(x:{code:string;aisle:string;section:string;level:string;bin:string})=>[x.code,x.aisle,x.section,x.level,x.bin].map(n).filter(Boolean).join("-");
+const locationBarcode=(x:{code:string;section:string;level:string;bin:string})=>[x.code,x.section,x.level,x.bin].map(n).filter(Boolean).join("-");
 const CUSTOMER_REASONS:StockReturnReason[]=[StockReturnReason.CUSTOMER_PARTIAL_CANCEL,StockReturnReason.CUSTOMER_FULL_CANCEL];
 
 async function recalcShipment(tx:Prisma.TransactionClient,shipmentId:string){
