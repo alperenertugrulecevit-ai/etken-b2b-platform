@@ -56,6 +56,7 @@ function getMovementLabel(type: string) {
     SALE_SHIPMENT: "Satış Sevkiyatı",
     SALE_RETURN: "İade Girişi",
     STOCK_RETURN: "Stoğa Geri Alma",
+    STOCK_PICKING: "Toplama",
     COUNT_INCREASE: "Sayım Fazlası",
     COUNT_DECREASE: "Sayım Eksiği",
     TRANSFER_IN: "Transfer Girişi",
@@ -95,6 +96,9 @@ function getMovementClass(type: string) {
 
     STOCK_RETURN:
       "bg-cyan-100 text-cyan-800",
+
+    STOCK_PICKING:
+      "bg-indigo-100 text-indigo-800",
 
     COUNT_INCREASE:
       "bg-emerald-100 text-emerald-700",
