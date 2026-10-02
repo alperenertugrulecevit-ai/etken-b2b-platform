@@ -183,3 +183,49 @@ export async function processEcommerceReturnItemState(_prev:EcommerceReturnProce
     return {success:false,message:error instanceof Error?error.message:"E-Ticaret iade girişi tamamlanamadı."};
   }
 }
+
+
+export async function resolveEcommerceReturnInspectionRefund(formData:FormData){
+  await AuthorizationService.requireAdminPortalAccess();
+  const inspectionId=String(formData.get("inspectionId")??"");
+  const decision=norm(formData.get("decision"));
+  if(!inspectionId||!["APPROVE","REJECT"].includes(decision)) throw new Error("Geçerli finans inceleme kararı gereklidir.");
+  await prisma.$transaction(async tx=>{
+    const inspection=await tx.ecommerceReturnInspection.findUnique({where:{id:inspectionId},include:{ecommerceReturnItem:{include:{orderItem:true}}}});
+    if(!inspection) throw new Error("Kalite inceleme kaydı bulunamadı.");
+    if(inspection.refundStatus!==EcommerceReturnRefundStatus.REVIEW_REQUIRED) throw new Error("Bu kayıt finans incelemesi beklemiyor.");
+    const grossUnit=inspection.ecommerceReturnItem.orderItem.quantity>0?inspection.ecommerceReturnItem.orderItem.lineTotal/inspection.ecommerceReturnItem.orderItem.quantity:inspection.ecommerceReturnItem.orderItem.unitPrice;
+    await tx.ecommerceReturnInspection.update({where:{id:inspection.id},data:{
+      refundStatus:decision==="APPROVE"?EcommerceReturnRefundStatus.ELIGIBLE:EcommerceReturnRefundStatus.REJECTED,
+      refundAmount:decision==="APPROVE"?grossUnit:0,
+    }});
+    const inspections=await tx.ecommerceReturnInspection.findMany({where:{ecommerceReturnItemId:inspection.ecommerceReturnItemId},select:{refundStatus:true,refundAmount:true}});
+    const itemReview=inspections.some(x=>x.refundStatus===EcommerceReturnRefundStatus.REVIEW_REQUIRED);
+    const itemEligible=inspections.some(x=>x.refundStatus===EcommerceReturnRefundStatus.ELIGIBLE);
+    const itemAmount=inspections.reduce((s,x)=>s+x.refundAmount,0);
+    await tx.ecommerceReturnItem.update({where:{id:inspection.ecommerceReturnItemId},data:{
+      refundAmount:itemAmount,
+      refundStatus:itemReview?EcommerceReturnRefundStatus.REVIEW_REQUIRED:itemEligible?EcommerceReturnRefundStatus.ELIGIBLE:EcommerceReturnRefundStatus.REJECTED,
+    }});
+    const allItems=await tx.ecommerceReturnItem.findMany({where:{ecommerceReturnId:inspection.ecommerceReturnId},select:{refundStatus:true,refundAmount:true}});
+    const hasReview=allItems.some(x=>x.refundStatus===EcommerceReturnRefundStatus.REVIEW_REQUIRED);
+    const hasEligible=allItems.some(x=>x.refundStatus===EcommerceReturnRefundStatus.ELIGIBLE);
+    await tx.ecommerceReturn.update({where:{id:inspection.ecommerceReturnId},data:{refundStatus:hasReview?EcommerceReturnRefundStatus.REVIEW_REQUIRED:hasEligible?EcommerceReturnRefundStatus.ELIGIBLE:EcommerceReturnRefundStatus.REJECTED}});
+  });
+  refresh();
+}
+
+export async function markEcommerceRefundCompleted(formData:FormData){
+  const profile=await AuthorizationService.requireAdminPortalAccess();
+  const refundId=String(formData.get("refundId")??"");
+  const providerReference=String(formData.get("providerReference")??"").trim();
+  if(!refundId||!providerReference) throw new Error("Finans kaydı ve ödeme/iade referansı zorunludur.");
+  await prisma.$transaction(async tx=>{
+    const refund=await tx.ecommerceReturnRefund.findUnique({where:{id:refundId},include:{ecommerceReturn:true}});
+    if(!refund) throw new Error("Finans iade kaydı bulunamadı.");
+    if(refund.status!==EcommerceReturnRefundStatus.REQUESTED) throw new Error("Finans kaydı tamamlanmaya uygun değil.");
+    await tx.ecommerceReturnRefund.update({where:{id:refund.id},data:{status:EcommerceReturnRefundStatus.REFUNDED,providerReference,completedAt:new Date(),requestedByUserId:refund.requestedByUserId??profile.id}});
+    await tx.ecommerceReturn.update({where:{id:refund.ecommerceReturnId},data:{status:EcommerceReturnStatus.COMPLETED,refundStatus:EcommerceReturnRefundStatus.REFUNDED,financeCompletedAt:new Date()}});
+  });
+  refresh();
+}
