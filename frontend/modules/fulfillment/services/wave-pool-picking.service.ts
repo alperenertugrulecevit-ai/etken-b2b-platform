@@ -4,12 +4,14 @@ import {
   OrderFulfillmentFlow,
   OrderStatus,
   Prisma,
+  StockMovementType,
   WaveDistributionStatus,
   WaveStatus,
   WmsOperationType,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 
 import { FulfillmentService } from "./fulfillment.service";
 
@@ -199,6 +201,7 @@ export class WavePoolPickingService {
             select: {
               id: true,
               barcode: true,
+              warehouseId: true,
               purpose: true,
               status: true,
               parentUnitId: true,
@@ -722,6 +725,19 @@ export class WavePoolPickingService {
                   allocatedQuantity,
               },
             });
+
+          await createStockMovementWithTransaction(tx, {
+            productId: sourceItem.product.id,
+            warehouseId: sourceUnit.warehouseId ?? undefined,
+            orderId: line.orderId,
+            movementType: StockMovementType.STOCK_PICKING,
+            physicalChange: 0,
+            reservedChange: 0,
+            documentNumber: line.distributionOrder.orderNumber,
+            description:
+              `Toplama; ${sourceItem.product.code} ${allocationQuantity} adet; kaynak ${sourceUnit.barcode}; ` +
+              `hedef ${targetUnit.barcode}; Wave ${wave.waveNo}; dağılım ${line.distribution.distributionCode}.`,
+          });
 
           await tx.wmsOperationLog.create({
             data: {
