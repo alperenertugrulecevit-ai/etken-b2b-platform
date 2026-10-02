@@ -454,6 +454,7 @@ model Order {
   zonePickTasks              ZonePickTask[]
   consolidationTask          ConsolidationTask?
   returnOrders               ReturnOrder[]
+  stockReturnEvents          StockReturnEvent[]
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -585,6 +586,7 @@ model OrderItem {
   pickedQuantity  Int      @default(0)
   packedQuantity  Int      @default(0)
   shippedQuantity Int      @default(0)
+  cancelledQuantity Int    @default(0)
   unitPrice       Float
   vatRate         Int
   lineNet         Float
@@ -602,12 +604,14 @@ model OrderItem {
   dispatchLines             DispatchDocumentLine[]
   pickingShortages          PickingShortage[]
   returnOrderItems          ReturnOrderItem[]
+  stockReturnEvents         StockReturnEvent[]
 
   @@index([orderId])
   @@index([productId])
   @@index([pickedQuantity])
   @@index([packedQuantity])
   @@index([shippedQuantity])
+  @@index([cancelledQuantity])
 }
 
 
@@ -3800,4 +3804,55 @@ model ReturnOrderItem {
   @@index([productId])
   @@index([productCode])
   @@index([productBarcode])
+}
+
+
+enum StockReturnReason {
+  CUSTOMER_PARTIAL_CANCEL
+  CUSTOMER_FULL_CANCEL
+  WRONG_PICK
+  DAMAGED
+  OPERATION_CORRECTION
+}
+
+enum StockReturnStage {
+  PICKING
+  PACKING
+  ROUTED
+  LOADED
+}
+
+model StockReturnEvent {
+  id                   String            @id @default(cuid())
+  orderId              Int
+  orderItemId          Int
+  productId            Int
+  reason               StockReturnReason
+  stage                StockReturnStage
+  quantity             Int               @default(1)
+  sourceHandlingUnitId Int
+  targetHandlingUnitId Int
+  targetLocationId     Int
+  productCode          String
+  productBarcode       String
+  productName          String
+  sourceBarcode        String
+  targetBarcode        String
+  targetLocationCode   String
+  operatorId           String?
+  operatorName         String?
+  terminalCode         String?
+  createdAt            DateTime          @default(now())
+
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+  @@index([orderItemId, createdAt])
+  @@index([productId])
+  @@index([reason])
+  @@index([stage])
+  @@index([sourceHandlingUnitId])
+  @@index([targetHandlingUnitId])
+  @@index([targetLocationId])
 }
