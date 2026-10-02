@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState,useEffect,useMemo,useRef,useState } from "react";
+import { useRouter } from "next/navigation";
 import { processEcommerceReturnItemState,type EcommerceReturnProcessState } from "@/app/admin/e-ticaret/returns/actions";
 
 const initial:EcommerceReturnProcessState={success:false,message:""};
@@ -8,6 +9,7 @@ const initial:EcommerceReturnProcessState={success:false,message:""};
 type Item={id:string;productCode:string;productBarcode:string;productName:string;imageUrl:string|null;expectedQuantity:number;receivedQuantity:number;acceptedQuantity:number;rejectedQuantity:number;refundStatus:string;refundAmount:number};
 
 export default function EcommerceReturnReceivingPanel({preReceiptId,returnNumber,orderNumber,customerName,items}:{preReceiptId:string;returnNumber:string;orderNumber:string;customerName:string;items:Item[]}){
+ const router=useRouter();
  const [state,action,pending]=useActionState(processEcommerceReturnItemState,initial);
  const [quality,setQuality]=useState("SELLABLE"),[product,setProduct]=useState(""),[thm,setThm]=useState(""),[location,setLocation]=useState("");
  const [currentImage,setCurrentImage]=useState<string|null>(items.length===1?items[0].imageUrl:null);
@@ -16,7 +18,7 @@ export default function EcommerceReturnReceivingPanel({preReceiptId,returnNumber
  const complete=items.reduce((s,i)=>s+i.receivedQuantity,0),total=items.reduce((s,i)=>s+i.expectedQuantity,0);
  const currentItem=useMemo(()=>items.find(i=>i.productBarcode.toUpperCase()===product.trim().toUpperCase()||i.productCode.toUpperCase()===product.trim().toUpperCase()),[items,product]);
  useEffect(()=>{if(currentItem?.imageUrl)setCurrentImage(currentItem.imageUrl)},[currentItem]);
- useEffect(()=>{if(state.success){setProduct("");requestAnimationFrame(()=>{productRef.current?.focus();productRef.current?.scrollIntoView({block:"center",behavior:"smooth"})})}},[state]);
+ useEffect(()=>{if(!state.success)return;if(state.completed){setProduct("");setThm("");setLocation("");setCurrentImage(null);setQuality("SELLABLE");window.scrollTo({top:0,behavior:"smooth"});router.replace("/admin/e-ticaret/returns");return;}setProduct("");requestAnimationFrame(()=>{productRef.current?.focus();productRef.current?.scrollIntoView({block:"center",behavior:"smooth"})})},[state,router]);
  useEffect(()=>{requestAnimationFrame(()=>{thmRef.current?.focus();thmRef.current?.scrollIntoView({block:"center"})})},[]);
 
  function nextAfterScan(value:string,next:React.RefObject<HTMLInputElement|null>){if(timer.current)clearTimeout(timer.current);if(value.trim())timer.current=setTimeout(()=>{next.current?.focus();next.current?.scrollIntoView({block:"center",behavior:"smooth"})},180)}
