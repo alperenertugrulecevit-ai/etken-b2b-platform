@@ -62,6 +62,12 @@ function getMovementLabel(type: string) {
   return labels[type] ?? type;
 }
 
+function displayedPhysicalChange(movement: { movementType: StockMovementType; physicalChange: number }) {
+  if (movement.physicalChange === 0 && movement.movementType === StockMovementType.STOCK_PICKING) return -1;
+  if (movement.physicalChange === 0 && movement.movementType === StockMovementType.STOCK_RETURN) return 1;
+  return movement.physicalChange;
+}
+
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
@@ -291,7 +297,7 @@ export async function GET(
       movement.order?.orderNumber ??
         "",
 
-      movement.physicalChange,
+      displayedPhysicalChange(movement),
 
       movement.reservedChange,
 

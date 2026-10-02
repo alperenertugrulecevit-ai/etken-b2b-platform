@@ -8,9 +8,16 @@ const columns=[
  {key:"reservedChange",label:"Rezervasyon Değişimi"},{key:"physicalBalance",label:"Fiziksel Bakiye"},{key:"reservedBalance",label:"Rezerve Bakiye"},
  {key:"availableBalance",label:"Kullanılabilir Bakiye"},{key:"description",label:"Açıklama"},{key:"actions",label:"İşlemler"},
 ];
-const labels:Record<string,string>={INITIAL_STOCK:"Açılış Stoğu",PURCHASE_RECEIPT:"Mal Kabul",MANUAL_IN:"Manuel Stok Girişi",MANUAL_OUT:"Manuel Stok Çıkışı",RESERVATION_CREATE:"Rezervasyon Oluşturma",RESERVATION_RELEASE:"Rezervasyon Çözme",SALE_SHIPMENT:"Satış Sevkiyatı",SALE_RETURN:"İade Girişi",STOCK_RETURN:"Stoğa Geri Alma",COUNT_INCREASE:"Sayım Fazlası",COUNT_DECREASE:"Sayım Eksiği",TRANSFER_IN:"Transfer Girişi",TRANSFER_OUT:"Transfer Çıkışı",LOST_STOCK_IN:"Kayıp Stok Girişi",LOST_STOCK_OUT:"Kayıp Stok Çıkışı"};
+const labels:Record<string,string>={INITIAL_STOCK:"Açılış Stoğu",PURCHASE_RECEIPT:"Mal Kabul",MANUAL_IN:"Manuel Stok Girişi",MANUAL_OUT:"Manuel Stok Çıkışı",RESERVATION_CREATE:"Rezervasyon Oluşturma",RESERVATION_RELEASE:"Rezervasyon Çözme",SALE_SHIPMENT:"Satış Sevkiyatı",SALE_RETURN:"İade Girişi",STOCK_RETURN:"Stoğa Geri Alma",STOCK_PICKING:"Toplama",COUNT_INCREASE:"Sayım Fazlası",COUNT_DECREASE:"Sayım Eksiği",TRANSFER_IN:"Transfer Girişi",TRANSFER_OUT:"Transfer Çıkışı",LOST_STOCK_IN:"Kayıp Stok Girişi",LOST_STOCK_OUT:"Kayıp Stok Çıkışı"};
 const classes:Record<string,string>={PURCHASE_RECEIPT:"bg-green-100 text-green-700",MANUAL_IN:"bg-green-100 text-green-700",MANUAL_OUT:"bg-red-100 text-red-700",RESERVATION_CREATE:"bg-orange-100 text-orange-700",RESERVATION_RELEASE:"bg-blue-100 text-blue-700",SALE_SHIPMENT:"bg-red-100 text-red-700",SALE_RETURN:"bg-green-100 text-green-700",STOCK_RETURN:"bg-cyan-100 text-cyan-800",STOCK_PICKING:"bg-indigo-100 text-indigo-800",COUNT_INCREASE:"bg-emerald-100 text-emerald-700",COUNT_DECREASE:"bg-rose-100 text-rose-700",TRANSFER_IN:"bg-cyan-100 text-cyan-700",TRANSFER_OUT:"bg-violet-100 text-violet-700",LOST_STOCK_IN:"bg-amber-100 text-amber-800",LOST_STOCK_OUT:"bg-red-100 text-red-800"};
 const num=(v:number)=>v.toLocaleString("tr-TR"),signed=(v:number)=>v>0?`+${num(v)}`:num(v);
+const displayedPhysicalChange=(r:StockMovementRow)=>{
+ // STOCK_PICKING ve STOCK_RETURN depo toplam stoğunu değiştirmeyen THM içi operasyonlardır.
+ // Her hareket kaydı tekil okutma = 1 adet olduğu için ekranda işlem yönünü gösteririz.
+ if(r.physicalChange===0&&r.type==="STOCK_PICKING")return -1;
+ if(r.physicalChange===0&&r.type==="STOCK_RETURN")return 1;
+ return r.physicalChange;
+};
 export type StockMovementRow={id:number;date:string;warehouseCode:string;barcode:string;productId:number;productCode:string;productName:string;location:string;thm:string;type:string;document:string;orderId:number|null;orderNumber:string|null;physicalChange:number;reservedChange:number;physicalBalance:number;reservedBalance:number;availableBalance:number;description:string};
 
 export default function StockMovementsTable({rows}:{rows:StockMovementRow[]}){
@@ -22,7 +29,7 @@ export default function StockMovementsTable({rows}:{rows:StockMovementRow[]}){
    case"location":return <span className="text-slate-500">{r.location}</span>;case"thm":return <span className="text-slate-500">{r.thm}</span>;
    case"type":return <span className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold ${classes[r.type]??"bg-slate-100 text-slate-700"}`}>{labels[r.type]??r.type}</span>;
    case"document":return <><p className="font-semibold">{r.document}</p>{r.orderNumber&&<p className="mt-1 text-sm text-gray-500">{r.orderNumber}</p>}</>;
-   case"physicalChange":return <span className={`font-bold ${r.physicalChange>0?"text-green-700":r.physicalChange<0?"text-red-700":"text-gray-400"}`}>{signed(r.physicalChange)}</span>;
+   case"physicalChange":{const v=displayedPhysicalChange(r);return <span className={`font-bold ${v>0?"text-green-700":v<0?"text-red-700":"text-gray-400"}`}>{signed(v)}</span>;}
    case"reservedChange":return <span className={`font-bold ${r.reservedChange>0?"text-orange-700":r.reservedChange<0?"text-blue-700":"text-gray-400"}`}>{signed(r.reservedChange)}</span>;
    case"physicalBalance":return <span className="font-semibold">{num(r.physicalBalance)}</span>;case"reservedBalance":return <span className="font-semibold">{num(r.reservedBalance)}</span>;
    case"availableBalance":return <span className="font-bold text-green-700">{num(r.availableBalance)}</span>;case"description":return <span className="text-sm text-gray-600">{r.description}</span>;
