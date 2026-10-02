@@ -146,7 +146,7 @@ export async function processEcommerceReturnItem(formData:FormData){
       operationType:WmsOperationType.RECEIVING,module:"ECOMMERCE_RETURN",entityType:"HANDLING_UNIT",entityId:hu.id,barcode:pre.preReceiptNumber,targetBarcode:hu.barcode,
       orderId:pre.originalOrder.id,orderNumber:pre.originalOrder.orderNumber,productId:item.productId,productCode:item.productCode,productName:item.productName,
       quantity:1,warehouseId:pre.warehouseId,description:`E-Ticaret iade girişinde ${item.productCode} 1 adet kabul edildi. Kalite: ${quality}.`,
-      metadata:{ecommerceReturnId:pre.ecommerceReturn.id,preReceiptId:pre.id,qualityResult:quality,refundStatus,targetLocationCode},
+      metadata:{ecommerceReturnId:pre.ecommerceReturn.id,returnNumber:pre.ecommerceReturn.returnNumber,preReceiptId:pre.id,qualityResult:quality,refundStatus,targetLocationCode},
     }});
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:30000});
   refresh();
