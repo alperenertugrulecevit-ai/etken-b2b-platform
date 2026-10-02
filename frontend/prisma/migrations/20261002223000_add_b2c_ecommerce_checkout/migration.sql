@@ -4,6 +4,8 @@ CREATE TYPE "CustomerType" AS ENUM ('CORPORATE', 'INDIVIDUAL');
 ALTER TABLE "Customer"
 ADD COLUMN "customerType" "CustomerType" NOT NULL DEFAULT 'CORPORATE';
 
+-- PostgreSQL requires enum additions to be committed before the new values are used.
+-- Prisma deploy runs this migration before application code generated from the new schema.
 ALTER TYPE "OrderSource" ADD VALUE 'ECOMMERCE';
 ALTER TYPE "B2BPaymentMethod" ADD VALUE 'CREDIT_CARD';
 
