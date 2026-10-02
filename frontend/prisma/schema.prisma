@@ -455,6 +455,8 @@ model Order {
   consolidationTask          ConsolidationTask?
   returnOrders               ReturnOrder[]
   stockReturnEvents          StockReturnEvent[]
+  ecommerceReturns           EcommerceReturn[]
+  ecommerceReturnPreReceipts EcommerceReturnPreReceipt[]
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -605,6 +607,7 @@ model OrderItem {
   pickingShortages          PickingShortage[]
   returnOrderItems          ReturnOrderItem[]
   stockReturnEvents         StockReturnEvent[]
+  ecommerceReturnItems      EcommerceReturnItem[]
 
   @@index([orderId])
   @@index([productId])
@@ -823,6 +826,7 @@ model Warehouse {
   inventoryCounts InventoryCount[]
   userAccesses    UserWarehouseAccess[]
   fulfillmentOrders Order[] @relation("OrderFulfillmentWarehouse")
+  ecommerceReturnPreReceipts EcommerceReturnPreReceipt[]
   pickingAssignments OrderPickingAssignment[]
   waves Wave[] @relation("WaveWarehouse")
   shippingBoxDefinitions ShippingBoxDefinitionWarehouse[]
@@ -3604,6 +3608,7 @@ model ShippingCarrier {
   vehicles ShippingVehicle[]
   shipments Shipment[]
   orders Order[]
+  ecommerceReturnPreReceipts EcommerceReturnPreReceipt[]
   @@unique([tenantId, companyId, code])
   @@index([tenantId, companyId, name])
   @@index([tenantId, companyId, isActive])
@@ -3808,6 +3813,150 @@ model ReturnOrderItem {
   @@index([productBarcode])
 }
 
+
+enum EcommerceReturnPreReceiptMode {
+  RETURN_CODE
+  CARGO_BARCODE
+}
+
+enum EcommerceReturnPreReceiptMatchStatus {
+  MATCHED
+  UNMATCHED
+  CONFLICT
+}
+
+enum EcommerceReturnPreReceiptOutcome {
+  RETURN_ENTRY_PENDING
+  UNDELIVERED_RETURN
+  RETURN_TO_CARRIER
+  RETURNED_TO_CARRIER
+  CARRIER_STATUS_UNVERIFIED
+}
+
+enum EcommerceReturnStatus {
+  PRE_RECEIVED
+  RECEIVING
+  QUALITY_CONTROL
+  PARTIALLY_COMPLETED
+  WAREHOUSE_COMPLETED
+  FINANCE_PENDING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum EcommerceReturnQualityResult {
+  SELLABLE
+  PACKAGING_DAMAGED
+  PRODUCT_DAMAGED
+  MISSING_PART
+  USED
+  WRONG_PRODUCT
+  REVIEW_REQUIRED
+}
+
+enum EcommerceReturnRefundStatus {
+  WAITING
+  ELIGIBLE
+  REVIEW_REQUIRED
+  REQUESTED
+  REFUNDED
+  REJECTED
+}
+
+model EcommerceReturnPreReceipt {
+  id                 String                              @id @default(cuid())
+  preReceiptNumber   String                              @unique
+  warehouseId        Int
+  carrierId          String
+  mode               EcommerceReturnPreReceiptMode
+  scannedCode        String
+  returnCode         String?
+  cargoBarcode       String?
+  originalOrderId    Int?
+  ecommerceReturnId  String?
+  matchStatus        EcommerceReturnPreReceiptMatchStatus
+  outcome            EcommerceReturnPreReceiptOutcome
+  carrierStatus      String?
+  lateDetected       Boolean                             @default(false)
+  receivedByUserId   String?
+  receivedByName     String?
+  terminalCode       String?
+  receivedAt         DateTime                            @default(now())
+  returnedToCarrierAt DateTime?
+  returnedToCarrierBy String?
+  note               String?
+  createdAt          DateTime                            @default(now())
+  updatedAt          DateTime                            @updatedAt
+
+  warehouse       Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  carrier         ShippingCarrier  @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  originalOrder   Order?           @relation(fields: [originalOrderId], references: [id], onDelete: SetNull)
+  ecommerceReturn EcommerceReturn? @relation(fields: [ecommerceReturnId], references: [id], onDelete: SetNull)
+
+  @@unique([carrierId, mode, scannedCode])
+  @@index([warehouseId, receivedAt])
+  @@index([carrierId, receivedAt])
+  @@index([originalOrderId])
+  @@index([ecommerceReturnId])
+  @@index([matchStatus])
+  @@index([outcome])
+  @@index([lateDetected])
+}
+
+model EcommerceReturn {
+  id                 String                       @id @default(cuid())
+  returnNumber       String                       @unique
+  originalOrderId    Int
+  externalReturnCode String?
+  status             EcommerceReturnStatus        @default(PRE_RECEIVED)
+  refundStatus       EcommerceReturnRefundStatus  @default(WAITING)
+  receivedAt         DateTime?
+  warehouseCompletedAt DateTime?
+  financeCompletedAt DateTime?
+  note               String?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+
+  originalOrder Order                       @relation(fields: [originalOrderId], references: [id], onDelete: Restrict)
+  items         EcommerceReturnItem[]
+  preReceipts   EcommerceReturnPreReceipt[]
+
+  @@index([originalOrderId])
+  @@index([externalReturnCode])
+  @@index([status])
+  @@index([refundStatus])
+}
+
+model EcommerceReturnItem {
+  id               String                       @id @default(cuid())
+  ecommerceReturnId String
+  orderItemId      Int
+  productId        Int
+  productCode      String
+  productBarcode   String
+  productName      String
+  expectedQuantity Int
+  receivedQuantity Int                          @default(0)
+  acceptedQuantity Int                          @default(0)
+  rejectedQuantity Int                          @default(0)
+  qualityResult    EcommerceReturnQualityResult?
+  refundStatus     EcommerceReturnRefundStatus  @default(WAITING)
+  refundAmount     Float                        @default(0)
+  customerReason   String?
+  qualityNote      String?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  ecommerceReturn EcommerceReturn @relation(fields: [ecommerceReturnId], references: [id], onDelete: Cascade)
+  orderItem       OrderItem       @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@unique([ecommerceReturnId, orderItemId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([qualityResult])
+  @@index([refundStatus])
+}
 
 enum StockReturnReason {
   CUSTOMER_PARTIAL_CANCEL
