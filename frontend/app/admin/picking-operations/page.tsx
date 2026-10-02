@@ -31,8 +31,8 @@ export default async function PickingOperationsPage({searchParams}:{searchParams
  const person=(u:any)=>u?.employee?`${u.employee.firstName} ${u.employee.lastName}`:u?.username??"-";
  const groups:any[]=[];
  for(const wave of waves){
-  const items=wave.orders.flatMap(x=>x.order.items.map(i=>({...i,orderId:x.order.id,orderNumber:x.order.orderNumber,orderType:x.order.orderType})));
-  const planned=items.reduce((s,i)=>s+Math.max(0,i.quantity-(i.cancelledQuantity??0)),0),picked=items.reduce((s,i)=>s+Math.min(i.pickedQuantity,Math.max(0,i.quantity-(i.cancelledQuantity??0))),0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
+  const items=wave.orders.flatMap(x=>x.order.items.map(i=>({...i,quantity:Math.max(0,i.quantity-(i.cancelledQuantity??0)),orderId:x.order.id,orderNumber:x.order.orderNumber,orderType:x.order.orderType})));
+  const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+Math.min(i.pickedQuantity,i.quantity),0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
   // Bu ekran yalnızca aktif veya müdahale gerektiren toplama operasyonlarını gösterir.
   // Toplama + geçerli eksik kapatma planlanan miktarı karşıladığında görev tamamlanmıştır
   // ve Wave durum kaydı henüz kapanmamış olsa bile aktif izleme listesinden çıkar.
@@ -40,8 +40,8 @@ export default async function PickingOperationsPage({searchParams}:{searchParams
   groups.push({key:wave.id,date:wave.createdAt,warehouseCode:wave.warehouse?.code??"-",type:"Wave Toplama",orderType:Array.from(new Set(items.map(i=>typeLabel[i.orderType]??i.orderType))).join(", ")||"-",person:person(wave.assignments[0]?.user),waveNo:wave.waveNo,orderNo:"-",zone:"-",planned,picked,short,status:"Devam Ediyor",items});
  }
  for(const task of directTasks){
-  const items=task.order.items.map(i=>({...i,orderId:task.order.id,orderNumber:task.order.orderNumber,orderType:task.order.orderType}));
-  const planned=items.reduce((s,i)=>s+Math.max(0,i.quantity-(i.cancelledQuantity??0)),0),picked=items.reduce((s,i)=>s+Math.min(i.pickedQuantity,Math.max(0,i.quantity-(i.cancelledQuantity??0))),0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
+  const items=task.order.items.map(i=>({...i,quantity:Math.max(0,i.quantity-(i.cancelledQuantity??0)),orderId:task.order.id,orderNumber:task.order.orderNumber,orderType:task.order.orderType}));
+  const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+Math.min(i.pickedQuantity,i.quantity),0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
   if(planned<=picked+short) continue;
   groups.push({key:task.id,date:task.createdAt,warehouseCode:task.warehouse?.code??"-",type:"Sipariş Bazlı",orderType:typeLabel[task.order.orderType]??task.order.orderType,person:person(task.claimedBy),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:"Devam Ediyor",items});
  }
