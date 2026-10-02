@@ -17,7 +17,7 @@ export default async function PickingOperationsPage({searchParams}:{searchParams
    orderBy:{createdAt:"desc"},
    take:100,
    select:{id:true,waveNo:true,createdAt:true,status:true,warehouse:{select:{code:true}},assignments:{where:{operationType:"PICKING"},select:{user:{select:{username:true,employee:{select:{firstName:true,lastName:true}}}}}},
-    orders:{select:{order:{select:{id:true,orderNumber:true,orderType:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,pickedQuantity:true,product:{select:{barcode:true}},pickingShortages:{where:{status:"ACTIVE"},select:{id:true,quantity:true,reason:true}}}}}}}}}
+    orders:{where:{order:{status:{not:"CANCELLED"}}},select:{order:{select:{id:true,orderNumber:true,orderType:true,items:{select:{id:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,product:{select:{barcode:true}},pickingShortages:{where:{status:"ACTIVE"},select:{id:true,quantity:true,reason:true}}}}}}}}}
   }),
   prisma.zonePickTask.findMany({
    where:{status:{in:["OPEN","CLAIMED","IN_PROGRESS"]},waveId:null,...(selectedWarehouseId?{warehouseId:selectedWarehouseId}:{})},
@@ -32,7 +32,7 @@ export default async function PickingOperationsPage({searchParams}:{searchParams
  const groups:any[]=[];
  for(const wave of waves){
   const items=wave.orders.flatMap(x=>x.order.items.map(i=>({...i,orderId:x.order.id,orderNumber:x.order.orderNumber,orderType:x.order.orderType})));
-  const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+i.pickedQuantity,0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
+  const planned=items.reduce((s,i)=>s+Math.max(0,i.quantity-(i.cancelledQuantity??0)),0),picked=items.reduce((s,i)=>s+Math.min(i.pickedQuantity,Math.max(0,i.quantity-(i.cancelledQuantity??0))),0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
   // Bu ekran yalnızca aktif veya müdahale gerektiren toplama operasyonlarını gösterir.
   // Toplama + geçerli eksik kapatma planlanan miktarı karşıladığında görev tamamlanmıştır
   // ve Wave durum kaydı henüz kapanmamış olsa bile aktif izleme listesinden çıkar.
