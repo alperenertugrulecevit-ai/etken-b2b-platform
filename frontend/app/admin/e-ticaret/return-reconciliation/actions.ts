@@ -8,6 +8,9 @@ export async function flagReturnToCarrier(formData:FormData){
  await AuthorizationService.requireAdminPortalAccess();
  const id=String(formData.get("id")??"");
  if(!id) throw new Error("Ön kabul kaydı bulunamadı.");
+ const pre=await prisma.ecommerceReturnPreReceipt.findUnique({where:{id},include:{ecommerceReturn:{include:{items:{select:{receivedQuantity:true}}}}}});
+ if(!pre) throw new Error("Ön kabul kaydı bulunamadı.");
+ if(pre.ecommerceReturn?.items.some(x=>x.receivedQuantity>0)) throw new Error("Ürün iade girişine alındıktan sonra gönderi kargoya geri verilecek olarak işaretlenemez.");
  await prisma.ecommerceReturnPreReceipt.update({where:{id},data:{outcome:EcommerceReturnPreReceiptOutcome.RETURN_TO_CARRIER}});
  revalidatePath("/admin/e-ticaret/return-reconciliation");
  revalidatePath("/admin/e-ticaret/returns");
