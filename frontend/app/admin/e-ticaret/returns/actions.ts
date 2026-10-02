@@ -173,11 +173,14 @@ export async function createRefundApprovalRecord(formData:FormData){
 }
 
 
-export type EcommerceReturnProcessState={success:boolean;message:string};
+export type EcommerceReturnProcessState={success:boolean;message:string;completed?:boolean};
 export async function processEcommerceReturnItemState(_prev:EcommerceReturnProcessState,formData:FormData):Promise<EcommerceReturnProcessState>{
   try{
+    const preReceiptId=String(formData.get("preReceiptId")??"");
     await processEcommerceReturnItem(formData);
-    return {success:true,message:"Ürün kabul edildi. Stok, kalite ve finans uygunluk kayıtları güncellendi."};
+    const pre=preReceiptId?await prisma.ecommerceReturnPreReceipt.findUnique({where:{id:preReceiptId},select:{ecommerceReturn:{select:{status:true}}}}):null;
+    const completed=pre?.ecommerceReturn?.status===EcommerceReturnStatus.WAREHOUSE_COMPLETED;
+    return {success:true,completed,message:completed?"İade ürün kabulü tamamlandı. Yeni iade okutmaya hazır.":"Ürün kabul edildi. Stok, kalite ve finans uygunluk kayıtları güncellendi."};
   }catch(error){
     return {success:false,message:error instanceof Error?error.message:"E-Ticaret iade girişi tamamlanamadı."};
   }
