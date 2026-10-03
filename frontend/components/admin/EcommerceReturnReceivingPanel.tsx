@@ -2,13 +2,13 @@
 
 import { useActionState,useEffect,useMemo,useRef,useState } from "react";
 import { useRouter } from "next/navigation";
-import { processEcommerceReturnItemState,type EcommerceReturnProcessState } from "@/app/admin/e-ticaret/returns/actions";
+import { completePartialEcommerceReturnReceiving,processEcommerceReturnItemState,type EcommerceReturnProcessState } from "@/app/admin/e-ticaret/returns/actions";
 
 const initial:EcommerceReturnProcessState={success:false,message:""};
 
 type Item={id:string;productCode:string;productBarcode:string;productName:string;imageUrl:string|null;expectedQuantity:number;receivedQuantity:number;acceptedQuantity:number;rejectedQuantity:number;refundStatus:string;refundAmount:number};
 
-export default function EcommerceReturnReceivingPanel({preReceiptId,returnNumber,orderNumber,customerName,items}:{preReceiptId:string;returnNumber:string;orderNumber:string;customerName:string;items:Item[]}){
+export default function EcommerceReturnReceivingPanel({preReceiptId,ecommerceReturnId,returnNumber,orderNumber,customerName,items}:{preReceiptId:string;ecommerceReturnId:string;returnNumber:string;orderNumber:string;customerName:string;items:Item[]}){
  const router=useRouter();
  const [state,action,pending]=useActionState(processEcommerceReturnItemState,initial);
  const [quality,setQuality]=useState("SELLABLE"),[product,setProduct]=useState(""),[thm,setThm]=useState(""),[location,setLocation]=useState("");
@@ -44,6 +44,12 @@ export default function EcommerceReturnReceivingPanel({preReceiptId,returnNumber
     </form>
     {state.message&&<div className={`mt-3 rounded-xl border p-3 font-bold ${state.success?"border-emerald-300 bg-emerald-50 text-emerald-900":"border-red-300 bg-red-50 text-red-900"}`}>{state.message}</div>}
     <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-600">{quality==="SELLABLE"?"Satılabilir: STOCK THM + normal stok adresi zorunlu. Para iadesine uygun tutar oluşur.":"Kalite/hasar: RECEIVING THM + QUALITY / QUARANTINE / RETURN adresi zorunlu. Finans incelemesi gerekir."}</div>
+    {complete>0&&complete<total&&<form action={completePartialEcommerceReturnReceiving} className="mt-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+     <input type="hidden" name="ecommerceReturnId" value={ecommerceReturnId}/>
+     <p className="text-sm font-black text-amber-950">Pakette gelen tüm ürünleri okuttuysanız kısmi iadeyi depo açısından tamamlayabilirsiniz.</p>
+     <p className="mt-1 text-xs font-semibold text-amber-800">Yalnız okutulan {complete} adet ürün değerlendirilir. Gelmeyen {total-complete} adet için stok veya para iadesi kaydı oluşmaz. Bu işlemden sonra bu iade dosyasına yeni ürün kabul edilemez.</p>
+     <button type="submit" className="mt-3 rounded-xl bg-amber-700 px-5 py-3 font-black text-white">Pakette Gelenler Tamamlandı</button>
+    </form>}
    </section>
   </div>
   <section className="rounded-2xl border bg-white p-4 shadow-sm"><h2 className="mb-3 text-lg font-black">İade Ürünleri</h2><table className="w-full text-sm"><thead className="bg-slate-100"><tr>{["Ürün","Barkod","Beklenen","Gelen","Satılabilir","Red","Finans","Tutar"].map(x=><th key={x} className="border p-2 text-left">{x}</th>)}</tr></thead><tbody>{items.map(i=><tr key={i.id}><td className="border p-2"><b>{i.productCode}</b><br/>{i.productName}</td><td className="border p-2 font-mono">{i.productBarcode}</td><td className="border p-2">{i.expectedQuantity}</td><td className="border p-2 font-bold">{i.receivedQuantity}</td><td className="border p-2 text-emerald-700">{i.acceptedQuantity}</td><td className="border p-2 text-red-700">{i.rejectedQuantity}</td><td className="border p-2">{i.refundStatus}</td><td className="border p-2">{i.refundAmount.toFixed(2)} TL</td></tr>)}</tbody></table></section>
