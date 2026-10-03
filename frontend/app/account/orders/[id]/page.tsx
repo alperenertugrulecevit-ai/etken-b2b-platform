@@ -7,6 +7,8 @@ import {
 } from "next/navigation";
 import {
   B2BPaymentMethod,
+  CustomerAccountEntryDirection,
+  CustomerAccountEntryType,
   OrderStatus,
   UserType,
 } from "@prisma/client";
@@ -101,6 +103,13 @@ export default async function CustomerOrderDetailPage({
             id: "asc",
           },
         },
+        accountEntries: {
+          where: {
+            direction: CustomerAccountEntryDirection.DEBIT,
+            entryType: CustomerAccountEntryType.REFUND,
+          },
+          select: { amount: true },
+        },
         statusHistory: {
           where: {
             visibleToCustomer:
@@ -116,6 +125,10 @@ export default async function CustomerOrderDetailPage({
   if (!order) {
     notFound();
   }
+
+  const refundAmount = order.accountEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const hasRefund = refundAmount > 0;
+  const netAmount = Math.max(0, order.totalAmount - refundAmount);
 
   const bankAccounts =
     order.paymentMethod ===
@@ -213,6 +226,24 @@ export default async function CustomerOrderDetailPage({
         currentStatus={order.status}
         history={order.statusHistory}
       />
+
+      {hasRefund ? (
+        <section className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4">
+          <h2 className="text-lg font-black text-violet-950">
+            {netAmount > 0 ? "Kısmi Para İadesi" : "Para İadesi Tamamlandı"}
+          </h2>
+          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <p className="text-violet-700">İade edilen tutar</p>
+              <p className="mt-1 text-lg font-black text-violet-950">{formatCurrency(refundAmount)} ₺</p>
+            </div>
+            <div>
+              <p className="text-violet-700">Siparişte kalan net tutar</p>
+              <p className="mt-1 text-lg font-black text-violet-950">{formatCurrency(netAmount)} ₺</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {order.cargoTrackingNumber ? (
         <section className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">

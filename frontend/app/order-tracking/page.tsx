@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { CustomerAccountEntryDirection, CustomerAccountEntryType, OrderStatus } from "@prisma/client";
 import Link from "next/link";
 
 import Header from "@/components/layout/Header";
@@ -83,6 +83,13 @@ export default async function OrderTrackingPage({
             paymentStatus: true,
             cargoTrackingNumber: true,
             cargoTrackingUrl: true,
+            accountEntries: {
+              where: {
+                direction: CustomerAccountEntryDirection.DEBIT,
+                entryType: CustomerAccountEntryType.REFUND,
+              },
+              select: { amount: true },
+            },
             shippingHandlingUnitOrders: {
               select: {
                 shippingHandlingUnit: {
@@ -134,6 +141,9 @@ export default async function OrderTrackingPage({
       : null;
 
   const currentProgressIndex = order ? progressIndex(order.status) : -1;
+  const refundAmount = order?.accountEntries.reduce((sum, entry) => sum + entry.amount, 0) ?? 0;
+  const hasRefund = refundAmount > 0;
+  const netAmount = order ? Math.max(0, order.totalAmount - refundAmount) : 0;
   const bankAccounts = order && order.paymentStatus?.toUpperCase() !== "PAID" && order.paymentStatus?.toUpperCase() !== "REFUNDED"
     ? await prisma.b2BBankAccount.findMany({
         where: { tenantId: B2B_CONSTANTS.TENANT_ID, companyId: B2B_CONSTANTS.COMPANY_ID, isActive: true },
@@ -235,11 +245,29 @@ export default async function OrderTrackingPage({
                     <p className="mt-1 font-black text-[#EF4B23]">{STATUS_LABELS[order.status]}</p>
                     <p className="mt-2 text-xl font-black">{money(order.totalAmount)} ₺</p>
                     <p className="mt-2 text-sm font-bold text-slate-600">
-                      {paymentStatusLabel(order.paymentStatus)}
+                      {hasRefund ? (netAmount > 0 ? "Kısmi İade" : "İade Edildi") : paymentStatusLabel(order.paymentStatus)}
                     </p>
                   </div>
                 </div>
               </div>
+
+              {hasRefund ? (
+                <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5">
+                  <h2 className="text-lg font-black text-violet-950">
+                    {netAmount > 0 ? "Kısmi Para İadesi" : "Para İadesi Tamamlandı"}
+                  </h2>
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                    <div className="rounded-xl bg-white p-4">
+                      <p className="text-violet-700">İade edilen tutar</p>
+                      <p className="mt-1 text-lg font-black text-violet-950">{money(refundAmount)} ₺</p>
+                    </div>
+                    <div className="rounded-xl bg-white p-4">
+                      <p className="text-violet-700">Siparişte kalan net tutar</p>
+                      <p className="mt-1 text-lg font-black text-violet-950">{money(netAmount)} ₺</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {bankAccounts.length > 0 ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
