@@ -85,7 +85,7 @@ export async function processEcommerceReturnItem(formData:FormData){
     if(!pre) throw new Error("Ön kabul bulunamadı.");
     if(!pre.ecommerceReturn||!pre.originalOrder) throw new Error("Gönderi sipariş/iade ile eşleşmeden ürün kabulü yapılamaz.");
     if(pre.outcome!==EcommerceReturnPreReceiptOutcome.RETURN_ENTRY_PENDING&&pre.outcome!==EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN) throw new Error("Bu ön kabul iade girişine uygun değil.");
-    if(![EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING].includes(pre.ecommerceReturn.status)) throw new Error("İade dosyası depo kabulüne kapalı.");
+    if(pre.ecommerceReturn.status!==EcommerceReturnStatus.PRE_RECEIVED&&pre.ecommerceReturn.status!==EcommerceReturnStatus.RECEIVING) throw new Error("İade dosyası depo kabulüne kapalı.");
 
     const item=pre.ecommerceReturn.items.find(i=>i.productBarcode.trim().toUpperCase()===productBarcode||i.productCode.trim().toUpperCase()===productBarcode);
     if(!item) throw new Error(`${productBarcode} bu iade dosyasında beklenen ürün değil.`);
@@ -167,7 +167,7 @@ export async function completePartialEcommerceReturnReceiving(formData:FormData)
       include:{items:true,refunds:true},
     });
     if(!er) throw new Error("E-Ticaret iade dosyası bulunamadı.");
-    if(![EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING].includes(er.status)) throw new Error("Bu iade dosyası depo kabulünü tamamlamaya uygun değil.");
+    if(er.status!==EcommerceReturnStatus.PRE_RECEIVED&&er.status!==EcommerceReturnStatus.RECEIVING) throw new Error("Bu iade dosyası depo kabulünü tamamlamaya uygun değil.");
 
     const received=er.items.reduce((sum,item)=>sum+item.receivedQuantity,0);
     const expected=er.items.reduce((sum,item)=>sum+item.expectedQuantity,0);
