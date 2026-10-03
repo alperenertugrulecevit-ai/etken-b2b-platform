@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { OrderStatus } from "@prisma/client";
+import { CustomerAccountEntryDirection, CustomerAccountEntryType, OrderStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
@@ -42,6 +42,10 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
     select:{
       id:true,orderNumber:true,createdAt:true,status:true,totalAmount:true,paymentStatus:true,paymentReference:true,
       ecommerceEmail:true,customer:{select:{companyName:true}},
+      accountEntries:{
+        where:{direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND},
+        select:{amount:true},
+      },
     },
   });
 
@@ -74,12 +78,24 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
         <tbody>{orders.map(o=>{
           const paid=o.paymentStatus?.toUpperCase()==="PAID";
           const refunded=o.paymentStatus?.toUpperCase()==="REFUNDED";
+          const refundAmount=o.accountEntries.reduce((sum,entry)=>sum+entry.amount,0);
+          const hasPartialRefund=refundAmount>0&&!refunded;
+          const netCollected=Math.max(0,o.totalAmount-refundAmount);
           return <tr key={o.id} className="border-b align-top">
             <td className="p-4"><Link href={"/admin/orders/"+o.id} className="font-black text-blue-900">{o.orderNumber}</Link></td>
             <td className="p-4"><strong>{o.customer.companyName}</strong><div className="mt-1 text-xs text-slate-500">{o.ecommerceEmail??"-"}</div></td>
             <td className="p-4 whitespace-nowrap">{o.createdAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</td>
             <td className="p-4 whitespace-nowrap font-black">{money(o.totalAmount)} ₺</td>
-            <td className="p-4"><span className={"rounded-full px-3 py-1 font-bold "+(paid?"bg-emerald-100 text-emerald-800":refunded?"bg-violet-100 text-violet-800":"bg-orange-100 text-orange-800")}>{PAYMENT[o.paymentStatus??"PENDING"]??o.paymentStatus??"Ödeme Bekleniyor"}</span>{o.paymentReference?<div className="mt-2 text-xs text-slate-500">{o.paymentReference}</div>:null}</td>
+            <td className="p-4">
+              <span className={"rounded-full px-3 py-1 font-bold "+(refunded?"bg-violet-100 text-violet-800":hasPartialRefund?"bg-amber-100 text-amber-900":paid?"bg-emerald-100 text-emerald-800":"bg-orange-100 text-orange-800")}>
+                {refunded?"Tam İade":hasPartialRefund?"Kısmi İade":PAYMENT[o.paymentStatus??"PENDING"]??o.paymentStatus??"Ödeme Bekleniyor"}
+              </span>
+              {refundAmount>0?<div className="mt-2 rounded-lg bg-violet-50 p-2 text-xs font-bold text-violet-900">
+                <div>İade: {money(refundAmount)} ₺</div>
+                <div className="mt-1">Net kalan: {money(netCollected)} ₺</div>
+              </div>:null}
+              {o.paymentReference?<div className="mt-2 text-xs text-slate-500">{o.paymentReference}</div>:null}
+            </td>
             <td className="p-4 font-bold">{STATUS[o.status]??o.status}</td>
             <td className="p-4">
               <div className="min-w-[260px] space-y-2">
