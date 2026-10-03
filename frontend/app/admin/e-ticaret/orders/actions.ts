@@ -22,12 +22,12 @@ export async function refundCancelledEcommerceOrder(orderId: number, formData: F
   const referenceNo = String(formData.get("refundReference") ?? "").trim().slice(0, 120);
   if (!referenceNo) throw new Error("İade banka işlem / dekont referansı zorunludur.");
 
-  await prisma.$transaction(async (tx) => {
+  const notification = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       select: {
         id: true, orderNumber: true, customerId: true, source: true, status: true,
-        paymentStatus: true, totalAmount: true,
+        paymentStatus: true, totalAmount: true, ecommerceEmail: true,
       },
     });
     if (!order || order.source !== OrderSource.ECOMMERCE) throw new Error("E-ticaret siparişi bulunamadı.");
@@ -78,19 +78,14 @@ export async function refundCancelledEcommerceOrder(orderId: number, formData: F
         visibleToCustomer: true,
       },
     });
+    return { orderNumber:order.orderNumber, ecommerceEmail:order.ecommerceEmail };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-  const notificationOrder = await prisma.order.findUnique({
-    where:{id:orderId},
-    select:{orderNumber:true,ecommerceEmail:true},
+  await EcommerceNotificationService.send({
+    event:"REFUNDED",
+    email:notification.ecommerceEmail,
+    orderNumber:notification.orderNumber,
   });
-  if(notificationOrder){
-    await EcommerceNotificationService.send({
-      event:"REFUNDED",
-      email:notificationOrder.ecommerceEmail,
-      orderNumber:notificationOrder.orderNumber,
-    });
-  }
 
   revalidatePath("/admin/e-ticaret/orders");
   revalidatePath(`/admin/orders/${orderId}`);
