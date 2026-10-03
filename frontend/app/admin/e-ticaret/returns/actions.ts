@@ -85,7 +85,7 @@ export async function processEcommerceReturnItem(formData:FormData){
     if(!pre) throw new Error("Ön kabul bulunamadı.");
     if(!pre.ecommerceReturn||!pre.originalOrder) throw new Error("Gönderi sipariş/iade ile eşleşmeden ürün kabulü yapılamaz.");
     if(pre.outcome!==EcommerceReturnPreReceiptOutcome.RETURN_ENTRY_PENDING&&pre.outcome!==EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN) throw new Error("Bu ön kabul iade girişine uygun değil.");
-    if(pre.ecommerceReturn.status===EcommerceReturnStatus.COMPLETED||pre.ecommerceReturn.status===EcommerceReturnStatus.CANCELLED) throw new Error("İade dosyası işleme kapalı.");
+    if(pre.ecommerceReturn.status!==EcommerceReturnStatus.PRE_RECEIVED&&pre.ecommerceReturn.status!==EcommerceReturnStatus.RECEIVING) throw new Error("İade dosyası depo kabulüne kapalı.");
 
     const item=pre.ecommerceReturn.items.find(i=>i.productBarcode.trim().toUpperCase()===productBarcode||i.productCode.trim().toUpperCase()===productBarcode);
     if(!item) throw new Error(`${productBarcode} bu iade dosyasında beklenen ürün değil.`);
@@ -152,6 +152,52 @@ export async function processEcommerceReturnItem(formData:FormData){
       metadata:{ecommerceReturnId:pre.ecommerceReturn.id,returnNumber:pre.ecommerceReturn.returnNumber,preReceiptId:pre.id,qualityResult:quality,refundStatus,targetLocationCode},
     }});
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:30000});
+  refresh();
+}
+
+
+export async function completePartialEcommerceReturnReceiving(formData:FormData){
+  await AuthorizationService.requireAdminPortalAccess();
+  const ecommerceReturnId=String(formData.get("ecommerceReturnId")??"");
+  if(!ecommerceReturnId) throw new Error("İade dosyası bulunamadı.");
+
+  await prisma.$transaction(async tx=>{
+    const er=await tx.ecommerceReturn.findUnique({
+      where:{id:ecommerceReturnId},
+      include:{items:true,refunds:true},
+    });
+    if(!er) throw new Error("E-Ticaret iade dosyası bulunamadı.");
+    if(er.status!==EcommerceReturnStatus.PRE_RECEIVED&&er.status!==EcommerceReturnStatus.RECEIVING) throw new Error("Bu iade dosyası depo kabulünü tamamlamaya uygun değil.");
+
+    const received=er.items.reduce((sum,item)=>sum+item.receivedQuantity,0);
+    const expected=er.items.reduce((sum,item)=>sum+item.expectedQuantity,0);
+    if(received<=0) throw new Error("Hiç ürün kabul edilmeden iade dosyası tamamlanamaz.");
+    if(received>=expected) throw new Error("Tüm beklenen ürünler zaten kabul edilmiş.");
+
+    const hasReview=er.items.some(item=>item.receivedQuantity>0&&item.refundStatus===EcommerceReturnRefundStatus.REVIEW_REQUIRED);
+    const eligibleAmount=er.items.reduce((sum,item)=>sum+item.refundAmount,0);
+    const hasEligible=eligibleAmount>0;
+    const aggregateRefund=hasReview
+      ? EcommerceReturnRefundStatus.REVIEW_REQUIRED
+      : hasEligible
+        ? EcommerceReturnRefundStatus.ELIGIBLE
+        : EcommerceReturnRefundStatus.REJECTED;
+
+    if(er.refunds.some(refund=>refund.status===EcommerceReturnRefundStatus.REQUESTED||refund.status===EcommerceReturnRefundStatus.REFUNDED)) {
+      throw new Error("Finans süreci başlamış iade dosyasının depo kabulü değiştirilemez.");
+    }
+
+    await tx.ecommerceReturn.update({
+      where:{id:er.id},
+      data:{
+        status:EcommerceReturnStatus.WAREHOUSE_COMPLETED,
+        refundStatus:aggregateRefund,
+        warehouseCompletedAt:new Date(),
+        receivedAt:er.receivedAt??new Date(),
+      },
+    });
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:30000});
+
   refresh();
 }
 
