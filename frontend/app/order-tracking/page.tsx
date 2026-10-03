@@ -51,6 +51,35 @@ export default async function OrderTrackingPage({
             createdAt: true,
             totalAmount: true,
             paymentStatus: true,
+            shippingHandlingUnitOrders: {
+              select: {
+                shippingHandlingUnit: {
+                  select: {
+                    shippedAt: true,
+                    dispatchDocument: {
+                      select: {
+                        dispatchNumber: true,
+                      },
+                    },
+                    shipmentHandlingUnit: {
+                      select: {
+                        shipment: {
+                          select: {
+                            shipmentNumber: true,
+                            shippedAt: true,
+                            carrier: {
+                              select: {
+                                name: true,
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
             items: {
               select: {
                 productName: true,
@@ -71,6 +100,36 @@ export default async function OrderTrackingPage({
           },
         })
       : null;
+
+  const shipmentDetails = order
+    ? Array.from(
+        new Map(
+          order.shippingHandlingUnitOrders
+            .map(({ shippingHandlingUnit }) => {
+              const shipment = shippingHandlingUnit.shipmentHandlingUnit?.shipment;
+              const shipmentNumber = shipment?.shipmentNumber ?? null;
+              const dispatchNumber = shippingHandlingUnit.dispatchDocument?.dispatchNumber ?? null;
+              const shippedAt = shipment?.shippedAt ?? shippingHandlingUnit.shippedAt ?? null;
+
+              if (!shipmentNumber && !dispatchNumber && !shippedAt) {
+                return null;
+              }
+
+              const key = shipmentNumber ?? dispatchNumber ?? shippedAt?.toISOString() ?? "";
+              return [
+                key,
+                {
+                  shipmentNumber,
+                  dispatchNumber,
+                  carrierName: shipment?.carrier?.name ?? null,
+                  shippedAt,
+                },
+              ] as const;
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null),
+        ).values(),
+      )
+    : [];
 
   return (
     <>
@@ -156,6 +215,46 @@ export default async function OrderTrackingPage({
                   )}
                 </div>
               </div>
+
+              {shipmentDetails.length > 0 ? (
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <h2 className="text-lg font-black">Sevkiyat Bilgileri</h2>
+                  <div className="mt-4 space-y-3">
+                    {shipmentDetails.map((shipment, index) => (
+                      <div key={shipment.shipmentNumber ?? shipment.dispatchNumber ?? index} className="rounded-xl bg-slate-50 p-4">
+                        <div className="grid gap-3 text-sm sm:grid-cols-2">
+                          {shipment.carrierName ? (
+                            <div>
+                              <p className="text-xs font-bold uppercase text-slate-500">Taşıyıcı</p>
+                              <p className="mt-1 font-bold text-slate-900">{shipment.carrierName}</p>
+                            </div>
+                          ) : null}
+                          {shipment.shipmentNumber ? (
+                            <div>
+                              <p className="text-xs font-bold uppercase text-slate-500">Sevkiyat No</p>
+                              <p className="mt-1 font-bold text-slate-900">{shipment.shipmentNumber}</p>
+                            </div>
+                          ) : null}
+                          {shipment.dispatchNumber ? (
+                            <div>
+                              <p className="text-xs font-bold uppercase text-slate-500">İrsaliye / Sevk Belgesi</p>
+                              <p className="mt-1 font-bold text-slate-900">{shipment.dispatchNumber}</p>
+                            </div>
+                          ) : null}
+                          {shipment.shippedAt ? (
+                            <div>
+                              <p className="text-xs font-bold uppercase text-slate-500">Sevk Tarihi</p>
+                              <p className="mt-1 font-bold text-slate-900">
+                                {shipment.shippedAt.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-black">Ürünler</h2>
