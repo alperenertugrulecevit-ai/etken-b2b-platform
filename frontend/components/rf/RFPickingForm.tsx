@@ -1291,754 +1291,232 @@ export default function RFPickingForm({
   }
 
   return (
-    <form
-      action={formAction}
-      onSubmit={() =>
-        setShowMessage(true)
-      }
-      className="rounded-2xl bg-white p-4 shadow md:p-6"
-    >
+    <form action={formAction} onSubmit={() => setShowMessage(true)} className="bg-white p-2 sm:rounded-xl sm:p-3 sm:shadow">
       {zoneTaskId && <input type="hidden" name="zoneTaskId" value={zoneTaskId} />}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-black">
-            Barkod Akışı
-          </h2>
 
-          <p className="mt-1 text-xs text-slate-500">
-            Sipariş → {targetPurposeLabel} → Lokasyon
-            → Kaynak THM → Ürünü tek tek okut
-          </p>
+      <div className="mb-2 flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2 text-xs font-black">
+            <span className="truncate">
+              {selectedOrder
+                ? (isWaveFlow ? selectedOrder.waveNo ?? "WAVE" : selectedOrder.orderNumber) + " · " + selectedOrder.customerName
+                : "RF TOPLAMA"}
+            </span>
+            <span className="shrink-0 text-blue-900">{orderPickedQuantity}/{orderTotalQuantity}</span>
+          </div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full rounded-full bg-blue-900 transition-all" style={{ width: String(progressPercentage) + "%" }} />
+          </div>
         </div>
-
-        <button
-          type="button"
-          onClick={clearForm}
-          disabled={isPending}
-          className="rounded-xl bg-red-50 px-4 py-3 font-bold text-red-700 disabled:opacity-50"
-        >
-          Temizle
+        <button type="button" onClick={clearForm} disabled={isPending} className="shrink-0 rounded-lg border border-red-200 px-2 py-1.5 text-xs font-black text-red-700 disabled:opacity-50">
+          TEMİZLE
         </button>
       </div>
 
-      <div className="mt-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-black uppercase text-slate-500">
-            Sipariş İlerlemesi
-          </p>
-
-          <p className="text-sm font-black text-blue-900">
-            %{progressPercentage}
-          </p>
+      {showMessage && state.message && (
+        <div role="alert" className={"mb-2 rounded-lg px-3 py-2 text-sm font-bold " + (state.success ? "bg-green-100 text-green-900" : "bg-red-600 text-white")}>
+          {state.success
+            ? state.pickingCompleted
+              ? "✓ Toplama tamamlandı"
+              : "✓ 1 adet toplandı · Kalan " + state.orderRemainingQuantity
+            : "✕ " + state.message}
         </div>
-
-        <div className="mt-2 h-4 overflow-hidden rounded-full bg-slate-200">
-          <div
-            className="h-full rounded-full bg-blue-900 transition-all"
-            style={{
-              width: `${progressPercentage}%`,
-            }}
-          />
-        </div>
-
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <article className="rounded-xl bg-blue-50 p-3 text-center">
-            <p className="text-[10px] font-black uppercase text-blue-700">
-              Sipariş
-            </p>
-
-            <p className="mt-2 text-2xl font-black text-blue-900">
-              {orderTotalQuantity}
-            </p>
-          </article>
-
-          <article className="rounded-xl bg-green-50 p-3 text-center">
-            <p className="text-[10px] font-black uppercase text-green-700">
-              Toplandı
-            </p>
-
-            <p className="mt-2 text-2xl font-black text-green-900">
-              {orderPickedQuantity}
-            </p>
-          </article>
-
-          <article className="rounded-xl bg-orange-50 p-3 text-center">
-            <p className="text-[10px] font-black uppercase text-orange-700">
-              Kalan
-            </p>
-
-            <p className="mt-2 text-2xl font-black text-orange-900">
-              {orderRemainingQuantity}
-            </p>
-          </article>
-        </div>
-      </div>
-
-      {showMessage &&
-        state.message && (
-          <div
-            role="alert"
-            className={`mt-4 rounded-xl border p-4 ${
-              state.success
-                ? "border-green-300 bg-green-50 text-green-800"
-                : "border-red-300 bg-red-50 text-red-800"
-            }`}
-          >
-            <p className="text-lg font-black">
-              {state.success
-                ? state.pickingCompleted
-                  ? "✓ Toplama Tamamlandı"
-                  : "✓ Ürün Toplandı"
-                : "✕ Toplama Başarısız"}
-            </p>
-
-            <p className="mt-2 text-sm leading-6">
-              {state.message}
-            </p>
-
-            {state.success && (
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="rounded-lg bg-white/70 p-3">
-                  <p className="text-[10px] font-black uppercase">
-                    Sipariş Kalanı
-                  </p>
-
-                  <p className="mt-1 text-xl font-black">
-                    {
-                      state.orderRemainingQuantity
-                    }
-                  </p>
-                </div>
-
-                <div className="rounded-lg bg-white/70 p-3">
-                  <p className="text-[10px] font-black uppercase">
-                    Durum
-                  </p>
-
-                  <p className="mt-1 font-black">
-                    {state.orderStatus}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+      )}
 
       {zoneTaskId && state.success && state.taskCompleted && (
-        <div className="mt-4 rounded-2xl border-2 border-green-300 bg-green-50 p-4 text-green-950">
-          <p className="text-lg font-black">✓ Görev Toplaması Tamamlandı</p>
-          <p className="mt-1 text-sm font-semibold">Onayladığınızda bu görev bekleyen sipariş listesinden kalkar ve sıradaki görevi seçebilirsiniz.</p>
-          <a href="/rf/picking" className="mt-3 block w-full rounded-xl bg-green-700 px-4 py-4 text-center text-lg font-black text-white">TOPLAMAYI ONAYLA · LİSTEYE DÖN</a>
+        <div className="mb-2 rounded-xl border-2 border-green-500 bg-green-50 p-3">
+          <p className="font-black text-green-950">✓ Görev tamamlandı</p>
+          <a href="/rf/picking" className="mt-2 block w-full rounded-lg bg-green-700 px-3 py-3 text-center font-black text-white">
+            ONAYLA · LİSTEYE DÖN
+          </a>
         </div>
       )}
 
-      {selectedOrder && nextOrderItem && (
-        <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-black text-amber-950">Ürün bulunamıyor / eksik gönderilecek</p>
-              <p className="mt-1 text-sm text-amber-800">{nextOrderItem.productCode} · Kalan {nextOrderItem.remainingQuantity} adet</p>
-            </div>
-            <button type="button" onClick={() => setShortageOpen((value) => !value)} className="rounded-xl bg-amber-700 px-4 py-3 font-black text-white">
-              Eksik Kapat
-            </button>
-          </div>
-          {shortageOpen && (
-            <div className="mt-4 grid gap-3">
-              <select value={shortageReason} onChange={(event) => setShortageReason(event.target.value)} className="rounded-xl border border-amber-300 bg-white p-3 font-bold">
-                <option value="NOT_FOUND">Ürün Bulunamadı</option>
-                <option value="DAMAGED">Hasarlı Ürün</option>
-                <option value="STOCK_DIFFERENCE">Stok Farkı</option>
-                <option value="QUALITY_REJECTED">Kalite Reddi</option>
-                <option value="OTHER">Diğer</option>
-              </select>
-              <input value={shortageNote} onChange={(event) => setShortageNote(event.target.value)} placeholder="Açıklama (opsiyonel)" className="rounded-xl border border-amber-300 bg-white p-3" />
-              <button type="button" disabled={shortagePending} onClick={handleCloseShortage} className="rounded-xl bg-red-700 px-4 py-3 font-black text-white disabled:opacity-50">
-                {shortagePending ? "İşleniyor..." : `Kalan ${nextOrderItem.remainingQuantity} Adedi Eksik Kapat`}
-              </button>
-            </div>
-          )}
-          {shortageMessage && <p className="mt-3 rounded-lg bg-white p-3 text-sm font-bold text-amber-900">{shortageMessage}</p>}
-        </div>
-      )}
-
-      <div className="mt-5 space-y-5">
-        <label className="block">
-          <span className="mb-2 block text-sm font-black">
-            1. Sipariş
-          </span>
-          {lockedOrderNumber && selectedOrder ? <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4"><p className="text-xs font-black uppercase text-blue-700">Görev Siparişi</p><p className="mt-1 text-xl font-black">{selectedOrder.orderNumber} · {selectedOrder.customerName}</p><input type="hidden" name="orderNumber" value={selectedOrder.orderNumber}/></div> : null}
-          {!lockedOrderNumber && <>
-
-          <input
-            ref={orderInputRef}
-            name="orderNumber"
-            value={orderNumber}
-            onChange={(event) =>
-              handleOrderChange(
-                event.target.value
-              )
-            }
-            onKeyDown={
-              handleOrderKeyDown
-            }
-            autoComplete="off"
-            placeholder="Sipariş numarasını okut"
-            className="w-full rounded-xl border-2 border-slate-300 p-4 font-mono text-xl font-bold uppercase focus:border-blue-700 focus:outline-none"
-            disabled={isPending}
-            required
-          />
-
-          {normalizedOrderNumber &&
-            !selectedOrder && (
-              <p className="mt-2 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">
-                Toplamaya uygun sipariş
-                bulunamadı.
-              </p>
+      <div className="grid gap-2">
+        {!lockedOrderNumber && (
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-black uppercase text-slate-500">1 · Sipariş</span>
+            <input
+              ref={orderInputRef}
+              name="orderNumber"
+              value={orderNumber}
+              onChange={(event) => handleOrderChange(event.target.value)}
+              onKeyDown={handleOrderKeyDown}
+              autoComplete="off"
+              placeholder="Sipariş okut"
+              className="w-full rounded-lg border-2 border-slate-300 px-3 py-2.5 font-mono text-lg font-black uppercase focus:border-blue-700 focus:outline-none"
+              disabled={isPending}
+              required
+            />
+            {normalizedOrderNumber && !selectedOrder && (
+              <p className="mt-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white">Sipariş uygun değil.</p>
             )}
+          </label>
+        )}
 
-          {selectedOrder && (
-            <div
-              className={`mt-2 flex items-start justify-between gap-3 rounded-xl p-3 ${
-                isWaveFlow
-                  ? "bg-violet-50 text-violet-900"
-                  : "bg-blue-50 text-blue-900"
-              }`}
-            >
-              <div>
-                <span
-                  className={`mb-2 inline-flex rounded-full px-3 py-1 text-xs font-black ${
-                    isWaveFlow
-                      ? "bg-violet-200 text-violet-900"
-                      : "bg-cyan-200 text-cyan-900"
-                  }`}
-                >
-                  {isWaveFlow
-                    ? `WAVE TOPLAMA — ${selectedOrder.waveNo}`
-                    : "DOĞRUDAN SİPARİŞ — SEVK THM"}
-                </span>
-
-                <p className="font-black">
-                  {selectedOrder.customerCode}
-                  {" — "}
-                  {selectedOrder.customerName}
-                </p>
-
-                <p className="mt-1 text-sm">
-                  Durum:{" "}
-                  {selectedOrder.status}
-                  {" | "}
-                  Kalan kalem:{" "}
-                  {pendingOrderItems.length}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={changeOrder}
-                disabled={isPending}
-                className="rounded-lg border border-current bg-white px-3 py-2 text-xs font-black"
-              >
-                Siparişi Değiştir
-              </button>
+        {lockedOrderNumber && selectedOrder && (
+          <>
+            <input type="hidden" name="orderNumber" value={selectedOrder.orderNumber} />
+            <div className="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-sm">
+              <span className="min-w-0 truncate font-black">
+                {isWaveFlow ? selectedOrder.waveNo : selectedOrder.orderNumber} · {selectedOrder.customerName}
+              </span>
+              <span className="ml-2 shrink-0 font-black text-blue-900">{pendingOrderItems.length} kalem</span>
             </div>
-          )}
-          </>}
-        </label>
+          </>
+        )}
 
         <label className="block">
-          <span className="mb-2 block text-sm font-black">
-            2. Hedef {targetPurposeLabel}
-          </span>
-
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-black uppercase text-slate-500">2 · {targetPurposeLabel}</span>
+            {selectedTargetUnit && (
+              <button type="button" onClick={changeTarget} disabled={isPending} className="text-[11px] font-black text-blue-800">DEĞİŞTİR</button>
+            )}
+          </div>
           <input
             ref={targetInputRef}
             name="targetBarcode"
             value={targetBarcode}
-            onChange={(event) =>
-              setTargetBarcode(
-                event.target.value.toUpperCase()
-              )
-            }
-            onKeyDown={
-              handleTargetKeyDown
-            }
+            onChange={(event) => setTargetBarcode(event.target.value.toUpperCase())}
+            onKeyDown={handleTargetKeyDown}
             autoComplete="off"
-            placeholder={
-              selectedOrder
-                ? `${targetPurposeLabel} barkodunu okut`
-                : "Önce sipariş okut"
-            }
-            className="w-full rounded-xl border-2 border-slate-300 p-4 font-mono text-xl font-bold uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-            disabled={
-              isPending ||
-              !selectedOrder
-            }
+            placeholder={selectedOrder ? targetPurposeLabel + " okut" : "Önce sipariş okut"}
+            className="w-full rounded-lg border-2 border-slate-300 px-3 py-2.5 font-mono text-lg font-black uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
+            disabled={isPending || !selectedOrder}
             required
           />
-
-          {normalizedTargetBarcode &&
-            !selectedTargetUnit && (
-              <p className="mt-2 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">
-                Bu sipariş akışına uygun,
-                kullanılabilir{" "}
-                {targetPurposeLabel} bulunamadı.
-              </p>
-            )}
-
-          {selectedTargetUnit && (
-            <div className="mt-2 flex items-start justify-between gap-3 rounded-xl bg-green-50 p-3 text-green-900">
-              <div>
-                <p className="font-black">
-                  {targetPurposeLabel}
-                  {" — "}
-                  {selectedTargetUnit.unitType}
-                  {" — "}
-                  {selectedTargetUnit.status}
-                </p>
-
-                <p className="mt-1 text-sm">
-                  Hedef stok:{" "}
-                  {targetTotalQuantity}
-                </p>
-                {isWaveFlow ? (
-                  selectedTargetUnit.assignedWaveId ? (
-                    <p className="mt-2 text-sm font-bold">
-                      Bağlı Wave:{" "}
-                      {
-                        selectedTargetUnit.assignedWaveNo
-                      }
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-sm font-bold">
-                      Boş Toplama THM — ilk
-                      işlemde{" "}
-                      {selectedOrder.waveNo}{" "}
-                      Wave’ine bağlanacak.
-                    </p>
-                  )
-                ) : (
-                  selectedTargetUnit.assignedOrderId ? (
-                    <p className="mt-2 text-sm font-bold">
-                      Bağlı sipariş:{" "}
-                      {
-                        selectedTargetUnit.assignedOrderNumber
-                      }
-                      {" — "}
-                      {
-                        selectedTargetUnit.assignedCustomerName
-                      }
-                      {selectedTargetUnit.packageSequence
-                        ? ` — Koli ${selectedTargetUnit.packageSequence}`
-                        : ""}
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-sm font-bold">
-                      Boş Sevk THM — ilk
-                      işlemde bu siparişin yeni
-                      sevk kolisi olarak
-                      açılacak.
-                    </p>
-                  )
-                )}
-
-
-              </div>
-
-              <button
-                type="button"
-                onClick={changeTarget}
-                disabled={isPending}
-                className="rounded-lg border border-green-300 bg-white px-3 py-2 text-xs font-black"
-              >
-                {targetPurposeLabel} Değiştir
-              </button>
-            </div>
+          {normalizedTargetBarcode && !selectedTargetUnit && (
+            <p className="mt-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white">Uygun {targetPurposeLabel} değil.</p>
           )}
-
-          {selectedOrder &&
-            !isWaveFlow && (
-              <p className="mt-2 rounded-lg border border-cyan-200 bg-cyan-50 p-3 text-sm font-semibold leading-6 text-cyan-900">
-                Aynı Sevk THM içinde farklı
-                SKU’ları toplamaya devam
-                edebilirsiniz. Koli dolduğunda{" "}
-                <strong>
-                  Sevk THM Değiştir
-                </strong>{" "}
-                düğmesine basıp yeni koli
-                barkodunu okutun.
-              </p>
-            )}
         </label>
 
-        {nextOrderItem && (
-          <div className="rounded-2xl border-2 border-blue-300 bg-blue-50 p-4 text-blue-950">
-            <p className="text-xs font-black uppercase tracking-wider text-blue-600">
-              Sıradaki Ürün
-            </p>
-
-            <p className="mt-2 text-xl font-black">
-              {nextOrderItem.productCode}
-            </p>
-
-            <p className="mt-1 font-bold">
-              {nextOrderItem.productName}
-            </p>
-
-            <p className="mt-2 font-mono text-sm">
-              {nextOrderItem.productBarcode}
-            </p>
-
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-white/70 p-2">
-                <p className="text-[9px] font-black uppercase">
-                  Sipariş
-                </p>
-
-                <p className="mt-1 font-black">
-                  {
-                    nextOrderItem.orderedQuantity
-                  }
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-white/70 p-2">
-                <p className="text-[9px] font-black uppercase">
-                  Toplandı
-                </p>
-
-                <p className="mt-1 font-black">
-                  {
-                    nextOrderItem.pickedQuantity
-                  }
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-white/70 p-2">
-                <p className="text-[9px] font-black uppercase">
-                  Kalan
-                </p>
-
-                <p className="mt-1 font-black">
-                  {
-                    nextOrderItem.remainingQuantity
-                  }
-                </p>
-              </div>
+        {nextOrderItem && recommendedSource && (
+          <div className="grid grid-cols-[1fr_auto] gap-2 rounded-xl border-2 border-blue-700 bg-blue-50 p-2.5">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase text-blue-700">GİT / AL</p>
+              <p className="truncate font-mono text-xl font-black text-blue-950">{recommendedSource.unit.locationCode}</p>
+              <p className="truncate font-mono text-sm font-black text-slate-700">{recommendedSource.unit.barcode}</p>
+            </div>
+            <div className="min-w-[70px] rounded-lg bg-white px-2 py-1 text-center">
+              <p className="text-[9px] font-black uppercase text-slate-500">Kalan</p>
+              <p className="text-3xl font-black text-orange-700">{nextOrderItem.remainingQuantity}</p>
+            </div>
+            <div className="col-span-2 border-t border-blue-200 pt-2">
+              <p className="truncate text-base font-black text-slate-950">{nextOrderItem.productCode} · {nextOrderItem.productName}</p>
+              <p className="truncate font-mono text-xs font-bold text-slate-600">{nextOrderItem.productBarcode}</p>
             </div>
           </div>
         )}
 
-        {nextOrderItem &&
-          !recommendedSource && (
-            <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-black">
-                Kaynak stok bulunamadı
-              </p>
+        {nextOrderItem && !recommendedSource && (
+          <div className="rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">Kaynak stok bulunamadı · {nextOrderItem.productCode}</div>
+        )}
 
-              <p className="mt-2 text-sm leading-6">
-                Bu ürün için adreslenmiş ve
-                kullanılabilir kaynak
-                koli/palet stoğu bulunmuyor.
-              </p>
-            </div>
-          )}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-black uppercase text-slate-500">3 · Lokasyon</span>
+            <input
+              ref={locationInputRef}
+              name="locationBarcode"
+              value={locationBarcode}
+              onChange={(event) => setLocationBarcode(event.target.value.toUpperCase())}
+              onKeyDown={handleLocationKeyDown}
+              autoComplete="off"
+              placeholder="Lokasyon okut"
+              className="w-full min-w-0 rounded-lg border-2 border-slate-300 px-2 py-2.5 font-mono text-base font-black uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
+              disabled={isPending || !selectedTargetUnit || !recommendedSource}
+              required
+            />
+          </label>
 
-        {recommendedSource && (
-          <div className="rounded-2xl border border-orange-300 bg-orange-50 p-4 text-orange-950">
-            <p className="text-xs font-black uppercase tracking-wider text-orange-700">
-              Önerilen Kaynak
-            </p>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-black uppercase text-slate-500">4 · Kaynak THM</span>
+            <input
+              ref={sourceInputRef}
+              name="sourceBarcode"
+              value={sourceBarcode}
+              onChange={(event) => setSourceBarcode(event.target.value.toUpperCase())}
+              onKeyDown={handleSourceKeyDown}
+              autoComplete="off"
+              placeholder="THM okut"
+              className="w-full min-w-0 rounded-lg border-2 border-slate-300 px-2 py-2.5 font-mono text-base font-black uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
+              disabled={isPending || !locationMatches}
+              required
+            />
+          </label>
+        </div>
 
-            <p className="mt-2 font-mono text-xl font-black">
-              {
-                recommendedSource.unit
-                  .locationCode
-              }
-            </p>
+        {normalizedLocationBarcode && !locationMatches && (
+          <div className="rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">YANLIŞ LOKASYON · Beklenen {expectedLocationCode}</div>
+        )}
 
-            <p className="mt-2 font-mono font-black">
-              {
-                recommendedSource.unit
-                  .barcode
-              }
-            </p>
-
-            <p className="mt-2 text-sm">
-              Kullanılabilir miktar:{" "}
-              <strong>
-                {
-                  recommendedSource
-                    .product
-                    .availableQuantity
-                }
-              </strong>
-            </p>
-          </div>
+        {normalizedSourceBarcode && !sourceMatches && (
+          <div className="rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">YANLIŞ THM · Beklenen {expectedSourceBarcode}</div>
         )}
 
         <label className="block">
-          <span className="mb-2 block text-sm font-black">
-            3. Kaynak Lokasyon
-          </span>
-
-          <input
-            ref={locationInputRef}
-            name="locationBarcode"
-            value={locationBarcode}
-            onChange={(event) =>
-              setLocationBarcode(
-                event.target.value.toUpperCase()
-              )
-            }
-            onKeyDown={
-              handleLocationKeyDown
-            }
-            autoComplete="off"
-            placeholder={
-              recommendedSource
-                ? "Önerilen lokasyonu okut"
-                : "Kaynak lokasyon bekleniyor"
-            }
-            className="w-full rounded-xl border-2 border-slate-300 p-4 font-mono text-xl font-bold uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-            disabled={
-              isPending ||
-              !selectedTargetUnit ||
-              !recommendedSource
-            }
-            required
-          />
-
-          {normalizedLocationBarcode &&
-            !locationMatches && (
-              <div className="mt-2 rounded-xl bg-red-600 p-4 text-white">
-                <p className="font-black">
-                  Yanlış Lokasyon
-                </p>
-
-                <p className="mt-2 text-sm">
-                  Beklenen:{" "}
-                  <strong>
-                    {expectedLocationCode}
-                  </strong>
-                </p>
-
-                <p className="mt-1 text-sm">
-                  Okutulan:{" "}
-                  <strong>
-                    {
-                      normalizedLocationBarcode
-                    }
-                  </strong>
-                </p>
-              </div>
-            )}
-
-          {locationMatches && (
-            <p className="mt-2 rounded-lg bg-green-50 p-3 text-sm font-bold text-green-700">
-              Doğru lokasyon seçildi.
-            </p>
-          )}
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-black">
-            4. Kaynak Koli / Palet
-          </span>
-
-          <input
-            ref={sourceInputRef}
-            name="sourceBarcode"
-            value={sourceBarcode}
-            onChange={(event) =>
-              setSourceBarcode(
-                event.target.value.toUpperCase()
-              )
-            }
-            onKeyDown={
-              handleSourceKeyDown
-            }
-            autoComplete="off"
-            placeholder={
-              locationMatches
-                ? "Önerilen kaynak THM'yi okut"
-                : "Önce doğru lokasyonu okut"
-            }
-            className="w-full rounded-xl border-2 border-slate-300 p-4 font-mono text-xl font-bold uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-            disabled={
-              isPending ||
-              !locationMatches
-            }
-            required
-          />
-
-          {normalizedSourceBarcode &&
-            !sourceMatches && (
-              <div className="mt-2 rounded-xl bg-red-600 p-4 text-white">
-                <p className="font-black">
-                  Yanlış Kaynak THM
-                </p>
-
-                <p className="mt-2 text-sm">
-                  Beklenen:{" "}
-                  <strong>
-                    {expectedSourceBarcode}
-                  </strong>
-                </p>
-
-                <p className="mt-1 text-sm">
-                  Okutulan:{" "}
-                  <strong>
-                    {
-                      normalizedSourceBarcode
-                    }
-                  </strong>
-                </p>
-              </div>
-            )}
-
-          {sourceMatches &&
-            selectedSourceProduct && (
-              <div className="mt-2 rounded-xl bg-orange-50 p-3 text-orange-900">
-                <p className="font-black">
-                  Kaynak THM seçildi
-                </p>
-
-                <p className="mt-1 font-mono text-sm">
-                  {normalizedSourceBarcode}
-                </p>
-
-                <p className="mt-1 text-sm">
-                  Kullanılabilir stok:{" "}
-                  {
-                    selectedSourceProduct.availableQuantity
-                  }
-                </p>
-              </div>
-            )}
-        </label>
-
-        {nextOrderItem && recommendedSource && <div className="rounded-2xl border-2 border-blue-700 bg-blue-50 p-5">
-          <p className="text-xs font-black uppercase tracking-wider text-blue-700">Toplanacak Ürün</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{nextOrderItem.productCode} · {nextOrderItem.productName}</p>
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Barkod</p><p className="mt-1 font-mono font-black">{nextOrderItem.productBarcode}</p></div>
-            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Kalan Adet</p><p className="mt-1 text-2xl font-black">{nextOrderItem.remainingQuantity}</p></div>
-            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Git / Adres</p><p className="mt-1 text-xl font-black text-blue-900">{recommendedSource.unit.locationCode}</p></div>
-            <div className="rounded-xl bg-white p-3"><p className="text-xs font-bold text-slate-500">Kaynak THM</p><p className="mt-1 font-mono text-xl font-black text-blue-900">{recommendedSource.unit.barcode}</p></div>
-          </div>
-          <p className="mt-4 rounded-xl bg-blue-900 p-3 text-center font-black text-white">ÜRÜNÜ SEÇMEYİN · EKRANDAKİ ÜRÜNÜ OKUTUN · HER OKUTMA 1 ADET</p>
-        </div>}
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-black">
-            5. Ürün Barkodu — Ekrandaki Ürünü Okut
-          </span>
-
+          <span className="mb-1 block text-[11px] font-black uppercase text-slate-500">5 · Ürün · Her okutma 1 adet</span>
           <input
             ref={productInputRef}
             name="productBarcode"
             value={productBarcode}
-            onChange={(event) =>
-              setProductBarcode(
-                event.target.value.toUpperCase()
-              )
-            }
-            onKeyDown={
-              handleProductKeyDown
-            }
+            onChange={(event) => setProductBarcode(event.target.value.toUpperCase())}
+            onKeyDown={handleProductKeyDown}
             autoComplete="off"
-            placeholder={
-              sourceMatches
-                ? "Ürün barkodunu okut"
-                : "Önce doğru kaynak THM'yi okut"
-            }
-            className="w-full rounded-xl border-2 border-slate-300 p-4 font-mono text-xl font-bold uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-            disabled={
-              isPending ||
-              !sourceMatches
-            }
+            placeholder={sourceMatches ? "ÜRÜNÜ OKUT" : "Önce lokasyon ve THM okut"}
+            className="w-full rounded-lg border-2 border-blue-700 px-3 py-3 font-mono text-xl font-black uppercase focus:outline-none disabled:border-slate-300 disabled:bg-slate-100"
+            disabled={isPending || !sourceMatches}
             required
           />
-
-          {normalizedProductBarcode &&
-            !productMatches && (
-              <div className="mt-2 rounded-xl bg-red-600 p-4 text-white">
-                <p className="font-black">
-                  Yanlış Ürün
-                </p>
-
-                <p className="mt-2 text-sm">
-                  Beklenen:{" "}
-                  <strong>
-                    {expectedProductBarcode}
-                  </strong>
-                </p>
-
-                <p className="mt-1 text-sm">
-                  Okutulan:{" "}
-                  <strong>
-                    {
-                      normalizedProductBarcode
-                    }
-                  </strong>
-                </p>
-              </div>
-            )}
+          {normalizedProductBarcode && !productMatches && (
+            <div className="mt-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">YANLIŞ ÜRÜN · Beklenen {expectedProductBarcode}</div>
+          )}
         </label>
 
-        <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm font-black text-blue-950">6. Tekil Ürün Okutma</p>
-          <p className="mt-1 text-sm text-blue-800">Her barkod okuması <b>1 adet</b> toplar. Elle miktar girişi kapalıdır. Kalan: <b>{maximumPickQuantity}</b></p>
-          <input type="hidden" name="quantity" value="1" />
-        </div>
+        <input type="hidden" name="quantity" value="1" />
+
+        <button
+          type="submit"
+          disabled={isPending || !canSubmit}
+          className={"w-full rounded-lg py-3 text-base font-black " + (!isPending && canSubmit ? "bg-blue-900 text-white active:bg-blue-950" : "bg-slate-200 text-slate-400")}
+        >
+          {isPending ? "TOPLANIYOR..." : "ÜRÜNÜ OKUT"}
+        </button>
+
+        {selectedOrder && nextOrderItem && (
+          <div>
+            <button type="button" onClick={() => setShortageOpen((value) => !value)} className="w-full rounded-lg border border-amber-400 bg-amber-50 py-2 text-xs font-black text-amber-900">
+              ÜRÜN YOK / EKSİK İŞLEM
+            </button>
+            {shortageOpen && (
+              <div className="mt-2 grid gap-2 rounded-lg bg-amber-50 p-2">
+                <select value={shortageReason} onChange={(event) => setShortageReason(event.target.value)} className="rounded-lg border border-amber-300 bg-white p-2 text-sm font-bold">
+                  <option value="NOT_FOUND">Ürün Bulunamadı</option>
+                  <option value="DAMAGED">Hasarlı Ürün</option>
+                  <option value="STOCK_DIFFERENCE">Stok Farkı</option>
+                  <option value="QUALITY_REJECTED">Kalite Reddi</option>
+                  <option value="OTHER">Diğer</option>
+                </select>
+                <input value={shortageNote} onChange={(event) => setShortageNote(event.target.value)} placeholder="Açıklama (opsiyonel)" className="rounded-lg border border-amber-300 bg-white p-2 text-sm" />
+                <button type="button" disabled={shortagePending} onClick={handleCloseShortage} className="rounded-lg bg-red-700 px-3 py-2 font-black text-white disabled:opacity-50">
+                  {shortagePending ? "İşleniyor..." : "Kalan " + nextOrderItem.remainingQuantity + " Adedi Eksik Kapat"}
+                </button>
+              </div>
+            )}
+            {shortageMessage && <p className="mt-1 rounded-lg bg-amber-100 p-2 text-xs font-bold text-amber-900">{shortageMessage}</p>}
+          </div>
+        )}
+
+        {!zoneTaskId && selectedOrder && recommendedSource && nextOrderItem && (
+          <button type="button" onClick={handleLostProduct} disabled={isPending || lostPending} className="w-full rounded-lg border border-red-300 py-2 text-xs font-black text-red-700 disabled:opacity-40">
+            {lostPending ? "KAYIP İŞLENİYOR..." : "FİZİKSEL STOK KAYIP"}
+          </button>
+        )}
+
+        {lostMessage && <div className="rounded-lg bg-orange-50 p-2 text-xs font-bold text-orange-900">{lostMessage}</div>}
+
+        <p className="text-center text-[10px] font-semibold text-slate-400">Oturum: {sessionPickCount} işlem · {sessionPickedQuantity} adet</p>
       </div>
-
-      {lostMessage && (
-        <div className="mt-5 rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm font-bold text-orange-900">
-          {lostMessage}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={handleLostProduct}
-        disabled={isPending || lostPending || Boolean(zoneTaskId) || !selectedOrder || !recommendedSource || !nextOrderItem}
-        className="mt-6 w-full rounded-xl border-2 border-red-600 bg-red-50 py-4 text-lg font-black text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {lostPending ? "KAYIP İŞLEMİ YAPILIYOR..." : zoneTaskId ? "EKSİK STOK — YÖNETİCİ İŞLEMİ GEREKİR" : "ÜRÜN BULUNAMADI / KAYIP"}
-      </button>
-
-      {recommendedSource && nextOrderItem && (
-        <p className="mt-2 text-center text-xs font-semibold text-red-600">
-          Kayıp işleminde {recommendedSource.unit.barcode} içindeki {nextOrderItem.productCode} ürününün
-          {" "}{recommendedSource.product.quantity} adetlik tüm fiziksel miktarı kayıp depoya alınır.
-        </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={
-          isPending || !canSubmit
-        }
-        className={`mt-6 w-full rounded-xl py-5 text-xl font-black ${
-          !isPending && canSubmit
-            ? "bg-blue-900 text-white active:bg-blue-950"
-            : "cursor-not-allowed bg-slate-300 text-slate-500"
-        }`}
-      >
-        {isPending
-          ? "ÜRÜN TOPLANIYOR..."
-          : "ÜRÜN BARKODUNU OKUT"}
-      </button>
-
-      <p className="mt-4 text-center text-xs font-semibold text-slate-400">
-        Bu oturumda işlem:{" "}
-        {sessionPickCount}
-        {" | "}
-        Toplanan:{" "}
-        {sessionPickedQuantity}
-      </p>
     </form>
   );
 }
