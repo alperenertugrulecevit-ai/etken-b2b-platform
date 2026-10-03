@@ -17,7 +17,7 @@ export async function reopenPickingShortageAction(fd:FormData){
  await prisma.$transaction(async tx=>{
   const sh=await tx.pickingShortage.findUnique({where:{id:shortageId},select:{
    id:true,status:true,quantity:true,orderId:true,orderItemId:true,productId:true,
-   order:{select:{orderNumber:true,status:true,fulfillmentWarehouseId:true,dispatchLines:{take:1,select:{id:true}},waveOrders:{where:{wave:{status:{in:[WaveStatus.RELEASED,WaveStatus.IN_PROGRESS,WaveStatus.PAUSED]}}},select:{waveId:true,wave:{select:{warehouseId:true}}}}}},
+   order:{select:{orderNumber:true,status:true,fulfillmentWarehouseId:true,dispatchLines:{take:1,select:{id:true}},waveOrders:{where:{wave:{status:{in:[WaveStatus.RELEASED,WaveStatus.IN_PROGRESS,WaveStatus.PAUSED]}}},select:{waveId:true,wave:{select:{warehouseId:true,orders:{where:{order:{status:{not:OrderStatus.CANCELLED}}},select:{orderId:true}}}}}}}},
    orderItem:{select:{productCode:true,productName:true}}
   }});
   if(!sh||sh.status!==PickingShortageStatus.ACTIVE)throw new Error("Aktif eksik kapatma kaydı bulunamadı.");
@@ -31,8 +31,17 @@ export async function reopenPickingShortageAction(fd:FormData){
   if(!reservationWarehouseId)throw new Error("Yeniden açılacak miktarın rezervasyon deposu bulunamadı.");
   await createStockMovementWithTransaction(tx,{productId:sh.productId,warehouseId:reservationWarehouseId,orderId:sh.orderId,movementType:StockMovementType.RESERVATION_CREATE,physicalChange:0,reservedChange:sh.quantity,documentNumber:sh.order.orderNumber,description:"Yanlış eksik kapatma geri alındı; miktar yeniden rezerve edildi."});
   if(waveId){
+   const wave=sh.order.waveOrders[0]?.wave;
+   if(!wave?.warehouseId)throw new Error("Wave'in toplama deposu bulunamadı.");
+   await ZonePickingService.releaseWavePlan(tx,waveId);
+   await ZonePickingService.buildTasksForOrders(tx,{
+    orderIds:wave.orders.map(row=>row.orderId),
+    warehouseId:wave.warehouseId,
+    waveId,
+    allowPartialStock:true,
+   });
    await tx.wave.update({where:{id:waveId},data:{status:WaveStatus.IN_PROGRESS,completedAt:null}});
-   await tx.waveOrder.update({where:{wave_order_unique:{waveId,orderId:sh.orderId}},data:{isCompleted:false,completedAt:null}});
+   await tx.waveOrder.updateMany({where:{waveId,order:{status:{not:OrderStatus.CANCELLED}}},data:{isCompleted:false,completedAt:null}});
   } else {
    if(!sh.order.fulfillmentWarehouseId)throw new Error("Siparişin toplama deposu bulunamadı.");
    await ZonePickingService.releaseOrderPlan(tx,sh.orderId);
