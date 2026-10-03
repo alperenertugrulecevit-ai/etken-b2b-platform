@@ -565,6 +565,7 @@ model CustomerAccountEntry {
   currency    String  @default("TRY")
   description String
   referenceNo String?
+  ecommerceReturnRefundId String? @unique
 
   transactionDate DateTime  @default(now())
   dueDate         DateTime?
@@ -578,7 +579,7 @@ model CustomerAccountEntry {
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
   order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
-  @@unique([orderId, entryType, direction])
+  @@index([orderId, entryType, direction])
   @@index([customerId, transactionDate])
   @@index([customerId, dueDate])
   @@index([customerId, direction])
