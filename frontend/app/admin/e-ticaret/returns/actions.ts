@@ -244,15 +244,11 @@ export async function markEcommerceRefundCompleted(formData:FormData){
     if(refund.status!==EcommerceReturnRefundStatus.REQUESTED) throw new Error("Finans kaydı tamamlanmaya uygun değil.");
 
     const order=refund.ecommerceReturn.originalOrder;
-    const existingAccountRefund=await tx.customerAccountEntry.findFirst({
-      where:{
-        orderId:order.id,
-        direction:CustomerAccountEntryDirection.DEBIT,
-        entryType:CustomerAccountEntryType.REFUND,
-      },
+    const existingAccountRefund=await tx.customerAccountEntry.findUnique({
+      where:{ecommerceReturnRefundId:refund.id},
       select:{id:true},
     });
-    if(existingAccountRefund) throw new Error("Bu sipariş için cari hesap iade hareketi daha önce oluşturulmuş.");
+    if(existingAccountRefund) throw new Error("Bu iade finans kaydı daha önce cari hesaba işlendi.");
 
     const actorName=profile.employee
       ? `${profile.employee.firstName} ${profile.employee.lastName}`
@@ -269,6 +265,7 @@ export async function markEcommerceRefundCompleted(formData:FormData){
         amount:refund.amount,
         description:`${order.orderNumber} B2C ürün iadesi`,
         referenceNo:providerReference,
+        ecommerceReturnRefundId:refund.id,
         createdByUserId:profile.id,
         createdByUsername:actorName,
       },
