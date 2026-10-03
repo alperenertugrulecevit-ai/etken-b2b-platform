@@ -246,21 +246,8 @@ export async function POST(request: NextRequest) {
           where: { id: shippingUnit.handlingUnit.id },
           data: { status: HandlingUnitStatus.CLOSED, purpose: HandlingUnitPurpose.SHIPPING, assignedOrderId: order.id },
         });
-        if (order.status !== OrderStatus.READY_TO_SHIP) {
-          await tx.order.update({
-            where: { id: order.id },
-            data: {
-              status: OrderStatus.READY_TO_SHIP,
-              statusHistory: {
-                create: {
-                  status: OrderStatus.READY_TO_SHIP,
-                  note: "Siparişiniz paketlendi ve sevkiyata hazırlandı.",
-                  visibleToCustomer: true,
-                },
-              },
-            },
-          });
-        }
+        // Paketleme tamamlanması siparişi tek başına sevke hazır yapmaz.
+        // READY_TO_SHIP geçişi irsaliyenin ISSUED olduğu dispatch endpointinde yapılır.
         if (order.fulfillment) {
           await tx.orderFulfillment.update({
             where: { orderId: order.id },
@@ -278,7 +265,7 @@ export async function POST(request: NextRequest) {
           totalQuantity,
           boxCode: box.code,
           desi: box.desi,
-          status: OrderStatus.READY_TO_SHIP,
+          status: order.status,
         };
       },
       {
