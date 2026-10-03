@@ -137,7 +137,7 @@ export class ShipmentPlanningService {
               include:{
                 handlingUnit:{select:{barcode:true}},
                 orders:{include:{order:{select:{
-                  id:true,orderNumber:true,orderType:true,source:true,status:true,fulfillmentWarehouse:{select:{id:true,code:true,name:true}}
+                  id:true,orderNumber:true,orderType:true,source:true,status:true,cargoTrackingNumber:true,cargoTrackingUrl:true,fulfillmentWarehouse:{select:{id:true,code:true,name:true}}
                 }}}},
               },
             },
