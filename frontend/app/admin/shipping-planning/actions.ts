@@ -63,3 +63,24 @@ export async function confirmEcommerceOrderDeliveryAction(f:FormData){
  }
  redirect("/admin/shipping-planning/tracking?delivered=1");
 }
+
+
+export async function updateEcommerceCargoTrackingAction(f:FormData){
+ try{
+  const a=await auth();
+  const orderId=Number(v(f,"orderId"));
+  if(!Number.isInteger(orderId)||orderId<=0) throw new Error("Geçerli bir sipariş seçin.");
+  await ShipmentPlanningService.updateEcommerceCargoTracking({
+   orderId,
+   trackingNumber:v(f,"trackingNumber"),
+   trackingUrl:v(f,"trackingUrl"),
+   actor:a,
+  });
+  revalidatePath("/admin/shipping-planning/tracking");
+  revalidatePath("/order-tracking");
+ }catch(e){
+  const message=e instanceof Error?e.message:"Kargo takip bilgisi kaydedilemedi.";
+  redirect("/admin/shipping-planning/tracking?trackingError="+encodeURIComponent(message));
+ }
+ redirect("/admin/shipping-planning/tracking?trackingUpdated=1");
+}
