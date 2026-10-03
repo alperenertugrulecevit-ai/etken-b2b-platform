@@ -199,6 +199,21 @@ export default function RFPickingForm({
       input.focus();
     }
 
+    /*
+     * Alan dinamik olarak render edildiği için önce odak ver,
+     * sonra el terminali viewport'unda görünür konuma getir.
+     * Bu kaydırma kullanıcı dokunuşu gerektirmez.
+     */
+    window.requestAnimationFrame(() => {
+      if (!input.isConnected) return;
+
+      input.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    });
+
     window.setTimeout(() => {
       if (!input.isConnected) return;
 
@@ -210,7 +225,7 @@ export default function RFPickingForm({
           previousInputMode
         );
       }
-    }, 250);
+    }, 350);
   };
 
   const focusAfterRender = (
