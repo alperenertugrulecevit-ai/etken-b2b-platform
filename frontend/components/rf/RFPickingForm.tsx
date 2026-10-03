@@ -175,6 +175,53 @@ export default function RFPickingForm({
   const awaitingNextPickRef =
     useRef(false);
 
+  const focusWithoutKeyboard = (
+    input: HTMLInputElement | null
+  ) => {
+    if (!input) return;
+
+    /*
+     * El terminalinde barkod okuyucu için odak gerekir,
+     * fakat programatik odak Android yazılım klavyesini
+     * açmamalı. Kullanıcı alana dokunduğunda normal
+     * input davranışı ile klavye yine açılır.
+     */
+    const previousInputMode =
+      input.getAttribute("inputmode");
+
+    input.setAttribute("inputmode", "none");
+
+    try {
+      input.focus({
+        preventScroll: true,
+      });
+    } catch {
+      input.focus();
+    }
+
+    window.setTimeout(() => {
+      if (!input.isConnected) return;
+
+      if (previousInputMode === null) {
+        input.removeAttribute("inputmode");
+      } else {
+        input.setAttribute(
+          "inputmode",
+          previousInputMode
+        );
+      }
+    }, 250);
+  };
+
+  const focusAfterRender = (
+    ref: React.RefObject<HTMLInputElement | null>,
+    delay = 80
+  ) => {
+    window.setTimeout(() => {
+      focusWithoutKeyboard(ref.current);
+    }, delay);
+  };
+
   const [
     orderNumber,
     setOrderNumber,
@@ -677,8 +724,8 @@ export default function RFPickingForm({
     maximumPickQuantity > 0;
 
   useEffect(() => {
-    if (lockedOrderNumber) targetInputRef.current?.focus();
-    else orderInputRef.current?.focus();
+    if (lockedOrderNumber) focusWithoutKeyboard(targetInputRef.current);
+    else focusWithoutKeyboard(orderInputRef.current);
   }, [lockedOrderNumber]);
 
   useEffect(() => {
@@ -936,9 +983,7 @@ export default function RFPickingForm({
       setSourceBarcode("");
       setProductBarcode("");
   
-      window.setTimeout(() => {
-        orderInputRef.current?.focus();
-      }, 100);
+      focusAfterRender(orderInputRef);
 
       return;
     }
@@ -987,9 +1032,7 @@ export default function RFPickingForm({
 
       setProductBarcode("");
   
-      window.setTimeout(() => {
-        productInputRef.current?.focus();
-      }, 100);
+      focusAfterRender(productInputRef);
 
       return;
     }
@@ -1019,9 +1062,7 @@ export default function RFPickingForm({
       setSourceBarcode("");
       setProductBarcode("");
   
-      window.setTimeout(() => {
-        sourceInputRef.current?.focus();
-      }, 100);
+      focusAfterRender(sourceInputRef);
 
       return;
     }
@@ -1037,9 +1078,7 @@ export default function RFPickingForm({
     setSourceBarcode("");
     setProductBarcode("");
 
-    window.setTimeout(() => {
-      locationInputRef.current?.focus();
-    }, 100);
+    focusAfterRender(locationInputRef);
   }, [
     nextOrderItem,
     recommendedSource,
@@ -1065,9 +1104,7 @@ export default function RFPickingForm({
 
     setShowMessage(false);
 
-    window.setTimeout(() => {
-      orderInputRef.current?.focus();
-    }, 100);
+    focusAfterRender(orderInputRef);
   }
 
   function changeOrder() {
@@ -1085,9 +1122,7 @@ export default function RFPickingForm({
 
     setShowMessage(false);
 
-    window.setTimeout(() => {
-      orderInputRef.current?.focus();
-    }, 100);
+    focusAfterRender(orderInputRef);
   }
 
   function changeTarget() {
@@ -1096,9 +1131,7 @@ export default function RFPickingForm({
 
     setShowMessage(false);
 
-    window.setTimeout(() => {
-      targetInputRef.current?.focus();
-    }, 100);
+    focusAfterRender(targetInputRef);
   }
 
   function handleOrderChange(
@@ -1131,7 +1164,7 @@ export default function RFPickingForm({
     event.preventDefault();
 
     if (selectedOrder) {
-      targetInputRef.current?.focus();
+      focusWithoutKeyboard(targetInputRef.current);
     }
   }
 
@@ -1155,16 +1188,16 @@ export default function RFPickingForm({
         locationMatches &&
         sourceMatches
       ) {
-        productInputRef.current?.focus();
+        focusWithoutKeyboard(productInputRef.current);
         return;
       }
 
       if (locationMatches) {
-        sourceInputRef.current?.focus();
+        focusWithoutKeyboard(sourceInputRef.current);
         return;
       }
 
-      locationInputRef.current?.focus();
+      focusWithoutKeyboard(locationInputRef.current);
     }
   }
 
@@ -1179,7 +1212,7 @@ export default function RFPickingForm({
     event.preventDefault();
 
     if (locationMatches) {
-      sourceInputRef.current?.focus();
+      focusWithoutKeyboard(sourceInputRef.current);
     } else {
       setLocationBarcode("");
       window.setTimeout(() => locationInputRef.current?.focus(), 50);
@@ -1197,7 +1230,7 @@ export default function RFPickingForm({
     event.preventDefault();
 
     if (sourceMatches) {
-      productInputRef.current?.focus();
+      focusWithoutKeyboard(productInputRef.current);
     } else {
       setSourceBarcode("");
       window.setTimeout(() => sourceInputRef.current?.focus(), 50);
