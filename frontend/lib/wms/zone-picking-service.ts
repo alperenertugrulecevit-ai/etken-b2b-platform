@@ -2,6 +2,16 @@ import { HandlingUnitPurpose, HandlingUnitStatus, PickingShortageStatus, Prisma,
 type Tx = Prisma.TransactionClient | PrismaClient;
 const SOURCE_STATUSES: HandlingUnitStatus[]=[HandlingUnitStatus.OPEN,HandlingUnitStatus.CLOSED,HandlingUnitStatus.STORED];
 
+export function calculateRemainingPickDemand(item:{
+ quantity:number;
+ cancelledQuantity:number;
+ pickedQuantity:number;
+ pickingShortages:{quantity:number}[];
+}){
+ const activeShortage=item.pickingShortages.reduce((sum,row)=>sum+row.quantity,0);
+ return Math.max(0,item.quantity-item.cancelledQuantity-item.pickedQuantity-activeShortage);
+}
+
 export class ZonePickingService {
  static async buildTasksForOrders(tx:Tx,input:{orderIds:number[];warehouseId:number;waveId?:string|null;allowPartialStock?:boolean}){
   const ids=[...new Set(input.orderIds)];
@@ -15,8 +25,7 @@ export class ZonePickingService {
   const plans=new Map<string,{orderId:number;zoneId:number;lines:{orderItemId:number;handlingUnitItemId:number;quantity:number;sequence:number}[]}>();
   let sequence=0;
   for(const order of orders) for(const item of order.items){
-   const activeShortage=item.pickingShortages.reduce((sum,row)=>sum+row.quantity,0);
-   let need=Math.max(0,item.quantity-item.cancelledQuantity-item.pickedQuantity-activeShortage); if(!need) continue;
+   let need=calculateRemainingPickDemand(item); if(!need) continue;
    const candidates=(byProduct.get(item.productId)??[]).filter(s=>(available.get(s.id)??0)>0).sort((a,b)=>(a.handlingUnit.location?.sortOrder??0)-(b.handlingUnit.location?.sortOrder??0));
    const total=candidates.reduce((n,s)=>n+(available.get(s.id)??0),0);
    if(total<need && !input.allowPartialStock) throw new Error(`${order.orderNumber}: ürün ${item.productId} için seçilen depoda yeterli kullanılabilir fiziksel stok yok.`);
