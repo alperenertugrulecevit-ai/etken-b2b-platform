@@ -78,10 +78,12 @@ export async function claimZoneTaskById(formData: FormData) {
     where: { claimedByUserId: user.id, status: { in: [ZonePickTaskStatus.CLAIMED, ZonePickTaskStatus.IN_PROGRESS] } },
     select: { id: true },
   });
-  if (active && active.id !== taskId) {
-    throw new Error("Önce üzerinizdeki aktif toplama görevini tamamlayın veya bırakın.");
+  // Kullanıcının üzerinde zaten aktif bir toplama görevi varsa
+  // ikinci görevi sahiplenmek yerine mevcut aktif göreve devam et.
+  // Böylece Server Action exception / React #441 oluşmaz.
+  if (active) {
+    return { taskId: active.id };
   }
-  if (active?.id === taskId) return { taskId };
 
   const result = await prisma.zonePickTask.updateMany({
     where: { id: taskId, status: ZonePickTaskStatus.OPEN, claimedByUserId: null },
