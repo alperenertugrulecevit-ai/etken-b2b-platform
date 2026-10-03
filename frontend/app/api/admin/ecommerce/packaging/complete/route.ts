@@ -246,7 +246,21 @@ export async function POST(request: NextRequest) {
           where: { id: shippingUnit.handlingUnit.id },
           data: { status: HandlingUnitStatus.CLOSED, purpose: HandlingUnitPurpose.SHIPPING, assignedOrderId: order.id },
         });
-        await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.READY_TO_SHIP } });
+        if (order.status !== OrderStatus.READY_TO_SHIP) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              status: OrderStatus.READY_TO_SHIP,
+              statusHistory: {
+                create: {
+                  status: OrderStatus.READY_TO_SHIP,
+                  note: "Siparişiniz paketlendi ve sevkiyata hazırlandı.",
+                  visibleToCustomer: true,
+                },
+              },
+            },
+          });
+        }
         if (order.fulfillment) {
           await tx.orderFulfillment.update({
             where: { orderId: order.id },
