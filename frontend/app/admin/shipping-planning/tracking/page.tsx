@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ShipmentTrackingTable from "@/components/admin/shipping/ShipmentTrackingTable";
 import { ShipmentPlanningService } from "@/modules/fulfillment/services/shipment-planning.service";
+import { confirmEcommerceOrderDeliveryAction } from "../actions";
 
 const statusLabel:Record<string,string>={CREATED:"Oluşturuldu",ROUTING:"Rotalanıyor",ROUTED:"Rotalandı",LOADING:"Yükleniyor",LOADED:"Yüklendi",SHIPPED:"Sevk Edildi"};
 const orderTypeLabel:Record<string,string>={CUSTOMER:"B2B Siparişi",STOCK_TRANSFER:"Stok Transferi",INTERNAL:"İç Sipariş"};
@@ -28,11 +29,13 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
    shipmentNumber:s.shipmentNumber,thm:hu.shippingHandlingUnit.handlingUnit.barcode,orderNumber:o.orderNumber,
    companyCode:hu.shippingHandlingUnit.customerCode??"-",companyName:hu.shippingHandlingUnit.customerName,
    city:hu.shippingHandlingUnit.city,district:hu.shippingHandlingUnit.district,
-   orderType:orderTypeLabel[o.order.orderType]??o.order.orderType,quantity:o.packedQuantity,
+   orderId:o.order.id,orderStatus:o.order.status,orderSource:o.order.source,orderType:orderTypeLabel[o.order.orderType]??o.order.orderType,quantity:o.packedQuantity,
    warehouseCode:o.order.fulfillmentWarehouse?.code??"-"
   })))
  }));
  return <main className="p-4 sm:p-6">
+  {one(p.delivered)==="1"&&<div className="mb-4 rounded-xl border border-green-300 bg-green-50 p-4 font-bold text-green-900">Teslimat onaylandı ve müşteri sipariş durumuna işlendi.</div>}
+  {one(p.deliveryError)&&<div className="mb-4 rounded-xl border border-red-300 bg-red-50 p-4 font-bold text-red-900">{one(p.deliveryError)}</div>}
   <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wider text-blue-700">Sevkiyat Planlama</p><h1 className="text-2xl font-black">Sevk Takip</h1><p className="mt-1 text-sm text-slate-600">Sevkiyatları filtreleyin, satır detaylarını açın ve çoklu taşıma listesi oluşturun.</p></div><Link href="/admin/shipping-planning" className="rounded-xl border bg-white px-4 py-3 font-bold">← Sevkiyat Planlama</Link></div>
   <form className="mb-5 rounded-2xl border bg-white p-4 shadow-sm"><div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
    <label className="text-xs font-bold">Başlangıç Tarihi<input type="date" name="dateFrom" defaultValue={from} className="mt-1 w-full rounded-xl border p-3"/></label>
@@ -42,6 +45,6 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
    <label className="text-xs font-bold">Sevk No<input name="shipmentNumber" defaultValue={one(p.shipmentNumber)} placeholder="SVP..." className="mt-1 w-full rounded-xl border p-3 uppercase"/></label>
    <label className="text-xs font-bold">Depo (çoklu)<select name="warehouseId" multiple defaultValue={warehouseIds.map(String)} className="mt-1 h-[76px] w-full rounded-xl border p-2">{warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}</select></label>
   </div><div className="mt-3 flex gap-2"><button className="rounded-xl bg-blue-950 px-6 py-3 font-black text-white">FİLTRELE</button><Link href="/admin/shipping-planning/tracking" className="rounded-xl border px-6 py-3 font-bold">Bugüne Dön</Link></div></form>
-  <ShipmentTrackingTable rows={rows}/>
+  <ShipmentTrackingTable rows={rows} confirmDeliveryAction={confirmEcommerceOrderDeliveryAction}/>
  </main>;
 }
