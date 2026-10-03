@@ -2,6 +2,8 @@ import "server-only";
 
 import {
   B2BPaymentMethod,
+  CustomerAccountEntryDirection,
+  CustomerAccountEntryType,
   CustomerType,
   OrderSource,
   OrderStatus,
@@ -207,6 +209,17 @@ export class EcommerceCheckoutService {
               status: OrderStatus.PENDING,
               note: "Siparişiniz alındı ve onay bekliyor.",
               visibleToCustomer: true,
+            },
+          },
+          accountEntries: {
+            create: {
+              customerId: customer.id,
+              direction: CustomerAccountEntryDirection.DEBIT,
+              entryType: CustomerAccountEntryType.ORDER,
+              amount: totalAmount,
+              description: "B2C e-ticaret sipariş borç kaydı",
+              referenceNo: "WEB" + idToken,
+              createdByUsername: "B2C Web Mağazası",
             },
           },
           items: { create: calculatedItems },
