@@ -101,6 +101,11 @@ export default function ProductList({
     setAddedCode,
   ] = useState("");
 
+  const [
+    mobileFiltersOpen,
+    setMobileFiltersOpen,
+  ] = useState(false);
+
   const {
     addToCart,
   } = useCart();
@@ -397,8 +402,46 @@ export default function ProductList({
   }
 
   return (
-    <div className="mt-5 grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
-      <aside className="h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mt-5">
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+        {categories.map((item) => {
+          const active = category === item;
+
+          return (
+            <button
+              key={item}
+              type="button"
+              onClick={() => handleCategoryChange(item)}
+              className={
+                "shrink-0 rounded-full border px-4 py-2 text-xs font-black transition " +
+                (active
+                  ? "border-[#071729] bg-[#071729] text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-[#EF4B23] hover:text-[#EF4B23]")
+              }
+            >
+              {item === "Tümü" ? "Tüm Ürünler" : item}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen((value) => !value)}
+        className="mb-3 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 shadow-sm lg:hidden"
+        aria-expanded={mobileFiltersOpen}
+      >
+        <span>Filtrele ve Ara</span>
+        <span>{mobileFiltersOpen ? "Kapat" : "Aç"}</span>
+      </button>
+
+      <div className="grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
+      <aside
+        className={
+          "h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm " +
+          (mobileFiltersOpen ? "block" : "hidden lg:block")
+        }
+      >
         <h2 className="text-base font-black">
           Filtreler
         </h2>
@@ -734,6 +777,7 @@ export default function ProductList({
           </div>
         )}
       </section>
+      </div>
     </div>
   );
 }
