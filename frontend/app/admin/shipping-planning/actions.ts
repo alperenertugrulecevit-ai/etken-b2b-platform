@@ -47,3 +47,19 @@ export async function updateShipmentAction(f:FormData){
  }
  redirect("/admin/shipping-planning?updated=1");
 }
+
+
+export async function confirmEcommerceOrderDeliveryAction(f:FormData){
+ try{
+  const a=await auth();
+  const orderId=Number(v(f,"orderId"));
+  if(!Number.isInteger(orderId)||orderId<=0) throw new Error("Geçerli bir sipariş seçin.");
+  await ShipmentPlanningService.confirmEcommerceOrderDelivery({orderId,actor:a});
+  revalidatePath("/admin/shipping-planning/tracking");
+  revalidatePath("/order-tracking");
+ }catch(e){
+  const message=e instanceof Error?e.message:"Teslimat onaylanamadı.";
+  redirect("/admin/shipping-planning/tracking?deliveryError="+encodeURIComponent(message));
+ }
+ redirect("/admin/shipping-planning/tracking?delivered=1");
+}

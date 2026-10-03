@@ -8,6 +8,8 @@ import {
   ShippingHandlingUnitStatus,
   ShippingVehicleOwnershipType,
   WmsOperationType,
+  OrderSource,
+  OrderStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ShippingService } from "@/modules/fulfillment/services/shipping.service";
@@ -135,7 +137,7 @@ export class ShipmentPlanningService {
               include:{
                 handlingUnit:{select:{barcode:true}},
                 orders:{include:{order:{select:{
-                  orderNumber:true,orderType:true,fulfillmentWarehouse:{select:{id:true,code:true,name:true}}
+                  id:true,orderNumber:true,orderType:true,source:true,status:true,fulfillmentWarehouse:{select:{id:true,code:true,name:true}}
                 }}}},
               },
             },
@@ -349,6 +351,45 @@ export class ShipmentPlanningService {
       await tx.shipment.update({where:{id:shipment.id},data:{status:ShipmentStatus.SHIPPED,shippedAt:now,shippedById:input.actor.userId,shippedByName:input.actor.displayName,shippedTerminalCode:clean(input.actor.terminalCode)}});
       return {shipmentNumber:shipment.shipmentNumber,thmCount:shipment.handlingUnits.length,totalQuantity:results.reduce((n,x)=>n+x.totalQuantity,0),dispatchNumbers:results.map(x=>x.dispatchNumber)};
     },{maxWait:10000,timeout:120000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+  }
+
+  static async confirmEcommerceOrderDelivery(input:{orderId:number;actor:ShipmentActor}) {
+    return prisma.$transaction(async tx => {
+      const order = await tx.order.findFirst({
+        where: { id: input.orderId, source: OrderSource.ECOMMERCE },
+        select: { id:true, orderNumber:true, status:true },
+      });
+      if (!order) throw new Error("E-ticaret siparişi bulunamadı.");
+      if (order.status === OrderStatus.DELIVERED) throw new Error("Sipariş daha önce teslim edildi olarak işaretlenmiş.");
+      if (order.status !== OrderStatus.SHIPPED) throw new Error("Yalnızca sevk edilmiş e-ticaret siparişi teslim edildi olarak işaretlenebilir.");
+
+      const now = new Date();
+      await tx.order.update({ where:{id:order.id}, data:{status:OrderStatus.DELIVERED} });
+      await tx.orderStatusHistory.create({ data:{
+        orderId:order.id,
+        status:OrderStatus.DELIVERED,
+        note:"Siparişiniz teslim edildi.",
+        changedByUserId:input.actor.userId,
+        changedByUsername:input.actor.displayName,
+        visibleToCustomer:true,
+        createdAt:now,
+      }});
+      await tx.wmsOperationLog.create({ data:{
+        operationType:WmsOperationType.SHIPPING,
+        module:"ADMIN_DELIVERY_CONFIRMATION",
+        entityType:"ORDER",
+        entityId:order.id,
+        orderId:order.id,
+        orderNumber:order.orderNumber,
+        operatorId:input.actor.userId,
+        operatorName:input.actor.displayName,
+        previousStatus:OrderStatus.SHIPPED,
+        newStatus:OrderStatus.DELIVERED,
+        description:`${order.orderNumber} e-ticaret siparişi teslim edildi olarak onaylandı.`,
+        metadata:{confirmedAt:now.toISOString(),source:"ADMIN_SHIPMENT_TRACKING"},
+      }});
+      return {orderNumber:order.orderNumber};
+    }, {isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
   static async operationsDashboard(){
