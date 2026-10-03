@@ -754,9 +754,34 @@ export async function confirmEcommerceBankTransferPayment(
     });
     if (existingPayment) throw new Error("Bu sipariş için daha önce ödeme cari hareketi oluşturulmuş.");
 
+    const existingOrderDebit = await tx.customerAccountEntry.findFirst({
+      where: {
+        orderId: order.id,
+        direction: CustomerAccountEntryDirection.DEBIT,
+        entryType: CustomerAccountEntryType.ORDER,
+      },
+      select: { id:true },
+    });
+
     const actorName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
       : user.username;
+
+    if (!existingOrderDebit) {
+      await tx.customerAccountEntry.create({
+        data: {
+          customerId: order.customerId,
+          orderId: order.id,
+          direction: CustomerAccountEntryDirection.DEBIT,
+          entryType: CustomerAccountEntryType.ORDER,
+          amount: order.totalAmount,
+          description: `${order.orderNumber} B2C sipariş borç kaydı (geriye dönük tamamlama)`,
+          referenceNo: order.orderNumber,
+          createdByUserId: user.id,
+          createdByUsername: actorName,
+        },
+      });
+    }
 
     await tx.customerAccountEntry.create({
       data: {

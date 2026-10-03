@@ -70,6 +70,7 @@ const groups:MenuGroup[]=[
   {href:"/admin/wms-reports/lost-stock",icon:"⚠️",label:"Kayıp Stok Raporu",permissionCodes:["INVENTORY_VIEW"]},
  ]},
  {title:"E-Ticaret Yönetimi",icon:"🛍️",items:[
+  {href:"/admin/e-ticaret/orders",icon:"🛒",label:"E-Ticaret Siparişleri",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
   {href:"/admin/e-ticaret/packaging",icon:"📦",label:"E-Ticaret Paketleme",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
   {href:"/admin/e-ticaret/returns",icon:"↩️",label:"E-Ticaret İade Giriş",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
   {href:"/admin/e-ticaret/return-reconciliation",icon:"🤝",label:"Kargo İade Mutabakatı",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
