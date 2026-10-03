@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 import {
   createStockMovementWithTransaction,
@@ -733,7 +734,7 @@ export async function confirmEcommerceBankTransferPayment(
       select: {
         id:true, orderNumber:true, customerId:true, source:true, status:true,
         paymentMethod:true, paymentStatus:true, paymentProvider:true,
-        paymentReference:true, totalAmount:true,
+        paymentReference:true, totalAmount:true, ecommerceEmail:true,
       },
     });
     if (!order) throw new Error("Sipariş bulunamadı.");
@@ -819,6 +820,18 @@ export async function confirmEcommerceBankTransferPayment(
       },
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  const notificationOrder = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { orderNumber:true, ecommerceEmail:true },
+  });
+  if (notificationOrder) {
+    await EcommerceNotificationService.send({
+      event:"PAYMENT_CONFIRMED",
+      email:notificationOrder.ecommerceEmail,
+      orderNumber:notificationOrder.orderNumber,
+    });
+  }
 
   const detailPath = `/admin/orders/${orderId}`;
   revalidatePath(detailPath);
