@@ -35,6 +35,19 @@ function paymentStatusLabel(value: string | null) {
   return PAYMENT_STATUS_LABELS[value.toUpperCase()] ?? value;
 }
 
+const ORDER_PROGRESS: Array<{ label: string; statuses: OrderStatus[] }> = [
+  { label: "Sipariş Alındı", statuses: [OrderStatus.PENDING, OrderStatus.APPROVED] },
+  { label: "Hazırlanıyor", statuses: [OrderStatus.PREPARING, OrderStatus.PICKING] },
+  { label: "Paketleniyor", statuses: [OrderStatus.PACKING] },
+  { label: "Sevke Hazır", statuses: [OrderStatus.READY_TO_SHIP] },
+  { label: "Sevk Edildi", statuses: [OrderStatus.SHIPPED, OrderStatus.DELIVERED] },
+];
+
+function progressIndex(status: OrderStatus) {
+  if (status === OrderStatus.CANCELLED || status === OrderStatus.DRAFT) return -1;
+  return ORDER_PROGRESS.findIndex((step) => step.statuses.includes(status));
+}
+
 function money(value: number) {
   return value.toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
@@ -115,6 +128,8 @@ export default async function OrderTrackingPage({
           },
         })
       : null;
+
+  const currentProgressIndex = order ? progressIndex(order.status) : -1;
 
   const shipmentDetails = order
     ? Array.from(
@@ -213,6 +228,48 @@ export default async function OrderTrackingPage({
                     </p>
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-black">Sipariş Süreci</h2>
+                {order.status === OrderStatus.CANCELLED ? (
+                  <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+                    Bu sipariş iptal edildi.
+                  </div>
+                ) : (
+                  <div className="mt-5 grid gap-3 sm:grid-cols-5">
+                    {ORDER_PROGRESS.map((step, index) => {
+                      const completed = currentProgressIndex >= index;
+                      const current = currentProgressIndex === index;
+
+                      return (
+                        <div
+                          key={step.label}
+                          className={
+                            "rounded-xl border p-3 " +
+                            (current
+                              ? "border-[#EF4B23] bg-orange-50"
+                              : completed
+                                ? "border-emerald-200 bg-emerald-50"
+                                : "border-slate-200 bg-slate-50")
+                          }
+                        >
+                          <div
+                            className={
+                              "flex h-7 w-7 items-center justify-center rounded-full text-xs font-black " +
+                              (completed ? "bg-[#202B38] text-white" : "bg-slate-200 text-slate-500")
+                            }
+                          >
+                            {completed ? "✓" : index + 1}
+                          </div>
+                          <p className={"mt-2 text-sm font-bold " + (completed ? "text-slate-900" : "text-slate-500")}>
+                            {step.label}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl bg-white p-5 shadow-sm">
