@@ -6,6 +6,9 @@ import {
   EcommerceReturnQualityResult,
   EcommerceReturnRefundStatus,
   EcommerceReturnStatus,
+  CustomerAccountEntryDirection,
+  CustomerAccountEntryType,
+  CustomerAccountPaymentMethod,
   HandlingUnitPurpose,
   HandlingUnitStatus,
   OrderType,
@@ -19,6 +22,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 const norm=(v:FormDataEntryValue|null)=>String(v??"").trim().toUpperCase();
 const locationScanCode=(x:{code:string;section:string;level:string;bin:string})=>[x.code,x.section,x.level,x.bin].map(v=>v.trim().toUpperCase()).filter(Boolean).join("-");
@@ -220,16 +224,94 @@ export async function resolveEcommerceReturnInspectionRefund(formData:FormData){
 export async function markEcommerceRefundCompleted(formData:FormData){
   const profile=await AuthorizationService.requireAdminPortalAccess();
   const refundId=String(formData.get("refundId")??"");
-  const providerReference=String(formData.get("providerReference")??"").trim();
+  const providerReference=String(formData.get("providerReference")??"").trim().slice(0,120);
   if(!refundId||!providerReference) throw new Error("Finans kaydı ve ödeme/iade referansı zorunludur.");
-  await prisma.$transaction(async tx=>{
-    const refund=await tx.ecommerceReturnRefund.findUnique({where:{id:refundId},include:{ecommerceReturn:true}});
+
+  const notification=await prisma.$transaction(async tx=>{
+    const refund=await tx.ecommerceReturnRefund.findUnique({
+      where:{id:refundId},
+      include:{
+        ecommerceReturn:{
+          include:{
+            originalOrder:{
+              select:{id:true,orderNumber:true,customerId:true,ecommerceEmail:true,status:true},
+            },
+          },
+        },
+      },
+    });
     if(!refund) throw new Error("Finans iade kaydı bulunamadı.");
     if(refund.status!==EcommerceReturnRefundStatus.REQUESTED) throw new Error("Finans kaydı tamamlanmaya uygun değil.");
-    await tx.ecommerceReturnRefund.update({where:{id:refund.id},data:{status:EcommerceReturnRefundStatus.REFUNDED,providerReference,completedAt:new Date(),requestedByUserId:refund.requestedByUserId??profile.id}});
-    await tx.ecommerceReturn.update({where:{id:refund.ecommerceReturnId},data:{status:EcommerceReturnStatus.COMPLETED,refundStatus:EcommerceReturnRefundStatus.REFUNDED,financeCompletedAt:new Date()}});
+
+    const order=refund.ecommerceReturn.originalOrder;
+    const existingAccountRefund=await tx.customerAccountEntry.findFirst({
+      where:{
+        orderId:order.id,
+        direction:CustomerAccountEntryDirection.DEBIT,
+        entryType:CustomerAccountEntryType.REFUND,
+      },
+      select:{id:true},
+    });
+    if(existingAccountRefund) throw new Error("Bu sipariş için cari hesap iade hareketi daha önce oluşturulmuş.");
+
+    const actorName=profile.employee
+      ? `${profile.employee.firstName} ${profile.employee.lastName}`
+      : profile.username;
+    const now=new Date();
+
+    await tx.customerAccountEntry.create({
+      data:{
+        customerId:order.customerId,
+        orderId:order.id,
+        direction:CustomerAccountEntryDirection.DEBIT,
+        entryType:CustomerAccountEntryType.REFUND,
+        paymentMethod:CustomerAccountPaymentMethod.BANK_TRANSFER,
+        amount:refund.amount,
+        description:`${order.orderNumber} B2C ürün iadesi`,
+        referenceNo:providerReference,
+        createdByUserId:profile.id,
+        createdByUsername:actorName,
+      },
+    });
+    await tx.ecommerceReturnRefund.update({
+      where:{id:refund.id},
+      data:{
+        status:EcommerceReturnRefundStatus.REFUNDED,
+        providerReference,
+        completedAt:now,
+        requestedByUserId:refund.requestedByUserId??profile.id,
+      },
+    });
+    await tx.ecommerceReturn.update({
+      where:{id:refund.ecommerceReturnId},
+      data:{
+        status:EcommerceReturnStatus.COMPLETED,
+        refundStatus:EcommerceReturnRefundStatus.REFUNDED,
+        financeCompletedAt:now,
+      },
+    });
+    await tx.orderStatusHistory.create({
+      data:{
+        orderId:order.id,
+        status:order.status,
+        note:`${refund.amount.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2})} TL ürün iadesi ödemenize iade edildi.`,
+        changedByUserId:profile.id,
+        changedByUsername:actorName,
+        visibleToCustomer:true,
+      },
+    });
+
+    return {orderId:order.id,orderNumber:order.orderNumber,ecommerceEmail:order.ecommerceEmail};
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+
+  await EcommerceNotificationService.send({
+    event:"REFUNDED",
+    email:notification.ecommerceEmail,
+    orderNumber:notification.orderNumber,
   });
   refresh();
+  revalidatePath(`/account/orders/${notification.orderId}`);
+  revalidatePath("/order-tracking");
 }
 
 
