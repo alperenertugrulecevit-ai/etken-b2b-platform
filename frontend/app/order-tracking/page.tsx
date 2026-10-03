@@ -40,7 +40,8 @@ const ORDER_PROGRESS: Array<{ label: string; statuses: OrderStatus[] }> = [
   { label: "Hazırlanıyor", statuses: [OrderStatus.PREPARING, OrderStatus.PICKING] },
   { label: "Paketleniyor", statuses: [OrderStatus.PACKING] },
   { label: "Sevke Hazır", statuses: [OrderStatus.READY_TO_SHIP] },
-  { label: "Sevk Edildi", statuses: [OrderStatus.SHIPPED, OrderStatus.DELIVERED] },
+  { label: "Sevk Edildi", statuses: [OrderStatus.SHIPPED] },
+  { label: "Teslim Edildi", statuses: [OrderStatus.DELIVERED] },
 ];
 
 function progressIndex(status: OrderStatus) {
@@ -237,7 +238,7 @@ export default async function OrderTrackingPage({
                     Bu sipariş iptal edildi.
                   </div>
                 ) : (
-                  <div className="mt-5 grid gap-3 sm:grid-cols-5">
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
                     {ORDER_PROGRESS.map((step, index) => {
                       const completed = currentProgressIndex >= index;
                       const current = currentProgressIndex === index;
