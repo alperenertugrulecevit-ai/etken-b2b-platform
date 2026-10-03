@@ -165,7 +165,7 @@ export default function Header() {
             </Link>
 
             <Link
-              href="/account/orders"
+              href="/order-tracking"
               className="flex items-center gap-2 transition hover:text-orange-300"
             >
               <OrderIcon />
@@ -476,6 +476,16 @@ export default function Header() {
                 className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold"
               >
                 Kurumsal Hesabım
+              </Link>
+
+              <Link
+                href="/order-tracking"
+                onClick={
+                  closeMenu
+                }
+                className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold"
+              >
+                Sipariş Takibi
               </Link>
             </div>
 
