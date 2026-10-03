@@ -20,6 +20,21 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   CANCELLED: "İptal Edildi",
 };
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Ödeme Bekleniyor",
+  WAITING: "Ödeme Bekleniyor",
+  PAID: "Ödendi",
+  COMPLETED: "Ödendi",
+  FAILED: "Ödeme Başarısız",
+  CANCELLED: "İptal Edildi",
+  REFUNDED: "İade Edildi",
+};
+
+function paymentStatusLabel(value: string | null) {
+  if (!value) return "Ödeme Bekleniyor";
+  return PAYMENT_STATUS_LABELS[value.toUpperCase()] ?? value;
+}
+
 function money(value: number) {
   return value.toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
@@ -193,6 +208,9 @@ export default async function OrderTrackingPage({
                     <p className="text-xs font-bold uppercase text-slate-500">Durum</p>
                     <p className="mt-1 font-black text-[#EF4B23]">{STATUS_LABELS[order.status]}</p>
                     <p className="mt-2 text-xl font-black">{money(order.totalAmount)} ₺</p>
+                    <p className="mt-2 text-sm font-bold text-slate-600">
+                      {paymentStatusLabel(order.paymentStatus)}
+                    </p>
                   </div>
                 </div>
               </div>
