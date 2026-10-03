@@ -728,7 +728,7 @@ export async function confirmEcommerceBankTransferPayment(
   const referenceNo = String(formData.get("paymentReference") ?? "").trim().slice(0, 120);
   if (!referenceNo) throw new Error("Banka işlem / dekont referansı zorunludur.");
 
-  await prisma.$transaction(async (tx) => {
+  const notification = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       select: {
@@ -819,19 +819,14 @@ export async function confirmEcommerceBankTransferPayment(
         visibleToCustomer: true,
       },
     });
+    return { orderNumber:order.orderNumber, ecommerceEmail:order.ecommerceEmail };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-  const notificationOrder = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: { orderNumber:true, ecommerceEmail:true },
+  await EcommerceNotificationService.send({
+    event:"PAYMENT_CONFIRMED",
+    email:notification.ecommerceEmail,
+    orderNumber:notification.orderNumber,
   });
-  if (notificationOrder) {
-    await EcommerceNotificationService.send({
-      event:"PAYMENT_CONFIRMED",
-      email:notificationOrder.ecommerceEmail,
-      orderNumber:notificationOrder.orderNumber,
-    });
-  }
 
   const detailPath = `/admin/orders/${orderId}`;
   revalidatePath(detailPath);
