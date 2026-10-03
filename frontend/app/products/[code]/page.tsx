@@ -171,23 +171,19 @@ export default async function ProductDetailPage({
     </>
   ) : (
     <>
-      <p className="text-2xl font-black text-[#EF4B23] sm:text-3xl">
-        {formatCurrency(
-          product.price
-        )}{" "}
-        ₺
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-[#EF4B23]">
+        KDV Dâhil Satış Fiyatı
       </p>
 
-      <p className="mt-0.5 text-xs text-slate-500">
-        KDV hariç birim fiyat
-      </p>
-
-      <p className="mt-2 text-sm font-bold text-slate-800">
-        KDV dâhil:{" "}
+      <p className="mt-1 text-3xl font-black text-[#EF4B23] sm:text-4xl">
         {formatCurrency(
           grossPrice
         )}{" "}
         ₺
+      </p>
+
+      <p className="mt-2 text-xs text-slate-500">
+        KDV hariç {formatCurrency(product.price)} ₺ · KDV %{product.vat}
       </p>
     </>
   )}
@@ -210,10 +206,16 @@ export default async function ProductDetailPage({
       : "Ürün şu anda stokta bulunmuyor."}
 </div>
 
-              <div className="mt-3 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
-                {product.ownStock
-                  ? "ETKEN deposundan sevk edilir."
-                  : "Tedarikçi stoğundan tedarik edilir."}
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
+                  {product.ownStock
+                    ? "ETKEN deposundan sevk edilir."
+                    : "Tedarikçi stoğundan tedarik edilir."}
+                </div>
+
+                <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                  Bireysel alışverişte minimum sipariş tutarı yoktur.
+                </div>
               </div>
 
               <div className="mt-4">
