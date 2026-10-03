@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 export async function refundCancelledEcommerceOrder(orderId: number, formData: FormData) {
   const user = await AuthorizationService.requirePermission("ORDER_MANAGE");
@@ -78,6 +79,18 @@ export async function refundCancelledEcommerceOrder(orderId: number, formData: F
       },
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  const notificationOrder = await prisma.order.findUnique({
+    where:{id:orderId},
+    select:{orderNumber:true,ecommerceEmail:true},
+  });
+  if(notificationOrder){
+    await EcommerceNotificationService.send({
+      event:"REFUNDED",
+      email:notificationOrder.ecommerceEmail,
+      orderNumber:notificationOrder.orderNumber,
+    });
+  }
 
   revalidatePath("/admin/e-ticaret/orders");
   revalidatePath(`/admin/orders/${orderId}`);
