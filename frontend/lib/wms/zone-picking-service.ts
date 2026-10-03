@@ -116,6 +116,9 @@ export class ZonePickingService {
     });
    }
   }
+  // Yeniden planlanan sipariş eski konsolidasyon doğrulamalarını taşıyamaz.
+  // Aksi halde önceki THM okutmalarına ait READY/IN_PROGRESS kaydı yeni plana sızar.
+  await tx.consolidationTask.deleteMany({where:{orderId}});
   await tx.zonePickTask.deleteMany({where:{orderId}});
  }
 
@@ -145,6 +148,10 @@ export class ZonePickingService {
       }
     }
   }
+  // Wave kaynak planı sıfırlanırken eski konsolidasyon görevi ve doğrulanmış THM
+  // listesi de sıfırlanmalıdır. Yeni Zone görevleri tamamlandığında syncOrder
+  // konsolidasyonu güncel kaynak THM kayıtlarıyla yeniden oluşturur.
+  await tx.consolidationTask.deleteMany({where:{waveId}});
   await tx.zonePickTask.deleteMany({where:{waveId}});
  }
 
