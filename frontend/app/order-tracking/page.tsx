@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import Header from "@/components/layout/Header";
 import { prisma } from "@/lib/prisma";
+import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -131,6 +132,13 @@ export default async function OrderTrackingPage({
       : null;
 
   const currentProgressIndex = order ? progressIndex(order.status) : -1;
+  const bankAccounts = order && order.paymentStatus?.toUpperCase() !== "PAID" && order.paymentStatus?.toUpperCase() !== "REFUNDED"
+    ? await prisma.b2BBankAccount.findMany({
+        where: { tenantId: B2B_CONSTANTS.TENANT_ID, companyId: B2B_CONSTANTS.COMPANY_ID, isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        select: { id:true, bankName:true, branchName:true, accountHolder:true, iban:true, currency:true },
+      })
+    : [];
 
   const shipmentDetails = order
     ? Array.from(
@@ -230,6 +238,22 @@ export default async function OrderTrackingPage({
                   </div>
                 </div>
               </div>
+
+              {bankAccounts.length > 0 ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                  <h2 className="text-lg font-black text-amber-950">Havale / EFT Bilgileri</h2>
+                  <p className="mt-2 text-sm text-amber-900">Ödeme açıklamasına sipariş numaranızı yazın: <strong>{order.orderNumber}</strong></p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {bankAccounts.map((account) => <div key={account.id} className="rounded-xl bg-white p-4">
+                      <p className="font-black">{account.bankName}</p>
+                      {account.branchName ? <p className="text-xs text-slate-500">{account.branchName}</p> : null}
+                      <p className="mt-3 text-xs text-slate-500">Hesap Sahibi</p><p className="font-bold">{account.accountHolder}</p>
+                      <p className="mt-3 text-xs text-slate-500">IBAN · {account.currency}</p>
+                      <p className="mt-1 break-all font-mono font-black text-[#EF4B23]">{account.iban.replace(/(.{4})/g, "$1 ").trim()}</p>
+                    </div>)}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="rounded-2xl bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-black">Sipariş Süreci</h2>
