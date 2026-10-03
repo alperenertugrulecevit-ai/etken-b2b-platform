@@ -1031,6 +1031,11 @@ export class ShippingService {
             nextOrderStatus ===
             OrderStatus.SHIPPED;
 
+          const currentOrder = await tx.order.findUnique({
+            where: { id: orderLink.orderId },
+            select: { status: true, orderType: true },
+          });
+
           await tx.order.update({
             where: {
               id:
@@ -1049,6 +1054,25 @@ export class ShippingService {
                 completelyShipped
                   ? false
                   : undefined,
+              ...(currentOrder?.orderType === "ECOMMERCE" &&
+              currentOrder.status !== nextOrderStatus
+                ? {
+                    statusHistory: {
+                      create: {
+                        status: nextOrderStatus,
+                        note:
+                          nextOrderStatus === OrderStatus.SHIPPED
+                            ? "Siparişiniz sevk edildi."
+                            : nextOrderStatus === OrderStatus.READY_TO_SHIP
+                              ? "Siparişiniz sevkiyata hazırlandı."
+                              : nextOrderStatus === OrderStatus.PACKING
+                                ? "Siparişiniz paketleniyor."
+                                : "Siparişiniz hazırlanıyor.",
+                        visibleToCustomer: true,
+                      },
+                    },
+                  }
+                : {}),
             },
           });
         }
