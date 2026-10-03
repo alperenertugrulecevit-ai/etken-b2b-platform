@@ -26,6 +26,12 @@ export default async function CheckoutSuccessPage({
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link href="/products" className="rounded-xl bg-[#EF4B23] px-5 py-3 text-sm font-black text-white">Alışverişe Devam Et</Link>
+            <Link
+              href={orderNumber ? "/order-tracking?order=" + encodeURIComponent(orderNumber) : "/order-tracking"}
+              className="rounded-xl border border-[#202B38] px-5 py-3 text-sm font-bold text-[#202B38]"
+            >
+              Siparişi Takip Et
+            </Link>
             <Link href="/" className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700">Ana Sayfa</Link>
           </div>
         </section>
