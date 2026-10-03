@@ -12,6 +12,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 export type EcommerceCheckoutInput = {
   firstName: string;
@@ -140,7 +141,7 @@ export class EcommerceCheckoutService {
     const idToken = token();
     const fullName = firstName + " " + lastName;
 
-    return prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx) => {
       const customer = await tx.customer.create({
         data: {
           customerCode: "EC-" + idToken,
@@ -227,5 +228,11 @@ export class EcommerceCheckoutService {
         select: { id: true, orderNumber: true, totalAmount: true },
       });
     });
+    await EcommerceNotificationService.send({
+      event:"ORDER_RECEIVED",
+      email,
+      orderNumber:order.orderNumber,
+    });
+    return order;
   }
 }

@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ShippingService } from "@/modules/fulfillment/services/shipping.service";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 const TENANT_ID = "tenant_etken";
 const COMPANY_ID = "company_etken_office";
@@ -137,7 +138,7 @@ export class ShipmentPlanningService {
               include:{
                 handlingUnit:{select:{barcode:true}},
                 orders:{include:{order:{select:{
-                  id:true,orderNumber:true,orderType:true,source:true,status:true,fulfillmentWarehouse:{select:{id:true,code:true,name:true}}
+                  id:true,orderNumber:true,orderType:true,source:true,status:true,cargoTrackingNumber:true,cargoTrackingUrl:true,fulfillmentWarehouse:{select:{id:true,code:true,name:true}}
                 }}}},
               },
             },
@@ -353,8 +354,44 @@ export class ShipmentPlanningService {
     },{maxWait:10000,timeout:120000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
+  static async updateEcommerceCargoTracking(input:{orderId:number;trackingNumber:string;trackingUrl?:string|null;actor:ShipmentActor}) {
+    const trackingNumber=input.trackingNumber.trim().slice(0,120);
+    if(!trackingNumber) throw new Error("Kargo takip numarası zorunludur.");
+    const rawUrl=clean(input.trackingUrl);
+    let trackingUrl:string|null=null;
+    if(rawUrl){
+      try {
+        const parsed=new URL(rawUrl);
+        if(parsed.protocol!=="https:" && parsed.protocol!=="http:") throw new Error();
+        trackingUrl=parsed.toString().slice(0,500);
+      } catch {
+        throw new Error("Kargo takip bağlantısı geçerli bir http/https adresi olmalıdır.");
+      }
+    }
+    return prisma.$transaction(async tx=>{
+      const order=await tx.order.findFirst({
+        where:{id:input.orderId,source:OrderSource.ECOMMERCE},
+        select:{id:true,orderNumber:true,status:true},
+      });
+      if(!order) throw new Error("E-ticaret siparişi bulunamadı.");
+      if(order.status===OrderStatus.CANCELLED) throw new Error("İptal edilmiş siparişe kargo takip bilgisi girilemez.");
+      const now=new Date();
+      await tx.order.update({
+        where:{id:order.id},
+        data:{cargoTrackingNumber:trackingNumber,cargoTrackingUrl:trackingUrl,cargoTrackingUpdatedAt:now},
+      });
+      await tx.wmsOperationLog.create({data:{
+        operationType:WmsOperationType.OTHER,module:"ADMIN_CARGO_TRACKING",entityType:"ORDER",entityId:order.id,
+        operatorId:input.actor.userId,operatorName:input.actor.displayName,orderId:order.id,orderNumber:order.orderNumber,
+        description:`${order.orderNumber} siparişinin kargo takip bilgisi güncellendi.`,
+        metadata:{trackingNumber,trackingUrl},
+      }});
+      return {orderNumber:order.orderNumber,trackingNumber,trackingUrl};
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+  }
+
   static async confirmEcommerceOrderDelivery(input:{orderId:number;actor:ShipmentActor}) {
-    return prisma.$transaction(async tx => {
+    const result = await prisma.$transaction(async tx => {
       const order = await tx.order.findFirst({
         where: { id: input.orderId, source: OrderSource.ECOMMERCE },
         select: { id:true, orderNumber:true, status:true },
@@ -390,6 +427,18 @@ export class ShipmentPlanningService {
       }});
       return {orderNumber:order.orderNumber};
     }, {isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    const notificationOrder=await prisma.order.findUnique({
+      where:{id:input.orderId},
+      select:{orderNumber:true,ecommerceEmail:true},
+    });
+    if(notificationOrder){
+      await EcommerceNotificationService.send({
+        event:"DELIVERED",
+        email:notificationOrder.ecommerceEmail,
+        orderNumber:notificationOrder.orderNumber,
+      });
+    }
+    return result;
   }
 
   static async operationsDashboard(){

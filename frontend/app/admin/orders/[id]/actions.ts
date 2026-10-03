@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 import {
   createStockMovementWithTransaction,
@@ -727,13 +728,13 @@ export async function confirmEcommerceBankTransferPayment(
   const referenceNo = String(formData.get("paymentReference") ?? "").trim().slice(0, 120);
   if (!referenceNo) throw new Error("Banka işlem / dekont referansı zorunludur.");
 
-  await prisma.$transaction(async (tx) => {
+  const notification = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       select: {
         id:true, orderNumber:true, customerId:true, source:true, status:true,
         paymentMethod:true, paymentStatus:true, paymentProvider:true,
-        paymentReference:true, totalAmount:true,
+        paymentReference:true, totalAmount:true, ecommerceEmail:true,
       },
     });
     if (!order) throw new Error("Sipariş bulunamadı.");
@@ -818,7 +819,14 @@ export async function confirmEcommerceBankTransferPayment(
         visibleToCustomer: true,
       },
     });
+    return { orderNumber:order.orderNumber, ecommerceEmail:order.ecommerceEmail };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  await EcommerceNotificationService.send({
+    event:"PAYMENT_CONFIRMED",
+    email:notification.ecommerceEmail,
+    orderNumber:notification.orderNumber,
+  });
 
   const detailPath = `/admin/orders/${orderId}`;
   revalidatePath(detailPath);

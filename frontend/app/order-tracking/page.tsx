@@ -81,6 +81,8 @@ export default async function OrderTrackingPage({
             createdAt: true,
             totalAmount: true,
             paymentStatus: true,
+            cargoTrackingNumber: true,
+            cargoTrackingUrl: true,
             shippingHandlingUnitOrders: {
               select: {
                 shippingHandlingUnit: {
@@ -315,6 +317,16 @@ export default async function OrderTrackingPage({
                   )}
                 </div>
               </div>
+
+              {order.cargoTrackingNumber ? (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                  <h2 className="text-lg font-black text-blue-950">Kargo Takibi</h2>
+                  <p className="mt-2 text-sm text-blue-900">Takip numarası: <strong>{order.cargoTrackingNumber}</strong></p>
+                  {order.cargoTrackingUrl ? (
+                    <a href={order.cargoTrackingUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl bg-blue-900 px-4 py-2 text-sm font-black text-white">Kargoyu Takip Et</a>
+                  ) : null}
+                </div>
+              ) : null}
 
               {shipmentDetails.length > 0 ? (
                 <div className="rounded-2xl bg-white p-5 shadow-sm">

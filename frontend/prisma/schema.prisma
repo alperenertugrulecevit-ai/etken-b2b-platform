@@ -442,6 +442,9 @@ model Order {
   paymentStatus     String?
   paymentProvider   String?
   paymentReference  String?
+  cargoTrackingNumber String?
+  cargoTrackingUrl    String?
+  cargoTrackingUpdatedAt DateTime?
   stockReserved     Boolean           @default(false)
   stockDeducted     Boolean           @default(false)
   stockReservedAt   DateTime?
@@ -481,6 +484,7 @@ model Order {
   @@index([shippingAddressId])
   @@index([placedByUserId])
   @@index([source, status])
+  @@index([cargoTrackingNumber])
   @@index([orderType, source, status])
   @@index([orderType, status])
   @@index([fulfillmentWarehouseId, status])
