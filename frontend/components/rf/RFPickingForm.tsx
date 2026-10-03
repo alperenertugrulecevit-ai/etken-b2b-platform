@@ -1291,30 +1291,56 @@ export default function RFPickingForm({
   }
 
   return (
-    <form action={formAction} onSubmit={() => setShowMessage(true)} className="bg-white p-2 sm:rounded-xl sm:p-3 sm:shadow">
+    <form
+      action={formAction}
+      onSubmit={() => setShowMessage(true)}
+      className="mx-auto w-full max-w-md bg-slate-50 p-1.5 text-slate-900"
+    >
       {zoneTaskId && <input type="hidden" name="zoneTaskId" value={zoneTaskId} />}
 
-      <div className="mb-2 flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2 text-xs font-black">
-            <span className="truncate">
-              {selectedOrder
-                ? (isWaveFlow ? selectedOrder.waveNo ?? "WAVE" : selectedOrder.orderNumber) + " · " + selectedOrder.customerName
-                : "RF TOPLAMA"}
-            </span>
-            <span className="shrink-0 text-blue-900">{orderPickedQuantity}/{orderTotalQuantity}</span>
+      <section className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-[12px] font-black">
+                {selectedOrder
+                  ? isWaveFlow
+                    ? selectedOrder.waveNo ?? "WAVE"
+                    : selectedOrder.orderNumber
+                  : "RF TOPLAMA"}
+              </p>
+              <p className="shrink-0 text-[12px] font-black text-blue-800">
+                {orderPickedQuantity}/{orderTotalQuantity}
+              </p>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full rounded-full bg-green-600 transition-all"
+                style={{ width: String(progressPercentage) + "%" }}
+              />
+            </div>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full rounded-full bg-blue-900 transition-all" style={{ width: String(progressPercentage) + "%" }} />
-          </div>
+          <button
+            type="button"
+            onClick={clearForm}
+            disabled={isPending}
+            className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 disabled:opacity-40"
+          >
+            SIFIRLA
+          </button>
         </div>
-        <button type="button" onClick={clearForm} disabled={isPending} className="shrink-0 rounded-lg border border-red-200 px-2 py-1.5 text-xs font-black text-red-700 disabled:opacity-50">
-          TEMİZLE
-        </button>
-      </div>
+      </section>
 
       {showMessage && state.message && (
-        <div role="alert" className={"mb-2 rounded-lg px-3 py-2 text-sm font-bold " + (state.success ? "bg-green-100 text-green-900" : "bg-red-600 text-white")}>
+        <div
+          role="alert"
+          className={
+            "mt-1.5 rounded-lg px-2.5 py-2 text-[12px] font-black " +
+            (state.success
+              ? "bg-green-100 text-green-900"
+              : "bg-red-600 text-white")
+          }
+        >
           {state.success
             ? state.pickingCompleted
               ? "✓ Toplama tamamlandı"
@@ -1324,18 +1350,23 @@ export default function RFPickingForm({
       )}
 
       {zoneTaskId && state.success && state.taskCompleted && (
-        <div className="mb-2 rounded-xl border-2 border-green-500 bg-green-50 p-3">
-          <p className="font-black text-green-950">✓ Görev tamamlandı</p>
-          <a href="/rf/picking" className="mt-2 block w-full rounded-lg bg-green-700 px-3 py-3 text-center font-black text-white">
+        <div className="mt-1.5 rounded-lg border-2 border-green-500 bg-green-50 p-2">
+          <p className="text-sm font-black text-green-950">✓ Görev tamamlandı</p>
+          <a
+            href="/rf/picking"
+            className="mt-1.5 block w-full rounded-md bg-green-700 px-3 py-2 text-center text-sm font-black text-white"
+          >
             ONAYLA · LİSTEYE DÖN
           </a>
         </div>
       )}
 
-      <div className="grid gap-2">
-        {!lockedOrderNumber && (
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-black uppercase text-slate-500">1 · Sipariş</span>
+      <div className="mt-1.5 grid gap-1.5">
+        {!selectedOrder && (
+          <label className="block rounded-lg border border-slate-200 bg-white p-2">
+            <span className="mb-1 block text-[11px] font-black uppercase text-slate-600">
+              SİPARİŞ / WAVE OKUT
+            </span>
             <input
               ref={orderInputRef}
               name="orderNumber"
@@ -1343,78 +1374,143 @@ export default function RFPickingForm({
               onChange={(event) => handleOrderChange(event.target.value)}
               onKeyDown={handleOrderKeyDown}
               autoComplete="off"
-              placeholder="Sipariş okut"
-              className="w-full rounded-lg border-2 border-slate-300 px-3 py-2.5 font-mono text-lg font-black uppercase focus:border-blue-700 focus:outline-none"
+              placeholder="Barkod okutun..."
+              className="w-full rounded-lg border-2 border-green-600 px-3 py-2.5 font-mono text-lg font-black uppercase outline-none"
               disabled={isPending}
               required
             />
             {normalizedOrderNumber && !selectedOrder && (
-              <p className="mt-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white">Sipariş uygun değil.</p>
+              <p className="mt-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-black text-white">
+                Sipariş/Wave uygun değil.
+              </p>
             )}
           </label>
         )}
 
-        {lockedOrderNumber && selectedOrder && (
-          <>
-            <input type="hidden" name="orderNumber" value={selectedOrder.orderNumber} />
-            <div className="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-sm">
-              <span className="min-w-0 truncate font-black">
-                {isWaveFlow ? selectedOrder.waveNo : selectedOrder.orderNumber} · {selectedOrder.customerName}
+        {selectedOrder && (
+          <input type="hidden" name="orderNumber" value={selectedOrder.orderNumber} />
+        )}
+
+        {selectedOrder && !selectedTargetUnit && (
+          <label className="block rounded-lg border border-slate-200 bg-white p-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-black uppercase text-slate-600">
+                {targetPurposeLabel.toUpperCase()} OKUT
               </span>
-              <span className="ml-2 shrink-0 font-black text-blue-900">{pendingOrderItems.length} kalem</span>
+              <span className="truncate text-[10px] font-bold text-slate-400">
+                {selectedOrder.customerName}
+              </span>
             </div>
-          </>
-        )}
-
-        <label className="block">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-black uppercase text-slate-500">2 · {targetPurposeLabel}</span>
-            {selectedTargetUnit && (
-              <button type="button" onClick={changeTarget} disabled={isPending} className="text-[11px] font-black text-blue-800">DEĞİŞTİR</button>
+            <input
+              ref={targetInputRef}
+              name="targetBarcode"
+              value={targetBarcode}
+              onChange={(event) => setTargetBarcode(event.target.value.toUpperCase())}
+              onKeyDown={handleTargetKeyDown}
+              autoComplete="off"
+              placeholder="THM barkodu okutun..."
+              className="w-full rounded-lg border-2 border-green-600 px-3 py-2.5 font-mono text-lg font-black uppercase outline-none"
+              disabled={isPending}
+              required
+            />
+            {normalizedTargetBarcode && !selectedTargetUnit && (
+              <p className="mt-1 rounded-md bg-red-600 px-2 py-1.5 text-xs font-black text-white">
+                Uygun {targetPurposeLabel} değil.
+              </p>
             )}
-          </div>
-          <input
-            ref={targetInputRef}
-            name="targetBarcode"
-            value={targetBarcode}
-            onChange={(event) => setTargetBarcode(event.target.value.toUpperCase())}
-            onKeyDown={handleTargetKeyDown}
-            autoComplete="off"
-            placeholder={selectedOrder ? targetPurposeLabel + " okut" : "Önce sipariş okut"}
-            className="w-full rounded-lg border-2 border-slate-300 px-3 py-2.5 font-mono text-lg font-black uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-            disabled={isPending || !selectedOrder}
-            required
-          />
-          {normalizedTargetBarcode && !selectedTargetUnit && (
-            <p className="mt-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white">Uygun {targetPurposeLabel} değil.</p>
-          )}
-        </label>
+          </label>
+        )}
 
-        {nextOrderItem && recommendedSource && (
-          <div className="grid grid-cols-[1fr_auto] gap-2 rounded-xl border-2 border-blue-700 bg-blue-50 p-2.5">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase text-blue-700">GİT / AL</p>
-              <p className="truncate font-mono text-xl font-black text-blue-950">{recommendedSource.unit.locationCode}</p>
-              <p className="truncate font-mono text-sm font-black text-slate-700">{recommendedSource.unit.barcode}</p>
-            </div>
-            <div className="min-w-[70px] rounded-lg bg-white px-2 py-1 text-center">
-              <p className="text-[9px] font-black uppercase text-slate-500">Kalan</p>
-              <p className="text-3xl font-black text-orange-700">{nextOrderItem.remainingQuantity}</p>
-            </div>
-            <div className="col-span-2 border-t border-blue-200 pt-2">
-              <p className="truncate text-base font-black text-slate-950">{nextOrderItem.productCode} · {nextOrderItem.productName}</p>
-              <p className="truncate font-mono text-xs font-bold text-slate-600">{nextOrderItem.productBarcode}</p>
-            </div>
+        {selectedTargetUnit && (
+          <input type="hidden" name="targetBarcode" value={targetBarcode} />
+        )}
+
+        {selectedOrder && selectedTargetUnit && (
+          <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-2 py-1.5 text-[11px]">
+            <span className="min-w-0 truncate font-black">
+              {isWaveFlow ? selectedOrder.waveNo : selectedOrder.orderNumber}
+              {" · "}
+              {targetPurposeLabel}: {selectedTargetUnit.barcode}
+            </span>
+            <button
+              type="button"
+              onClick={changeTarget}
+              disabled={isPending}
+              className="ml-2 shrink-0 font-black text-red-700"
+            >
+              DEĞİŞTİR
+            </button>
           </div>
         )}
 
-        {nextOrderItem && !recommendedSource && (
-          <div className="rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">Kaynak stok bulunamadı · {nextOrderItem.productCode}</div>
+        {nextOrderItem && recommendedSource && selectedTargetUnit && (
+          <section className="overflow-hidden rounded-xl border-2 border-slate-300 bg-white shadow-sm">
+            <div className="flex items-center justify-between bg-slate-100 px-2.5 py-1.5">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-wide text-slate-500">
+                  AKTİF RAF
+                </p>
+                <p className="truncate font-mono text-2xl font-black text-slate-950">
+                  {recommendedSource.unit.locationCode}
+                </p>
+              </div>
+              <div className="min-w-0 text-right">
+                <p className="text-[9px] font-black uppercase tracking-wide text-slate-500">
+                  KAYNAK THM
+                </p>
+                <p className="max-w-[170px] truncate font-mono text-sm font-black text-blue-900">
+                  {recommendedSource.unit.barcode}
+                </p>
+              </div>
+            </div>
+
+            <div className="px-2.5 py-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-black text-blue-800">
+                    {nextOrderItem.productCode}
+                  </p>
+                  <p className="line-clamp-2 text-[13px] font-bold leading-4 text-slate-900">
+                    {nextOrderItem.productName}
+                  </p>
+                  <p className="mt-0.5 truncate font-mono text-[10px] font-semibold text-slate-500">
+                    {nextOrderItem.productBarcode}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-[10px] font-black text-blue-800">
+                  {pendingOrderItems.length} KALEM
+                </span>
+              </div>
+
+              <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
+                <div className="rounded-lg bg-slate-100 px-1 py-1.5">
+                  <p className="text-[9px] font-black uppercase text-slate-500">HEDEF</p>
+                  <p className="text-xl font-black">{nextOrderItem.orderedQuantity}</p>
+                </div>
+                <div className="rounded-lg bg-slate-100 px-1 py-1.5">
+                  <p className="text-[9px] font-black uppercase text-slate-500">TOPLANAN</p>
+                  <p className="text-xl font-black">{nextOrderItem.pickedQuantity}</p>
+                </div>
+                <div className="rounded-lg bg-orange-50 px-1 py-1.5">
+                  <p className="text-[9px] font-black uppercase text-orange-700">KALAN</p>
+                  <p className="text-xl font-black text-orange-800">{nextOrderItem.remainingQuantity}</p>
+                </div>
+              </div>
+            </div>
+          </section>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-black uppercase text-slate-500">3 · Lokasyon</span>
+        {nextOrderItem && !recommendedSource && selectedTargetUnit && (
+          <div className="rounded-lg bg-red-600 px-2.5 py-2 text-xs font-black text-white">
+            Kaynak stok bulunamadı · {nextOrderItem.productCode}
+          </div>
+        )}
+
+        {selectedTargetUnit && recommendedSource && !locationMatches && (
+          <label className="block rounded-lg border border-slate-200 bg-white p-2">
+            <span className="mb-1 block text-[11px] font-black uppercase text-slate-700">
+              RAF / LOKASYON OKUT
+            </span>
             <input
               ref={locationInputRef}
               name="locationBarcode"
@@ -1422,15 +1518,29 @@ export default function RFPickingForm({
               onChange={(event) => setLocationBarcode(event.target.value.toUpperCase())}
               onKeyDown={handleLocationKeyDown}
               autoComplete="off"
-              placeholder="Lokasyon okut"
-              className="w-full min-w-0 rounded-lg border-2 border-slate-300 px-2 py-2.5 font-mono text-base font-black uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-              disabled={isPending || !selectedTargetUnit || !recommendedSource}
+              placeholder={"Beklenen: " + expectedLocationCode}
+              className="w-full rounded-lg border-2 border-green-600 px-3 py-2.5 font-mono text-lg font-black uppercase outline-none"
+              disabled={isPending}
               required
             />
           </label>
+        )}
 
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-black uppercase text-slate-500">4 · Kaynak THM</span>
+        {locationMatches && (
+          <input type="hidden" name="locationBarcode" value={locationBarcode} />
+        )}
+
+        {normalizedLocationBarcode && !locationMatches && (
+          <div className="rounded-lg bg-red-600 px-2.5 py-2 text-xs font-black text-white">
+            YANLIŞ LOKASYON · Beklenen {expectedLocationCode}
+          </div>
+        )}
+
+        {locationMatches && !sourceMatches && (
+          <label className="block rounded-lg border border-slate-200 bg-white p-2">
+            <span className="mb-1 block text-[11px] font-black uppercase text-slate-700">
+              KAYNAK THM OKUT
+            </span>
             <input
               ref={sourceInputRef}
               name="sourceBarcode"
@@ -1438,84 +1548,133 @@ export default function RFPickingForm({
               onChange={(event) => setSourceBarcode(event.target.value.toUpperCase())}
               onKeyDown={handleSourceKeyDown}
               autoComplete="off"
-              placeholder="THM okut"
-              className="w-full min-w-0 rounded-lg border-2 border-slate-300 px-2 py-2.5 font-mono text-base font-black uppercase focus:border-blue-700 focus:outline-none disabled:bg-slate-100"
-              disabled={isPending || !locationMatches}
+              placeholder="THM barkodu okutun..."
+              className="w-full rounded-lg border-2 border-green-600 px-3 py-2.5 font-mono text-lg font-black uppercase outline-none"
+              disabled={isPending}
               required
             />
           </label>
-        </div>
+        )}
 
-        {normalizedLocationBarcode && !locationMatches && (
-          <div className="rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">YANLIŞ LOKASYON · Beklenen {expectedLocationCode}</div>
+        {sourceMatches && (
+          <input type="hidden" name="sourceBarcode" value={sourceBarcode} />
         )}
 
         {normalizedSourceBarcode && !sourceMatches && (
-          <div className="rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">YANLIŞ THM · Beklenen {expectedSourceBarcode}</div>
+          <div className="rounded-lg bg-red-600 px-2.5 py-2 text-xs font-black text-white">
+            YANLIŞ THM · Beklenen {expectedSourceBarcode}
+          </div>
         )}
 
-        <label className="block">
-          <span className="mb-1 block text-[11px] font-black uppercase text-slate-500">5 · Ürün · Her okutma 1 adet</span>
-          <input
-            ref={productInputRef}
-            name="productBarcode"
-            value={productBarcode}
-            onChange={(event) => setProductBarcode(event.target.value.toUpperCase())}
-            onKeyDown={handleProductKeyDown}
-            autoComplete="off"
-            placeholder={sourceMatches ? "ÜRÜNÜ OKUT" : "Önce lokasyon ve THM okut"}
-            className="w-full rounded-lg border-2 border-blue-700 px-3 py-3 font-mono text-xl font-black uppercase focus:outline-none disabled:border-slate-300 disabled:bg-slate-100"
-            disabled={isPending || !sourceMatches}
-            required
-          />
-          {normalizedProductBarcode && !productMatches && (
-            <div className="mt-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">YANLIŞ ÜRÜN · Beklenen {expectedProductBarcode}</div>
-          )}
-        </label>
+        {sourceMatches && nextOrderItem && (
+          <label className="block rounded-lg border border-green-300 bg-green-50 p-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-black uppercase text-slate-800">
+                ÜRÜN BARKODU OKUTUN
+              </span>
+              <span className="rounded-full bg-green-200 px-2 py-0.5 text-[9px] font-black text-green-900">
+                HER OKUTMA 1 ADET
+              </span>
+            </div>
+            <input
+              ref={productInputRef}
+              name="productBarcode"
+              value={productBarcode}
+              onChange={(event) => setProductBarcode(event.target.value.toUpperCase())}
+              onKeyDown={handleProductKeyDown}
+              autoComplete="off"
+              placeholder="Barkod okutun..."
+              className="w-full rounded-lg border-2 border-green-600 bg-white px-3 py-3 font-mono text-xl font-black uppercase outline-none"
+              disabled={isPending}
+              required
+            />
+          </label>
+        )}
+
+        {normalizedProductBarcode && !productMatches && (
+          <div className="rounded-lg bg-red-600 px-2.5 py-2 text-xs font-black text-white">
+            YANLIŞ ÜRÜN · Beklenen {expectedProductBarcode}
+          </div>
+        )}
 
         <input type="hidden" name="quantity" value="1" />
 
-        <button
-          type="submit"
-          disabled={isPending || !canSubmit}
-          className={"w-full rounded-lg py-3 text-base font-black " + (!isPending && canSubmit ? "bg-blue-900 text-white active:bg-blue-950" : "bg-slate-200 text-slate-400")}
-        >
-          {isPending ? "TOPLANIYOR..." : "ÜRÜNÜ OKUT"}
+        <button type="submit" disabled={isPending || !canSubmit} className="sr-only">
+          {isPending ? "TOPLANIYOR" : "TOPLA"}
         </button>
 
-        {selectedOrder && nextOrderItem && (
+        {selectedOrder && nextOrderItem && selectedTargetUnit && (
           <div>
-            <button type="button" onClick={() => setShortageOpen((value) => !value)} className="w-full rounded-lg border border-amber-400 bg-amber-50 py-2 text-xs font-black text-amber-900">
-              ÜRÜN YOK / EKSİK İŞLEM
+            <button
+              type="button"
+              onClick={() => setShortageOpen((value) => !value)}
+              className="w-full rounded-lg border border-amber-300 bg-amber-50 py-1.5 text-[11px] font-black text-amber-900"
+            >
+              {shortageOpen ? "EKSİK İŞLEMİ KAPAT" : "ÜRÜN YOK / EKSİK"}
             </button>
+
             {shortageOpen && (
-              <div className="mt-2 grid gap-2 rounded-lg bg-amber-50 p-2">
-                <select value={shortageReason} onChange={(event) => setShortageReason(event.target.value)} className="rounded-lg border border-amber-300 bg-white p-2 text-sm font-bold">
+              <div className="mt-1.5 grid gap-1.5 rounded-lg border border-amber-300 bg-amber-50 p-2">
+                <select
+                  value={shortageReason}
+                  onChange={(event) => setShortageReason(event.target.value)}
+                  className="rounded-md border border-amber-300 bg-white p-2 text-xs font-bold"
+                >
                   <option value="NOT_FOUND">Ürün Bulunamadı</option>
                   <option value="DAMAGED">Hasarlı Ürün</option>
                   <option value="STOCK_DIFFERENCE">Stok Farkı</option>
                   <option value="QUALITY_REJECTED">Kalite Reddi</option>
                   <option value="OTHER">Diğer</option>
                 </select>
-                <input value={shortageNote} onChange={(event) => setShortageNote(event.target.value)} placeholder="Açıklama (opsiyonel)" className="rounded-lg border border-amber-300 bg-white p-2 text-sm" />
-                <button type="button" disabled={shortagePending} onClick={handleCloseShortage} className="rounded-lg bg-red-700 px-3 py-2 font-black text-white disabled:opacity-50">
-                  {shortagePending ? "İşleniyor..." : "Kalan " + nextOrderItem.remainingQuantity + " Adedi Eksik Kapat"}
+                <input
+                  value={shortageNote}
+                  onChange={(event) => setShortageNote(event.target.value)}
+                  placeholder="Açıklama (opsiyonel)"
+                  className="rounded-md border border-amber-300 bg-white p-2 text-xs"
+                />
+                <button
+                  type="button"
+                  disabled={shortagePending}
+                  onClick={handleCloseShortage}
+                  className="rounded-md bg-red-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+                >
+                  {shortagePending
+                    ? "İŞLENİYOR..."
+                    : "KALAN " + nextOrderItem.remainingQuantity + " ADEDİ EKSİK KAPAT"}
                 </button>
               </div>
             )}
-            {shortageMessage && <p className="mt-1 rounded-lg bg-amber-100 p-2 text-xs font-bold text-amber-900">{shortageMessage}</p>}
+            {shortageMessage && (
+              <p className="mt-1 rounded-md bg-amber-100 p-1.5 text-[10px] font-bold text-amber-900">
+                {shortageMessage}
+              </p>
+            )}
           </div>
         )}
 
-        {!zoneTaskId && selectedOrder && recommendedSource && nextOrderItem && (
-          <button type="button" onClick={handleLostProduct} disabled={isPending || lostPending} className="w-full rounded-lg border border-red-300 py-2 text-xs font-black text-red-700 disabled:opacity-40">
+        {!zoneTaskId && selectedOrder && recommendedSource && nextOrderItem && selectedTargetUnit && (
+          <button
+            type="button"
+            onClick={handleLostProduct}
+            disabled={isPending || lostPending}
+            className="w-full rounded-lg border border-red-200 py-1.5 text-[10px] font-black text-red-700 disabled:opacity-40"
+          >
             {lostPending ? "KAYIP İŞLENİYOR..." : "FİZİKSEL STOK KAYIP"}
           </button>
         )}
 
-        {lostMessage && <div className="rounded-lg bg-orange-50 p-2 text-xs font-bold text-orange-900">{lostMessage}</div>}
+        {lostMessage && (
+          <div className="rounded-md bg-orange-50 p-1.5 text-[10px] font-bold text-orange-900">
+            {lostMessage}
+          </div>
+        )}
 
-        <p className="text-center text-[10px] font-semibold text-slate-400">Oturum: {sessionPickCount} işlem · {sessionPickedQuantity} adet</p>
+        {selectedOrder && (
+          <div className="flex items-center justify-between px-1 text-[9px] font-bold text-slate-400">
+            <span>Oturum: {sessionPickCount} işlem · {sessionPickedQuantity} adet</span>
+            <span>THM: {targetTotalQuantity} adet</span>
+          </div>
+        )}
       </div>
     </form>
   );
