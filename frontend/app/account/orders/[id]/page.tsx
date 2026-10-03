@@ -214,6 +214,30 @@ export default async function CustomerOrderDetailPage({
         history={order.statusHistory}
       />
 
+      {order.cargoTrackingNumber ? (
+        <section className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h2 className="text-lg font-black text-blue-950">
+            Kargo Takibi
+          </h2>
+          <p className="mt-2 text-sm text-blue-900">
+            Kargo takip numaranız
+          </p>
+          <p className="mt-1 break-all font-mono text-lg font-black text-blue-950">
+            {order.cargoTrackingNumber}
+          </p>
+          {order.cargoTrackingUrl ? (
+            <a
+              href={order.cargoTrackingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex rounded-lg bg-blue-950 px-4 py-2.5 text-sm font-black text-white"
+            >
+              Kargomu Takip Et
+            </a>
+          ) : null}
+        </section>
+      ) : null}
+
       {order.paymentMethod ===
       B2BPaymentMethod.BANK_TRANSFER ? (
         <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">

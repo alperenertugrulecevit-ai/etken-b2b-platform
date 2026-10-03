@@ -319,7 +319,7 @@ export class ShipmentPlanningService {
   static async dispatchShipment(input:{shipmentNumber:string;actor:ShipmentActor}){
     const shipmentNumber=input.shipmentNumber.trim().toUpperCase();
     if(!shipmentNumber) throw new Error("Sevkiyat numarası seçin.");
-    return prisma.$transaction(async tx=>{
+    const dispatchResult = await prisma.$transaction(async tx=>{
       const shipment=await tx.shipment.findFirst({
         where:{tenantId:TENANT_ID,companyId:COMPANY_ID,shipmentNumber},
         include:{carrier:true,vehicle:true,handlingUnits:{include:{shippingHandlingUnit:{include:{handlingUnit:{select:{barcode:true}}}}}}}
@@ -350,8 +350,46 @@ export class ShipmentPlanningService {
         }});
       }
       await tx.shipment.update({where:{id:shipment.id},data:{status:ShipmentStatus.SHIPPED,shippedAt:now,shippedById:input.actor.userId,shippedByName:input.actor.displayName,shippedTerminalCode:clean(input.actor.terminalCode)}});
-      return {shipmentNumber:shipment.shipmentNumber,thmCount:shipment.handlingUnits.length,totalQuantity:results.reduce((n,x)=>n+x.totalQuantity,0),dispatchNumbers:results.map(x=>x.dispatchNumber)};
+      return {
+        shipmentNumber:shipment.shipmentNumber,
+        thmCount:shipment.handlingUnits.length,
+        totalQuantity:results.reduce((n,x)=>n+x.totalQuantity,0),
+        dispatchNumbers:results.map(x=>x.dispatchNumber),
+        orderNumbers:[...new Set(results.flatMap(x=>x.orderNumbers))],
+      };
     },{maxWait:10000,timeout:120000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+
+    if(dispatchResult.orderNumbers.length){
+      const ecommerceOrders=await prisma.order.findMany({
+        where:{
+          source:OrderSource.ECOMMERCE,
+          status:OrderStatus.SHIPPED,
+          orderNumber:{in:dispatchResult.orderNumbers},
+        },
+        select:{
+          orderNumber:true,
+          ecommerceEmail:true,
+          cargoTrackingNumber:true,
+          cargoTrackingUrl:true,
+        },
+      });
+      await Promise.all(ecommerceOrders.map(order=>
+        EcommerceNotificationService.send({
+          event:"SHIPPED",
+          email:order.ecommerceEmail,
+          orderNumber:order.orderNumber,
+          trackingNumber:order.cargoTrackingNumber,
+          trackingUrl:order.cargoTrackingUrl,
+        })
+      ));
+    }
+
+    return {
+      shipmentNumber:dispatchResult.shipmentNumber,
+      thmCount:dispatchResult.thmCount,
+      totalQuantity:dispatchResult.totalQuantity,
+      dispatchNumbers:dispatchResult.dispatchNumbers,
+    };
   }
 
   static async updateEcommerceCargoTracking(input:{orderId:number;trackingNumber:string;trackingUrl?:string|null;actor:ShipmentActor}) {

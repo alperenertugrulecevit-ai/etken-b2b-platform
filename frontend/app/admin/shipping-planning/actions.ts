@@ -78,6 +78,7 @@ export async function updateEcommerceCargoTrackingAction(f:FormData){
   });
   revalidatePath("/admin/shipping-planning/tracking");
   revalidatePath("/order-tracking");
+  revalidatePath(`/account/orders/${orderId}`);
  }catch(e){
   const message=e instanceof Error?e.message:"Kargo takip bilgisi kaydedilemedi.";
   redirect("/admin/shipping-planning/tracking?trackingError="+encodeURIComponent(message));
