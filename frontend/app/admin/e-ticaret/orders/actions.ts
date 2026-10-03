@@ -44,7 +44,9 @@ export async function refundCancelledEcommerceOrder(orderId: number, formData: F
       where: { orderId, direction: CustomerAccountEntryDirection.DEBIT, entryType: CustomerAccountEntryType.REFUND },
       select: { id: true },
     });
-    if (existingRefund) throw new Error("Bu siparişin ödeme iadesi daha önce kaydedilmiş.");
+    if (existingRefund) {
+      throw new Error("Bu siparişin ödeme iadesi daha önce kaydedilmiş. Kısmi ürün iadesi bulunan sipariş için tam iptal iadesi otomatik tamamlanamaz.");
+    }
 
     const actorName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
