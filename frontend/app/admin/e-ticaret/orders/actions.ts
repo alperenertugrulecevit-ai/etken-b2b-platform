@@ -40,11 +40,13 @@ export async function refundCancelledEcommerceOrder(orderId: number, formData: F
     });
     if (!payment) throw new Error("Onaylı ödeme cari hareketi bulunamadı.");
 
-    const existingRefund = await tx.customerAccountEntry.findFirst({
+    const refundedAmount = await tx.customerAccountEntry.aggregate({
       where: { orderId, direction: CustomerAccountEntryDirection.DEBIT, entryType: CustomerAccountEntryType.REFUND },
-      select: { id: true },
+      _sum: { amount: true },
     });
-    if (existingRefund) throw new Error("Bu siparişin ödeme iadesi daha önce kaydedilmiş.");
+    if ((refundedAmount._sum.amount ?? 0) > 0) {
+      throw new Error("Bu siparişte daha önce ürün/ödeme iadesi yapılmış. İptal ödeme iadesi otomatik tamamlanamaz.");
+    }
 
     const actorName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
