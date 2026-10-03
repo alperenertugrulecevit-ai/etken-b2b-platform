@@ -1,11 +1,11 @@
-import { HandlingUnitPurpose, HandlingUnitStatus, Prisma, PrismaClient, ZonePickTaskStatus } from "@prisma/client";
+import { HandlingUnitPurpose, HandlingUnitStatus, PickingShortageStatus, Prisma, PrismaClient, ZonePickTaskStatus } from "@prisma/client";
 type Tx = Prisma.TransactionClient | PrismaClient;
 const SOURCE_STATUSES: HandlingUnitStatus[]=[HandlingUnitStatus.OPEN,HandlingUnitStatus.CLOSED,HandlingUnitStatus.STORED];
 
 export class ZonePickingService {
  static async buildTasksForOrders(tx:Tx,input:{orderIds:number[];warehouseId:number;waveId?:string|null;allowPartialStock?:boolean}){
   const ids=[...new Set(input.orderIds)];
-  const orders=await tx.order.findMany({where:{id:{in:ids}},select:{id:true,orderNumber:true,items:{select:{id:true,productId:true,quantity:true,cancelledQuantity:true,pickedQuantity:true}}}});
+  const orders=await tx.order.findMany({where:{id:{in:ids}},select:{id:true,orderNumber:true,items:{select:{id:true,productId:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,pickingShortages:{where:{status:PickingShortageStatus.ACTIVE},select:{quantity:true}}}}}});
   if(orders.length!==ids.length) throw new Error("Zone görev planı için siparişlerden biri bulunamadı.");
   const productIds=[...new Set(orders.flatMap(o=>o.items.map(i=>i.productId)))];
   const stocks=await tx.handlingUnitItem.findMany({where:{productId:{in:productIds},quantity:{gt:0},handlingUnit:{purpose:HandlingUnitPurpose.STOCK,assignedOrderId:null,assignedWaveId:null,warehouseId:input.warehouseId,status:{in:SOURCE_STATUSES},location:{is:{isActive:true}}}},select:{id:true,productId:true,quantity:true,reservedStock:true,handlingUnit:{select:{id:true,barcode:true,location:{select:{id:true,code:true,sortOrder:true,zoneId:true,zone:{select:{id:true,code:true,isActive:true}}}}}}},orderBy:{id:"asc"}});
@@ -15,7 +15,8 @@ export class ZonePickingService {
   const plans=new Map<string,{orderId:number;zoneId:number;lines:{orderItemId:number;handlingUnitItemId:number;quantity:number;sequence:number}[]}>();
   let sequence=0;
   for(const order of orders) for(const item of order.items){
-   let need=Math.max(0,item.quantity-item.cancelledQuantity-item.pickedQuantity); if(!need) continue;
+   const activeShortage=item.pickingShortages.reduce((sum,row)=>sum+row.quantity,0);
+   let need=Math.max(0,item.quantity-item.cancelledQuantity-item.pickedQuantity-activeShortage); if(!need) continue;
    const candidates=(byProduct.get(item.productId)??[]).filter(s=>(available.get(s.id)??0)>0).sort((a,b)=>(a.handlingUnit.location?.sortOrder??0)-(b.handlingUnit.location?.sortOrder??0));
    const total=candidates.reduce((n,s)=>n+(available.get(s.id)??0),0);
    if(total<need && !input.allowPartialStock) throw new Error(`${order.orderNumber}: ürün ${item.productId} için seçilen depoda yeterli kullanılabilir fiziksel stok yok.`);
