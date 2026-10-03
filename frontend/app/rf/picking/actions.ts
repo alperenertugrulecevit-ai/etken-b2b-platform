@@ -1180,7 +1180,17 @@ export async function rfPickOrderItem(
           } else if (progress.packed >= progress.planned && progress.planned > 0) {
             nextOrderStatus = OrderStatus.READY_TO_SHIP;
           } else if (progress.picked >= progress.planned && progress.planned > 0) {
-            nextOrderStatus = OrderStatus.PACKING;
+            // Birden fazla Zone'dan gelen sipariş paketlemeye ancak konsolidasyon
+            // tamamlandıktan sonra geçebilir. Tek Zone siparişlerde konsolidasyon
+            // görevi oluşmadığı için mevcut doğrudan PACKING akışı korunur.
+            const consolidation = await tx.consolidationTask.findUnique({
+              where: { orderId: order.id },
+              select: { status: true },
+            });
+            nextOrderStatus =
+              consolidation && consolidation.status !== "COMPLETED"
+                ? OrderStatus.PICKING
+                : OrderStatus.PACKING;
           }
         } else if (nextOrderStatus !== order.status) {
           await tx.order.update({
