@@ -18,7 +18,8 @@ const PAYMENT: Record<string,string> = { PENDING:"Ödeme Bekleniyor", PAID:"Öde
 function money(v:number){return v.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 export default async function EcommerceOrdersPage({searchParams}:{searchParams:Promise<{status?:string;payment?:string;q?:string;refunded?:string}>}) {
-  await AuthorizationService.requirePermission("ORDER_VIEW");
+  const profile = await AuthorizationService.requireAnyPermission(["ORDER_VIEW","ORDER_MANAGE"]);
+  const canManage = AuthorizationService.hasPermission(profile, "ORDER_MANAGE");
   const query=await searchParams;
   const status=String(query.status??"").trim();
   const payment=String(query.payment??"").trim().toUpperCase();
@@ -82,19 +83,19 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
             <td className="p-4 font-bold">{STATUS[o.status]??o.status}</td>
             <td className="p-4">
               <div className="min-w-[260px] space-y-2">
-                {!paid&&!refunded&&o.status!==OrderStatus.CANCELLED?<form action={confirmEcommerceBankTransferPayment.bind(null,o.id)} className="flex gap-2">
+                {canManage&&!paid&&!refunded&&o.status!==OrderStatus.CANCELLED?<form action={confirmEcommerceBankTransferPayment.bind(null,o.id)} className="flex gap-2">
                   <input name="paymentReference" required maxLength={120} placeholder="Dekont / banka ref." className="min-w-0 flex-1 rounded-lg border px-3 py-2"/>
                   <button className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white">Ödeme Onayla</button>
                 </form>:null}
-                {paid&&o.status===OrderStatus.PENDING?<form action={updateOrderStatus.bind(null,o.id)}>
+                {canManage&&paid&&o.status===OrderStatus.PENDING?<form action={updateOrderStatus.bind(null,o.id)}>
                   <input type="hidden" name="status" value="APPROVED"/><input type="hidden" name="statusNote" value="Ödeme onaylandı; sipariş WMS operasyonuna aktarıldı."/>
                   <button className="w-full rounded-lg bg-blue-900 px-3 py-2 font-bold text-white">Siparişi Onayla ve WMS'e Aktar</button>
                 </form>:null}
-                {o.status===OrderStatus.CANCELLED&&paid?<form action={refundCancelledEcommerceOrder.bind(null,o.id)} className="flex gap-2">
+                {canManage&&o.status===OrderStatus.CANCELLED&&paid?<form action={refundCancelledEcommerceOrder.bind(null,o.id)} className="flex gap-2">
                   <input name="refundReference" required maxLength={120} placeholder="İade banka ref." className="min-w-0 flex-1 rounded-lg border px-3 py-2"/>
                   <button className="rounded-lg bg-violet-700 px-3 py-2 font-bold text-white">İadeyi Kaydet</button>
                 </form>:null}
-                {paid&&o.status!==OrderStatus.CANCELLED?<Link href={"/admin/orders/"+o.id} className="block rounded-lg border border-red-200 px-3 py-2 text-center font-bold text-red-700">İptal için sipariş detayına git</Link>:null}
+                {canManage&&paid&&o.status!==OrderStatus.CANCELLED?<Link href={"/admin/orders/"+o.id} className="block rounded-lg border border-red-200 px-3 py-2 text-center font-bold text-red-700">İptal için sipariş detayına git</Link>:null}
               </div>
             </td>
           </tr>;
