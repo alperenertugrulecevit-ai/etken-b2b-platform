@@ -3,12 +3,11 @@ import { notFound } from "next/navigation";
 
 import OperationTimeline from "@/components/admin/OperationTimeline";
 import { prisma } from "@/lib/prisma";
-import { updateOrderStatus } from "./actions";
+import { confirmEcommerceBankTransferPayment, updateOrderStatus } from "./actions";
 
 type Props = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ paymentConfirmed?: string }>;
 };
 
 function formatCurrency(value: number) {
@@ -143,8 +142,10 @@ function getStatusClass(
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: Props) {
   const { id } = await params;
+  const query = await searchParams;
   const orderId = Number(id);
 
   if (!Number.isInteger(orderId)) {
@@ -255,8 +256,19 @@ export default async function OrderDetailPage({
           first.rate - second.rate
       );
 
+  const isEcommerceBankTransfer =
+    order.source === "ECOMMERCE" &&
+    order.paymentMethod === "BANK_TRANSFER" &&
+    order.paymentProvider === "BANK_TRANSFER";
+  const paymentPaid = order.paymentStatus?.toUpperCase() === "PAID";
+
   return (
     <section className="p-10">
+      {query.paymentConfirmed === "1" ? (
+        <div className="mb-6 rounded-xl border border-green-300 bg-green-50 p-4 font-bold text-green-900">
+          Havale / EFT ödemesi onaylandı ve cari hesaba tahsilat olarak işlendi.
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <div className="flex flex-wrap items-center gap-3">
@@ -472,6 +484,29 @@ export default async function OrderDetailPage({
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Sipariş Yönetimi
           </p>
+
+          {isEcommerceBankTransfer ? (
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-bold text-slate-500">B2C Ödeme Durumu</p>
+              <p className={"mt-2 text-lg font-black " + (paymentPaid ? "text-emerald-700" : "text-orange-700")}>
+                {paymentPaid ? "ÖDENDİ" : "ÖDEME BEKLENİYOR"}
+              </p>
+              {order.paymentReference ? (
+                <p className="mt-2 text-xs text-slate-500">Banka Referansı: {order.paymentReference}</p>
+              ) : null}
+              {!paymentPaid && order.status !== "CANCELLED" ? (
+                <form action={confirmEcommerceBankTransferPayment.bind(null, order.id)} className="mt-4">
+                  <label className="block text-sm font-semibold">
+                    Banka İşlem / Dekont Referansı
+                    <input name="paymentReference" required maxLength={120} className="mt-2 w-full rounded-xl border p-3" placeholder="Referans no" />
+                  </label>
+                  <button className="mt-3 w-full rounded-xl bg-emerald-700 py-3 font-black text-white">
+                    ÖDEMEYİ ONAYLA
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-5 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
             <p>

@@ -3,6 +3,9 @@
 import {
   CustomerAccountEntryDirection,
   CustomerAccountEntryType,
+  CustomerAccountPaymentMethod,
+  OrderSource,
+  B2BPaymentMethod,
   OrderStatus,
   Prisma,
   StockMovementType,
@@ -712,4 +715,89 @@ items: {
   revalidatePath(detailPath);
 
   redirect(detailPath);
+}
+
+export async function confirmEcommerceBankTransferPayment(
+  orderId: number,
+  formData: FormData
+) {
+  const user = await AuthorizationService.requirePermission("ORDER_MANAGE");
+  if (!Number.isInteger(orderId) || orderId <= 0) throw new Error("Geçerli bir sipariş kimliği gereklidir.");
+
+  const referenceNo = String(formData.get("paymentReference") ?? "").trim().slice(0, 120);
+  if (!referenceNo) throw new Error("Banka işlem / dekont referansı zorunludur.");
+
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id:true, orderNumber:true, customerId:true, source:true, status:true,
+        paymentMethod:true, paymentStatus:true, paymentProvider:true,
+        paymentReference:true, totalAmount:true,
+      },
+    });
+    if (!order) throw new Error("Sipariş bulunamadı.");
+    if (order.source !== OrderSource.ECOMMERCE) throw new Error("Ödeme onayı yalnızca e-ticaret siparişleri için kullanılabilir.");
+    if (order.paymentMethod !== B2BPaymentMethod.BANK_TRANSFER || order.paymentProvider !== "BANK_TRANSFER") {
+      throw new Error("Sipariş Havale / EFT ödeme yönteminde değil.");
+    }
+    if (order.status === OrderStatus.CANCELLED) throw new Error("İptal edilmiş sipariş için ödeme onaylanamaz.");
+    if (order.paymentStatus?.toUpperCase() === "PAID") throw new Error("Bu siparişin ödemesi daha önce onaylanmış.");
+
+    const existingPayment = await tx.customerAccountEntry.findFirst({
+      where: {
+        orderId: order.id,
+        direction: CustomerAccountEntryDirection.CREDIT,
+        entryType: CustomerAccountEntryType.PAYMENT,
+      },
+      select: { id:true },
+    });
+    if (existingPayment) throw new Error("Bu sipariş için daha önce ödeme cari hareketi oluşturulmuş.");
+
+    const actorName = user.employee
+      ? `${user.employee.firstName} ${user.employee.lastName}`
+      : user.username;
+
+    await tx.customerAccountEntry.create({
+      data: {
+        customerId: order.customerId,
+        orderId: order.id,
+        direction: CustomerAccountEntryDirection.CREDIT,
+        entryType: CustomerAccountEntryType.PAYMENT,
+        paymentMethod: CustomerAccountPaymentMethod.BANK_TRANSFER,
+        amount: order.totalAmount,
+        description: `${order.orderNumber} e-ticaret Havale / EFT ödeme tahsilatı`,
+        referenceNo,
+        transactionDate: new Date(),
+        createdByUserId: user.id,
+        createdByUsername: actorName,
+      },
+    });
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        paymentStatus: "PAID",
+        paymentProvider: "BANK_TRANSFER",
+        paymentReference: referenceNo,
+      },
+    });
+
+    await tx.orderStatusHistory.create({
+      data: {
+        orderId: order.id,
+        status: order.status,
+        note: "Havale / EFT ödemeniz onaylandı.",
+        changedByUserId: user.id,
+        changedByUsername: actorName,
+        visibleToCustomer: true,
+      },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  const detailPath = `/admin/orders/${orderId}`;
+  revalidatePath(detailPath);
+  revalidatePath("/admin/orders");
+  revalidatePath("/order-tracking");
+  redirect(detailPath + "?paymentConfirmed=1");
 }

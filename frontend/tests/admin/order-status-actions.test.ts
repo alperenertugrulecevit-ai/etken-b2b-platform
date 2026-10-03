@@ -1,6 +1,9 @@
 import {
   CustomerAccountEntryDirection,
   CustomerAccountEntryType,
+  CustomerAccountPaymentMethod,
+  OrderSource,
+  B2BPaymentMethod,
   OrderStatus,
   StockMovementType,
 } from "@prisma/client";
@@ -13,6 +16,7 @@ import {
 } from "vitest";
 
 import {
+  confirmEcommerceBankTransferPayment,
   updateOrderStatus,
 } from "@/app/admin/orders/[id]/actions";
 
@@ -31,6 +35,8 @@ const mocks = vi.hoisted(
     orderFindUnique:
       vi.fn(),
     orderUpdate:
+      vi.fn(),
+    statusHistoryCreate:
       vi.fn(),
     accountFindFirst:
       vi.fn(),
@@ -51,6 +57,9 @@ const transactionClient = {
       mocks.orderFindUnique,
     update:
       mocks.orderUpdate,
+  },
+  orderStatusHistory: {
+    create: mocks.statusHistoryCreate,
   },
   customerAccountEntry: {
     findFirst:
@@ -240,6 +249,9 @@ describe(
 
       mocks.accountCreate.mockResolvedValue({
         id: 900,
+      });
+      mocks.statusHistoryCreate.mockResolvedValue({
+        id: 901,
       });
 
       mocks.stockMovement.mockResolvedValue({
@@ -668,3 +680,116 @@ describe(
     });
   }
 );
+
+
+describe("confirmEcommerceBankTransferPayment", () => {
+  function paymentForm(reference = "BANK-REF-123") {
+    const formData = new FormData();
+    formData.set("paymentReference", reference);
+    return formData;
+  }
+
+  function ecommerceOrder(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 700,
+      orderNumber: "WEB20261003-TEST",
+      customerId: 70,
+      source: OrderSource.ECOMMERCE,
+      status: OrderStatus.PENDING,
+      paymentMethod: B2BPaymentMethod.BANK_TRANSFER,
+      paymentStatus: "PENDING",
+      paymentProvider: "BANK_TRANSFER",
+      paymentReference: null,
+      totalAmount: 1250.5,
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requirePermission.mockResolvedValue({
+      id: "finance-user",
+      username: "finance",
+      employee: { firstName: "Finans", lastName: "Operatörü" },
+    });
+    mocks.transaction.mockImplementation(async (callback: (tx: typeof transactionClient) => Promise<unknown>) =>
+      callback(transactionClient)
+    );
+    mocks.orderUpdate.mockResolvedValue({ id: 700 });
+    mocks.accountCreate.mockResolvedValue({ id: 902 });
+    mocks.statusHistoryCreate.mockResolvedValue({ id: 903 });
+    mocks.accountFindFirst.mockResolvedValue(null);
+  });
+
+  it("havale ödemesini cari tahsilat ve PAID olarak kaydeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(ecommerceOrder());
+
+    await confirmEcommerceBankTransferPayment(700, paymentForm());
+
+    expect(mocks.accountCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        customerId: 70,
+        orderId: 700,
+        direction: CustomerAccountEntryDirection.CREDIT,
+        entryType: CustomerAccountEntryType.PAYMENT,
+        paymentMethod: CustomerAccountPaymentMethod.BANK_TRANSFER,
+        amount: 1250.5,
+        referenceNo: "BANK-REF-123",
+      }),
+    });
+    expect(mocks.orderUpdate).toHaveBeenCalledWith({
+      where: { id: 700 },
+      data: {
+        paymentStatus: "PAID",
+        paymentProvider: "BANK_TRANSFER",
+        paymentReference: "BANK-REF-123",
+      },
+    });
+    expect(mocks.statusHistoryCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        orderId: 700,
+        status: OrderStatus.PENDING,
+        note: "Havale / EFT ödemeniz onaylandı.",
+        visibleToCustomer: true,
+      }),
+    });
+  });
+
+  it("banka referansı olmadan ödeme onayını reddeder", async () => {
+    await expect(confirmEcommerceBankTransferPayment(700, paymentForm("")))
+      .rejects.toThrow("Banka işlem / dekont referansı zorunludur.");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("e-ticaret olmayan siparişi reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(ecommerceOrder({ source: OrderSource.B2B }));
+    await expect(confirmEcommerceBankTransferPayment(700, paymentForm()))
+      .rejects.toThrow("yalnızca e-ticaret siparişleri");
+  });
+
+  it("havale olmayan ödeme yöntemini reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(ecommerceOrder({ paymentMethod: B2BPaymentMethod.CURRENT_ACCOUNT }));
+    await expect(confirmEcommerceBankTransferPayment(700, paymentForm()))
+      .rejects.toThrow("Havale / EFT ödeme yönteminde değil");
+  });
+
+  it("iptal edilmiş siparişin ödemesini reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(ecommerceOrder({ status: OrderStatus.CANCELLED }));
+    await expect(confirmEcommerceBankTransferPayment(700, paymentForm()))
+      .rejects.toThrow("İptal edilmiş sipariş");
+  });
+
+  it("PAID siparişte ikinci ödeme onayını reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(ecommerceOrder({ paymentStatus: "PAID" }));
+    await expect(confirmEcommerceBankTransferPayment(700, paymentForm()))
+      .rejects.toThrow("daha önce onaylanmış");
+  });
+
+  it("mevcut cari ödeme hareketi varsa ikinci tahsilatı reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(ecommerceOrder());
+    mocks.accountFindFirst.mockResolvedValue({ id: 999 });
+    await expect(confirmEcommerceBankTransferPayment(700, paymentForm()))
+      .rejects.toThrow("daha önce ödeme cari hareketi");
+    expect(mocks.accountCreate).not.toHaveBeenCalled();
+  });
+});
