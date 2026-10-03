@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ShippingService } from "@/modules/fulfillment/services/shipping.service";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 const TENANT_ID = "tenant_etken";
 const COMPANY_ID = "company_etken_office";
@@ -390,7 +391,7 @@ export class ShipmentPlanningService {
   }
 
   static async confirmEcommerceOrderDelivery(input:{orderId:number;actor:ShipmentActor}) {
-    return prisma.$transaction(async tx => {
+    const result = await prisma.$transaction(async tx => {
       const order = await tx.order.findFirst({
         where: { id: input.orderId, source: OrderSource.ECOMMERCE },
         select: { id:true, orderNumber:true, status:true },
@@ -426,6 +427,18 @@ export class ShipmentPlanningService {
       }});
       return {orderNumber:order.orderNumber};
     }, {isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    const notificationOrder=await prisma.order.findUnique({
+      where:{id:input.orderId},
+      select:{orderNumber:true,ecommerceEmail:true},
+    });
+    if(notificationOrder){
+      await EcommerceNotificationService.send({
+        event:"DELIVERED",
+        email:notificationOrder.ecommerceEmail,
+        orderNumber:notificationOrder.orderNumber,
+      });
+    }
+    return result;
   }
 
   static async operationsDashboard(){
