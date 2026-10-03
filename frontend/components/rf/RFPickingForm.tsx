@@ -743,6 +743,53 @@ export default function RFPickingForm({
     else focusWithoutKeyboard(orderInputRef.current);
   }, [lockedOrderNumber]);
 
+  /*
+   * Aktif okutma alanı state değişiminden SONRA DOM'a gelir.
+   * El terminalinde tek seferlik focus zaman zaman kaybolduğu için
+   * görünür olan alanı render sonrasında tekrar doğruluyoruz.
+   */
+  useEffect(() => {
+    if (isPending) return;
+
+    let activeInput: HTMLInputElement | null = null;
+
+    if (!selectedOrder) {
+      activeInput = orderInputRef.current;
+    } else if (!selectedTargetUnit) {
+      activeInput = targetInputRef.current;
+    } else if (!locationMatches) {
+      activeInput = locationInputRef.current;
+    } else if (!sourceMatches) {
+      activeInput = sourceInputRef.current;
+    } else if (nextOrderItem) {
+      activeInput = productInputRef.current;
+    }
+
+    if (!activeInput) return;
+
+    const focusActiveInput = () => {
+      if (!activeInput?.isConnected) return;
+      focusWithoutKeyboard(activeInput);
+    };
+
+    const first = window.setTimeout(focusActiveInput, 0);
+    const second = window.setTimeout(focusActiveInput, 120);
+    const third = window.setTimeout(focusActiveInput, 350);
+
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(second);
+      window.clearTimeout(third);
+    };
+  }, [
+    isPending,
+    selectedOrder,
+    selectedTargetUnit,
+    locationMatches,
+    sourceMatches,
+    nextOrderItem,
+  ]);
+
   useEffect(() => {
     setCurrentOrderItems(
       Object.fromEntries(
@@ -1230,7 +1277,7 @@ export default function RFPickingForm({
       focusWithoutKeyboard(sourceInputRef.current);
     } else {
       setLocationBarcode("");
-      window.setTimeout(() => locationInputRef.current?.focus(), 50);
+      focusAfterRender(locationInputRef, 50);
     }
   }
 
@@ -1248,7 +1295,7 @@ export default function RFPickingForm({
       focusWithoutKeyboard(productInputRef.current);
     } else {
       setSourceBarcode("");
-      window.setTimeout(() => sourceInputRef.current?.focus(), 50);
+      focusAfterRender(sourceInputRef, 50);
     }
   }
 
@@ -1266,7 +1313,7 @@ export default function RFPickingForm({
       event.currentTarget.form?.requestSubmit();
     } else if (!productMatches) {
       setProductBarcode("");
-      window.setTimeout(() => productInputRef.current?.focus(), 50);
+      focusAfterRender(productInputRef, 50);
     }
   }
 
