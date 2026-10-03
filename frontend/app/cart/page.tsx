@@ -129,6 +129,10 @@ export default function CartPage() {
                       (item.vatRate /
                         100);
 
+                    const lineGross =
+                      lineNet +
+                      lineVat;
+
                     return (
                       <article
                         key={
@@ -154,31 +158,32 @@ export default function CartPage() {
                               }
                             </p>
 
-                            <p className="mt-2 font-bold text-[#EF4B23]">
+                            <p className="mt-2 font-black text-[#EF4B23]">
                               {formatCurrency(
-                                item.unitPrice
+                                item.unitPrice *
+                                  (1 + item.vatRate / 100)
                               )}{" "}
-                              ₺ + KDV %
-                              {
-                                item.vatRate
-                              }
+                              ₺
+                              <span className="ml-1 text-xs font-semibold text-slate-500">
+                                KDV dâhil
+                              </span>
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              KDV hariç {formatCurrency(item.unitPrice)} ₺ · KDV %{item.vatRate}
                             </p>
                           </div>
 
                           <div className="text-right">
                             <p className="text-xl font-black text-[#EF4B23]">
                               {formatCurrency(
-                                lineNet
+                                lineGross
                               )}{" "}
                               ₺
                             </p>
 
                             <p className="mt-1 text-sm text-gray-500">
-                              KDV:{" "}
-                              {formatCurrency(
-                                lineVat
-                              )}{" "}
-                              ₺
+                              KDV dâhil satır toplamı
                             </p>
                           </div>
                         </div>
@@ -270,7 +275,7 @@ export default function CartPage() {
                 <div className="mt-5 space-y-3">
                   <div className="flex justify-between gap-4">
                     <span>
-                      Ara Toplam
+                      KDV Hariç
                     </span>
 
                     <strong>
@@ -298,7 +303,7 @@ export default function CartPage() {
 
                   <div className="flex justify-between gap-4 text-xl">
                     <span className="font-bold">
-                      Genel Toplam
+                      Ödenecek Tutar
                     </span>
 
                     <strong className="text-[#EF4B23]">
@@ -311,7 +316,7 @@ export default function CartPage() {
                 </div>
 
                 <div className="mt-6 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
-                  ✓ Fiyatlar KDV dahil gösterilir.
+                  ✓ Ödenecek tutar KDV dâhildir. Bireysel alışverişte minimum sipariş tutarı yoktur.
                 </div>
 
                 {canCheckout ? (
