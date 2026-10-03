@@ -109,12 +109,30 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      await tx.order.updateMany({
-        where: { id: { in: unit.orders.map((row) => row.orderId) } },
-        // Mevcut enum'da "İrsaliye Kesildi" ayrı bir OrderStatus değildir.
-        // READY_TO_SHIP + ISSUED DispatchDocument birlikte bu iş durumunu temsil eder.
-        data: { status: OrderStatus.READY_TO_SHIP },
+      const orderIds = unit.orders.map((row) => row.orderId);
+      const ordersToReady = await tx.order.findMany({
+        where: {
+          id: { in: orderIds },
+          status: { not: OrderStatus.READY_TO_SHIP },
+        },
+        select: { id: true },
       });
+
+      if (ordersToReady.length) {
+        await tx.order.updateMany({
+          where: { id: { in: ordersToReady.map((row) => row.id) } },
+          // İrsaliye ISSUED olduğu an sipariş sevke hazır olur.
+          data: { status: OrderStatus.READY_TO_SHIP },
+        });
+        await tx.orderStatusHistory.createMany({
+          data: ordersToReady.map((row) => ({
+            orderId: row.id,
+            status: OrderStatus.READY_TO_SHIP,
+            note: `İrsaliye kesildi (${dispatchNumber}); sipariş sevkiyata hazırlandı.`,
+            visibleToCustomer: true,
+          })),
+        });
+      }
 
       const giftNotes = unit.orders
         .map((row) => ({ orderNumber: row.orderNumber, note: row.order.customerNote?.trim() ?? "" }))
