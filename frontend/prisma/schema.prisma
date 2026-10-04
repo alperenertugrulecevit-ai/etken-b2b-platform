@@ -498,6 +498,8 @@ model Order {
   @@index([orderType, status])
   @@index([fulfillmentWarehouseId, status])
   @@index([carrierId])
+  @@index([cancellationStatus])
+  @@index([cancellationRefundStatus])
   @@index([status])
   @@index([orderDate])
 }
