@@ -442,6 +442,15 @@ model Order {
   paymentStatus     String?
   paymentProvider   String?
   paymentReference  String?
+  cancellationStatus String?
+  cancellationReason String?
+  cancellationRequestedAt DateTime?
+  cancellationRequestedByUserId String?
+  cancellationRequestedByName String?
+  cancellationCompletedAt DateTime?
+  cancellationRefundStatus String?
+  cancellationRefundReference String?
+  cancellationRefundedAt DateTime?
   cargoTrackingNumber String?
   cargoTrackingUrl    String?
   cargoTrackingUpdatedAt DateTime?
