@@ -12,7 +12,7 @@ export async function cancelCustomerOrder(orderId:number, formData:FormData){
  if(!user||user.userType!==UserType.CUSTOMER||!user.customerId) throw new Error("Oturum açmanız gerekiyor.");
  const order=await prisma.order.findFirst({where:{id:orderId,...getCustomerOrderWhere(user)},select:{id:true,status:true}});
  if(!order) throw new Error("Sipariş bulunamadı.");
- if(![OrderStatus.PENDING,OrderStatus.APPROVED].includes(order.status)) throw new Error("Bu sipariş artık doğrudan iptal edilemez.");
+ if(order.status !== OrderStatus.PENDING && order.status !== OrderStatus.APPROVED) throw new Error("Bu sipariş artık doğrudan iptal edilemez.");
  const reason=String(formData.get("reason")??"").trim().slice(0,500);
  await OrderCancellationService.request({orderId,reason:reason||"Müşteri hesabından iptal edildi.",actor:{userId:user.id,displayName:user.fullName??user.username}});
  revalidatePath("/account/orders");
