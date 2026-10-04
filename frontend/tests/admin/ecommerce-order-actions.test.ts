@@ -1,7 +1,4 @@
 import {
-  CustomerAccountEntryDirection,
-  CustomerAccountEntryType,
-  CustomerAccountPaymentMethod,
   OrderSource,
   OrderStatus,
 } from "@prisma/client";
@@ -12,11 +9,6 @@ const mocks=vi.hoisted(()=>({
   requirePermission:vi.fn(),transaction:vi.fn(),orderFindUnique:vi.fn(),orderUpdate:vi.fn(),
   accountFindFirst:vi.fn(),accountCreate:vi.fn(),historyCreate:vi.fn(),revalidatePath:vi.fn(),redirect:vi.fn(),refundComplete:vi.fn(),
 }));
-const tx={
-  order:{findUnique:mocks.orderFindUnique,update:mocks.orderUpdate},
-  customerAccountEntry:{findFirst:mocks.accountFindFirst,create:mocks.accountCreate},
-  orderStatusHistory:{create:mocks.historyCreate},
-};
 vi.mock("@/modules/authorization/services/authorization.service",()=>({AuthorizationService:{requirePermission:mocks.requirePermission}}));
 vi.mock("@/lib/prisma",()=>({prisma:{$transaction:mocks.transaction,order:{findUnique:mocks.orderFindUnique}}}));
 vi.mock("@/modules/orders/services/order-cancellation.service",()=>({OrderCancellationService:{completeRefund:mocks.refundComplete}}));
