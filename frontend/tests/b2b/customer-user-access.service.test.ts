@@ -1,4 +1,4 @@
-import {
+import { CustomerType,
   CustomerUserRole,
   UserStatus,
   UserType,
@@ -61,6 +61,7 @@ function createUser(
         "Örnek Kurumsal Müşteri",
       contactName: null,
       isActive: true,
+    customerType: CustomerType.CORPORATE,
     },
     roles: [],
     permissions: [],
@@ -94,6 +95,7 @@ describe(
             "Örnek Kurumsal Müşteri",
           contactName: null,
           isActive: false,
+        customerType: CustomerType.CORPORATE,
         },
       });
 
