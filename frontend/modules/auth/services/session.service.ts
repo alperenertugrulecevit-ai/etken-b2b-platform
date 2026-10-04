@@ -288,6 +288,11 @@ export class SessionService {
                 session.user
                   .customer
                   .isActive,
+
+              customerType:
+                session.user
+                  .customer
+                  .customerType,
             }
           : null,
 
