@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import Header from "@/components/layout/Header";
+import ProductImage from "@/components/products/ProductImage";
+import { cancelCustomerOrder } from "./actions";
 import {
   notFound,
   redirect,
@@ -99,9 +101,8 @@ export default async function CustomerOrderDetailPage({
       include: {
         shippingAddress: true,
         items: {
-          orderBy: {
-            id: "asc",
-          },
+          orderBy: { id: "asc" },
+          include: { product: { select: { imageUrl: true } } },
         },
         accountEntries: {
           where: {
@@ -339,6 +340,16 @@ export default async function CustomerOrderDetailPage({
         </section>
       ) : null}
 
+      {[OrderStatus.PENDING, OrderStatus.APPROVED].includes(order.status) ? (
+        <section className="mt-4 rounded-xl border border-red-200 bg-white p-4 shadow-sm">
+          <h2 className="font-black">Sipariş İptali</h2>
+          <form action={cancelCustomerOrder.bind(null, order.id)} className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <input name="reason" maxLength={500} placeholder="İptal nedeni (isteğe bağlı)" className="min-w-0 flex-1 rounded-xl border p-3" />
+            <button className="rounded-xl bg-red-600 px-5 py-3 font-black text-white">Siparişi İptal Et</button>
+          </form>
+        </section>
+      ) : null}
+
       <section className="mt-6 overflow-hidden rounded-2xl bg-white shadow">
         <div className="border-b border-slate-200 p-4">
           <h2 className="text-lg font-black">
@@ -371,9 +382,10 @@ export default async function CustomerOrderDetailPage({
                     className="border-t border-slate-100"
                   >
                     <td className="px-4 py-3">
-                      <strong className="block">
-                        {item.productName}
-                      </strong>
+                      <div className="flex items-center gap-3">
+                        <ProductImage imageUrl={item.product.imageUrl} productName={item.productName} className="h-14 w-14 shrink-0 rounded-lg border" fallbackClassName="h-14 w-14 shrink-0 rounded-lg text-xl" />
+                        <strong className="block">{item.productName}</strong>
+                      </div>
                       <span className="text-xs text-slate-500">
                         {item.productCode}
                       </span>
