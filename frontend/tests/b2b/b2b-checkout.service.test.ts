@@ -1,4 +1,4 @@
-import {
+import { CustomerType,
   B2BPaymentMethod,
   CustomerAccountEntryDirection,
   CustomerAccountEntryType,
@@ -115,6 +115,7 @@ function createUser(
         "Örnek Kurumsal Müşteri",
       contactName: null,
       isActive: true,
+    customerType: CustomerType.CORPORATE,
     },
     roles: [],
     permissions: [],
@@ -189,6 +190,7 @@ describe(
       mocks.addressWhere.mockReturnValue({
         customerId: 10,
         isActive: true,
+      customerType: CustomerType.CORPORATE,
       });
 
       mocks.accountSummary.mockResolvedValue({
