@@ -1,3 +1,4 @@
+import { getCities, getDistrictsOfEachCity } from "turkey-neighbourhoods";
 import { CustomerType, UserType } from "@prisma/client";
 import { redirect } from "next/navigation";
 
@@ -74,6 +75,9 @@ export default async function CheckoutPage() {
     }
   }
 
+  const cities = getCities();
+  const districtsByCityCode = getDistrictsOfEachCity();
+
   return (
     <>
       <Header />
@@ -84,7 +88,7 @@ export default async function CheckoutPage() {
           <p className="mb-8 mt-2 text-slate-500">
             Üye olmadan teslimat ve fatura bilgilerinizi girerek sipariş oluşturabilirsiniz.
           </p>
-          <EcommerceCheckoutForm />
+          <EcommerceCheckoutForm cities={cities} districtsByCityCode={districtsByCityCode} />
         </div>
       </main>
     </>
