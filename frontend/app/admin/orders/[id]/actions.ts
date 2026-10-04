@@ -164,6 +164,7 @@ export async function updateOrderStatus(
     revalidatePath("/rf/wave-picking");
     revalidatePath("/rf/stock-return");
     redirect(`/admin/orders/${orderId}`);
+    return;
   }
 
   await prisma.$transaction(
