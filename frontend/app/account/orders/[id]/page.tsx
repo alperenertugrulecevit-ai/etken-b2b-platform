@@ -340,7 +340,7 @@ export default async function CustomerOrderDetailPage({
         </section>
       ) : null}
 
-      {[OrderStatus.PENDING, OrderStatus.APPROVED].includes(order.status) ? (
+      {order.status === OrderStatus.PENDING || order.status === OrderStatus.APPROVED ? (
         <section className="mt-4 rounded-xl border border-red-200 bg-white p-4 shadow-sm">
           <h2 className="font-black">Sipariş İptali</h2>
           <form action={cancelCustomerOrder.bind(null, order.id)} className="mt-3 flex flex-col gap-3 sm:flex-row">
