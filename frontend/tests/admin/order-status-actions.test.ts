@@ -18,6 +18,7 @@ import {
 import {
   confirmEcommerceBankTransferPayment,
   updateOrderStatus,
+  updateOrderStatusControlled,
 } from "@/app/admin/orders/[id]/actions";
 
 const mocks = vi.hoisted(
@@ -369,6 +370,37 @@ describe(
         actor:expect.objectContaining({userId:"admin-user"}),
       }));
       expect(mocks.transaction).not.toHaveBeenCalled();
+    });
+
+    it("kontrollü action iptal hatasını UI state olarak döndürür", async () => {
+      mocks.cancellationRequest.mockRejectedValue(
+        new Error("Sipariş sevk edilmiş. İptal yerine İade Giriş süreci kullanılmalıdır.")
+      );
+
+      const result = await updateOrderStatusControlled(
+        501,
+        { error: null },
+        createStatusForm(OrderStatus.CANCELLED)
+      );
+
+      expect(result).toEqual({
+        error: "Sipariş sevk edilmiş. İptal yerine İade Giriş süreci kullanılmalıdır.",
+      });
+      expect(mocks.transaction).not.toHaveBeenCalled();
+    });
+
+    it("kontrollü action bilinmeyen hatayı güvenli mesajla döndürür", async () => {
+      mocks.cancellationRequest.mockRejectedValue("beklenmeyen hata");
+
+      const result = await updateOrderStatusControlled(
+        501,
+        { error: null },
+        createStatusForm(OrderStatus.CANCELLED)
+      );
+
+      expect(result).toEqual({
+        error: "Sipariş durumu güncellenemedi.",
+      });
     });
 
     it("aynı durum yeniden seçildiğinde stok ve cari hareket üretmez", async () => {
