@@ -48,6 +48,10 @@ const mocks = vi.hoisted(
       vi.fn(),
     redirect:
       vi.fn(),
+    cancellationRequest:
+      vi.fn(),
+    cancellationRefund:
+      vi.fn(),
   })
 );
 
@@ -116,6 +120,16 @@ vi.mock(
   () => ({
     createStockMovementWithTransaction:
       mocks.stockMovement,
+  })
+);
+
+vi.mock(
+  "@/modules/orders/services/order-cancellation.service",
+  () => ({
+    OrderCancellationService: {
+      request: mocks.cancellationRequest,
+      completeRefund: mocks.cancellationRefund,
+    },
   })
 );
 
@@ -346,100 +360,15 @@ describe(
       );
     });
 
-    it("iptalde rezervasyonu kaldırır ve cari ters kayıt oluşturur", async () => {
-      mocks.orderFindUnique.mockResolvedValue(
-        createOrder({
-          status:
-            OrderStatus.APPROVED,
-          stockReserved: true,
-        })
-      );
-
-      mocks.accountFindFirst
-        .mockResolvedValueOnce({
-          id: 800,
-          amount: 720,
-        })
-        .mockResolvedValueOnce(
-          null
-        );
-
-      await updateOrderStatus(
-        501,
-        createStatusForm(
-          OrderStatus.CANCELLED
-        )
-      );
-
-      expect(
-        mocks.stockMovement
-      ).toHaveBeenCalledWith(
-        transactionClient,
-        expect.objectContaining({
-          movementType:
-            StockMovementType.RESERVATION_RELEASE,
-          physicalChange: 0,
-          reservedChange: -2,
-        })
-      );
-
-      expect(
-        mocks.accountCreate
-      ).toHaveBeenCalledWith({
-        data:
-          expect.objectContaining({
-            customerId: 10,
-            orderId: 501,
-            direction:
-              CustomerAccountEntryDirection.CREDIT,
-            entryType:
-              CustomerAccountEntryType.CANCELLATION,
-            amount: 720,
-          }),
-      });
-
-      expect(
-        mocks.orderUpdate
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data:
-            expect.objectContaining({
-              status:
-                OrderStatus.CANCELLED,
-              stockReserved: false,
-            }),
-        })
-      );
-    });
-
-    it("mevcut iptal ters kaydını ikinci kez oluşturmaz", async () => {
-      mocks.orderFindUnique.mockResolvedValue(
-        createOrder({
-          status:
-            OrderStatus.APPROVED,
-          stockReserved: true,
-        })
-      );
-
-      mocks.accountFindFirst
-        .mockResolvedValueOnce({
-          id: 800,
-          amount: 720,
-        })
-        .mockResolvedValueOnce({
-          id: 801,
-        });
-
-      await updateOrderStatus(
-        501,
-        createStatusForm(
-          OrderStatus.CANCELLED
-        )
-      );
-
-      expect(
-        mocks.accountCreate
-      ).not.toHaveBeenCalled();
+    it("iptal talebini kontrollü iptal servisine yönlendirir", async () => {
+      mocks.cancellationRequest.mockResolvedValue({orderNumber:"B2B20260803-TEST",stockReturnRequired:false,physicalQuantity:0});
+      await updateOrderStatus(501, createStatusForm(OrderStatus.CANCELLED));
+      expect(mocks.cancellationRequest).toHaveBeenCalledWith(expect.objectContaining({
+        orderId:501,
+        reason:"Otomatik test",
+        actor:expect.objectContaining({userId:"admin-user"}),
+      }));
+      expect(mocks.transaction).not.toHaveBeenCalled();
     });
 
     it("aynı durum yeniden seçildiğinde stok ve cari hareket üretmez", async () => {

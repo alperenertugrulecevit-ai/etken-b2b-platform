@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 
 import OperationTimeline from "@/components/admin/OperationTimeline";
 import { prisma } from "@/lib/prisma";
-import { confirmEcommerceBankTransferPayment, updateOrderStatus } from "./actions";
+import { completeOrderCancellationRefund, confirmEcommerceBankTransferPayment, updateOrderStatus } from "./actions";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ paymentConfirmed?: string }>;
+  searchParams: Promise<{ paymentConfirmed?: string; refundCompleted?: string }>;
 };
 
 function formatCurrency(value: number) {
@@ -260,13 +260,28 @@ export default async function OrderDetailPage({
     order.source === "ECOMMERCE" &&
     order.paymentMethod === "BANK_TRANSFER" &&
     order.paymentProvider === "BANK_TRANSFER";
-  const paymentPaid = order.paymentStatus?.toUpperCase() === "PAID";
+  const paymentState = order.paymentStatus?.toUpperCase() ?? "";
+  const paymentPaid = ["PAID","REFUND_PENDING","REFUNDED"].includes(paymentState);
 
   return (
     <section className="p-10">
       {query.paymentConfirmed === "1" ? (
         <div className="mb-6 rounded-xl border border-green-300 bg-green-50 p-4 font-bold text-green-900">
           Havale / EFT ödemesi onaylandı ve cari hesaba tahsilat olarak işlendi.
+        </div>
+      ) : null}
+      {query.refundCompleted === "1" ? (
+        <div className="mb-6 rounded-xl border border-green-300 bg-green-50 p-4 font-bold text-green-900">
+          Sipariş iptal para iadesi tamamlandı ve cari hesaba REFUND hareketi işlendi.
+        </div>
+      ) : null}
+      {order.cancellationStatus ? (
+        <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-red-900">
+          <p className="font-black">İptal Süreci: {order.cancellationStatus}</p>
+          <p className="mt-1 text-sm">{order.cancellationReason || "İptal nedeni belirtilmedi."}</p>
+          {order.cancellationStatus === "STOCK_RETURN_PENDING" ? (
+            <p className="mt-2 font-bold">Toplanmış/paketlenmiş ürünler RF Stok Geri Alma ile stoğa dönmeden iptal tamamlanmaz. Yeni toplama ve irsaliye işlemleri bloke edilmiştir.</p>
+          ) : null}
         </div>
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-6">
@@ -502,6 +517,18 @@ export default async function OrderDetailPage({
                   </label>
                   <button className="mt-3 w-full rounded-xl bg-emerald-700 py-3 font-black text-white">
                     ÖDEMEYİ ONAYLA
+                  </button>
+                </form>
+              ) : null}
+              {order.cancellationRefundStatus === "PENDING" ? (
+                <form action={completeOrderCancellationRefund.bind(null, order.id)} className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                  <p className="text-sm font-black text-red-800">PARA İADESİ BEKLİYOR</p>
+                  <label className="mt-2 block text-sm font-semibold">
+                    İade Banka / Ödeme Referansı
+                    <input name="refundReference" required maxLength={120} className="mt-2 w-full rounded-xl border p-3" placeholder="İade referans no" />
+                  </label>
+                  <button className="mt-3 w-full rounded-xl bg-red-700 py-3 font-black text-white">
+                    PARA İADESİNİ TAMAMLA
                   </button>
                 </form>
               ) : null}

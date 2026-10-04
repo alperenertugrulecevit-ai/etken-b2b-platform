@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
             select: {
               orderId: true,
               orderNumber: true,
-              order: { select: { customerNote: true } },
+              order: { select: { customerNote: true, status: true, cancellationStatus: true } },
             },
           },
           items: {
@@ -58,6 +58,12 @@ export async function POST(request: NextRequest) {
       });
       if (!unit) throw new Error(`${barcode} Sevk THM bulunamadı.`);
       if (!["READY_TO_SHIP", "SHIPPED"].includes(unit.status)) throw new Error("Sevk THM irsaliye oluşturmaya hazır değil.");
+      const cancellingOrder = unit.orders.find((row) =>
+        ["REQUESTED", "STOCK_RETURN_PENDING", "REFUND_PENDING"].includes(row.order.cancellationStatus ?? "")
+      );
+      if (cancellingOrder) {
+        throw new Error(`${cancellingOrder.orderNumber} siparişi iptal sürecinde. İrsaliye kesilemez; ürünleri Stok Geri Alma sürecine yönlendirin.`);
+      }
 
       const now = new Date();
       let document = unit.dispatchDocument;
@@ -142,7 +148,7 @@ export async function POST(request: NextRequest) {
           select: { id: true, status: true },
         });
 
-        if (order && order.status !== OrderStatus.READY_TO_SHIP) {
+        if (order?.status === OrderStatus.PACKING) {
           ordersToReady.push({ id: order.id });
         }
       }

@@ -20,6 +20,7 @@ import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { FulfillmentService } from "@/modules/fulfillment/services/fulfillment.service";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
+import { OrderCancellationService } from "@/modules/orders/services/order-cancellation.service";
 
 type Actor={userId:string;displayName:string;terminalCode?:string|null};
 type Input={orderNumber:string;sourceBarcode:string;productBarcode:string;targetBarcode:string;targetLocationCode:string;reason:StockReturnReason;actor:Actor};
@@ -169,6 +170,12 @@ export class StockReturnService{
     await tx.order.update({where:{id:order.id},data:{status:OrderStatus.PICKING,stockReserved:true}});
    }else if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0){
     await tx.order.update({where:{id:order.id},data:{status:OrderStatus.CANCELLED,stockReserved:false}});
+   }
+   if(CUSTOMER_REASONS.includes(input.reason)){
+    await OrderCancellationService.tryFinalizeAfterStockReturn(tx,order.id,{
+     userId:input.actor.userId,
+     displayName:input.actor.displayName,
+    });
    }
    return {orderNumber:order.orderNumber,productCode:item.productCode,productName:item.productName,stage,reason:input.reason,targetBarcode:target.barcode,targetLocationCode:location.code,remainingDemand:Math.max(0,item.quantity-item.cancelledQuantity-(CUSTOMER_REASONS.includes(input.reason)?1:0)-(item.pickedQuantity-1))};
   },{maxWait:10000,timeout:30000,isolationLevel:Prisma.TransactionIsolationLevel.Serializable});

@@ -16,6 +16,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
+import { OrderCancellationService } from "@/modules/orders/services/order-cancellation.service";
 
 import {
   createStockMovementWithTransaction,
@@ -147,6 +148,25 @@ export async function updateOrderStatus(
       .slice(0, 500) ||
     null;
 
+  if (newStatus === OrderStatus.CANCELLED) {
+    const actorName = user.employee
+      ? `${user.employee.firstName} ${user.employee.lastName}`
+      : user.username;
+    await OrderCancellationService.request({
+      orderId,
+      reason: statusNote ?? "Yönetim paneli sipariş iptali",
+      actor: { userId: user.id, displayName: actorName },
+    });
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/order-grouping");
+    revalidatePath("/admin/picking-operations");
+    revalidatePath("/rf/picking");
+    revalidatePath("/rf/wave-picking");
+    revalidatePath("/rf/stock-return");
+    redirect(`/admin/orders/${orderId}`);
+    return;
+  }
+
   await prisma.$transaction(
     async (tx) => {
       const order =
@@ -203,8 +223,7 @@ items: {
         hasOperationalPicking &&
         (
           newStatus === OrderStatus.DRAFT ||
-          newStatus === OrderStatus.PENDING ||
-          newStatus === OrderStatus.CANCELLED
+          newStatus === OrderStatus.PENDING
         )
       ) {
         throw new Error(
@@ -465,143 +484,7 @@ items: {
       }
 
       /*
-       * 3. İPTAL
-       *
-       * Sipariş rezerve edilmiş fakat henüz
-       * fiziksel stoktan düşülmemişse rezervasyon çözülür.
-       *
-       * Sevk edilmiş siparişlerde bu işlem fiziksel
-       * stoğu otomatik geri eklemez. Daha sonra ayrı
-       * satış iadesi süreci oluşturacağız.
-       */
-      if (
-        newStatus ===
-        OrderStatus.CANCELLED
-      ) {
-        if (
-          order.stockReserved &&
-          !order.stockDeducted
-        ) {
-          for (const item of order.items) {
-            const warehouseIds =
-              await getOrderReservationWarehouseIds(
-                tx,
-                order.id,
-                item.productId
-              );
-
-            if (warehouseIds.length !== 1) {
-              throw new Error(
-                `${item.productCode} için rezervasyon deposu tekil olarak belirlenemedi.`
-              );
-            }
-
-            await createStockMovementWithTransaction(
-              tx,
-              {
-                productId:
-                  item.productId,
-
-                orderId: order.id,
-
-                warehouseId:
-                  warehouseIds[0],
-
-                movementType:
-                  StockMovementType.RESERVATION_RELEASE,
-
-                physicalChange: 0,
-
-                reservedChange:
-                  -item.quantity,
-
-                documentNumber:
-                  order.orderNumber,
-
-                description:
-                  `${order.orderNumber} numaralı sipariş iptal edildiği için rezervasyon kaldırıldı.`,
-              }
-            );
-          }
-        }
-
-        const orderDebit =
-          await tx.customerAccountEntry.findFirst({
-            where: {
-              orderId:
-                order.id,
-              direction:
-                CustomerAccountEntryDirection.DEBIT,
-              entryType:
-                CustomerAccountEntryType.ORDER,
-            },
-            select: {
-              id: true,
-              amount: true,
-            },
-          });
-
-        const existingCancellation =
-          await tx.customerAccountEntry.findFirst({
-            where: {
-              orderId:
-                order.id,
-              direction:
-                CustomerAccountEntryDirection.CREDIT,
-              entryType:
-                CustomerAccountEntryType.CANCELLATION,
-            },
-            select: {
-              id: true,
-            },
-          });
-
-        if (
-          orderDebit &&
-          !existingCancellation
-        ) {
-          await tx.customerAccountEntry.create({
-            data: {
-              customerId:
-                order.customerId,
-              orderId:
-                order.id,
-              direction:
-                CustomerAccountEntryDirection.CREDIT,
-              entryType:
-                CustomerAccountEntryType.CANCELLATION,
-              amount:
-                orderDebit.amount,
-              description:
-                order.orderNumber +
-                " numaralı sipariş iptal ters kaydı",
-              referenceNo:
-                order.orderNumber,
-              createdByUsername:
-                "Yönetim Paneli",
-            },
-          });
-        }
-
-        await tx.order.update({
-          where: {
-            id: order.id,
-          },
-
-          data: {
-            status:
-              OrderStatus.CANCELLED,
-            statusHistory,
-
-            stockReserved: false,
-          },
-        });
-
-        return;
-      }
-
-      /*
-       * 4. REZERVASYON DURUMUNDAN GERİYE DÖNÜŞ
+       * 3. REZERVASYON DURUMUNDAN GERİYE DÖNÜŞ
        *
        * Rezerve edilmiş sipariş Taslak veya
        * Bekliyor durumuna alınırsa rezervasyon kaldırılır.
@@ -676,7 +559,7 @@ items: {
       }
 
       /*
-       * 5. DİĞER DURUMLAR
+       * 4. DİĞER DURUMLAR
        *
        * Stok etkisi gerekmiyorsa yalnızca
        * sipariş durumu güncellenir.
@@ -833,4 +716,21 @@ export async function confirmEcommerceBankTransferPayment(
   revalidatePath("/admin/orders");
   revalidatePath("/order-tracking");
   redirect(detailPath + "?paymentConfirmed=1");
+}
+
+
+export async function completeOrderCancellationRefund(orderId:number,formData:FormData){
+  const user=await AuthorizationService.requirePermission("ORDER_MANAGE");
+  const reference=String(formData.get("refundReference")??"").trim().slice(0,120);
+  if(!reference)throw new Error("Para iadesi banka/ödeme referansı zorunludur.");
+  const actorName=user.employee?`${user.employee.firstName} ${user.employee.lastName}`:user.username;
+  await OrderCancellationService.completeRefund({
+    orderId,
+    reference,
+    actor:{userId:user.id,displayName:actorName},
+  });
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  revalidatePath("/account/orders");
+  redirect(`/admin/orders/${orderId}?refundCompleted=1`);
 }
