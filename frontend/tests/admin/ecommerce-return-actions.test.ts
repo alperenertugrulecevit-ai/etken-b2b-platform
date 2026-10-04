@@ -1,12 +1,14 @@
 import { EcommerceReturnRefundStatus, EcommerceReturnStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { completePartialEcommerceReturnReceiving } from "@/app/admin/e-ticaret/returns/actions";
+import { completePartialEcommerceReturnReceiving, matchEcommercePreReceiptToOrder } from "@/app/admin/e-ticaret/returns/actions";
 
 const mocks=vi.hoisted(()=>({
   requireAdminPortalAccess:vi.fn(),
   transaction:vi.fn(),
   returnFindUnique:vi.fn(),
   returnUpdate:vi.fn(),
+  preReceiptFindUnique:vi.fn(),
+  orderFindUnique:vi.fn(),
   revalidatePath:vi.fn(),
 }));
 
@@ -15,6 +17,8 @@ const tx={
     findUnique:mocks.returnFindUnique,
     update:mocks.returnUpdate,
   },
+  ecommerceReturnPreReceipt:{findUnique:mocks.preReceiptFindUnique},
+  order:{findUnique:mocks.orderFindUnique},
 };
 
 vi.mock("@/modules/authorization/services/authorization.service",()=>({
@@ -96,5 +100,23 @@ describe("completePartialEcommerceReturnReceiving",()=>{
       refunds:[{status:EcommerceReturnRefundStatus.REQUESTED}],
     }));
     await expect(completePartialEcommerceReturnReceiving(form())).rejects.toThrow("Finans süreci başlamış");
+  });
+});
+
+
+describe("matchEcommercePreReceiptToOrder shipment gate",()=>{
+  beforeEach(()=>{
+    vi.clearAllMocks();
+    mocks.requireAdminPortalAccess.mockResolvedValue({id:"admin"});
+    mocks.transaction.mockImplementation(async(cb:(client:typeof tx)=>Promise<unknown>)=>cb(tx));
+    mocks.preReceiptFindUnique.mockResolvedValue({id:"pre-1",outcome:"UNDELIVERED_RETURN",mode:"CARGO_BARCODE",scannedCode:"KARGO-1"});
+  });
+
+  it("READY_TO_SHIP siparişi fiziksel sevk öncesi iadeye almaz",async()=>{
+    mocks.orderFindUnique.mockResolvedValue({id:10,orderNumber:"SIP-10",orderType:"ECOMMERCE",status:"READY_TO_SHIP",items:[]});
+    const data=new FormData();
+    data.set("preReceiptId","pre-1");
+    data.set("orderNumber","SIP-10");
+    await expect(matchEcommercePreReceiptToOrder(data)).rejects.toThrow("henüz fiziksel olarak sevk edilmemiş");
   });
 });
