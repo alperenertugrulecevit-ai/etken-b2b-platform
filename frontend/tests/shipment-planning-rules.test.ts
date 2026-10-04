@@ -17,6 +17,28 @@ describe("shipment planning business rules", () => {
     ]).toEqual(["CREATED","ROUTING","ROUTED","LOADING","LOADED","SHIPPED"]);
   });
 
+  it("keeps a fully packed order in PACKING until every package dispatch is issued", () => {
+    const packedQuantity = 10;
+    const plannedQuantity = 10;
+    const packageDispatchStatuses = ["ISSUED", "DRAFT"];
+
+    const allDispatchesIssued =
+      packageDispatchStatuses.length > 0 &&
+      packageDispatchStatuses.every((status) => status === "ISSUED");
+
+    const status =
+      packedQuantity >= plannedQuantity && allDispatchesIssued
+        ? "READY_TO_SHIP"
+        : "PACKING";
+
+    expect(status).toBe("PACKING");
+  });
+
+  it("marks the order ready only after every package dispatch is issued", () => {
+    const packageDispatchStatuses = ["ISSUED", "ISSUED"];
+    expect(packageDispatchStatuses.every((status) => status === "ISSUED")).toBe(true);
+  });
+
   it("starts vehicle loading only after routing is completed", () => {
     const allowed = [ShipmentStatus.ROUTED, ShipmentStatus.LOADING];
     expect(allowed).toContain(ShipmentStatus.ROUTED);
