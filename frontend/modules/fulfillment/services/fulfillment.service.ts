@@ -787,7 +787,13 @@ export class FulfillmentService {
       if (totals.shipped >= totals.planned && totals.planned > 0) {
         nextStatus = OrderStatus.SHIPPED;
       } else if (totals.packed >= totals.planned && totals.planned > 0) {
-        nextStatus = OrderStatus.READY_TO_SHIP;
+        // Paket miktarının tamamlanması siparişi tek başına sevke hazır yapmaz.
+        // READY_TO_SHIP yalnızca irsaliye ISSUED olduğunda evrak akışından verilir.
+        // İrsaliye daha önce kesilmişse sonraki progress refresh bu statüyü geri almamalı.
+        nextStatus =
+          order.status === OrderStatus.READY_TO_SHIP
+            ? OrderStatus.READY_TO_SHIP
+            : OrderStatus.PACKING;
       } else if (
         input.flowType === OrderFulfillmentFlow.WAVE &&
         totals.picked >= totals.planned &&
