@@ -10,7 +10,7 @@ import { refundCancelledEcommerceOrder } from "@/app/admin/e-ticaret/orders/acti
 
 const mocks=vi.hoisted(()=>({
   requirePermission:vi.fn(),transaction:vi.fn(),orderFindUnique:vi.fn(),orderUpdate:vi.fn(),
-  accountFindFirst:vi.fn(),accountCreate:vi.fn(),historyCreate:vi.fn(),revalidatePath:vi.fn(),redirect:vi.fn(),
+  accountFindFirst:vi.fn(),accountCreate:vi.fn(),historyCreate:vi.fn(),revalidatePath:vi.fn(),redirect:vi.fn(),refundComplete:vi.fn(),
 }));
 const tx={
   order:{findUnique:mocks.orderFindUnique,update:mocks.orderUpdate},
@@ -18,7 +18,8 @@ const tx={
   orderStatusHistory:{create:mocks.historyCreate},
 };
 vi.mock("@/modules/authorization/services/authorization.service",()=>({AuthorizationService:{requirePermission:mocks.requirePermission}}));
-vi.mock("@/lib/prisma",()=>({prisma:{$transaction:mocks.transaction}}));
+vi.mock("@/lib/prisma",()=>({prisma:{$transaction:mocks.transaction,order:{findUnique:mocks.orderFindUnique}}}));
+vi.mock("@/modules/orders/services/order-cancellation.service",()=>({OrderCancellationService:{completeRefund:mocks.refundComplete}}));
 vi.mock("next/cache",()=>({revalidatePath:mocks.revalidatePath}));
 vi.mock("next/navigation",()=>({redirect:mocks.redirect}));
 
@@ -32,30 +33,25 @@ describe("refundCancelledEcommerceOrder",()=>{
   beforeEach(()=>{
     vi.clearAllMocks();
     mocks.requirePermission.mockResolvedValue({id:"admin",username:"admin",employee:null});
-    mocks.transaction.mockImplementation(async(cb:(client:typeof tx)=>Promise<unknown>)=>cb(tx));
-    mocks.orderFindUnique.mockResolvedValue(order());
-    mocks.accountFindFirst.mockResolvedValueOnce({id:1,amount:500}).mockResolvedValueOnce(null);
-    mocks.accountCreate.mockResolvedValue({id:2});mocks.orderUpdate.mockResolvedValue({id:80});mocks.historyCreate.mockResolvedValue({id:3});
+    mocks.orderFindUnique.mockResolvedValue({
+      id:80,orderNumber:"WEB-80",source:OrderSource.ECOMMERCE,status:OrderStatus.CANCELLED,
+      paymentStatus:"REFUND_PENDING",cancellationStatus:"REFUND_PENDING",cancellationRefundStatus:"PENDING",
+      ecommerceEmail:"musteri@example.com",
+    });
+    mocks.refundComplete.mockResolvedValue({orderNumber:"WEB-80",amount:500});
   });
-  it("iptal edilmiş ödenmiş siparişin banka iadesini kaydeder",async()=>{
+  it("iptal edilmiş ödenmiş siparişin gerçek para iadesini merkezi serviste tamamlar",async()=>{
     await refundCancelledEcommerceOrder(80,form());
-    expect(mocks.accountCreate).toHaveBeenCalledWith({data:expect.objectContaining({
-      customerId:8,orderId:80,direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND,
-      paymentMethod:CustomerAccountPaymentMethod.BANK_TRANSFER,amount:500,referenceNo:"REFUND-123",
-    })});
-    expect(mocks.orderUpdate).toHaveBeenCalledWith({where:{id:80},data:{paymentStatus:"REFUNDED",paymentReference:"REFUND-123"}});
-    expect(mocks.historyCreate).toHaveBeenCalledWith({data:expect.objectContaining({orderId:80,status:OrderStatus.CANCELLED,note:"Ödemeniz iade edildi.",visibleToCustomer:true})});
+    expect(mocks.refundComplete).toHaveBeenCalledWith(expect.objectContaining({
+      orderId:80,reference:"REFUND-123",actor:expect.objectContaining({userId:"admin"}),
+    }));
   });
   it("iptal edilmemiş siparişte iadeyi reddeder",async()=>{
-    mocks.orderFindUnique.mockResolvedValue(order({status:OrderStatus.PENDING}));
+    mocks.orderFindUnique.mockResolvedValue({...order({status:OrderStatus.PENDING}),source:OrderSource.ECOMMERCE,ecommerceEmail:null,cancellationStatus:null,cancellationRefundStatus:null});
     await expect(refundCancelledEcommerceOrder(80,form())).rejects.toThrow("önce sipariş iptal edilmelidir");
   });
   it("ödenmemiş siparişte iadeyi reddeder",async()=>{
-    mocks.orderFindUnique.mockResolvedValue(order({paymentStatus:"PENDING"}));
+    mocks.orderFindUnique.mockResolvedValue({...order({paymentStatus:"PENDING"}),source:OrderSource.ECOMMERCE,ecommerceEmail:null,cancellationStatus:"COMPLETED",cancellationRefundStatus:"NOT_REQUIRED"});
     await expect(refundCancelledEcommerceOrder(80,form())).rejects.toThrow("ödemesi onaylanmış");
-  });
-  it("mükerrer iadeyi reddeder",async()=>{
-    mocks.accountFindFirst.mockReset().mockResolvedValueOnce({id:1,amount:500}).mockResolvedValueOnce({id:2});
-    await expect(refundCancelledEcommerceOrder(80,form())).rejects.toThrow("daha önce kaydedilmiş");
   });
 });
