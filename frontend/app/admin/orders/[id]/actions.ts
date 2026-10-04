@@ -16,6 +16,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
+import { OrderCancellationService } from "@/modules/orders/services/order-cancellation.service";
 
 import {
   createStockMovementWithTransaction,
@@ -146,6 +147,24 @@ export async function updateOrderStatus(
       .trim()
       .slice(0, 500) ||
     null;
+
+  if (newStatus === OrderStatus.CANCELLED) {
+    const actorName = user.employee
+      ? `${user.employee.firstName} ${user.employee.lastName}`
+      : user.username;
+    await OrderCancellationService.request({
+      orderId,
+      reason: statusNote ?? "Yönetim paneli sipariş iptali",
+      actor: { userId: user.id, displayName: actorName },
+    });
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/order-grouping");
+    revalidatePath("/admin/picking-operations");
+    revalidatePath("/rf/picking");
+    revalidatePath("/rf/wave-picking");
+    revalidatePath("/rf/stock-return");
+    redirect(`/admin/orders/${orderId}`);
+  }
 
   await prisma.$transaction(
     async (tx) => {
