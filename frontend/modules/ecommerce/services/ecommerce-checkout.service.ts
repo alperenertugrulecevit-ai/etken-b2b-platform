@@ -29,6 +29,9 @@ export type EcommerceCheckoutInput = {
   invoiceTaxNumber: string | null;
   customerNote: string | null;
   items: Array<{ productId: number; quantity: number }>;
+  accountCustomerId?: number | null;
+  placedByUserId?: string | null;
+  placedByUsername?: string | null;
 };
 
 export class EcommerceCheckoutError extends Error {
@@ -142,49 +145,60 @@ export class EcommerceCheckoutService {
     const fullName = firstName + " " + lastName;
 
     const order = await prisma.$transaction(async (tx) => {
-      const customer = await tx.customer.create({
+      let customerId = input.accountCustomerId ?? null;
+      if (customerId) {
+        const existingCustomer = await tx.customer.findFirst({
+          where: { id: customerId, customerType: CustomerType.INDIVIDUAL, isActive: true },
+          select: { id: true },
+        });
+        if (!existingCustomer) throw new EcommerceCheckoutError("Bireysel müşteri hesabı bulunamadı.");
+      } else {
+        const customer = await tx.customer.create({
+          data: {
+            customerCode: "EC-" + idToken,
+            customerType: CustomerType.INDIVIDUAL,
+            companyName: input.invoiceType === "CORPORATE" && invoiceName ? invoiceName : fullName,
+            contactName: fullName,
+            phone,
+            email,
+            address,
+            city,
+            district,
+            paymentTermDays: 0,
+            discountRate: 0,
+            creditLimit: 0,
+          },
+          select: { id: true },
+        });
+        customerId = customer.id;
+      }
+
+      const shippingAddress = await tx.customerAddress.create({
         data: {
-          customerCode: "EC-" + idToken,
-          customerType: CustomerType.INDIVIDUAL,
-          companyName: input.invoiceType === "CORPORATE" && invoiceName ? invoiceName : fullName,
+          customerId,
+          addressCode: "WEB-" + idToken,
+          title: "Teslimat Adresi",
+          addressType: "DELIVERY",
           contactName: fullName,
           phone,
-          email,
           address,
           city,
           district,
-          paymentTermDays: 0,
-          discountRate: 0,
-          creditLimit: 0,
-          addresses: {
-            create: {
-              addressCode: "WEB-" + idToken,
-              title: "Teslimat Adresi",
-              addressType: "DELIVERY",
-              contactName: fullName,
-              phone,
-              address,
-              city,
-              district,
-              postalCode,
-              isDefault: true,
-              isActive: true,
-            },
-          },
+          postalCode,
+          isDefault: true,
+          isActive: true,
         },
-        select: { id: true, addresses: { select: { id: true }, take: 1 } },
+        select: { id: true },
       });
-
-      const shippingAddressId = customer.addresses[0]?.id;
-      if (!shippingAddressId) {
-        throw new EcommerceCheckoutError("Teslimat adresi oluşturulamadı.");
-      }
+      const shippingAddressId = shippingAddress.id;
 
       return tx.order.create({
         data: {
           orderNumber: "WEB" + new Date().toISOString().slice(0, 10).replaceAll("-", "") + "-" + idToken,
-          customerId: customer.id,
+          customerId,
           shippingAddressId,
+          placedByUserId: input.placedByUserId ?? null,
+          placedByUsername: input.placedByUsername ?? null,
           status: OrderStatus.PENDING,
           source: OrderSource.ECOMMERCE,
           orderType: OrderType.ECOMMERCE,
@@ -214,7 +228,7 @@ export class EcommerceCheckoutService {
           },
           accountEntries: {
             create: {
-              customerId: customer.id,
+              customerId,
               direction: CustomerAccountEntryDirection.DEBIT,
               entryType: CustomerAccountEntryType.ORDER,
               amount: totalAmount,
