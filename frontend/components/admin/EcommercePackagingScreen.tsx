@@ -61,6 +61,7 @@ export default function EcommercePackagingScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [errorPopup, setErrorPopup] = useState<string | null>(null);
   const [boxCode, setBoxCode] = useState("");
   const boxScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [printers, setPrinters] = useState<Array<{id:string;code:string;name:string}>>([]);
@@ -162,6 +163,26 @@ export default function EcommercePackagingScreen() {
 
   return (
     <div className="min-w-[1100px] p-5 xl:p-7">
+      {errorPopup ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-6" role="dialog" aria-modal="true" aria-labelledby="packaging-error-title">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl" aria-hidden="true">!</div>
+            <h2 id="packaging-error-title" className="text-xl font-black text-red-700">İrsaliye Oluşturulamadı</h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">{errorPopup}</p>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => {
+                setErrorPopup(null);
+                requestAnimationFrame(() => scannerRef.current?.focus());
+              }}
+              className="mt-6 w-full rounded-xl bg-red-600 px-5 py-3 font-black text-white shadow"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="mb-5 flex items-start justify-between gap-6">
         <div>
           <p className="mb-1 text-sm font-semibold text-slate-500">E-Ticaret Yönetimi / E-Ticaret Paketleme</p>
@@ -295,7 +316,12 @@ export default function EcommercePackagingScreen() {
 
             const dispatchResponse=await fetch("/api/admin/ecommerce/packaging/dispatch",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shippingHandlingUnitBarcode:data.shippingHandlingUnitBarcode})});
             const dispatch=await dispatchResponse.json();
-            if(!dispatchResponse.ok || !dispatch.success){setMessage(`Paketleme tamamlandı fakat irsaliye oluşturulamadı: ${dispatch.message ?? "-"}`);return;}
+            if(!dispatchResponse.ok || !dispatch.success){
+              const errorMessage=dispatch.message ?? "İrsaliye oluşturulamadı.";
+              setMessage(`HATA: ${errorMessage}`);
+              setErrorPopup(errorMessage);
+              return;
+            }
 
             let packingListText = "Çeki listesi yazdırılmış olarak işaretlendi (yazıcı tanımlı değil).";
             if(printerId){
