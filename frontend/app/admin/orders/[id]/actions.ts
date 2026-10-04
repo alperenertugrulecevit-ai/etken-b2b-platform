@@ -601,6 +601,29 @@ items: {
   redirect(detailPath);
 }
 
+
+export type OrderStatusActionState = {
+  error: string | null;
+};
+
+export async function updateOrderStatusControlled(
+  orderId: number,
+  _previousState: OrderStatusActionState,
+  formData: FormData
+): Promise<OrderStatusActionState> {
+  try {
+    await updateOrderStatus(orderId, formData);
+    return { error: null };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Sipariş durumu güncellenemedi.",
+    };
+  }
+}
+
 export async function confirmEcommerceBankTransferPayment(
   orderId: number,
   formData: FormData

@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 
 import OperationTimeline from "@/components/admin/OperationTimeline";
 import { prisma } from "@/lib/prisma";
-import { completeOrderCancellationRefund, confirmEcommerceBankTransferPayment, updateOrderStatus } from "./actions";
+import { completeOrderCancellationRefund, confirmEcommerceBankTransferPayment } from "./actions";
+import OrderStatusForm from "./OrderStatusForm";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -577,70 +578,7 @@ export default async function OrderDetailPage({
             </p>
           </div>
 
-          <form
-            action={updateOrderStatus.bind(
-              null,
-              order.id
-            )}
-            className="mt-6"
-          >
-            <select
-              name="status"
-              defaultValue={
-                order.status
-              }
-              className="w-full rounded-xl border bg-white p-4"
-            >
-              <option value="DRAFT">
-                Taslak
-              </option>
-              <option value="PENDING">
-                Bekliyor
-              </option>
-              <option value="APPROVED">
-                Onaylandı
-              </option>
-              <option value="PREPARING">
-                Hazırlanıyor
-              </option>
-              <option value="PICKING">
-                Toplanıyor
-              </option>
-              <option value="PACKING">
-                Paketleniyor
-              </option>
-              <option value="READY_TO_SHIP">
-                Sevke Hazır
-              </option>
-              <option value="SHIPPED">
-                Sevk Edildi
-              </option>
-              <option value="DELIVERED">
-                Teslim Edildi
-              </option>
-              <option value="CANCELLED">
-                İptal
-              </option>
-            </select>
-
-            <label className="mt-4 block text-sm font-semibold">
-              Müşteriye Gösterilecek Durum Notu
-              <textarea
-                name="statusNote"
-                rows={3}
-                maxLength={500}
-                placeholder="Örnek: Siparişiniz hazırlanmak üzere depoya aktarıldı."
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3"
-              />
-            </label>
-
-            <button
-              type="submit"
-              className="mt-5 w-full rounded-xl bg-blue-900 py-4 font-bold text-white"
-            >
-              Durumu Güncelle
-            </button>
-          </form>
+          <OrderStatusForm orderId={order.id} currentStatus={order.status} />
 
           <div className="mt-6 rounded-xl bg-slate-50 p-4">
             <p className="text-sm text-gray-500">
