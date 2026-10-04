@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 
 import {
   type OrderStatusActionState,
-  updateOrderStatus,
+  updateOrderStatusControlled,
 } from "./actions";
 
 const initialState: OrderStatusActionState = { error: null };
@@ -17,7 +17,7 @@ export default function OrderStatusForm({
   currentStatus: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const action = updateOrderStatus.bind(null, orderId);
+  const action = updateOrderStatusControlled.bind(null, orderId);
   const [state, formAction, pending] = useActionState(action, initialState);
 
   useEffect(() => {
