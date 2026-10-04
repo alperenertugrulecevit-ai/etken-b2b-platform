@@ -94,10 +94,14 @@ async function getOrderReservationWarehouseIds(
     .map(([warehouseId]) => warehouseId);
 }
 
+export type OrderStatusActionState = {
+  error: string | null;
+};
+
 export async function updateOrderStatus(
   orderId: number,
   formData: FormData
-) {
+): Promise<OrderStatusActionState | void> {
   const user =
     await AuthorizationService.requirePermission(
       "ORDER_MANAGE"
@@ -152,11 +156,20 @@ export async function updateOrderStatus(
     const actorName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
       : user.username;
-    await OrderCancellationService.request({
-      orderId,
-      reason: statusNote ?? "Yönetim paneli sipariş iptali",
-      actor: { userId: user.id, displayName: actorName },
-    });
+    try {
+      await OrderCancellationService.request({
+        orderId,
+        reason: statusNote ?? "Yönetim paneli sipariş iptali",
+        actor: { userId: user.id, displayName: actorName },
+      });
+    } catch (error) {
+      return {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Sipariş iptal edilemedi.",
+      };
+    }
     revalidatePath("/admin/orders");
     revalidatePath("/admin/order-grouping");
     revalidatePath("/admin/picking-operations");
