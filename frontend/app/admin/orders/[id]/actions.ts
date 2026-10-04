@@ -94,14 +94,10 @@ async function getOrderReservationWarehouseIds(
     .map(([warehouseId]) => warehouseId);
 }
 
-export type OrderStatusActionState = {
-  error: string | null;
-};
-
 export async function updateOrderStatus(
   orderId: number,
   formData: FormData
-): Promise<OrderStatusActionState | void> {
+) {
   const user =
     await AuthorizationService.requirePermission(
       "ORDER_MANAGE"
@@ -156,20 +152,11 @@ export async function updateOrderStatus(
     const actorName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
       : user.username;
-    try {
-      await OrderCancellationService.request({
-        orderId,
-        reason: statusNote ?? "Yönetim paneli sipariş iptali",
-        actor: { userId: user.id, displayName: actorName },
-      });
-    } catch (error) {
-      return {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Sipariş iptal edilemedi.",
-      };
-    }
+    await OrderCancellationService.request({
+      orderId,
+      reason: statusNote ?? "Yönetim paneli sipariş iptali",
+      actor: { userId: user.id, displayName: actorName },
+    });
     revalidatePath("/admin/orders");
     revalidatePath("/admin/order-grouping");
     revalidatePath("/admin/picking-operations");
@@ -612,6 +599,29 @@ items: {
   revalidatePath(detailPath);
 
   redirect(detailPath);
+}
+
+
+export type OrderStatusActionState = {
+  error: string | null;
+};
+
+export async function updateOrderStatusControlled(
+  orderId: number,
+  _previousState: OrderStatusActionState,
+  formData: FormData
+): Promise<OrderStatusActionState> {
+  try {
+    await updateOrderStatus(orderId, formData);
+    return { error: null };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Sipariş durumu güncellenemedi.",
+    };
+  }
 }
 
 export async function confirmEcommerceBankTransferPayment(
