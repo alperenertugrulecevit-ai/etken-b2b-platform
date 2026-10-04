@@ -2,6 +2,7 @@ import { CustomerAccountEntryDirection, CustomerAccountEntryType, OrderStatus } 
 import Link from "next/link";
 
 import Header from "@/components/layout/Header";
+import ProductImage from "@/components/products/ProductImage";
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
@@ -124,6 +125,7 @@ export default async function OrderTrackingPage({
                 productName: true,
                 quantity: true,
                 lineTotal: true,
+                product: { select: { imageUrl: true } },
               },
               orderBy: { id: "asc" },
             },
@@ -400,8 +402,11 @@ export default async function OrderTrackingPage({
                 <h2 className="text-lg font-black">Ürünler</h2>
                 <div className="mt-4 divide-y divide-slate-100">
                   {order.items.map((item, index) => (
-                    <div key={index} className="flex justify-between gap-4 py-3 text-sm">
-                      <span><strong>{item.quantity} ×</strong> {item.productName}</span>
+                    <div key={index} className="flex items-center justify-between gap-4 py-3 text-sm">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ProductImage imageUrl={item.product.imageUrl} productName={item.productName} className="h-16 w-16 shrink-0 rounded-xl border border-slate-200" fallbackClassName="h-16 w-16 shrink-0 rounded-xl text-2xl" />
+                        <span className="min-w-0"><strong>{item.quantity} ×</strong> {item.productName}</span>
+                      </div>
                       <strong className="whitespace-nowrap">{money(item.lineTotal)} ₺</strong>
                     </div>
                   ))}
