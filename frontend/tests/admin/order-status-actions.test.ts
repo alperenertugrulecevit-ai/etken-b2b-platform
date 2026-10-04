@@ -48,6 +48,10 @@ const mocks = vi.hoisted(
       vi.fn(),
     redirect:
       vi.fn(),
+    cancellationRequest:
+      vi.fn(),
+    cancellationRefund:
+      vi.fn(),
   })
 );
 
