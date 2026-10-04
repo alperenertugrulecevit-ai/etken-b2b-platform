@@ -262,6 +262,12 @@ export default async function OrderDetailPage({
     order.paymentProvider === "BANK_TRANSFER";
   const paymentState = order.paymentStatus?.toUpperCase() ?? "";
   const paymentPaid = ["PAID","REFUND_PENDING","REFUNDED"].includes(paymentState);
+  const paymentRefunded = paymentState === "REFUNDED";
+  const paymentStatusLabel = paymentRefunded
+    ? "İADE EDİLDİ"
+    : paymentPaid
+      ? "ÖDENDİ"
+      : "ÖDEME BEKLENİYOR";
 
   return (
     <section className="p-10">
@@ -504,10 +510,20 @@ export default async function OrderDetailPage({
             <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
               <p className="text-sm font-bold text-slate-500">B2C Ödeme Durumu</p>
               <p className={"mt-2 text-lg font-black " + (paymentPaid ? "text-emerald-700" : "text-orange-700")}>
-                {paymentPaid ? "ÖDENDİ" : "ÖDEME BEKLENİYOR"}
+                {paymentStatusLabel}
               </p>
               {order.paymentReference ? (
                 <p className="mt-2 text-xs text-slate-500">Banka Referansı: {order.paymentReference}</p>
+              ) : null}
+              {paymentRefunded && order.cancellationRefundReference ? (
+                <p className="mt-2 text-xs font-semibold text-emerald-700">
+                  İade Referansı: {order.cancellationRefundReference}
+                </p>
+              ) : null}
+              {paymentRefunded && order.cancellationRefundedAt ? (
+                <p className="mt-1 text-xs text-slate-500">
+                  İade Tarihi: {formatDate(order.cancellationRefundedAt)}
+                </p>
               ) : null}
               {!paymentPaid && order.status !== "CANCELLED" ? (
                 <form action={confirmEcommerceBankTransferPayment.bind(null, order.id)} className="mt-4">
