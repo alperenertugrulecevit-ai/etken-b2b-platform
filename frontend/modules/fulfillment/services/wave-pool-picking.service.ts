@@ -402,6 +402,7 @@ export class WavePoolPickingService {
                   not:
                     OrderStatus.CANCELLED,
                 },
+                cancellationStatus: null,
               },
             },
 
