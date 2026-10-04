@@ -249,6 +249,10 @@ export class AuthRepository {
               isActive:
                 user.customer
                   .isActive,
+
+              customerType:
+                user.customer
+                  .customerType,
             }
           : null,
 

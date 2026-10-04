@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 
 import { submitEcommerceOrderAction } from "@/app/checkout/ecommerce-actions";
 import { useCart } from "@/context/CartContext";
+import CityDistrictSelect from "@/components/admin/CityDistrictSelect";
 
 function money(value: number) {
   return value.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default function EcommerceCheckoutForm() {
+export default function EcommerceCheckoutForm({ cities, districtsByCityCode }: { cities: Array<{code:string;name:string}>; districtsByCityCode: Record<string,string[]> }) {
   const router = useRouter();
   const { cart, isHydrated, clearCart } = useCart();
   const [invoiceType, setInvoiceType] = useState<"INDIVIDUAL" | "CORPORATE">("INDIVIDUAL");
@@ -95,8 +96,7 @@ export default function EcommerceCheckoutForm() {
             <label className="text-sm font-semibold">Soyad<input name="lastName" required maxLength={80} className={field} /></label>
             <label className="text-sm font-semibold">E-posta<input name="email" type="email" required maxLength={160} className={field} /></label>
             <label className="text-sm font-semibold">Telefon<input name="phone" type="tel" required maxLength={30} className={field} /></label>
-            <label className="text-sm font-semibold">İl<input name="city" required maxLength={80} className={field} /></label>
-            <label className="text-sm font-semibold">İlçe<input name="district" required maxLength={80} className={field} /></label>
+            <CityDistrictSelect cities={cities} districtsByCityCode={districtsByCityCode} />
             <label className="text-sm font-semibold sm:col-span-2">Adres<textarea name="address" required maxLength={500} rows={3} className={field} /></label>
             <label className="text-sm font-semibold">Posta Kodu<input name="postalCode" maxLength={20} className={field} /></label>
           </div>

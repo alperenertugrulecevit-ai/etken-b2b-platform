@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { EcommerceCheckoutError, EcommerceCheckoutService, type EcommerceCheckoutInput } from "@/modules/ecommerce/services/ecommerce-checkout.service";
+import { SessionService } from "@/modules/auth/services/session.service";
+import { CustomerType, UserType } from "@prisma/client";
 
 export type SubmitEcommerceOrderResult =
   | { success: true; orderId: number; orderNumber: string }
@@ -9,7 +11,17 @@ export type SubmitEcommerceOrderResult =
 
 export async function submitEcommerceOrderAction(input: EcommerceCheckoutInput): Promise<SubmitEcommerceOrderResult> {
   try {
-    const order = await EcommerceCheckoutService.createOrder(input);
+    const user = await SessionService.getCurrentUser();
+    const isIndividual = user?.userType === UserType.CUSTOMER &&
+      user.customerId &&
+      user.customer?.isActive &&
+      user.customer.customerType === CustomerType.INDIVIDUAL;
+    const order = await EcommerceCheckoutService.createOrder({
+      ...input,
+      accountCustomerId: isIndividual ? user.customerId : null,
+      placedByUserId: isIndividual ? user.id : null,
+      placedByUsername: isIndividual ? (user.fullName ?? user.username) : null,
+    });
     revalidatePath("/admin/orders");
     return { success: true, orderId: order.id, orderNumber: order.orderNumber };
   } catch (error) {

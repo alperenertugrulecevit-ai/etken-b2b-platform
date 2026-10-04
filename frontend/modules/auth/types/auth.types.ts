@@ -1,4 +1,5 @@
 import type {
+  CustomerType,
   CustomerUserRole,
   Permission,
   Role,
@@ -28,6 +29,7 @@ export type AuthCustomer = {
   companyName: string;
   contactName: string | null;
   isActive: boolean;
+  customerType: CustomerType;
 };
 
 export type AuthRole = Pick<

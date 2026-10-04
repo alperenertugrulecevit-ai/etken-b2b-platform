@@ -1,4 +1,4 @@
-import { CustomerUserRole, UserType } from "@prisma/client";
+import { CustomerType, CustomerUserRole, UserType } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import Header from "@/components/layout/Header";
@@ -21,14 +21,16 @@ function MenuIcon({type}:{type:string}){
 export default async function AccountPage(){
  const user=await SessionService.getCurrentUser();
  if(!user||user.userType!==UserType.CUSTOMER||!user.customer||!user.customer.isActive||!user.customerId) redirect("/customer-login");
- const customer=await prisma.customer.findUnique({where:{id:user.customerId},select:{companyName:true,customerCode:true}});
+ const customer=await prisma.customer.findUnique({where:{id:user.customerId},select:{companyName:true,customerCode:true,customerType:true}});
  if(!customer) redirect("/customer-login");
- const canViewDashboard=user.customerRole===CustomerUserRole.CUSTOMER_ADMIN;
+ const isIndividual=customer.customerType===CustomerType.INDIVIDUAL;
+ const canViewDashboard=!isIndividual&&user.customerRole===CustomerUserRole.CUSTOMER_ADMIN;
  const menu=[
   ...(canViewDashboard?[{title:"Dashboard",desc:"Hesap özetinizi ve işlemlerinizi yönetin.",href:"/account/dashboard",type:"dashboard",tone:"text-blue-600 bg-blue-50"}]:[]),
   {title:"Ürünler",desc:"Kataloğu, fiyatları ve stokları inceleyin.",href:"/products",type:"products",tone:"text-orange-600 bg-orange-50"},
   {title:"Sepetim",desc:"Sepetinizdeki ürünleri tamamlayın.",href:"/cart",type:"cart",tone:"text-emerald-600 bg-emerald-50"},
   {title:"Siparişlerim",desc:"Geçmiş siparişlerinizi ve durumlarını görün.",href:"/account/orders",type:"orders",tone:"text-violet-600 bg-violet-50"},
+  ...(isIndividual?[{title:"Adreslerim",desc:"Teslimat adreslerinizi yönetin.",href:"/account/addresses",type:"address",tone:"text-cyan-600 bg-cyan-50"}]:[]),
   {title:"Şifrem",desc:"Hesap güvenliğiniz için şifrenizi değiştirin.",href:"/change-password?returnTo=%2Faccount",type:"password",tone:"text-slate-600 bg-slate-100"},
  ];
  return <><Header/><main className="mx-auto min-h-[calc(100vh-150px)] max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
@@ -36,13 +38,13 @@ export default async function AccountPage(){
    <img src="/account-hero-approved.jpg" alt="" className="absolute inset-y-0 right-0 hidden h-full w-[62%] object-cover object-right md:block" />
    <div className="absolute inset-0 hidden bg-gradient-to-r from-white via-white via-40% to-transparent md:block" />
    <div className="relative z-10 max-w-[650px] p-7 sm:p-10">
-    <p className="text-sm font-black uppercase tracking-wide text-[#ef4b23]">Kurumsal Hesabım</p>
+    <p className="text-sm font-black uppercase tracking-wide text-[#ef4b23]">{isIndividual?"Bireysel Hesabım":"Kurumsal Hesabım"}</p>
     <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-5xl">{customer.companyName}</h1>
-    <p className="mt-3 max-w-lg text-lg leading-7 text-slate-600">Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz.</p>
+    <p className="mt-3 max-w-lg text-lg leading-7 text-slate-600">{isIndividual?"Siparişlerinizi ve teslimat adreslerinizi tek yerden yönetin.":"Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz."}</p>
    </div>
   </section>
   <div className="mt-6"><h2 className="text-3xl font-black text-[#071b3b]">Hesap Menüsü</h2><p className="mt-1 text-base text-slate-500">Yapmak istediğiniz işlemi seçin.</p></div>
-  <section className={`mt-5 grid gap-4 sm:grid-cols-2 ${menu.length===5?"xl:grid-cols-5":"xl:grid-cols-4"}`}>
+  <section className={`mt-5 grid gap-4 sm:grid-cols-2 ${menu.length>=5?"xl:grid-cols-5":"xl:grid-cols-4"}`}>
    {menu.map(item=><Link key={item.href} href={item.href} className="group flex min-h-[250px] flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
     <div className={`flex h-20 w-20 items-center justify-center rounded-2xl ${item.tone}`}><MenuIcon type={item.type}/></div>
     <h3 className="mt-6 text-2xl font-black text-[#071b3b]">{item.title}</h3>

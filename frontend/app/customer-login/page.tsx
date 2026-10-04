@@ -13,9 +13,9 @@ import {
 
 export const metadata = {
   title:
-    "Kurumsal Giriş | ETKEN Ofis",
+    "Müşteri Girişi | ETKEN Ofis",
   description:
-    "ETKEN Ofis kurumsal müşteri hesabı girişi",
+    "ETKEN Ofis bireysel ve kurumsal müşteri hesabı girişi",
 };
 
 type CustomerLoginPageProps = {
@@ -65,12 +65,12 @@ if (
           </Link>
 
           <p className="mt-2 text-sm font-semibold text-slate-500">
-            Kurumsal Müşteri Portalı
+            Müşteri Hesabı
           </p>
         </div>
 
         <h1 className="text-2xl font-bold text-slate-900">
-          Kurumsal Giriş
+          Giriş Yap
         </h1>
 
         <p className="mb-7 mt-2 text-sm leading-6 text-slate-500">
@@ -83,6 +83,10 @@ if (
             successMessage
           }
         />
+
+        <div className="mt-6 rounded-xl bg-orange-50 p-4 text-center text-sm text-slate-700">
+          Bireysel hesabınız yok mu? <Link href="/register" className="font-black text-[#EF4B23]">Üye Ol</Link>
+        </div>
 
         <div className="mt-7 border-t border-slate-200 pt-6 text-center">
           <Link
