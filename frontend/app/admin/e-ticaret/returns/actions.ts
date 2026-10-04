@@ -44,7 +44,7 @@ export async function matchEcommercePreReceiptToOrder(formData:FormData){
 
     const order=await tx.order.findUnique({where:{orderNumber},include:{items:{include:{product:{select:{barcode:true}}}}}});
     if(!order||order.orderType!==OrderType.ECOMMERCE) throw new Error("E-Ticaret siparişi bulunamadı.");
-    if(!["SHIPPED","DELIVERED","READY_TO_SHIP"].includes(order.status)) throw new Error("Sipariş kargoya/sevke çıkmış bir E-Ticaret siparişi değil.");
+    if(!["SHIPPED","DELIVERED"].includes(order.status)) throw new Error("İade girişi için siparişin fiziksel olarak sevk edilmiş olması gerekir.");
 
     let er=await tx.ecommerceReturn.findFirst({where:pre.mode==="RETURN_CODE"?{originalOrderId:order.id,externalReturnCode:pre.scannedCode}:{originalOrderId:order.id,status:{in:[EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING]}}});
     if(!er){
