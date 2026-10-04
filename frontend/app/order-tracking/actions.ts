@@ -28,7 +28,7 @@ export async function cancelGuestOrderAction(
   });
 
   if (!order) return { success: false, message: "Sipariş doğrulanamadı." };
-  if (![OrderStatus.PENDING, OrderStatus.APPROVED].includes(order.status)) {
+  if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.APPROVED) {
     return {
       success: false,
       message: "Bu sipariş artık müşteri tarafından doğrudan iptal edilemez. Destek ekibimizle iletişime geçin.",
