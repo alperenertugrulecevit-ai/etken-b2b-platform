@@ -106,7 +106,7 @@ const destination =
           htmlFor="customer-username"
           className="mb-2 block text-sm font-semibold text-slate-700"
         >
-          Kullanıcı Adı
+          E-posta / Kullanıcı Adı
         </label>
 
         <input
@@ -176,7 +176,7 @@ const destination =
       >
         {pending
           ? "Giriş yapılıyor..."
-          : "Kurumsal Hesabıma Giriş Yap"}
+          : "Giriş Yap"}
       </button>
     </form>
   );
