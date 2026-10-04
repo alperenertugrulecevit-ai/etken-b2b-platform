@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import Header from "@/components/layout/Header";
 import ProductImage from "@/components/products/ProductImage";
+import GuestOrderCancellationForm from "@/components/ecommerce/GuestOrderCancellationForm";
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
@@ -412,6 +413,10 @@ export default async function OrderTrackingPage({
                   ))}
                 </div>
               </div>
+
+              {[OrderStatus.PENDING, OrderStatus.APPROVED].includes(order.status) ? (
+                <GuestOrderCancellationForm orderNumber={order.orderNumber} email={email} />
+              ) : null}
 
               <Link href="/products" className="inline-flex rounded-xl bg-[#EF4B23] px-5 py-3 text-sm font-black text-white">
                 Alışverişe Devam Et
