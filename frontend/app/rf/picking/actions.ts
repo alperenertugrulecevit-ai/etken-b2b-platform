@@ -217,6 +217,7 @@ export async function rfMarkPickingProductLost(formData: FormData) {
           id: true,
           orderNumber: true,
           status: true,
+          cancellationStatus: true,
           stockReserved: true,
           stockDeducted: true,
           items: {
@@ -235,6 +236,7 @@ export async function rfMarkPickingProductLost(formData: FormData) {
       });
 
       if (!order) throw new Error(`${orderNumber} numaralı sipariş bulunamadı.`);
+      if (order.cancellationStatus) throw new Error("Sipariş iptal sürecinde. Yeni toplama işlemi yapılamaz.");
       if (!canPickOrder(order.status) || !order.stockReserved || order.stockDeducted)
         throw new Error("Sipariş kayıp stok işlemine uygun durumda değildir.");
 
@@ -343,12 +345,13 @@ export async function rfClosePickingShortage(formData: FormData) {
     const order = await tx.order.findUnique({
       where: { orderNumber },
       select: {
-        id: true, orderNumber: true, status: true,
+        id: true, orderNumber: true, status: true, cancellationStatus: true,
         items: { select: { id: true, productId: true, productCode: true, productName: true, quantity: true, pickedQuantity: true,
           pickingShortages: { where: { status: "ACTIVE" }, select: { quantity: true } } } },
       },
     });
     if (!order || !canPickOrder(order.status)) throw new Error("Sipariş eksik toplamaya uygun durumda değildir.");
+    if (order.cancellationStatus) throw new Error("Sipariş iptal sürecinde. Eksik kapatma yapılamaz.");
     const item = order.items.find(row => row.id === orderItemId);
     if (!item) throw new Error("Sipariş ürün satırı bulunamadı.");
     const alreadyShort = item.pickingShortages.reduce((sum,row)=>sum+row.quantity,0);
@@ -504,6 +507,7 @@ export async function rfPickOrderItem(
             id: true,
             orderNumber: true,
             status: true,
+            cancellationStatus: true,
             stockReserved: true,
             stockDeducted: true,
 
@@ -553,6 +557,9 @@ export async function rfPickOrderItem(
         perfMark("zoneTask");
         if (zoneTaskId && !zoneTask) throw new Error("Zone görevi bu kullanıcıya ait değil veya artık aktif değil.");
 
+        if (order.cancellationStatus) {
+          throw new Error(`${order.orderNumber} siparişi iptal sürecinde. Toplama durduruldu; Stok Geri Alma ekranını kullanın.`);
+        }
         if (!canPickOrder(order.status)) {
           throw new Error(
             `${order.orderNumber} siparişi toplama işlemine uygun değildir.`,
