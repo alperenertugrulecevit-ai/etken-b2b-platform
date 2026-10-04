@@ -853,3 +853,20 @@ export async function confirmEcommerceBankTransferPayment(
   revalidatePath("/order-tracking");
   redirect(detailPath + "?paymentConfirmed=1");
 }
+
+
+export async function completeOrderCancellationRefund(orderId:number,formData:FormData){
+  const user=await AuthorizationService.requirePermission("ORDER_MANAGE");
+  const reference=String(formData.get("refundReference")??"").trim().slice(0,120);
+  if(!reference)throw new Error("Para iadesi banka/ödeme referansı zorunludur.");
+  const actorName=user.employee?`${user.employee.firstName} ${user.employee.lastName}`:user.username;
+  await OrderCancellationService.completeRefund({
+    orderId,
+    reference,
+    actor:{userId:user.id,displayName:actorName},
+  });
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  revalidatePath("/account/orders");
+  redirect(`/admin/orders/${orderId}?refundCompleted=1`);
+}
