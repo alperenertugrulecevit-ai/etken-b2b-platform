@@ -109,14 +109,43 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const orderIds = unit.orders.map((row) => row.orderId);
-      const ordersToReady = await tx.order.findMany({
-        where: {
-          id: { in: orderIds },
-          status: { not: OrderStatus.READY_TO_SHIP },
-        },
-        select: { id: true },
-      });
+      const orderIds = [...new Set(unit.orders.map((row) => row.orderId))];
+      const ordersToReady: Array<{ id: number }> = [];
+
+      for (const orderId of orderIds) {
+        const orderUnits = await tx.shippingHandlingUnit.findMany({
+          where: {
+            orders: {
+              some: { orderId },
+            },
+          },
+          select: {
+            dispatchDocument: {
+              select: { status: true },
+            },
+          },
+        });
+
+        const allDispatchesIssued =
+          orderUnits.length > 0 &&
+          orderUnits.every(
+            (shippingUnit) =>
+              shippingUnit.dispatchDocument?.status === DispatchDocumentStatus.ISSUED,
+          );
+
+        if (!allDispatchesIssued) {
+          continue;
+        }
+
+        const order = await tx.order.findUnique({
+          where: { id: orderId },
+          select: { id: true, status: true },
+        });
+
+        if (order && order.status !== OrderStatus.READY_TO_SHIP) {
+          ordersToReady.push({ id: order.id });
+        }
+      }
 
       if (ordersToReady.length) {
         await tx.order.updateMany({
