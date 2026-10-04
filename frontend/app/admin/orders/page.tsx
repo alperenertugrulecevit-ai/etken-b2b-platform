@@ -320,9 +320,11 @@ export default async function AdminOrdersPage({searchParams}:{searchParams:Promi
                       order.status
                     )}`}
                   >
-                    {getStatusLabel(
-                      order.status
-                    )}
+                    {order.cancellationStatus === "STOCK_RETURN_PENDING"
+                      ? "İptal - Stok Geri Alma Bekliyor"
+                      : order.cancellationStatus === "REFUND_PENDING"
+                        ? "İptal - Para İadesi Bekliyor"
+                        : getStatusLabel(order.status)}
                   </span>
                 </td>
 
