@@ -414,7 +414,7 @@ export default async function OrderTrackingPage({
                 </div>
               </div>
 
-              {[OrderStatus.PENDING, OrderStatus.APPROVED].includes(order.status) ? (
+              {order.status === OrderStatus.PENDING || order.status === OrderStatus.APPROVED ? (
                 <GuestOrderCancellationForm orderNumber={order.orderNumber} email={email} />
               ) : null}
 
