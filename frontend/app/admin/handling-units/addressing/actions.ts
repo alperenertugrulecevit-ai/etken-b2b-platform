@@ -265,6 +265,17 @@ export async function addressHandlingUnit(
           }
 
           if (
+            handlingUnit.locationId !== null ||
+            (handlingUnit.warehouseId !== null &&
+              handlingUnit.warehouseId !== warehouseId)
+          ) {
+            throw new Error(
+              `${handlingUnit.barcode} zaten bir depo/lokasyona bağlıdır. ` +
+                "Mevcut stoklu THM adresleme ile taşınamaz; depo/lokasyon değişikliği için transfer işlemini kullanın."
+            );
+          }
+
+          if (
             handlingUnit.warehouseId ===
               warehouseId &&
             handlingUnit.locationId ===

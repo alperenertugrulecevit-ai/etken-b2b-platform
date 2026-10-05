@@ -36,14 +36,16 @@ export default async function PickingOperationsPage({searchParams}:{searchParams
   // Bu ekran yalnızca aktif veya müdahale gerektiren toplama operasyonlarını gösterir.
   // Toplama + geçerli eksik kapatma planlanan miktarı karşıladığında görev tamamlanmıştır
   // ve Wave durum kaydı henüz kapanmamış olsa bile aktif izleme listesinden çıkar.
-  if(planned<=picked+short) continue;
-  groups.push({key:wave.id,date:wave.createdAt,warehouseCode:wave.warehouse?.code??"-",type:"Wave Toplama",orderType:Array.from(new Set(items.map(i=>typeLabel[i.orderType]??i.orderType))).join(", ")||"-",person:person(wave.assignments[0]?.user),waveNo:wave.waveNo,orderNo:"-",zone:"-",planned,picked,short,status:"Devam Ediyor",items});
+  const interventionRequired=short>0;
+  if(planned<=picked+short&&!interventionRequired) continue;
+  groups.push({key:wave.id,date:wave.createdAt,warehouseCode:wave.warehouse?.code??"-",type:"Wave Toplama",orderType:Array.from(new Set(items.map(i=>typeLabel[i.orderType]??i.orderType))).join(", ")||"-",person:person(wave.assignments[0]?.user),waveNo:wave.waveNo,orderNo:"-",zone:"-",planned,picked,short,status:interventionRequired?"Müdahale Gerekiyor":"Devam Ediyor",items});
  }
  for(const task of directTasks){
   const items=task.order.items.map(i=>({...i,quantity:Math.max(0,i.quantity-(i.cancelledQuantity??0)),orderId:task.order.id,orderNumber:task.order.orderNumber,orderType:task.order.orderType}));
   const planned=items.reduce((s,i)=>s+i.quantity,0),picked=items.reduce((s,i)=>s+Math.min(i.pickedQuantity,i.quantity),0),short=items.reduce((s,i)=>s+i.pickingShortages.reduce((a:any,r:any)=>a+r.quantity,0),0);
-  if(planned<=picked+short) continue;
-  groups.push({key:task.id,date:task.createdAt,warehouseCode:task.warehouse?.code??"-",type:"Sipariş Bazlı",orderType:typeLabel[task.order.orderType]??task.order.orderType,person:person(task.claimedBy),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:"Devam Ediyor",items});
+  const interventionRequired=short>0;
+  if(planned<=picked+short&&!interventionRequired) continue;
+  groups.push({key:task.id,date:task.createdAt,warehouseCode:task.warehouse?.code??"-",type:"Sipariş Bazlı",orderType:typeLabel[task.order.orderType]??task.order.orderType,person:person(task.claimedBy),waveNo:"-",orderNo:task.order.orderNumber,zone:task.zone.code,planned,picked,short,status:interventionRequired?"Müdahale Gerekiyor":"Devam Ediyor",items});
  }
  groups.sort((a,b)=>b.date.getTime()-a.date.getTime());
  const clientGroups=groups.map(g=>({...g,dateText:g.date.toLocaleString("tr-TR"),date:undefined,items:g.items.map((i:any)=>({...i,product:undefined,barcode:i.product?.barcode??null}))}));
