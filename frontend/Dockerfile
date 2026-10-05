@@ -55,8 +55,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Keep Prisma CLI, generated client and migration history available at runtime.
+# `prisma migrate deploy` is idempotent and applies only pending migrations.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
 USER nextjs
 
 EXPOSE 8080
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node server.js"]
