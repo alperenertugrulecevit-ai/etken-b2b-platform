@@ -220,6 +220,17 @@ items: {
         );
 
       if (
+        order.source === OrderSource.ECOMMERCE &&
+        shipmentStatuses.includes(newStatus)
+      ) {
+        throw new Error(
+          newStatus === OrderStatus.DELIVERED
+            ? "E-Ticaret siparişinde Teslim Edildi geçişi Sevkiyat Takip ekranından yapılmalıdır."
+            : "E-Ticaret siparişinde Sevk Edildi geçişi RF Sevkiyat akışından yapılmalıdır. Manuel durum değişikliği stok ve sevk miktarı bütünlüğü için engellendi."
+        );
+      }
+
+      if (
         hasOperationalPicking &&
         (
           newStatus === OrderStatus.DRAFT ||
