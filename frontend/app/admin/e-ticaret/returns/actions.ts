@@ -210,9 +210,14 @@ export async function createRefundApprovalRecord(formData:FormData){
     if(!er) throw new Error("E-Ticaret iade dosyası bulunamadı.");
     if(er.status!==EcommerceReturnStatus.WAREHOUSE_COMPLETED&&er.status!==EcommerceReturnStatus.FINANCE_PENDING) throw new Error("Depo iade kontrolü tamamlanmadan finans kaydı oluşturulamaz.");
     if(er.refundStatus===EcommerceReturnRefundStatus.REVIEW_REQUIRED) throw new Error("Kalite/finans incelemesi bekleyen ürünler var.");
-    const amount=er.items.reduce((s,i)=>s+i.refundAmount,0);
-    if(amount<=0) throw new Error("Para iadesine uygun tutar bulunamadı.");
-    if(er.refunds.some(r=>r.status===EcommerceReturnRefundStatus.REQUESTED||r.status===EcommerceReturnRefundStatus.REFUNDED)) throw new Error("Bu iade için aktif/tamamlanmış finans kaydı zaten var.");
+    const eligibleAmount=er.items.reduce((s,i)=>s+i.refundAmount,0);
+    if(eligibleAmount<=0) throw new Error("Para iadesine uygun tutar bulunamadı.");
+    if(er.refunds.some(r=>r.status===EcommerceReturnRefundStatus.REQUESTED)) throw new Error("Bu iade için tamamlanmayı bekleyen aktif finans kaydı zaten var.");
+    const refundedAmount=er.refunds
+      .filter(r=>r.status===EcommerceReturnRefundStatus.REFUNDED)
+      .reduce((sum,r)=>sum+r.amount,0);
+    const amount=Math.round((eligibleAmount-refundedAmount+Number.EPSILON)*100)/100;
+    if(amount<=0) throw new Error("Para iadesine uygun kalan tutar bulunamadı.");
     await tx.ecommerceReturnRefund.create({data:{
       ecommerceReturnId:er.id,amount,status:EcommerceReturnRefundStatus.REQUESTED,provider:"MANUAL_PENDING_INTEGRATION",
       requestedByUserId:profile.id,requestedByName:profile.employee?`${profile.employee.firstName} ${profile.employee.lastName}`:profile.username,requestedAt:new Date(),
@@ -301,6 +306,32 @@ export async function markEcommerceRefundCompleted(formData:FormData){
       : profile.username;
     const now=new Date();
 
+    const returnCreditReference=`RETURN-CREDIT:${refund.id}`;
+    const existingReturnCredit=await tx.customerAccountEntry.findFirst({
+      where:{
+        orderId:order.id,
+        direction:CustomerAccountEntryDirection.CREDIT,
+        entryType:CustomerAccountEntryType.ADJUSTMENT,
+        referenceNo:returnCreditReference,
+      },
+      select:{id:true},
+    });
+    if(!existingReturnCredit){
+      await tx.customerAccountEntry.create({
+        data:{
+          customerId:order.customerId,
+          orderId:order.id,
+          direction:CustomerAccountEntryDirection.CREDIT,
+          entryType:CustomerAccountEntryType.ADJUSTMENT,
+          amount:refund.amount,
+          description:`${order.orderNumber} B2C ürün iadesi cari ters kaydı`,
+          referenceNo:returnCreditReference,
+          createdByUserId:profile.id,
+          createdByUsername:actorName,
+        },
+      });
+    }
+
     await tx.customerAccountEntry.create({
       data:{
         customerId:order.customerId,
@@ -325,12 +356,33 @@ export async function markEcommerceRefundCompleted(formData:FormData){
         requestedByUserId:refund.requestedByUserId??profile.id,
       },
     });
+    const returnItems=await tx.ecommerceReturnItem.findMany({
+      where:{ecommerceReturnId:refund.ecommerceReturnId},
+      select:{refundAmount:true},
+    });
+    const eligibleTotal=returnItems.reduce((sum,item)=>sum+item.refundAmount,0);
+    const completedRefunds=await tx.ecommerceReturnRefund.findMany({
+      where:{
+        ecommerceReturnId:refund.ecommerceReturnId,
+        OR:[
+          {status:EcommerceReturnRefundStatus.REFUNDED},
+          {id:refund.id},
+        ],
+      },
+      select:{id:true,amount:true,status:true},
+    });
+    const refundedTotal=completedRefunds.reduce(
+      (sum,row)=>sum+(row.id===refund.id||row.status===EcommerceReturnRefundStatus.REFUNDED?row.amount:0),
+      0,
+    );
+    const fullyRefunded=refundedTotal+0.005>=eligibleTotal;
+
     await tx.ecommerceReturn.update({
       where:{id:refund.ecommerceReturnId},
       data:{
-        status:EcommerceReturnStatus.COMPLETED,
-        refundStatus:EcommerceReturnRefundStatus.REFUNDED,
-        financeCompletedAt:now,
+        status:fullyRefunded?EcommerceReturnStatus.COMPLETED:EcommerceReturnStatus.WAREHOUSE_COMPLETED,
+        refundStatus:fullyRefunded?EcommerceReturnRefundStatus.REFUNDED:EcommerceReturnRefundStatus.ELIGIBLE,
+        financeCompletedAt:fullyRefunded?now:null,
       },
     });
     await tx.orderStatusHistory.create({
