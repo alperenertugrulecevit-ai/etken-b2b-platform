@@ -29,6 +29,19 @@ export async function removeShipmentAction(_:RfShipmentState,fd:FormData):Promis
 }
 
 
+export async function restoreRemovedShipmentAction(_:RfShipmentState,fd:FormData):Promise<RfShipmentState>{
+ try{
+  const r=await ShipmentPlanningService.restoreRemovedUnit({thmBarcode:value(fd,"thmBarcode"),actor:await actor()});
+  revalidatePath("/rf/shipment-removal");
+  revalidatePath("/rf/shipment-routing");
+  revalidatePath("/rf/shipment-loading");
+  revalidatePath("/rf/shipment-dispatch");
+  revalidatePath("/admin/shipping-planning");
+  return {ok:true,message:`${r.thmBarcode}, ${r.shipmentNumber} sevkiyatına ${r.status==="LOADED"?"YÜKLENDİ":"ROTALANDI"} durumunda geri alındı.`};
+ }catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevkiyat iptalini geri alma tamamlanamadı."};}
+}
+
+
 export async function preDispatchCheckAction(_:RfShipmentState,fd:FormData):Promise<RfShipmentState>{
  try{await AuthorizationService.requireRfAccess("SHIPPING_EXECUTE");const r=await ShipmentPlanningService.preDispatchCheck(value(fd,"shipmentNumber"));const summary=`${r.shipmentNumber} · Araç: ${r.vehicle} · THM: ${r.loaded}/${r.total}`;return r.ready?{ok:true,message:`${summary} · SEVKE HAZIR.`}:{ok:false,message:`${summary} · ${r.issues.join(" ")}`};}
  catch(e){return {ok:false,message:e instanceof Error?e.message:"Sevk öncesi kontrol tamamlanamadı."};}
