@@ -44,10 +44,22 @@ export default async function CurrentAccountsPage() {
       select: {
         id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
         customer: { select: { customerCode: true, companyName: true, customerType: true } },
-        order: { select: { orderNumber: true } },
+        order: { select: { orderNumber: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true } },
       },
     }),
   ]);
+
+  const splitRefund = (refund: (typeof refunds)[number]) => {
+    const gross = Math.max(0, refund.order?.totalAmount ?? 0);
+    const orderVat = Math.max(0, refund.order?.vatAmount ?? 0);
+    const ratio = gross > 0 ? Math.min(1, Math.max(0, refund.amount / gross)) : 0;
+    const vatAmount = orderVat * ratio;
+    return {
+      amount: Math.max(0, refund.amount - vatAmount),
+      vatAmount,
+      grandTotal: refund.amount,
+    };
+  };
 
   const rows: CurrentAccountRow[] = [
     ...orders.map((order) => ({
@@ -78,7 +90,9 @@ export default async function CurrentAccountsPage() {
       grandTotal: purchase.totalAmount,
       description: purchase.supplierNote || "Satın alma",
     })),
-    ...refunds.map((refund) => ({
+    ...refunds.map((refund) => {
+      const split = splitRefund(refund);
+      return {
       id: `refund-${refund.id}`,
       customerType: refund.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
       movement: "İade" as const,
@@ -87,11 +101,12 @@ export default async function CurrentAccountsPage() {
       customerName: refund.customer.companyName,
       orderNo: refund.order?.orderNumber ?? "",
       documentNo: refund.referenceNo ?? "",
-      amount: refund.amount,
-      vatAmount: 0,
-      grandTotal: refund.amount,
+      amount: split.amount,
+      vatAmount: split.vatAmount,
+      grandTotal: split.grandTotal,
       description: refund.description,
-    })),
+    };
+    }),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
