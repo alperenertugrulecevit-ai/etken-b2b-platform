@@ -296,6 +296,94 @@ export class ShipmentPlanningService {
       return {shipmentNumber:row.shipment.shipmentNumber,thmBarcode:code};
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
+  static async restoreRemovedUnit(input:{thmBarcode:string;actor:ShipmentActor}){
+    const code=barcode(input.thmBarcode);
+    return prisma.$transaction(async tx=>{
+      const unit=await tx.shippingHandlingUnit.findFirst({
+        where:{handlingUnit:{barcode:code}},
+        include:{handlingUnit:{select:{id:true,barcode:true}}},
+      });
+      if(!unit) throw new Error("Sevk THM bulunamadı.");
+      if(unit.status===ShippingHandlingUnitStatus.SHIPPED) throw new Error("Fiziksel sevki tamamlanmış THM geri alınamaz.");
+      const active=await tx.shipmentHandlingUnit.findUnique({where:{shippingHandlingUnitId:unit.id},select:{id:true}});
+      if(active) throw new Error("THM zaten aktif bir sevkiyata bağlı.");
+
+      const removed=await tx.shipmentHandlingUnitEvent.findFirst({
+        where:{shippingHandlingUnitId:unit.id,eventType:ShipmentHandlingUnitEventType.SHIPMENT_REMOVED,shipmentId:{not:null}},
+        orderBy:{createdAt:"desc"},
+        select:{id:true,shipmentId:true,previousRouteId:true,metadata:true,createdAt:true},
+      });
+      if(!removed?.shipmentId||!removed.previousRouteId) throw new Error("Geri alınabilecek önceki sevkiyat kaydı bulunamadı.");
+
+      const laterEvent=await tx.shipmentHandlingUnitEvent.findFirst({
+        where:{shippingHandlingUnitId:unit.id,createdAt:{gt:removed.createdAt},eventType:{in:[ShipmentHandlingUnitEventType.ROUTED,ShipmentHandlingUnitEventType.REROUTED,ShipmentHandlingUnitEventType.LOADED,ShipmentHandlingUnitEventType.SHIPPED]}},
+        select:{id:true},
+      });
+      if(laterEvent) throw new Error("THM, sevkiyattan çıkartıldıktan sonra başka bir sevkiyat işlemine girmiş. Eski iptal geri alınamaz.");
+
+      const shipment=await tx.shipment.findFirst({
+        where:{id:removed.shipmentId,tenantId:TENANT_ID,companyId:COMPANY_ID},
+        include:{routes:{select:{routeId:true}}},
+      });
+      if(!shipment) throw new Error("Önceki sevkiyat bulunamadı.");
+      if(shipment.status===ShipmentStatus.SHIPPED) throw new Error("Araç/sevkiyat fiziksel olarak sevk edilmiş. İptal geri alınamaz.");
+      if(!shipment.routes.some(x=>x.routeId===removed.previousRouteId)) throw new Error("Önceki rota artık bu sevkiyata bağlı değil.");
+
+      const metadata=removed.metadata && typeof removed.metadata==="object" && !Array.isArray(removed.metadata)
+        ? removed.metadata as Prisma.JsonObject
+        : null;
+      const previousStatus=metadata?.previousStatus==="LOADED"
+        ? ShipmentHandlingUnitStatus.LOADED
+        : ShipmentHandlingUnitStatus.ROUTED;
+      const now=new Date();
+
+      await tx.shipmentHandlingUnit.create({data:{
+        shipmentId:shipment.id,
+        shippingHandlingUnitId:unit.id,
+        routeId:removed.previousRouteId,
+        status:previousStatus,
+        routedAt:now,
+        routedById:input.actor.userId,
+        routedByName:input.actor.displayName,
+        routedTerminalCode:clean(input.actor.terminalCode),
+        ...(previousStatus===ShipmentHandlingUnitStatus.LOADED?{
+          loadedAt:now,
+          loadedById:input.actor.userId,
+          loadedByName:input.actor.displayName,
+          loadedTerminalCode:clean(input.actor.terminalCode),
+        }:{}),
+      }});
+
+      await tx.shipmentHandlingUnitEvent.create({data:{
+        shipmentId:shipment.id,
+        shippingHandlingUnitId:unit.id,
+        eventType:previousStatus===ShipmentHandlingUnitStatus.LOADED?ShipmentHandlingUnitEventType.LOADED:ShipmentHandlingUnitEventType.REROUTED,
+        newRouteId:removed.previousRouteId,
+        operatorId:input.actor.userId,
+        operatorName:input.actor.displayName,
+        terminalCode:clean(input.actor.terminalCode),
+        notes:"Sevkiyattan çıkartma işlemi geri alındı.",
+        metadata:{shipmentNumber:shipment.shipmentNumber,restoredFromRemovalEventId:removed.id,restoredStatus:previousStatus},
+      }});
+      await recalc(tx,shipment.id);
+      await tx.wmsOperationLog.create({data:{
+        operationType:WmsOperationType.OTHER,
+        module:"RF_SHIPMENT_REMOVAL_UNDO",
+        entityType:"HANDLING_UNIT",
+        entityId:unit.handlingUnit.id,
+        operatorId:input.actor.userId,
+        operatorName:input.actor.displayName,
+        terminalCode:clean(input.actor.terminalCode),
+        barcode:code,
+        previousStatus:"READY_TO_ROUTE",
+        newStatus:previousStatus,
+        description:`${code} THM için sevkiyattan çıkartma işlemi geri alındı; ${shipment.shipmentNumber} sevkiyatına yeniden bağlandı.`,
+        metadata:{shipmentId:shipment.id,shipmentNumber:shipment.shipmentNumber,routeId:removed.previousRouteId,restoredFromRemovalEventId:removed.id},
+      }});
+      return {shipmentNumber:shipment.shipmentNumber,thmBarcode:code,status:previousStatus};
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+  }
+
   static async preDispatchCheck(shipmentNumber:string){
     const code=shipmentNumber.trim().toUpperCase();
     if(!code) throw new Error("Sevkiyat numarası seçin.");
