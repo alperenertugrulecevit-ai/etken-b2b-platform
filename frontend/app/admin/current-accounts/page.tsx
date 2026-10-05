@@ -18,7 +18,7 @@ export default async function CurrentAccountsPage() {
       orderBy: { orderDate: "desc" },
       take: 1500,
       select: {
-        id: true, orderNumber: true, orderDate: true, totalAmount: true,
+        id: true, orderNumber: true, orderDate: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true,
         customer: { select: { customerCode: true, companyName: true, customerType: true } },
         dispatchLines: {
           where: { dispatchDocument: { status: "ISSUED" } },
@@ -32,7 +32,7 @@ export default async function CurrentAccountsPage() {
       orderBy: { orderDate: "desc" },
       take: 1500,
       select: {
-        id: true, purchaseNumber: true, orderDate: true, totalAmount: true,
+        id: true, purchaseNumber: true, orderDate: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true,
         deliveryNoteNumber: true, supplierNote: true,
         supplier: { select: { id: true, name: true } },
       },
@@ -59,7 +59,9 @@ export default async function CurrentAccountsPage() {
       customerName: order.customer.companyName,
       orderNo: order.orderNumber,
       documentNo: order.dispatchLines[0]?.dispatchDocument.dispatchNumber ?? "",
-      amount: order.totalAmount,
+      amount: Math.max(0, order.subtotal - order.discountAmount),
+      vatAmount: order.vatAmount,
+      grandTotal: order.totalAmount,
       description: "Satış siparişi",
     })),
     ...purchases.map((purchase) => ({
@@ -71,7 +73,9 @@ export default async function CurrentAccountsPage() {
       customerName: purchase.supplier.name,
       orderNo: purchase.purchaseNumber,
       documentNo: purchase.deliveryNoteNumber ?? "",
-      amount: purchase.totalAmount,
+      amount: Math.max(0, purchase.subtotal - purchase.discountAmount),
+      vatAmount: purchase.vatAmount,
+      grandTotal: purchase.totalAmount,
       description: purchase.supplierNote || "Satın alma",
     })),
     ...refunds.map((refund) => ({
@@ -84,6 +88,8 @@ export default async function CurrentAccountsPage() {
       orderNo: refund.order?.orderNumber ?? "",
       documentNo: refund.referenceNo ?? "",
       amount: refund.amount,
+      vatAmount: 0,
+      grandTotal: refund.amount,
       description: refund.description,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date));
