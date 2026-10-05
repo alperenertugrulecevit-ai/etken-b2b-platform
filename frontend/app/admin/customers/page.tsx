@@ -78,7 +78,14 @@ export default async function AdminCustomersPage({
           </h2>
 
           <div className="mt-6 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
+              <label>
+                <span className="mb-2 block text-sm font-semibold">Müşteri Tipi</span>
+                <select name="customerType" defaultValue={CustomerType.CORPORATE} className="w-full rounded-xl border bg-white p-4">
+                  <option value={CustomerType.CORPORATE}>Kurumsal</option>
+                  <option value={CustomerType.INDIVIDUAL}>Bireysel</option>
+                </select>
+              </label>
               <label>
                 <span className="mb-2 block text-sm font-semibold">
                   Cari Kodu
@@ -94,12 +101,12 @@ export default async function AdminCustomersPage({
 
               <label>
                 <span className="mb-2 block text-sm font-semibold">
-                  Firma Adı
+                  Müşteri / Firma Adı
                 </span>
 
                 <input
                   name="companyName"
-                  placeholder="Firma unvanı"
+                  placeholder="Ad soyad veya firma unvanı"
                   className="w-full rounded-xl border p-4"
                   required
                 />
