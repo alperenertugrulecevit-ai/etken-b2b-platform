@@ -15,6 +15,7 @@ CREATE TABLE "AccountingEntry" (
   "documentNo" TEXT,
   "paymentType" "AccountingPaymentType",
   "netAmount" DOUBLE PRECISION NOT NULL,
+  "vatRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "vatAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
   "totalAmount" DOUBLE PRECISION NOT NULL,
   "description" TEXT,
