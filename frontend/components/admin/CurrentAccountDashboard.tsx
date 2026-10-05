@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 export type CurrentAccountRow = {
   id: string;
-  customerType: "Bireysel" | "Kurumsal";
+  customerType: "Bireysel" | "Kurumsal" | "Tedarikçi";
   movement: "Gelir" | "Gider" | "İade";
   date: string;
   customerCode: string;
@@ -21,11 +21,11 @@ type ColumnKey = keyof Omit<CurrentAccountRow, "id">;
 type Column = { key: ColumnKey; label: string };
 
 const initialColumns: Column[] = [
-  { key: "customerType", label: "Müşteri Tipi" },
+  { key: "customerType", label: "Cari Tipi" },
   { key: "movement", label: "Cari Hareket" },
   { key: "date", label: "Tarih" },
-  { key: "customerCode", label: "Müşteri Kodu" },
-  { key: "customerName", label: "Müşteri İsmi" },
+  { key: "customerCode", label: "Cari Kodu" },
+  { key: "customerName", label: "Firma / Cari Ünvanı" },
   { key: "orderNo", label: "Sipariş No" },
   { key: "documentNo", label: "Belge/İrsaliye No" },
   { key: "amount", label: "Tutar" },
@@ -102,7 +102,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
               {column.key === "customerType" || column.key === "movement" ? (
                 <select className="w-full rounded-xl border bg-white p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))}>
                   <option value="">Tümü</option>
-                  {(column.key === "customerType" ? ["Bireysel", "Kurumsal"] : ["Gelir", "Gider", "İade"]).map((x) => <option key={x} value={x}>{x}</option>)}
+                  {(column.key === "customerType" ? ["Bireysel", "Kurumsal", "Tedarikçi"] : ["Gelir", "Gider", "İade"]).map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               ) : (
                 <input type={column.key === "date" ? "date" : "text"} className="w-full rounded-xl border p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))} />
