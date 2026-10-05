@@ -91,7 +91,7 @@ export async function processEcommerceReturnItem(formData:FormData){
     if(!item) throw new Error(`${productBarcode} bu iade dosyasında beklenen ürün değil.`);
     if(item.receivedQuantity>=item.expectedQuantity) throw new Error(`${item.productCode} için beklenen iade miktarı tamamlandı.`);
 
-    const hu=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,warehouseId:true,status:true,purpose:true}});
+    const hu=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,warehouseId:true,locationId:true,status:true,purpose:true}});
     if(!hu) throw new Error(`${targetBarcode} hedef THM bulunamadı.`);
     if(hu.warehouseId!==pre.warehouseId) throw new Error("Hedef THM ön kabul deposunda değil.");
     if(hu.status!==HandlingUnitStatus.OPEN&&hu.status!==HandlingUnitStatus.EMPTY&&hu.status!==HandlingUnitStatus.STORED) throw new Error("Hedef THM iade girişine uygun durumda değil.");
@@ -100,6 +100,9 @@ export async function processEcommerceReturnItem(formData:FormData){
     const matches=locations.filter(l=>locationScanCode(l)===targetLocationCode||l.code.trim().toUpperCase()===targetLocationCode);
     if(matches.length!==1) throw new Error(matches.length?"Hedef adres barkodu birden fazla adresle eşleşiyor. Tam adres barkodunu okutun.":"Hedef adres bu depoda bulunamadı veya pasif.");
     const location=matches[0];
+    if(hu.locationId!==location.id) {
+      throw new Error(`${hu.barcode} hedef THM okutulan adreste değil. İade kabulü THM adresini değiştirmez; THM'yi önce doğru lokasyona transfer/adresleme işlemiyle taşıyın.`);
+    }
 
     const sellable=quality===EcommerceReturnQualityResult.SELLABLE;
     if(sellable){
@@ -120,7 +123,7 @@ export async function processEcommerceReturnItem(formData:FormData){
       description:`E-Ticaret İade Girişi; ön kabul ${pre.preReceiptNumber}; ${item.productCode}; kalite ${quality}; hedef THM ${hu.barcode}; hedef adres ${targetLocationCode}.`,
     });
     await tx.handlingUnitItem.upsert({where:{handling_unit_product_unique:{handlingUnitId:hu.id,productId:item.productId}},update:{quantity:{increment:1}},create:{handlingUnitId:hu.id,productId:item.productId,quantity:1,reservedStock:0}});
-    await tx.handlingUnit.update({where:{id:hu.id},data:{warehouseId:pre.warehouseId,locationId:location.id,status:HandlingUnitStatus.STORED}});
+    if(hu.status!==HandlingUnitStatus.STORED) await tx.handlingUnit.update({where:{id:hu.id},data:{status:HandlingUnitStatus.STORED}});
 
     await tx.ecommerceReturnInspection.create({data:{
       ecommerceReturnId:pre.ecommerceReturn.id,ecommerceReturnItemId:item.id,productId:item.productId,qualityResult:quality,refundStatus,refundAmount,
