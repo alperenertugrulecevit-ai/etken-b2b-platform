@@ -283,8 +283,9 @@ export async function rfAddressHandlingUnit(
           }
 
           if (
-            handlingUnit.warehouseId !== null ||
-            handlingUnit.locationId !== null
+            handlingUnit.locationId !== null ||
+            (handlingUnit.warehouseId !== null &&
+              handlingUnit.warehouseId !== warehouse.id)
           ) {
             throw new Error(
               `${handlingUnit.barcode} zaten bir depo/lokasyona bağlıdır. ` +
