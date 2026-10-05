@@ -14,7 +14,7 @@ export default async function CurrentAccountsPage() {
 
   const [orders, purchases, refunds] = await Promise.all([
     prisma.order.findMany({
-      where: { status: { notIn: [OrderStatus.DRAFT, OrderStatus.CANCELLED] } },
+      where: { status: { not: OrderStatus.DRAFT } },
       orderBy: { orderDate: "desc" },
       take: 1500,
       select: {

@@ -46,14 +46,18 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
   const [columns, setColumns] = useState(initialColumns);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [dragged, setDragged] = useState<ColumnKey | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const filtered = useMemo(() => rows.filter((row) =>
-    filterKeys.every((key) => {
+  const filtered = useMemo(() => rows.filter((row) => {
+    if (startDate && row.date < startDate) return false;
+    if (endDate && row.date > endDate) return false;
+    return filterKeys.filter((key) => key !== "date").every((key) => {
       const needle = (filters[key] ?? "").trim().toLocaleLowerCase("tr-TR");
       if (!needle) return true;
       return String(row[key] ?? "").toLocaleLowerCase("tr-TR").includes(needle);
-    })
-  ), [rows, filters]);
+    });
+  }), [rows, filters, startDate, endDate]);
 
   const totals = useMemo(() => filtered.reduce((acc, row) => {
     acc[row.movement] += row.grandTotal;
@@ -84,7 +88,15 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
 
       <div className="mt-6 rounded-2xl bg-white p-5 shadow">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-          {initialColumns.filter((c) => filterKeys.includes(c.key)).map((column) => (
+          <label>
+            <span className="mb-1 block text-xs font-bold uppercase text-slate-500">Başlangıç Tarihi</span>
+            <input type="date" className="w-full rounded-xl border p-3" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-bold uppercase text-slate-500">Bitiş Tarihi</span>
+            <input type="date" className="w-full rounded-xl border p-3" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
+          {initialColumns.filter((c) => filterKeys.includes(c.key) && c.key !== "date").map((column) => (
             <label key={column.key}>
               <span className="mb-1 block text-xs font-bold uppercase text-slate-500">{column.label}</span>
               {column.key === "customerType" || column.key === "movement" ? (
@@ -98,7 +110,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
             </label>
           ))}
         </div>
-        <button type="button" onClick={() => setFilters({})} className="mt-4 rounded-xl border px-4 py-2 font-bold hover:bg-slate-50">Filtreleri Temizle</button>
+        <button type="button" onClick={() => { setFilters({}); setStartDate(""); setEndDate(""); }} className="mt-4 rounded-xl border px-4 py-2 font-bold hover:bg-slate-50">Filtreleri Temizle</button>
       </div>
 
       <p className="mt-4 text-sm text-slate-500">Kolon sırasını değiştirmek için başlığı sürükleyip istediğiniz konuma bırakın.</p>
