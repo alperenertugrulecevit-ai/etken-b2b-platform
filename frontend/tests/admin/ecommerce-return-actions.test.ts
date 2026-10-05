@@ -1,6 +1,6 @@
 import { EcommerceReturnRefundStatus, EcommerceReturnStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { completePartialEcommerceReturnReceiving, matchEcommercePreReceiptToOrder } from "@/app/admin/e-ticaret/returns/actions";
+import { completePartialEcommerceReturnReceiving, markEcommerceRefundCompleted, matchEcommercePreReceiptToOrder } from "@/app/admin/e-ticaret/returns/actions";
 
 const mocks=vi.hoisted(()=>({
   requireAdminPortalAccess:vi.fn(),
@@ -10,6 +10,7 @@ const mocks=vi.hoisted(()=>({
   preReceiptFindUnique:vi.fn(),
   orderFindUnique:vi.fn(),
   revalidatePath:vi.fn(),
+  refundFindUnique:vi.fn(),returnItemFindMany:vi.fn(),refundFindMany:vi.fn(),accountFindUnique:vi.fn(),accountFindFirst:vi.fn(),accountCreate:vi.fn(),
 }));
 
 const tx={
@@ -19,6 +20,9 @@ const tx={
   },
   ecommerceReturnPreReceipt:{findUnique:mocks.preReceiptFindUnique},
   order:{findUnique:mocks.orderFindUnique},
+  ecommerceReturnRefund:{findUnique:mocks.refundFindUnique,findMany:mocks.refundFindMany},
+  ecommerceReturnItem:{findMany:mocks.returnItemFindMany},
+  customerAccountEntry:{findUnique:mocks.accountFindUnique,findFirst:mocks.accountFindFirst,create:mocks.accountCreate},
 };
 
 vi.mock("@/modules/authorization/services/authorization.service",()=>({
@@ -118,5 +122,36 @@ describe("matchEcommercePreReceiptToOrder shipment gate",()=>{
     data.set("preReceiptId","pre-1");
     data.set("orderNumber","SIP-10");
     await expect(matchEcommercePreReceiptToOrder(data)).rejects.toThrow("fiziksel olarak sevk edilmiş");
+  });
+});
+
+
+describe("markEcommerceRefundCompleted amount integrity",()=>{
+  beforeEach(()=>{
+    vi.clearAllMocks();
+    mocks.requireAdminPortalAccess.mockResolvedValue({id:"finance",username:"finance",employee:null});
+    mocks.transaction.mockImplementation(async(cb:(client:typeof tx)=>Promise<unknown>)=>cb(tx));
+    mocks.refundFindUnique.mockResolvedValue({
+      id:"refund-2",ecommerceReturnId:"return-1",amount:80,status:EcommerceReturnRefundStatus.REQUESTED,
+      requestedByUserId:"finance",ecommerceReturn:{originalOrder:{id:10,orderNumber:"SIP-10",customerId:5,ecommerceEmail:"m@example.com",status:"DELIVERED"}},
+    });
+    mocks.returnItemFindMany.mockResolvedValue([{refundAmount:100}]);
+    mocks.refundFindMany.mockResolvedValue([{amount:40}]);
+    mocks.accountFindUnique.mockResolvedValue(null);mocks.accountFindFirst.mockResolvedValue(null);
+  });
+  it("önceki refundlardan sonra kalan uygun tutarı aşan finans kaydını cariye işlemez",async()=>{
+    const data=new FormData();data.set("refundId","refund-2");data.set("providerReference","REF-2");
+    await expect(markEcommerceRefundCompleted(data)).rejects.toThrow("kalan uygun iade tutarını aşıyor");
+    expect(mocks.accountCreate).not.toHaveBeenCalled();
+  });
+  it("sıfır veya negatif refund tutarını cariye işlemez",async()=>{
+    mocks.refundFindUnique.mockResolvedValue({
+      id:"refund-2",ecommerceReturnId:"return-1",amount:0,status:EcommerceReturnRefundStatus.REQUESTED,
+      requestedByUserId:"finance",ecommerceReturn:{originalOrder:{id:10,orderNumber:"SIP-10",customerId:5,ecommerceEmail:"m@example.com",status:"DELIVERED"}},
+    });
+    mocks.refundFindMany.mockResolvedValue([]);
+    const data=new FormData();data.set("refundId","refund-2");data.set("providerReference","REF-2");
+    await expect(markEcommerceRefundCompleted(data)).rejects.toThrow("kalan uygun iade tutarını aşıyor");
+    expect(mocks.accountCreate).not.toHaveBeenCalled();
   });
 });
