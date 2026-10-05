@@ -74,10 +74,34 @@ export async function createEcommerceReturnPreReceipt(_prev:PreReceiptState,form
           outcome=EcommerceReturnPreReceiptOutcome.RETURN_ENTRY_PENDING;
           let er=await tx.ecommerceReturn.findFirst({where:{originalOrderId,externalReturnCode:scannedCode}});
           if(!er){
+            const orderItemIds=ro.items.map(i=>i.orderItemId);
+            const [orderItems,priorReceivedRows]=await Promise.all([
+              tx.orderItem.findMany({
+                where:{id:{in:orderItemIds},orderId:originalOrderId},
+                select:{id:true,shippedQuantity:true},
+              }),
+              tx.ecommerceReturnItem.groupBy({
+                by:["orderItemId"],
+                where:{orderItemId:{in:orderItemIds},ecommerceReturn:{originalOrderId}},
+                _sum:{receivedQuantity:true},
+              }),
+            ]);
+            const shippedByOrderItem=new Map(orderItems.map(item=>[item.id,item.shippedQuantity]));
+            const priorReceivedByOrderItem=new Map(priorReceivedRows.map(row=>[row.orderItemId,row._sum.receivedQuantity??0]));
+            const returnableItems=ro.items
+              .map(item=>{
+                const shippedQuantity=shippedByOrderItem.get(item.orderItemId)??0;
+                const priorReceived=priorReceivedByOrderItem.get(item.orderItemId)??0;
+                const remaining=Math.max(0,shippedQuantity-priorReceived);
+                return {item,expectedQuantity:Math.min(item.expectedQuantity,remaining)};
+              })
+              .filter(row=>row.expectedQuantity>0);
+            if(!returnableItems.length) throw new Error("Bu siparişte iade kabulüne açık sevk edilmiş ürün kalmadı.");
+
             const returnNumber=`ETI-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${randomUUID().replaceAll("-","").slice(0,8).toUpperCase()}`;
             er=await tx.ecommerceReturn.create({data:{
               returnNumber,originalOrderId,externalReturnCode:scannedCode,status:EcommerceReturnStatus.PRE_RECEIVED,refundStatus:EcommerceReturnRefundStatus.WAITING,
-              items:{create:ro.items.map(i=>({orderItemId:i.orderItemId,productId:i.productId,productCode:i.productCode,productBarcode:i.productBarcode,productName:i.productName,expectedQuantity:i.expectedQuantity}))},
+              items:{create:returnableItems.map(({item:i,expectedQuantity})=>({orderItemId:i.orderItemId,productId:i.productId,productCode:i.productCode,productBarcode:i.productBarcode,productName:i.productName,expectedQuantity}))},
             }});
           }
           ecommerceReturnId=er.id;
