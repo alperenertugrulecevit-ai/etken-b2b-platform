@@ -318,6 +318,27 @@ export async function markEcommerceRefundCompleted(formData:FormData){
     if(refund.status!==EcommerceReturnRefundStatus.REQUESTED) throw new Error("Finans kaydı tamamlanmaya uygun değil.");
 
     const order=refund.ecommerceReturn.originalOrder;
+    const [returnItemsForLimit,completedRefundsForLimit]=await Promise.all([
+      tx.ecommerceReturnItem.findMany({
+        where:{ecommerceReturnId:refund.ecommerceReturnId},
+        select:{refundAmount:true},
+      }),
+      tx.ecommerceReturnRefund.findMany({
+        where:{
+          ecommerceReturnId:refund.ecommerceReturnId,
+          status:EcommerceReturnRefundStatus.REFUNDED,
+          id:{not:refund.id},
+        },
+        select:{amount:true},
+      }),
+    ]);
+    const eligibleTotalForLimit=Math.round((returnItemsForLimit.reduce((sum,item)=>sum+item.refundAmount,0)+Number.EPSILON)*100)/100;
+    const alreadyRefundedForLimit=Math.round((completedRefundsForLimit.reduce((sum,row)=>sum+row.amount,0)+Number.EPSILON)*100)/100;
+    const remainingRefundable=Math.max(0,Math.round((eligibleTotalForLimit-alreadyRefundedForLimit+Number.EPSILON)*100)/100);
+    if(refund.amount<=0||refund.amount>remainingRefundable+0.005){
+      throw new Error(`Finans iade tutarı kalan uygun iade tutarını aşıyor. Kalan: ${remainingRefundable.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2})} TL.`);
+    }
+
     const existingAccountRefund=await tx.customerAccountEntry.findUnique({
       where:{ecommerceReturnRefundId:refund.id},
       select:{id:true},
