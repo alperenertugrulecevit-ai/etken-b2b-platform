@@ -24,8 +24,14 @@ export async function createAccountingEntry(formData:FormData){
  if(customerId){const c=await prisma.customer.findUnique({where:{id:customerId},select:{companyName:true}});if(!c)redirect("/admin/accounting?error=Müşteri bulunamadı.");companyName=c.companyName;}
  if(supplierId){const s=await prisma.supplier.findUnique({where:{id:supplierId},select:{name:true}});if(!s)redirect("/admin/accounting?error=Tedarikçi bulunamadı.");companyName=s.name;}
  if(!companyName) redirect("/admin/accounting?error="+encodeURIComponent("Firma zorunludur."));
- const netAmount=Number(formData.get("netAmount")),vatAmount=Number(formData.get("vatAmount")??0);
- if(!Number.isFinite(netAmount)||netAmount<0||!Number.isFinite(vatAmount)||vatAmount<0) redirect("/admin/accounting?error="+encodeURIComponent("Tutar ve KDV geçerli olmalıdır."));
+ const netAmount=Number(formData.get("netAmount"));
+ const isReceipt=documentType===AccountingDocumentType.PAYMENT_RECEIPT||documentType===AccountingDocumentType.INCOME_RECEIPT;
+ const requestedVatRate=Number(formData.get("vatRate")??0);
+ const allowedVatRates=[0,1,10,20];
+ if(!Number.isFinite(netAmount)||netAmount<=0) redirect("/admin/accounting?error="+encodeURIComponent("Tutar sıfırdan büyük olmalıdır."));
+ if(!isReceipt&&!allowedVatRates.includes(requestedVatRate)) redirect("/admin/accounting?error="+encodeURIComponent("Geçerli bir KDV oranı seçin."));
+ const vatRate=isReceipt?0:requestedVatRate;
+ const vatAmount=money(netAmount*vatRate/100);
  const paymentRaw=String(formData.get("paymentType")??"").trim();
  const paymentType=Object.values(AccountingPaymentType).includes(paymentRaw as AccountingPaymentType)?paymentRaw as AccountingPaymentType:null;
  const transactionDate=parseDate(formData.get("transactionDate"))??new Date();
@@ -36,7 +42,7 @@ export async function createAccountingEntry(formData:FormData){
  await prisma.$transaction(async tx=>{
   await tx.accountingEntry.create({data:{
    transactionDate,companyName,partyType,customerId,supplierId,documentType,movementType:movementByDocument[documentType],
-   documentNo,paymentType,netAmount:money(netAmount),vatAmount:money(vatAmount),totalAmount,description,
+   documentNo,paymentType,netAmount:money(netAmount),vatRate,vatAmount,totalAmount,description,
    bankName:String(formData.get("bankName")??"").trim()||null,bankReference,dueDate:parseDate(formData.get("dueDate")),
    createdByUserId:profile.id,createdByName:profile.employee?`${profile.employee.firstName} ${profile.employee.lastName}`:profile.username,
   }});
