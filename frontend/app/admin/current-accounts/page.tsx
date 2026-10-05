@@ -99,7 +99,7 @@ export default async function CurrentAccountsPage() {
     })),
     ...purchases.map((purchase) => ({
       id: `purchase-${purchase.id}`,
-      customerType: "Kurumsal" as const,
+      customerType: "Tedarikçi" as const,
       movement: "Gider" as const,
       date: dateText(purchase.orderDate),
       customerCode: `TED-${String(purchase.supplier.id).padStart(6, "0")}`,
@@ -144,7 +144,7 @@ export default async function CurrentAccountsPage() {
     })),
     ...accountingEntries.map((entry) => ({
       id: `accounting-${entry.id}`,
-      customerType: entry.customer?.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      customerType: entry.supplier ? "Tedarikçi" as const : entry.customer?.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
       movement: (entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN" ? "Gelir" : "Gider") as "Gelir" | "Gider",
       date: dateText(entry.transactionDate),
       customerCode: entry.customer?.customerCode ?? (entry.supplier ? `TED-${String(entry.supplier.id).padStart(6, "0")}` : ""),
