@@ -361,6 +361,28 @@ describe(
       );
     });
 
+    it("e-ticaret siparişinde manuel sevk durumunu engeller", async () => {
+      mocks.orderFindUnique.mockResolvedValue(
+        createOrder({
+          source: OrderSource.ECOMMERCE,
+          status: OrderStatus.READY_TO_SHIP,
+          stockReserved: true,
+        })
+      );
+
+      await expect(
+        updateOrderStatus(
+          501,
+          createStatusForm(OrderStatus.SHIPPED)
+        )
+      ).rejects.toThrow(
+        "RF Sevkiyat akışından"
+      );
+
+      expect(mocks.stockMovement).not.toHaveBeenCalled();
+      expect(mocks.orderUpdate).not.toHaveBeenCalled();
+    });
+
     it("iptal talebini kontrollü iptal servisine yönlendirir", async () => {
       mocks.cancellationRequest.mockResolvedValue({orderNumber:"B2B20260803-TEST",stockReturnRequired:false,physicalQuantity:0});
       await updateOrderStatus(501, createStatusForm(OrderStatus.CANCELLED));
