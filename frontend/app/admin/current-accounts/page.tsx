@@ -62,7 +62,7 @@ export default async function CurrentAccountsPage() {
       take: 1500,
       select: {
         id: true, transactionDate: true, companyName: true, partyType: true, customerId: true, supplierId: true,
-        documentType: true, movementType: true, documentNo: true, bankReference: true, netAmount: true, vatAmount: true,
+        documentType: true, movementType: true, documentNo: true, bankReference: true, netAmount: true, vatRate: true, vatAmount: true,
         totalAmount: true, description: true,
         customer: { select: { customerCode: true, companyName: true, customerType: true } },
         supplier: { select: { id: true, name: true } },
