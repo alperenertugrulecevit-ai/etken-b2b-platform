@@ -215,6 +215,19 @@ export async function createRefundApprovalRecord(formData:FormData){
     if(er.refundStatus===EcommerceReturnRefundStatus.REVIEW_REQUIRED) throw new Error("Kalite/finans incelemesi bekleyen ürünler var.");
     const amount=er.items.reduce((s,i)=>s+i.refundAmount,0);
     if(amount<=0) throw new Error("Para iadesine uygun tutar bulunamadı.");
+    const originalOrder=await tx.order.findUnique({where:{id:er.originalOrderId},select:{totalAmount:true,paymentStatus:true}});
+    if(!originalOrder) throw new Error("İadenin bağlı olduğu sipariş bulunamadı.");
+    if(!["PAID","REFUND_PENDING","REFUNDED"].includes(originalOrder.paymentStatus?.toUpperCase()??"")) {
+      throw new Error("Tahsil edilmemiş sipariş için para iadesi finans kaydı oluşturulamaz.");
+    }
+    const previousRefunds=await tx.customerAccountEntry.aggregate({
+      where:{orderId:er.originalOrderId,direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND},
+      _sum:{amount:true},
+    });
+    const remainingRefundable=Math.max(0,originalOrder.totalAmount-(previousRefunds._sum.amount??0));
+    if(amount>remainingRefundable+0.01) {
+      throw new Error(`İade tutarı kalan tahsilat tutarını aşıyor. İade edilebilir bakiye: ${remainingRefundable.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2})} TL.`);
+    }
     if(er.refunds.some(r=>r.status===EcommerceReturnRefundStatus.REQUESTED||r.status===EcommerceReturnRefundStatus.REFUNDED)) throw new Error("Bu iade için aktif/tamamlanmış finans kaydı zaten var.");
     await tx.ecommerceReturnRefund.create({data:{
       ecommerceReturnId:er.id,amount,status:EcommerceReturnRefundStatus.REQUESTED,provider:"MANUAL_PENDING_INTEGRATION",
