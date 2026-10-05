@@ -48,12 +48,26 @@ export async function matchEcommercePreReceiptToOrder(formData:FormData){
 
     let er=await tx.ecommerceReturn.findFirst({where:pre.mode==="RETURN_CODE"?{originalOrderId:order.id,externalReturnCode:pre.scannedCode}:{originalOrderId:order.id,status:{in:[EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING]}}});
     if(!er){
+      const priorReceivedRows=await tx.ecommerceReturnItem.groupBy({
+        by:["orderItemId"],
+        where:{ecommerceReturn:{originalOrderId:order.id}},
+        _sum:{receivedQuantity:true},
+      });
+      const priorReceivedByOrderItem=new Map(priorReceivedRows.map(row=>[row.orderItemId,row._sum.receivedQuantity??0]));
+      const returnableItems=order.items
+        .map(i=>({
+          item:i,
+          returnableQuantity:Math.max(0,i.shippedQuantity-(priorReceivedByOrderItem.get(i.id)??0)),
+        }))
+        .filter(row=>row.returnableQuantity>0);
+      if(!returnableItems.length) throw new Error("Bu siparişte iade kabulüne açık sevk edilmiş ürün kalmadı.");
+
       const returnNumber=`ETI-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${randomUUID().replaceAll("-","").slice(0,8).toUpperCase()}`;
       er=await tx.ecommerceReturn.create({data:{
         returnNumber,originalOrderId:order.id,externalReturnCode:pre.mode==="RETURN_CODE"?pre.scannedCode:null,status:EcommerceReturnStatus.PRE_RECEIVED,refundStatus:EcommerceReturnRefundStatus.WAITING,
-        items:{create:order.items.filter(i=>Math.max(i.shippedQuantity,i.packedQuantity)>0).map(i=>({
+        items:{create:returnableItems.map(({item:i,returnableQuantity})=>({
           orderItemId:i.id,productId:i.productId,productCode:i.productCode,productBarcode:i.product.barcode,productName:i.productName,
-          expectedQuantity:Math.max(i.shippedQuantity,i.packedQuantity),
+          expectedQuantity:returnableQuantity,
         }))},
       }});
     }
@@ -90,6 +104,15 @@ export async function processEcommerceReturnItem(formData:FormData){
     const item=pre.ecommerceReturn.items.find(i=>i.productBarcode.trim().toUpperCase()===productBarcode||i.productCode.trim().toUpperCase()===productBarcode);
     if(!item) throw new Error(`${productBarcode} bu iade dosyasında beklenen ürün değil.`);
     if(item.receivedQuantity>=item.expectedQuantity) throw new Error(`${item.productCode} için beklenen iade miktarı tamamlandı.`);
+
+    const otherReturns=await tx.ecommerceReturnItem.aggregate({
+      where:{orderItemId:item.orderItemId,id:{not:item.id}},
+      _sum:{receivedQuantity:true},
+    });
+    const alreadyReturned=(otherReturns._sum.receivedQuantity??0)+item.receivedQuantity;
+    if(alreadyReturned>=item.orderItem.shippedQuantity) {
+      throw new Error(`${item.productCode} için sevk edilen miktarın tamamı daha önce iade kabulüne alınmış.`);
+    }
 
     const hu=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,warehouseId:true,status:true,purpose:true}});
     if(!hu) throw new Error(`${targetBarcode} hedef THM bulunamadı.`);
