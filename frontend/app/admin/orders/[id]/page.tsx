@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 
 import OperationTimeline from "@/components/admin/OperationTimeline";
 import { prisma } from "@/lib/prisma";
-import { completeOrderCancellationRefund, confirmEcommerceBankTransferPayment } from "./actions";
+import { completeOrderCancellationRefund, confirmEcommerceBankTransferPayment, undoOrderCancellation } from "./actions";
 import OrderStatusForm from "./OrderStatusForm";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ paymentConfirmed?: string; refundCompleted?: string }>;
+  searchParams: Promise<{ paymentConfirmed?: string; refundCompleted?: string; cancellationUndone?: string }>;
 };
 
 function formatCurrency(value: number) {
@@ -282,12 +282,27 @@ export default async function OrderDetailPage({
           Sipariş iptal para iadesi tamamlandı ve cari hesaba REFUND hareketi işlendi.
         </div>
       ) : null}
+      {query.cancellationUndone === "1" ? (
+        <div className="mb-6 rounded-xl border border-green-300 bg-green-50 p-4 font-bold text-green-900">
+          Sipariş iptal talebi geri alındı. Sipariş yeniden sevk edilebilir.
+        </div>
+      ) : null}
       {order.cancellationStatus ? (
         <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-red-900">
           <p className="font-black">İptal Süreci: {order.cancellationStatus}</p>
           <p className="mt-1 text-sm">{order.cancellationReason || "İptal nedeni belirtilmedi."}</p>
           {order.cancellationStatus === "STOCK_RETURN_PENDING" ? (
-            <p className="mt-2 font-bold">Toplanmış/paketlenmiş ürünler RF Stok Geri Alma ile stoğa dönmeden iptal tamamlanmaz. Yeni toplama ve irsaliye işlemleri bloke edilmiştir.</p>
+            <div className="mt-3">
+              <p className="font-bold">Toplanmış/paketlenmiş ürünler RF Stok Geri Alma ile stoğa dönmeden iptal tamamlanmaz. Yeni toplama ve irsaliye işlemleri bloke edilmiştir.</p>
+              <form action={undoOrderCancellation.bind(null,order.id)} className="mt-3 rounded-xl border border-amber-300 bg-white p-3">
+                <label className="block text-sm font-bold text-slate-800">
+                  İptali geri alma açıklaması
+                  <input name="undoCancellationReason" defaultValue="Sorun giderildi; sipariş yeniden sevke açıldı." className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900"/>
+                </label>
+                <p className="mt-2 text-xs text-slate-600">Yalnızca RF stok geri alma başlamadıysa çalışır. İptal sırasında serbest bırakılan rezervasyonlar gerekiyorsa yeniden oluşturulur.</p>
+                <button className="mt-3 rounded-lg bg-amber-600 px-4 py-2 font-black text-white">SİPARİŞ İPTALİNİ GERİ AL</button>
+              </form>
+            </div>
           ) : null}
         </div>
       ) : null}
