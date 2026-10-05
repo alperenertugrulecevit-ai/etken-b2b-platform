@@ -265,6 +265,16 @@ export async function addressHandlingUnit(
           }
 
           if (
+            handlingUnit.warehouseId !== null ||
+            handlingUnit.locationId !== null
+          ) {
+            throw new Error(
+              `${handlingUnit.barcode} zaten bir depo/lokasyona bağlıdır. ` +
+                "Mevcut stoklu THM adresleme ile taşınamaz; depo/lokasyon değişikliği için transfer işlemini kullanın."
+            );
+          }
+
+          if (
             handlingUnit.warehouseId ===
               warehouseId &&
             handlingUnit.locationId ===
