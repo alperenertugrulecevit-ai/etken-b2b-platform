@@ -12,7 +12,7 @@ const dateText = (value: Date) =>
 export default async function CurrentAccountsPage() {
   await AuthorizationService.requireAdminPortalAccess();
 
-  const [orders, purchases, refunds] = await Promise.all([
+  const [orders, purchases, refunds, customerPayments, accountingEntries] = await Promise.all([
     prisma.order.findMany({
       where: { status: { not: OrderStatus.DRAFT } },
       orderBy: { orderDate: "desc" },
@@ -47,6 +47,27 @@ export default async function CurrentAccountsPage() {
         order: { select: { orderNumber: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true } },
       },
     }),
+    prisma.customerAccountEntry.findMany({
+      where: { entryType: CustomerAccountEntryType.PAYMENT },
+      orderBy: { transactionDate: "desc" },
+      take: 1500,
+      select: {
+        id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
+        customer: { select: { customerCode: true, companyName: true, customerType: true } },
+      },
+    }),
+    prisma.accountingEntry.findMany({
+      where: { OR: [{ partyType: "SUPPLIER" }, { partyType: "CUSTOMER", movementType: { not: "PAYMENT_IN" } }] },
+      orderBy: { transactionDate: "desc" },
+      take: 1500,
+      select: {
+        id: true, transactionDate: true, companyName: true, partyType: true, customerId: true, supplierId: true,
+        documentType: true, movementType: true, documentNo: true, bankReference: true, netAmount: true, vatRate: true, vatAmount: true,
+        totalAmount: true, description: true,
+        customer: { select: { customerCode: true, companyName: true, customerType: true } },
+        supplier: { select: { id: true, name: true } },
+      },
+    }),
   ]);
 
   const splitRefund = (refund: (typeof refunds)[number]) => {
@@ -78,7 +99,7 @@ export default async function CurrentAccountsPage() {
     })),
     ...purchases.map((purchase) => ({
       id: `purchase-${purchase.id}`,
-      customerType: "Kurumsal" as const,
+      customerType: "Tedarikçi" as const,
       movement: "Gider" as const,
       date: dateText(purchase.orderDate),
       customerCode: `TED-${String(purchase.supplier.id).padStart(6, "0")}`,
@@ -107,13 +128,42 @@ export default async function CurrentAccountsPage() {
       description: refund.description,
     };
     }),
+    ...customerPayments.map((payment) => ({
+      id: `payment-${payment.id}`,
+      customerType: payment.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      movement: "Gelir" as const,
+      date: dateText(payment.transactionDate),
+      customerCode: payment.customer.customerCode,
+      customerName: payment.customer.companyName,
+      orderNo: "",
+      documentNo: payment.referenceNo ?? "",
+      amount: payment.amount,
+      vatAmount: 0,
+      grandTotal: payment.amount,
+      description: payment.description,
+    })),
+    ...accountingEntries.map((entry) => ({
+      id: `accounting-${entry.id}`,
+      customerType: entry.supplier ? "Tedarikçi" as const : entry.customer?.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      movement: (entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN" ? "Gelir" : "Gider") as "Gelir" | "Gider",
+      date: dateText(entry.transactionDate),
+      customerCode: entry.customer?.customerCode ?? (entry.supplier ? `TED-${String(entry.supplier.id).padStart(6, "0")}` : ""),
+      customerName: entry.customer?.companyName ?? entry.supplier?.name ?? entry.companyName,
+      orderNo: "",
+      documentNo: entry.documentNo ?? entry.bankReference ?? "",
+      amount: entry.netAmount,
+      vatRate: entry.vatRate,
+      vatAmount: entry.vatAmount,
+      grandTotal: entry.totalAmount,
+      description: entry.description || (entry.movementType === "PAYMENT_IN" ? "Gelen havale / tahsilat" : entry.movementType === "PAYMENT_OUT" ? "Giden havale / ödeme" : "Muhasebe hareketi"),
+    })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <section className="p-4 sm:p-6 lg:p-10">
       <div>
         <h1 className="text-3xl font-black">Cari Hareketler Dashboard</h1>
-        <p className="mt-2 text-slate-500">Satış, satın alma ve finansal iadeleri tek ekranda izleyin. Satın alma satırlarında tedarikçi, cari taraf olarak gösterilir.</p>
+        <p className="mt-2 text-slate-500">Satış, satın alma, finansal iade ve Muhasebeleştirme ekranındaki müşteri/tedarikçi hareketlerini tek ekranda izleyin.</p>
       </div>
       <CurrentAccountDashboard rows={rows} />
     </section>

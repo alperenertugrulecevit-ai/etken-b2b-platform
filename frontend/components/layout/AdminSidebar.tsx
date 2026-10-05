@@ -25,6 +25,8 @@ const groups:MenuGroup[]=[
   {href:"/admin/suppliers",icon:"🏭",label:"Tedarikçi Yönetimi",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
   {href:"/admin/customers",icon:"👥",label:"Müşteri Yönetimi",permissionCodes:["CUSTOMER_VIEW","CUSTOMER_MANAGE"]},
   {href:"/admin/current-accounts",icon:"💳",label:"Cari Hareketler",permissionCodes:["ORDER_VIEW","RECEIVING_VIEW"]},
+  {href:"/admin/accounting",icon:"🧮",label:"Muhasebeleştirme",permissionCodes:["ORDER_VIEW","RECEIVING_VIEW"]},
+  {href:"/admin/accounting/reconciliation",icon:"🤝",label:"Cari Hesap Mutabakatı",permissionCodes:["ORDER_VIEW","RECEIVING_VIEW"]},
   {href:"/admin/orders",icon:"🛒",label:"Sipariş Yönetimi",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
   {href:"/admin/purchase-orders",icon:"🧾",label:"Satın Alma",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
   {href:"/admin/returns",icon:"↩️",label:"İade Giriş Yönetimi",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},
