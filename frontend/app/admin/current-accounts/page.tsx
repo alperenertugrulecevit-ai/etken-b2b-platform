@@ -48,7 +48,7 @@ export default async function CurrentAccountsPage() {
       },
     }),
     prisma.accountingEntry.findMany({
-      where: { partyType: { in: ["CUSTOMER", "SUPPLIER"] } },
+      where: { OR: [{ partyType: "SUPPLIER" }, { partyType: "CUSTOMER", movementType: { not: "PAYMENT_IN" } }] },
       orderBy: { transactionDate: "desc" },
       take: 1500,
       select: {
