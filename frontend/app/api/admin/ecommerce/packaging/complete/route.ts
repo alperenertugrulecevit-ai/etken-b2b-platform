@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
             orderNumber: true,
             orderType: true,
             status: true,
+            cancellationStatus: true,
             customerId: true,
             shippingAddressId: true,
             fulfillmentWarehouseId: true,
@@ -83,6 +84,12 @@ export async function POST(request: NextRequest) {
 
         if (!order || order.orderType !== OrderType.ECOMMERCE) {
           throw new Error("E-Ticaret siparişi bulunamadı.");
+        }
+        if (order.cancellationStatus) {
+          throw new Error(`${order.orderNumber} siparişi iptal sürecinde. Paketleme tamamlanamaz.`);
+        }
+        if (order.status !== OrderStatus.PACKING && order.status !== OrderStatus.READY_TO_SHIP) {
+          throw new Error(`${order.orderNumber} paketleme işlemine uygun durumda değildir.`);
         }
 
         const orderedQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
