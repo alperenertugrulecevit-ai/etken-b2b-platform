@@ -19,6 +19,7 @@ import {
   confirmEcommerceBankTransferPayment,
   updateOrderStatus,
   updateOrderStatusControlled,
+  undoOrderCancellation,
 } from "@/app/admin/orders/[id]/actions";
 
 const mocks = vi.hoisted(
@@ -52,6 +53,8 @@ const mocks = vi.hoisted(
     cancellationRequest:
       vi.fn(),
     cancellationRefund:
+      vi.fn(),
+    cancellationUndo:
       vi.fn(),
   })
 );
@@ -130,6 +133,7 @@ vi.mock(
     OrderCancellationService: {
       request: mocks.cancellationRequest,
       completeRefund: mocks.cancellationRefund,
+      undoRequest: mocks.cancellationUndo,
     },
   })
 );
@@ -774,5 +778,34 @@ describe("confirmEcommerceBankTransferPayment", () => {
     await expect(confirmEcommerceBankTransferPayment(700, paymentForm()))
       .rejects.toThrow("daha önce ödeme cari hareketi");
     expect(mocks.accountCreate).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("undoOrderCancellation",()=>{
+  beforeEach(()=>{
+    vi.clearAllMocks();
+    mocks.requirePermission.mockResolvedValue({id:"admin-user",username:"admin",employee:{firstName:"Yönetim",lastName:"Operatörü"}});
+    mocks.cancellationUndo.mockResolvedValue({orderNumber:"SIP20261005-720782"});
+  });
+
+  it("stok geri alma bekleyen siparişin iptal geri alma servisini çağırır",async()=>{
+    const formData=new FormData();
+    formData.set("undoCancellationReason","Operasyon sorunu giderildi.");
+    await undoOrderCancellation(782,formData);
+    expect(mocks.cancellationUndo).toHaveBeenCalledWith({
+      orderId:782,reason:"Operasyon sorunu giderildi.",actor:{userId:"admin-user",displayName:"Yönetim Operatörü"},
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/rf/shipment-dispatch");
+    expect(mocks.redirect).toHaveBeenCalledWith("/admin/orders/782?cancellationUndone=1");
+  });
+
+  it("açıklama boşsa güvenli varsayılan nedeni kullanır",async()=>{
+    const formData=new FormData();
+    formData.set("undoCancellationReason","   ");
+    await undoOrderCancellation(782,formData);
+    expect(mocks.cancellationUndo).toHaveBeenCalledWith(expect.objectContaining({
+      orderId:782,reason:"Sorun giderildi; sipariş yeniden sevke açıldı.",
+    }));
   });
 });
