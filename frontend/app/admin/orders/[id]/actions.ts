@@ -94,6 +94,26 @@ async function getOrderReservationWarehouseIds(
     .map(([warehouseId]) => warehouseId);
 }
 
+export async function undoOrderCancellation(orderId:number,formData:FormData){
+  const user=await AuthorizationService.requirePermission("ORDER_MANAGE");
+  if(!Number.isInteger(orderId)||orderId<=0) throw new Error("Geçerli bir sipariş kimliği gereklidir.");
+  const reason=String(formData.get("undoCancellationReason")??"Sorun giderildi; sipariş yeniden sevke açıldı.").trim().slice(0,500);
+  const actorName=user.employee?`${user.employee.firstName} ${user.employee.lastName}`:user.username;
+  await OrderCancellationService.undoRequest({
+    orderId,
+    reason:reason||"Sorun giderildi; sipariş yeniden sevke açıldı.",
+    actor:{userId:user.id,displayName:actorName},
+  });
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/order-grouping");
+  revalidatePath("/admin/picking-operations");
+  revalidatePath("/admin/shipping-planning");
+  revalidatePath("/admin/shipping-planning/tracking");
+  revalidatePath("/rf/shipment-dispatch");
+  redirect(`/admin/orders/${orderId}?cancellationUndone=1`);
+}
+
 export async function updateOrderStatus(
   orderId: number,
   formData: FormData

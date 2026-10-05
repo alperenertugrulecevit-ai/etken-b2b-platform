@@ -7,6 +7,7 @@ import {
   OrderStatus,
   Prisma,
   StockMovementType,
+  WmsOperationType,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -184,6 +185,119 @@ export class OrderCancellationService {
 
       if(physical===0)await finalizeCancellation(tx,order.id,input.actor);
       return {orderNumber:order.orderNumber,stockReturnRequired:physical>0,physicalQuantity:physical};
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:30000});
+  }
+
+  static async undoRequest(input:{orderId:number;reason:string;actor:Actor}) {
+    return prisma.$transaction(async(tx)=>{
+      const order=await tx.order.findUnique({
+        where:{id:input.orderId},
+        select:{
+          id:true,orderNumber:true,status:true,cancellationStatus:true,cancellationRequestedAt:true,
+          stockDeducted:true,
+          items:{select:{id:true,productId:true,productCode:true,quantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,cancelledQuantity:true}},
+          shippingHandlingUnitOrders:{select:{shippingHandlingUnit:{select:{dispatchDocument:{select:{id:true,status:true}}}}}},
+        },
+      });
+      if(!order) throw new Error("Sipariş bulunamadı.");
+      if(order.cancellationStatus!=="STOCK_RETURN_PENDING") {
+        throw new Error("Yalnızca stok geri alma bekleyen iptal talebi geri alınabilir.");
+      }
+      if(order.status===OrderStatus.CANCELLED) throw new Error("İptali tamamlanmış sipariş yeniden açılamaz.");
+      if(order.stockDeducted||order.items.some(i=>i.shippedQuantity>0)) throw new Error("Fiziksel sevki başlamış siparişin iptali geri alınamaz.");
+
+      const stockReturns=await tx.stockMovement.count({
+        where:{orderId:order.id,movementType:StockMovementType.STOCK_RETURN},
+      });
+      if(stockReturns>0) throw new Error("RF stok geri alma başlamış. Sipariş iptali artık geri alınamaz.");
+
+      const cancellationReleases=await tx.stockMovement.findMany({
+        where:{
+          orderId:order.id,
+          movementType:StockMovementType.RESERVATION_RELEASE,
+          description:{contains:"iptal talebi nedeniyle"},
+        },
+        select:{productId:true,warehouseId:true,reservedChange:true},
+      });
+
+      const releasedByProduct=new Map<number,number>();
+      for(const release of cancellationReleases){
+        const quantity=Math.max(0,-release.reservedChange);
+        if(quantity<=0||release.warehouseId===null) continue;
+        await createStockMovementWithTransaction(tx,{
+          productId:release.productId,
+          orderId:order.id,
+          warehouseId:release.warehouseId,
+          movementType:StockMovementType.RESERVATION_CREATE,
+          physicalChange:0,
+          reservedChange:quantity,
+          documentNumber:order.orderNumber,
+          description:`${order.orderNumber} iptal talebi geri alındığı için ${quantity} adet rezervasyon yeniden oluşturuldu.`,
+        });
+        releasedByProduct.set(release.productId,(releasedByProduct.get(release.productId)??0)+quantity);
+      }
+
+      for(const item of order.items){
+        const restoreCancelled=Math.min(item.cancelledQuantity,releasedByProduct.get(item.productId)??0);
+        if(restoreCancelled>0){
+          await tx.orderItem.update({where:{id:item.id},data:{cancelledQuantity:{decrement:restoreCancelled}}});
+        }
+      }
+
+      const docs=order.shippingHandlingUnitOrders
+        .map(row=>row.shippingHandlingUnit.dispatchDocument)
+        .filter((doc):doc is NonNullable<typeof doc>=>Boolean(doc));
+      for(const doc of docs){
+        if(doc.status===DispatchDocumentStatus.CANCELLED){
+          await tx.dispatchDocument.update({where:{id:doc.id},data:{
+            status:DispatchDocumentStatus.READY,
+            cancelledAt:null,
+            cancelledById:null,
+            cancelledByName:null,
+            cancelReason:null,
+          }});
+        }
+      }
+
+      await tx.order.update({
+        where:{id:order.id},
+        data:{
+          cancellationStatus:null,
+          cancellationReason:null,
+          cancellationRequestedAt:null,
+          cancellationRequestedByUserId:null,
+          cancellationRequestedByName:null,
+          cancellationCompletedAt:null,
+          cancellationRefundStatus:null,
+          cancellationRefundReference:null,
+          cancellationRefundedAt:null,
+          stockReserved:cancellationReleases.length>0?true:undefined,
+          statusHistory:{create:{
+            status:order.status,
+            note:`Sipariş iptal talebi geri alındı. ${input.reason}`.trim(),
+            changedByUserId:input.actor.userId,
+            changedByUsername:input.actor.displayName,
+            visibleToCustomer:false,
+          }},
+        },
+      });
+
+      await tx.wmsOperationLog.create({data:{
+        operationType:WmsOperationType.OTHER,
+        module:"ORDER_CANCELLATION_UNDO",
+        entityType:"ORDER",
+        entityId:order.id,
+        operatorId:input.actor.userId,
+        operatorName:input.actor.displayName,
+        orderId:order.id,
+        orderNumber:order.orderNumber,
+        previousStatus:"STOCK_RETURN_PENDING",
+        newStatus:order.status,
+        description:`${order.orderNumber} siparişinin iptal talebi geri alındı. ${input.reason}`.trim(),
+        metadata:{restoredReservationQuantity:[...releasedByProduct.values()].reduce((a,b)=>a+b,0)},
+      }});
+
+      return {orderNumber:order.orderNumber};
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:30000});
   }
 
