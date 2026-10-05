@@ -4146,6 +4146,7 @@ model AccountingEntry {
   documentNo    String?
   paymentType   AccountingPaymentType?
   netAmount     Float
+  vatRate       Float                  @default(0)
   vatAmount     Float                  @default(0)
   totalAmount   Float
   description   String?
