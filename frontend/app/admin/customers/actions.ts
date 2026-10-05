@@ -1,5 +1,6 @@
-import { CustomerType } from "@prisma/client";
 "use server";
+
+import { CustomerType } from "@prisma/client";
 
 import { revalidatePath } from "next/cache";
 
