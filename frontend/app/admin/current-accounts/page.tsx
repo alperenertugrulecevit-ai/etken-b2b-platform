@@ -152,6 +152,7 @@ export default async function CurrentAccountsPage() {
       orderNo: "",
       documentNo: entry.documentNo ?? entry.bankReference ?? "",
       amount: entry.netAmount,
+      vatRate: entry.vatRate,
       vatAmount: entry.vatAmount,
       grandTotal: entry.totalAmount,
       description: entry.description || (entry.movementType === "PAYMENT_IN" ? "Gelen havale / tahsilat" : entry.movementType === "PAYMENT_OUT" ? "Giden havale / ödeme" : "Muhasebe hareketi"),
