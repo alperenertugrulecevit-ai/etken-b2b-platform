@@ -1,4 +1,5 @@
 import {
+  CustomerType,
   OrderStatus,
   Prisma,
   UserType,
@@ -127,6 +128,7 @@ export default async function CustomerOrdersPage({
     redirect("/customer-login");
   }
 
+  const isIndividual = user.customer.customerType === CustomerType.INDIVIDUAL;
   const query = await searchParams;
   const startDate = normalizeText(query.startDate);
   const endDate = normalizeText(query.endDate);
@@ -202,7 +204,7 @@ export default async function CustomerOrdersPage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#EF4B23]">
-            Kurumsal Hesabım
+            {isIndividual ? "Bireysel Hesabım" : "Kurumsal Hesabım"}
           </p>
           <h1 className="mt-1 text-2xl font-black">
             Siparişlerim
@@ -303,7 +305,7 @@ export default async function CustomerOrdersPage({
               name="orderNumber"
               defaultValue={orderNumber}
               maxLength={80}
-              placeholder="Örneğin: B2B2026..."
+              placeholder="Sipariş numaranızı yazın"
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
             />
           </label>
