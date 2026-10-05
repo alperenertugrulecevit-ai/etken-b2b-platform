@@ -246,6 +246,7 @@ model Supplier {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   purchaseOrders  PurchaseOrder[]
+  accountingEntries AccountingEntry[]
 }
 
 model Brand {
@@ -287,6 +288,7 @@ model Customer {
   users                 User[]
   waveDistributions     WaveDistribution[]
   shippingHandlingUnits ShippingHandlingUnit[]
+  accountingEntries       AccountingEntry[]
 
   @@index([customerType])
 }
@@ -4095,4 +4097,77 @@ model StockReturnEvent {
   @@index([sourceHandlingUnitId])
   @@index([targetHandlingUnitId])
   @@index([targetLocationId])
+}
+
+
+enum AccountingDocumentType {
+  MEAL
+  FUEL
+  ENERGY
+  TELECOMMUNICATION
+  CONSUMABLE
+  WATER
+  OTHER_INCOME
+  OTHER_EXPENSE
+  PAYMENT_RECEIPT
+  INCOME_RECEIPT
+}
+
+enum AccountingMovementType {
+  EXPENSE
+  INCOME
+  PAYMENT_OUT
+  PAYMENT_IN
+}
+
+enum AccountingPaymentType {
+  CASH
+  DEFERRED
+  BANK_TRANSFER
+  CREDIT_CARD
+  OTHER
+}
+
+enum AccountingPartyType {
+  CUSTOMER
+  SUPPLIER
+  OTHER
+}
+
+model AccountingEntry {
+  id            String                 @id @default(cuid())
+  transactionDate DateTime
+  companyName   String
+  partyType     AccountingPartyType    @default(OTHER)
+  customerId    Int?
+  supplierId    Int?
+  documentType  AccountingDocumentType
+  movementType  AccountingMovementType
+  documentNo    String?
+  paymentType   AccountingPaymentType?
+  netAmount     Float
+  vatAmount     Float                  @default(0)
+  totalAmount   Float
+  description   String?
+  bankName      String?
+  bankReference String?
+  dueDate       DateTime?
+  createdByUserId String?
+  createdByName String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@index([transactionDate])
+  @@index([companyName])
+  @@index([partyType])
+  @@index([customerId, transactionDate])
+  @@index([supplierId, transactionDate])
+  @@index([documentType])
+  @@index([movementType])
+  @@index([paymentType])
+  @@index([documentNo])
+  @@index([bankReference])
 }
