@@ -60,6 +60,7 @@ const orderSelect = {
   orderDate: true,
   placedByUsername: true,
   status: true,
+  cancellationStatus: true,
   customerNote: true,
   carrier: { select: { code: true, name: true } },
   customer: {
@@ -145,6 +146,10 @@ export async function POST(request: NextRequest) {
 
     if (shippingUnit) {
       const orders = shippingUnit.orders.map((row) => row.order);
+      const blockedOrder = orders.find((order) => Boolean(order.cancellationStatus));
+      if (blockedOrder) {
+        return NextResponse.json({ success: false, message: `${blockedOrder.orderNumber} siparişi iptal sürecinde. Paketleme yapılamaz.` }, { status: 409 });
+      }
 
       if (orders.length !== 1) {
         return NextResponse.json(
@@ -167,6 +172,7 @@ export async function POST(request: NextRequest) {
     const candidates = await prisma.order.findMany({
       where: {
         orderType: OrderType.ECOMMERCE,
+        cancellationStatus: null,
         status: { in: ELIGIBLE_ORDER_STATUSES },
         items: {
           some: {

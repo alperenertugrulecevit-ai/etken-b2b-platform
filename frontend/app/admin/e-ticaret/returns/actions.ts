@@ -91,7 +91,7 @@ export async function processEcommerceReturnItem(formData:FormData){
     if(!item) throw new Error(`${productBarcode} bu iade dosyasında beklenen ürün değil.`);
     if(item.receivedQuantity>=item.expectedQuantity) throw new Error(`${item.productCode} için beklenen iade miktarı tamamlandı.`);
 
-    const hu=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,warehouseId:true,status:true,purpose:true}});
+    const hu=await tx.handlingUnit.findUnique({where:{barcode:targetBarcode},select:{id:true,barcode:true,warehouseId:true,locationId:true,status:true,purpose:true}});
     if(!hu) throw new Error(`${targetBarcode} hedef THM bulunamadı.`);
     if(hu.warehouseId!==pre.warehouseId) throw new Error("Hedef THM ön kabul deposunda değil.");
     if(hu.status!==HandlingUnitStatus.OPEN&&hu.status!==HandlingUnitStatus.EMPTY&&hu.status!==HandlingUnitStatus.STORED) throw new Error("Hedef THM iade girişine uygun durumda değil.");
@@ -100,6 +100,9 @@ export async function processEcommerceReturnItem(formData:FormData){
     const matches=locations.filter(l=>locationScanCode(l)===targetLocationCode||l.code.trim().toUpperCase()===targetLocationCode);
     if(matches.length!==1) throw new Error(matches.length?"Hedef adres barkodu birden fazla adresle eşleşiyor. Tam adres barkodunu okutun.":"Hedef adres bu depoda bulunamadı veya pasif.");
     const location=matches[0];
+    if(hu.locationId!==location.id) {
+      throw new Error(`${hu.barcode} hedef THM okutulan adreste değil. İade kabulü THM adresini değiştirmez; THM'yi önce doğru lokasyona transfer/adresleme işlemiyle taşıyın.`);
+    }
 
     const sellable=quality===EcommerceReturnQualityResult.SELLABLE;
     if(sellable){
@@ -120,7 +123,7 @@ export async function processEcommerceReturnItem(formData:FormData){
       description:`E-Ticaret İade Girişi; ön kabul ${pre.preReceiptNumber}; ${item.productCode}; kalite ${quality}; hedef THM ${hu.barcode}; hedef adres ${targetLocationCode}.`,
     });
     await tx.handlingUnitItem.upsert({where:{handling_unit_product_unique:{handlingUnitId:hu.id,productId:item.productId}},update:{quantity:{increment:1}},create:{handlingUnitId:hu.id,productId:item.productId,quantity:1,reservedStock:0}});
-    await tx.handlingUnit.update({where:{id:hu.id},data:{warehouseId:pre.warehouseId,locationId:location.id,status:HandlingUnitStatus.STORED}});
+    if(hu.status!==HandlingUnitStatus.STORED) await tx.handlingUnit.update({where:{id:hu.id},data:{status:HandlingUnitStatus.STORED}});
 
     await tx.ecommerceReturnInspection.create({data:{
       ecommerceReturnId:pre.ecommerceReturn.id,ecommerceReturnItemId:item.id,productId:item.productId,qualityResult:quality,refundStatus,refundAmount,
@@ -212,6 +215,19 @@ export async function createRefundApprovalRecord(formData:FormData){
     if(er.refundStatus===EcommerceReturnRefundStatus.REVIEW_REQUIRED) throw new Error("Kalite/finans incelemesi bekleyen ürünler var.");
     const amount=er.items.reduce((s,i)=>s+i.refundAmount,0);
     if(amount<=0) throw new Error("Para iadesine uygun tutar bulunamadı.");
+    const originalOrder=await tx.order.findUnique({where:{id:er.originalOrderId},select:{totalAmount:true,paymentStatus:true}});
+    if(!originalOrder) throw new Error("İadenin bağlı olduğu sipariş bulunamadı.");
+    if(!["PAID","REFUND_PENDING","REFUNDED"].includes(originalOrder.paymentStatus?.toUpperCase()??"")) {
+      throw new Error("Tahsil edilmemiş sipariş için para iadesi finans kaydı oluşturulamaz.");
+    }
+    const previousRefunds=await tx.customerAccountEntry.aggregate({
+      where:{orderId:er.originalOrderId,direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND},
+      _sum:{amount:true},
+    });
+    const remainingRefundable=Math.max(0,originalOrder.totalAmount-(previousRefunds._sum.amount??0));
+    if(amount>remainingRefundable+0.01) {
+      throw new Error(`İade tutarı kalan tahsilat tutarını aşıyor. İade edilebilir bakiye: ${remainingRefundable.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2})} TL.`);
+    }
     if(er.refunds.some(r=>r.status===EcommerceReturnRefundStatus.REQUESTED||r.status===EcommerceReturnRefundStatus.REFUNDED)) throw new Error("Bu iade için aktif/tamamlanmış finans kaydı zaten var.");
     await tx.ecommerceReturnRefund.create({data:{
       ecommerceReturnId:er.id,amount,status:EcommerceReturnRefundStatus.REQUESTED,provider:"MANUAL_PENDING_INTEGRATION",
