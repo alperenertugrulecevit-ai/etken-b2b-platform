@@ -265,8 +265,9 @@ export async function addressHandlingUnit(
           }
 
           if (
-            handlingUnit.warehouseId !== null ||
-            handlingUnit.locationId !== null
+            handlingUnit.locationId !== null ||
+            (handlingUnit.warehouseId !== null &&
+              handlingUnit.warehouseId !== warehouseId)
           ) {
             throw new Error(
               `${handlingUnit.barcode} zaten bir depo/lokasyona bağlıdır. ` +
