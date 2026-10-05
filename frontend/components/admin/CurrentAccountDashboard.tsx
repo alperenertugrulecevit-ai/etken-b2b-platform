@@ -12,6 +12,7 @@ export type CurrentAccountRow = {
   orderNo: string;
   documentNo: string;
   amount: number;
+  vatRate?: number | null;
   vatAmount: number;
   grandTotal: number;
   description: string;
@@ -29,7 +30,8 @@ const initialColumns: Column[] = [
   { key: "orderNo", label: "Sipariş No" },
   { key: "documentNo", label: "Belge/İrsaliye No" },
   { key: "amount", label: "Tutar" },
-  { key: "vatAmount", label: "KDV" },
+  { key: "vatRate", label: "KDV Oranı" },
+  { key: "vatAmount", label: "KDV Tutarı" },
   { key: "grandTotal", label: "Genel Toplam" },
   { key: "description", label: "Açıklama" },
 ];
@@ -130,7 +132,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
               <tr key={row.id} className="border-b hover:bg-slate-50">
                 {columns.map((column) => (
                   <td key={column.key} className={"p-4 " + (["amount", "vatAmount", "grandTotal"].includes(column.key) ? "whitespace-nowrap text-right font-black" : "")}>
-                    {["amount", "vatAmount", "grandTotal"].includes(column.key) ? formatMoney(Number(row[column.key])) : row[column.key] || "-"}
+                    {column.key === "vatRate" ? (row.vatRate == null ? "-" : `%${row.vatRate.toLocaleString("tr-TR")}`) : ["amount", "vatAmount", "grandTotal"].includes(column.key) ? formatMoney(Number(row[column.key])) : row[column.key] || "-"}
                   </td>
                 ))}
               </tr>
