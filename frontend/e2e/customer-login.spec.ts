@@ -8,7 +8,7 @@ test.describe("Kurumsal müşteri girişi", () => {
   test("giriş formu doğru alanları gösteriyor", async ({ page }) => {
     await expect(
       page.getByRole("textbox", {
-        name: "Kullanıcı Adı",
+        name: "E-posta / Kullanıcı Adı",
       }),
     ).toBeVisible();
 
@@ -20,7 +20,7 @@ test.describe("Kurumsal müşteri girişi", () => {
 
     await expect(
       page.getByRole("button", {
-        name: "Kurumsal Hesabıma Giriş Yap",
+        name: "Giriş Yap",
       }),
     ).toBeVisible();
 
@@ -36,7 +36,7 @@ test.describe("Kurumsal müşteri girişi", () => {
   }) => {
     await page
       .getByRole("button", {
-        name: "Kurumsal Hesabıma Giriş Yap",
+        name: "Giriş Yap",
       })
       .click();
 
@@ -46,7 +46,7 @@ test.describe("Kurumsal müşteri girişi", () => {
   test("geçersiz kullanıcı bilgileri reddediliyor", async ({ page }) => {
     await page
       .getByRole("textbox", {
-        name: "Kullanıcı Adı",
+        name: "E-posta / Kullanıcı Adı",
       })
       .fill("playwright-gecersiz-kullanici");
 
@@ -58,7 +58,7 @@ test.describe("Kurumsal müşteri girişi", () => {
 
     await page
       .getByRole("button", {
-        name: "Kurumsal Hesabıma Giriş Yap",
+        name: "Giriş Yap",
       })
       .click();
 
