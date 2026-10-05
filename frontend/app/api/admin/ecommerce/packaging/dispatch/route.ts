@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
             select: {
               orderId: true,
               orderNumber: true,
-              order: { select: { customerNote: true, status: true, cancellationStatus: true } },
+              order: { select: { customerNote: true, status: true, cancellationStatus: true, paymentStatus: true } },
             },
           },
           items: {
@@ -58,6 +58,13 @@ export async function POST(request: NextRequest) {
       });
       if (!unit) throw new Error(`${barcode} Sevk THM bulunamadı.`);
       if (!["READY_TO_SHIP", "SHIPPED"].includes(unit.status)) throw new Error("Sevk THM irsaliye oluşturmaya hazır değil.");
+      const unpaidOrder = unit.orders.find(
+        (row) => row.order.paymentStatus?.toUpperCase() !== "PAID"
+      );
+      if (unpaidOrder) {
+        throw new Error(`${unpaidOrder.orderNumber} siparişinin ödemesi onaylanmadan irsaliye kesilemez.`);
+      }
+
       const cancellingOrder = unit.orders.find((row) =>
         ["REQUESTED", "STOCK_RETURN_PENDING", "REFUND_PENDING"].includes(row.order.cancellationStatus ?? "")
       );

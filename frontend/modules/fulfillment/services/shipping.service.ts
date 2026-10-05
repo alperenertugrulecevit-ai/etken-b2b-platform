@@ -451,6 +451,10 @@ export class ShippingService {
                   order: {
                     select: {
                       fulfillmentWarehouseId: true,
+                      source: true,
+                      paymentStatus: true,
+                      cancellationStatus: true,
+                      status: true,
                       zonePickTasks: {
                         select: {
                           warehouseId: true,
@@ -497,6 +501,27 @@ export class ShippingService {
               ? "Bu Sevk THM daha önce sevk edilmiş."
               : "Sevk THM sevkiyata hazır durumda değil."
           );
+        }
+
+        for (const orderLink of shippingUnit.orders) {
+          if (
+            orderLink.order.source === "ECOMMERCE" &&
+            orderLink.order.paymentStatus?.toUpperCase() !== "PAID"
+          ) {
+            throw new Error(
+              `${orderLink.orderNumber} e-ticaret siparişinin ödemesi onaylanmadan fiziksel sevk yapılamaz.`
+            );
+          }
+          if (
+            ["REQUESTED", "STOCK_RETURN_PENDING", "REFUND_PENDING"].includes(
+              orderLink.order.cancellationStatus ?? ""
+            ) ||
+            orderLink.order.status === OrderStatus.CANCELLED
+          ) {
+            throw new Error(
+              `${orderLink.orderNumber} siparişi iptal sürecinde. Fiziksel sevk yapılamaz.`
+            );
+          }
         }
 
         const packingWarehouseIds =
