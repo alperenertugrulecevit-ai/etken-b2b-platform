@@ -12,6 +12,8 @@ export type CurrentAccountRow = {
   orderNo: string;
   documentNo: string;
   amount: number;
+  vatAmount: number;
+  grandTotal: number;
   description: string;
 };
 
@@ -27,6 +29,8 @@ const initialColumns: Column[] = [
   { key: "orderNo", label: "Sipariş No" },
   { key: "documentNo", label: "Belge/İrsaliye No" },
   { key: "amount", label: "Tutar" },
+  { key: "vatAmount", label: "KDV" },
+  { key: "grandTotal", label: "Genel Toplam" },
   { key: "description", label: "Açıklama" },
 ];
 
@@ -52,7 +56,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
   ), [rows, filters]);
 
   const totals = useMemo(() => filtered.reduce((acc, row) => {
-    acc[row.movement] += row.amount;
+    acc[row.movement] += row.grandTotal;
     return acc;
   }, { Gelir: 0, Gider: 0, "İade": 0 }), [filtered]);
 
@@ -99,7 +103,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
 
       <p className="mt-4 text-sm text-slate-500">Kolon sırasını değiştirmek için başlığı sürükleyip istediğiniz konuma bırakın.</p>
       <div className="mt-2 overflow-x-auto rounded-2xl bg-white shadow">
-        <table className="w-full min-w-[1450px] text-left text-sm">
+        <table className="w-full min-w-[1700px] text-left text-sm">
           <thead className="bg-blue-950 text-white">
             <tr>
               {columns.map((column) => (
@@ -113,8 +117,8 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
             {filtered.map((row) => (
               <tr key={row.id} className="border-b hover:bg-slate-50">
                 {columns.map((column) => (
-                  <td key={column.key} className={"p-4 " + (column.key === "amount" ? "whitespace-nowrap text-right font-black" : "")}>
-                    {column.key === "amount" ? formatMoney(row.amount) : row[column.key] || "-"}
+                  <td key={column.key} className={"p-4 " + (["amount", "vatAmount", "grandTotal"].includes(column.key) ? "whitespace-nowrap text-right font-black" : "")}>
+                    {["amount", "vatAmount", "grandTotal"].includes(column.key) ? formatMoney(Number(row[column.key])) : row[column.key] || "-"}
                   </td>
                 ))}
               </tr>
