@@ -1,5 +1,7 @@
 "use server";
 
+import { CustomerType } from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
@@ -28,6 +30,11 @@ export async function createCustomer(
   )
     .trim()
     .toUpperCase();
+
+  const customerTypeValue = String(formData.get("customerType") ?? CustomerType.CORPORATE);
+  const customerType = customerTypeValue === CustomerType.INDIVIDUAL
+    ? CustomerType.INDIVIDUAL
+    : CustomerType.CORPORATE;
 
   const companyName = String(
     formData.get("companyName") ?? ""
@@ -88,6 +95,7 @@ export async function createCustomer(
   await prisma.customer.create({
     data: {
       customerCode,
+      customerType,
       companyName,
 
       taxOffice:

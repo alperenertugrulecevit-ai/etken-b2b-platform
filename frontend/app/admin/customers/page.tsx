@@ -1,3 +1,4 @@
+import { CustomerType } from "@prisma/client";
 import Link from "next/link";
 import {
   getCities,
@@ -19,8 +20,20 @@ function formatCurrency(value: number) {
   });
 }
 
-export default async function AdminCustomersPage() {
+export default async function AdminCustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ customerType?: string }>;
+}) {
+  const params = await searchParams;
+  const customerType =
+    params.customerType === CustomerType.INDIVIDUAL ||
+    params.customerType === CustomerType.CORPORATE
+      ? params.customerType
+      : undefined;
+
   const customers = await prisma.customer.findMany({
+    where: customerType ? { customerType } : undefined,
     orderBy: {
       companyName: "asc",
     },
@@ -38,9 +51,22 @@ export default async function AdminCustomersPage() {
         </h1>
 
         <p className="mt-2 text-gray-500">
-          Kurumsal müşterileri ve ticari koşullarını yönetin.
+          Bireysel ve kurumsal müşterileri ve ticari koşullarını yönetin.
         </p>
       </div>
+
+      <form className="mt-6 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow">
+        <label>
+          <span className="mb-2 block text-sm font-semibold">Müşteri Tipi</span>
+          <select name="customerType" defaultValue={customerType ?? ""} className="rounded-xl border bg-white px-4 py-3">
+            <option value="">Tüm müşteri tipleri</option>
+            <option value={CustomerType.INDIVIDUAL}>Bireysel</option>
+            <option value={CustomerType.CORPORATE}>Kurumsal</option>
+          </select>
+        </label>
+        <button className="rounded-xl bg-blue-900 px-5 py-3 font-bold text-white">Filtrele</button>
+        <Link href="/admin/customers" className="rounded-xl border px-5 py-3 font-semibold">Temizle</Link>
+      </form>
 
       <div className="mt-6 grid gap-6 sm:mt-8 lg:gap-8 2xl:mt-10 2xl:grid-cols-[440px_minmax(0,1fr)]">
         <form
@@ -52,7 +78,14 @@ export default async function AdminCustomersPage() {
           </h2>
 
           <div className="mt-6 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
+              <label>
+                <span className="mb-2 block text-sm font-semibold">Müşteri Tipi</span>
+                <select name="customerType" defaultValue={CustomerType.CORPORATE} className="w-full rounded-xl border bg-white p-4">
+                  <option value={CustomerType.CORPORATE}>Kurumsal</option>
+                  <option value={CustomerType.INDIVIDUAL}>Bireysel</option>
+                </select>
+              </label>
               <label>
                 <span className="mb-2 block text-sm font-semibold">
                   Cari Kodu
@@ -68,12 +101,12 @@ export default async function AdminCustomersPage() {
 
               <label>
                 <span className="mb-2 block text-sm font-semibold">
-                  Firma Adı
+                  Müşteri / Firma Adı
                 </span>
 
                 <input
                   name="companyName"
-                  placeholder="Firma unvanı"
+                  placeholder="Ad soyad veya firma unvanı"
                   className="w-full rounded-xl border p-4"
                   required
                 />
@@ -228,6 +261,7 @@ export default async function AdminCustomersPage() {
           <table className="w-full min-w-[1400px] text-left text-sm">
             <thead className="bg-blue-900 text-white">
               <tr>
+                <th className="p-4">Müşteri Tipi</th>
                 <th className="p-4">Cari Kodu</th>
                 <th className="p-4">Firma</th>
                 <th className="p-4">Yetkili</th>
@@ -251,6 +285,12 @@ export default async function AdminCustomersPage() {
                       : ""
                   }`}
                 >
+                  <td className="p-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${customer.customerType === CustomerType.INDIVIDUAL ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-800"}`}>
+                      {customer.customerType === CustomerType.INDIVIDUAL ? "Bireysel" : "Kurumsal"}
+                    </span>
+                  </td>
+
                   <td className="p-4 font-semibold text-blue-900">
                     {customer.customerCode}
                   </td>
@@ -393,7 +433,7 @@ export default async function AdminCustomersPage() {
               {customers.length === 0 && (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     className="p-10 text-center text-gray-500"
                   >
                     Henüz müşteri oluşturulmadı.
