@@ -12,7 +12,7 @@ const dateText = (value: Date) =>
 export default async function CurrentAccountsPage() {
   await AuthorizationService.requireAdminPortalAccess();
 
-  const [orders, purchases, refunds, accountingEntries] = await Promise.all([
+  const [orders, purchases, refunds, customerPayments, accountingEntries] = await Promise.all([
     prisma.order.findMany({
       where: { status: { not: OrderStatus.DRAFT } },
       orderBy: { orderDate: "desc" },
@@ -45,6 +45,15 @@ export default async function CurrentAccountsPage() {
         id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
         customer: { select: { customerCode: true, companyName: true, customerType: true } },
         order: { select: { orderNumber: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true } },
+      },
+    }),
+    prisma.customerAccountEntry.findMany({
+      where: { entryType: CustomerAccountEntryType.PAYMENT },
+      orderBy: { transactionDate: "desc" },
+      take: 1500,
+      select: {
+        id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
+        customer: { select: { customerCode: true, companyName: true, customerType: true } },
       },
     }),
     prisma.accountingEntry.findMany({
@@ -119,6 +128,20 @@ export default async function CurrentAccountsPage() {
       description: refund.description,
     };
     }),
+    ...customerPayments.map((payment) => ({
+      id: `payment-${payment.id}`,
+      customerType: payment.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      movement: "Gelir" as const,
+      date: dateText(payment.transactionDate),
+      customerCode: payment.customer.customerCode,
+      customerName: payment.customer.companyName,
+      orderNo: "",
+      documentNo: payment.referenceNo ?? "",
+      amount: payment.amount,
+      vatAmount: 0,
+      grandTotal: payment.amount,
+      description: payment.description,
+    })),
     ...accountingEntries.map((entry) => ({
       id: `accounting-${entry.id}`,
       customerType: entry.customer?.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
