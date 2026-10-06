@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 export type CurrentAccountRow = {
   id: string;
-  customerType: "Bireysel" | "Kurumsal" | "Tedarikçi";
+  customerType: "Bireysel" | "Kurumsal" | "Tedarikçi" | "Diğer";
   movement: "Gelir" | "Gider" | "İade";
   date: string;
   customerCode: string;
@@ -104,7 +104,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
               {column.key === "customerType" || column.key === "movement" ? (
                 <select className="w-full rounded-xl border bg-white p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))}>
                   <option value="">Tümü</option>
-                  {(column.key === "customerType" ? ["Bireysel", "Kurumsal", "Tedarikçi"] : ["Gelir", "Gider", "İade"]).map((x) => <option key={x} value={x}>{x}</option>)}
+                  {(column.key === "customerType" ? ["Bireysel", "Kurumsal", "Tedarikçi", "Diğer"] : ["Gelir", "Gider", "İade"]).map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               ) : (
                 <input type={column.key === "date" ? "date" : "text"} className="w-full rounded-xl border p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))} />
