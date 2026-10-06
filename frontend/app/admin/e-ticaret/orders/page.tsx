@@ -4,7 +4,7 @@ import { CustomerAccountEntryDirection, CustomerAccountEntryType, OrderStatus } 
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { confirmEcommerceBankTransferPayment, updateOrderStatus } from "@/app/admin/orders/[id]/actions";
-import { refundCancelledEcommerceOrder } from "./actions";
+import { refundCancelledEcommerceOrder, repairEcommerceAccountLedger } from "./actions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -17,7 +17,7 @@ const STATUS: Record<string,string> = {
 const PAYMENT: Record<string,string> = { PENDING:"Ödeme Bekleniyor", PAID:"Ödendi", REFUNDED:"İade Edildi" };
 function money(v:number){return v.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});}
 
-export default async function EcommerceOrdersPage({searchParams}:{searchParams:Promise<{status?:string;payment?:string;q?:string;refunded?:string}>}) {
+export default async function EcommerceOrdersPage({searchParams}:{searchParams:Promise<{status?:string;payment?:string;q?:string;refunded?:string;ledgerRepaired?:string;scanned?:string;orders?:string;entries?:string}>}) {
   const profile = await AuthorizationService.requireAnyPermission(["ORDER_VIEW","ORDER_MANAGE"]);
   const canManage = AuthorizationService.hasPermission(profile, "ORDER_MANAGE");
   const query=await searchParams;
@@ -55,6 +55,11 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
       <h1 className="mt-2 text-3xl font-black">E-Ticaret Siparişleri</h1>
       <p className="mt-2 text-sm text-slate-500">Ödeme, operasyon onayı, iptal ve iade durumlarını tek ekrandan takip edin.</p>
     </div>
+    {canManage?<form action={repairEcommerceAccountLedger} className="mt-4">
+      <button className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-black text-blue-900">E-Ticaret Cari Bütünlüğünü Onar</button>
+      <p className="mt-1 text-xs text-slate-500">Yalnız kanıtlanmış ödenmiş siparişler ve tamamlanmış iadelerde eksik cari çiftlerini idempotent tamamlar.</p>
+    </form>:null}
+    {query.ledgerRepaired==="1"?<div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 font-bold text-blue-900">Cari bütünlük kontrolü tamamlandı. {query.scanned??"0"} sipariş tarandı; {query.orders??"0"} siparişte {query.entries??"0"} eksik cari hareket oluşturuldu.</div>:null}
     {query.refunded==="1"?<div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">Ödeme iadesi cari hesaba işlendi.</div>:null}
 
     <form className="mt-6 grid gap-3 rounded-2xl bg-white p-4 shadow sm:grid-cols-4">
