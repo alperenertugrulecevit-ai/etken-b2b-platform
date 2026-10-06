@@ -441,6 +441,10 @@ model Order {
   invoiceName       String?
   invoiceTaxOffice  String?
   invoiceTaxNumber  String?
+  invoiceAddress    String?
+  invoiceCity       String?
+  invoiceDistrict   String?
+  invoicePostalCode String?
   paymentStatus     String?
   paymentProvider   String?
   paymentReference  String?
