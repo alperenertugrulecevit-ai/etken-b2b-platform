@@ -50,12 +50,11 @@ export async function refundCancelledEcommerceOrder(orderId: number, formData: F
 export async function repairEcommerceAccountLedger() {
   const user = await AuthorizationService.requirePermission("ORDER_MANAGE");
   const actorName=user.employee?`${user.employee.firstName} ${user.employee.lastName}`:user.username;
-  const result=await EcommerceAccountLedgerIntegrityService.repair({
+  await EcommerceAccountLedgerIntegrityService.repair({
     userId:user.id,
     displayName:actorName,
   });
   revalidatePath("/admin/e-ticaret/orders");
   revalidatePath("/admin/current-accounts");
   revalidatePath("/admin/accounting/reconciliation");
-  return result;
 }
