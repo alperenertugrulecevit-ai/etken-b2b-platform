@@ -277,6 +277,9 @@ export class B2BCheckoutService {
           paymentTermDays: true,
           discountRate: true,
           creditLimit: true,
+          companyName: true,
+          taxOffice: true,
+          taxNumber: true,
         },
       }),
       prisma.customerAddress.findFirst({
@@ -551,6 +554,10 @@ export class B2BCheckoutService {
           customerNote,
           internalNote:
             "B2B müşteri portalından oluşturuldu.",
+          invoiceType: "CORPORATE",
+          invoiceName: customer.companyName,
+          invoiceTaxOffice: customer.taxOffice,
+          invoiceTaxNumber: customer.taxNumber,
           statusHistory: {
             create: {
               status:
