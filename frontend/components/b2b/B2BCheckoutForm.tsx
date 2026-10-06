@@ -24,6 +24,8 @@ type AddressOption = {
 type Props = {
   addresses:
     AddressOption[];
+  invoiceAddresses:
+    AddressOption[];
   invoiceProfile: {
     companyName: string;
     taxOffice: string | null;
@@ -48,6 +50,7 @@ function formatCurrency(
 
 export default function B2BCheckoutForm({
   addresses,
+  invoiceAddresses,
   invoiceProfile,
   discountRate,
   creditLimit,
@@ -76,6 +79,9 @@ export default function B2BCheckoutForm({
         )
       : ""
   );
+  const defaultInvoiceAddress = invoiceAddresses.find((address) => address.isDefault) ?? invoiceAddresses[0];
+  const [invoiceAddressId, setInvoiceAddressId] = useState(defaultInvoiceAddress ? String(defaultInvoiceAddress.id) : "");
+
   const [
     paymentMethod,
     setPaymentMethod,
@@ -177,6 +183,10 @@ export default function B2BCheckoutForm({
           shippingAddressId:
             Number(
               shippingAddressId
+            ),
+          invoiceAddressId:
+            Number(
+              invoiceAddressId
             ),
           paymentMethod,
           requestedDate:
@@ -321,7 +331,14 @@ export default function B2BCheckoutForm({
             <strong className="block text-slate-900">{invoiceProfile.companyName}</strong>
             <p className="mt-1 text-slate-600">Vergi Dairesi: {invoiceProfile.taxOffice || "-"}</p>
             <p className="mt-1 text-slate-600">VKN / TCKN: {invoiceProfile.taxNumber || "-"}</p>
-            <p className="mt-3 text-xs text-slate-500">Fatura adresi, hesabınızdaki aktif fatura / merkez adresinden sipariş anında kaydedilir.</p>
+          </div>
+          <div className="mt-4 space-y-3">
+            {invoiceAddresses.length ? invoiceAddresses.map((address) => (
+              <label key={address.id} className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 p-4">
+                <input type="radio" name="invoiceAddress" value={address.id} checked={invoiceAddressId === String(address.id)} onChange={(event) => setInvoiceAddressId(event.target.value)} />
+                <span><strong className="block">{address.title}</strong><span className="mt-1 block text-sm text-slate-600">{address.address}, {address.district} / {address.city}</span></span>
+              </label>
+            )) : <div className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">Aktif fatura adresiniz bulunmuyor.</div>}
           </div>
           <Link href="/account/addresses" className="mt-3 inline-block text-sm font-bold text-blue-900 hover:underline">Fatura ve teslimat adreslerini yönet</Link>
         </section>
@@ -513,7 +530,8 @@ export default function B2BCheckoutForm({
           disabled={
             pending ||
             !minimumMet ||
-            !shippingAddressId
+            !shippingAddressId ||
+            !invoiceAddressId
           }
           className="mt-6 w-full rounded-xl bg-blue-900 py-4 font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
         >
