@@ -108,7 +108,7 @@ export default async function CheckoutPage() {
                 isDefault: true,
               },
             },
-
+          },
         })
       : null;
 
