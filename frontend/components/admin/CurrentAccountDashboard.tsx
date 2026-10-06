@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 
 export type CurrentAccountRow = {
   id: string;
-  customerType: "Bireysel" | "Kurumsal" | "Tedarikçi";
-  movement: "Gelir" | "Gider" | "İade";
+  customerType: "Bireysel" | "Kurumsal" | "Tedarikçi" | "Diğer";
+  movement: "Gelir" | "Gider" | "İade" | "Ödeme";
+  direction: "IN" | "OUT";
   date: string;
   customerCode: string;
   customerName: string;
@@ -18,7 +19,7 @@ export type CurrentAccountRow = {
   description: string;
 };
 
-type ColumnKey = keyof Omit<CurrentAccountRow, "id">;
+type ColumnKey = keyof Omit<CurrentAccountRow, "id" | "direction">;
 type Column = { key: ColumnKey; label: string };
 
 const initialColumns: Column[] = [
@@ -62,9 +63,9 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
   }), [rows, filters, startDate, endDate]);
 
   const totals = useMemo(() => filtered.reduce((acc, row) => {
-    acc[row.movement] += row.grandTotal;
+    acc[row.movement] += Math.abs(row.grandTotal);
     return acc;
-  }, { Gelir: 0, Gider: 0, "İade": 0 }), [filtered]);
+  }, { Gelir: 0, Gider: 0, "İade": 0, "Ödeme": 0 }), [filtered]);
 
   function drop(target: ColumnKey) {
     if (!dragged || dragged === target) return setDragged(null);
@@ -81,11 +82,11 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
 
   return (
     <>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <article className="rounded-2xl bg-white p-5 shadow"><p className="text-sm font-bold text-slate-500">Hareket Sayısı</p><p className="mt-2 text-3xl font-black">{filtered.length.toLocaleString("tr-TR")}</p></article>
         <article className="rounded-2xl bg-white p-5 shadow"><p className="text-sm font-bold text-slate-500">Gelir</p><p className="mt-2 text-3xl font-black text-emerald-700">{formatMoney(totals.Gelir)}</p></article>
         <article className="rounded-2xl bg-white p-5 shadow"><p className="text-sm font-bold text-slate-500">Gider</p><p className="mt-2 text-3xl font-black text-red-700">{formatMoney(totals.Gider)}</p></article>
-        <article className="rounded-2xl bg-white p-5 shadow"><p className="text-sm font-bold text-slate-500">İade</p><p className="mt-2 text-3xl font-black text-amber-700">{formatMoney(totals["İade"])}</p></article>
+        <article className="rounded-2xl bg-white p-5 shadow"><p className="text-sm font-bold text-slate-500">İade</p><p className="mt-2 text-3xl font-black text-amber-700">{formatMoney(totals["İade"])}</p></article>\n        <article className="rounded-2xl bg-white p-5 shadow"><p className="text-sm font-bold text-slate-500">Ödeme</p><p className="mt-2 text-3xl font-black">{formatMoney(totals["Ödeme"])}</p></article>
       </div>
 
       <div className="mt-6 rounded-2xl bg-white p-5 shadow">
@@ -104,7 +105,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
               {column.key === "customerType" || column.key === "movement" ? (
                 <select className="w-full rounded-xl border bg-white p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))}>
                   <option value="">Tümü</option>
-                  {(column.key === "customerType" ? ["Bireysel", "Kurumsal", "Tedarikçi"] : ["Gelir", "Gider", "İade"]).map((x) => <option key={x} value={x}>{x}</option>)}
+                  {(column.key === "customerType" ? ["Bireysel", "Kurumsal", "Tedarikçi", "Diğer"] : ["Gelir", "Gider", "İade", "Ödeme"]).map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               ) : (
                 <input type={column.key === "date" ? "date" : "text"} className="w-full rounded-xl border p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))} />
@@ -132,7 +133,7 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
               <tr key={row.id} className="border-b hover:bg-slate-50">
                 {columns.map((column) => (
                   <td key={column.key} className={"p-4 " + (["amount", "vatAmount", "grandTotal"].includes(column.key) ? "whitespace-nowrap text-right font-black" : "")}>
-                    {column.key === "vatRate" ? (row.vatRate == null ? "-" : `%${row.vatRate.toLocaleString("tr-TR")}`) : ["amount", "vatAmount", "grandTotal"].includes(column.key) ? formatMoney(Number(row[column.key])) : row[column.key] || "-"}
+                    {column.key === "vatRate" ? (row.vatRate == null ? "-" : `%${row.vatRate.toLocaleString("tr-TR")}`) : ["amount", "vatAmount", "grandTotal"].includes(column.key) ? formatMoney((row.direction === "IN" ? 1 : -1) * Math.abs(Number(row[column.key]))) : row[column.key] || "-"}
                   </td>
                 ))}
               </tr>

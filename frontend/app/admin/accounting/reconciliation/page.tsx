@@ -1,23 +1,178 @@
 import Link from "next/link";
+import { CustomerAccountEntryType, OrderStatus, PurchaseOrderStatus } from "@prisma/client";
 import ConfigurableDataTable from "@/components/admin/ConfigurableDataTable";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
-export const dynamic="force-dynamic";export const revalidate=0;
-const money=(v:number)=>v.toLocaleString("tr-TR",{style:"currency",currency:"TRY"});
-export default async function ReconciliationPage({searchParams}:{searchParams:Promise<{type?:string;q?:string;from?:string;to?:string}>}){
- await AuthorizationService.requireAdminPortalAccess();const q=await searchParams;const type=q.type==="SUPPLIER"?"SUPPLIER":"CUSTOMER";
- const from=q.from?new Date(q.from+"T00:00:00+03:00"):undefined,to=q.to?new Date(q.to+"T23:59:59+03:00"):undefined;
- const range=from||to?{transactionDate:{...(from?{gte:from}:{}),...(to?{lte:to}:{})}}:{};
- let rows:Array<{key:string|number;cells:Record<string,React.ReactNode>}>=[];let columns=[{key:"code",label:"Kod"},{key:"company",label:"Firma"},{key:"debit",label:"Borç / Çıkış"},{key:"credit",label:"Alacak / Giriş"},{key:"balance",label:"Bakiye"},{key:"movementCount",label:"Hareket"},{key:"lastMovement",label:"Son Hareket"}];
- if(type==="CUSTOMER"){
-  const customers=await prisma.customer.findMany({where:q.q?{OR:[{companyName:{contains:q.q,mode:"insensitive"}},{customerCode:{contains:q.q,mode:"insensitive"}}]}:{},select:{id:true,customerCode:true,companyName:true,accountEntries:{where:range,select:{direction:true,amount:true,transactionDate:true}},accountingEntries:{where:range,select:{movementType:true,totalAmount:true,transactionDate:true}}},orderBy:{companyName:"asc"}});
-  rows=customers.map(c=>{let debit=0,credit=0;for(const e of c.accountEntries)e.direction==="DEBIT"?debit+=e.amount:credit+=e.amount;const dates=[...c.accountEntries,...c.accountingEntries].map(e=>e.transactionDate);const balance=debit-credit;return{key:c.id,cells:{code:c.customerCode,company:c.companyName,debit:money(debit),credit:money(credit),balance:<strong className={balance>0?"text-red-700":"text-green-700"}>{money(balance)}</strong>,movementCount:c.accountEntries.length+c.accountingEntries.length,lastMovement:dates.length?new Date(Math.max(...dates.map(d=>d.getTime()))).toLocaleDateString("tr-TR"):"-"}}});
- }else{
-  const suppliers=await prisma.supplier.findMany({where:q.q?{name:{contains:q.q,mode:"insensitive"}}:{},select:{id:true,name:true,accountingEntries:{where:range,select:{movementType:true,totalAmount:true,transactionDate:true}}},orderBy:{name:"asc"}});
-  rows=suppliers.map(s=>{let debit=0,credit=0;for(const e of s.accountingEntries){if(e.movementType==="EXPENSE")credit+=e.totalAmount;if(e.movementType==="PAYMENT_OUT")debit+=e.totalAmount;if(e.movementType==="INCOME")debit+=e.totalAmount;if(e.movementType==="PAYMENT_IN")credit+=e.totalAmount;}const balance=credit-debit;return{key:s.id,cells:{code:"TED-"+s.id,company:s.name,debit:money(debit),credit:money(credit),balance:<strong className={balance>0?"text-red-700":"text-green-700"}>{money(balance)}</strong>,movementCount:s.accountingEntries.length,lastMovement:s.accountingEntries.length?new Date(Math.max(...s.accountingEntries.map(e=>e.transactionDate.getTime()))).toLocaleDateString("tr-TR"):"-"}}});
- }
- return <section className="p-4 sm:p-6 lg:p-10"><div className="flex justify-between gap-3"><div><p className="text-sm font-bold uppercase text-emerald-700">Muhasebeleştirme</p><h1 className="text-3xl font-black">Cari Hesap Mutabakatı</h1><p className="mt-2 text-slate-500">Müşteri ve tedarikçi bakiyelerini dönem bazında karşılaştırın.</p></div><Link href="/admin/accounting" className="h-fit rounded-xl border bg-white px-5 py-3 font-bold">Muhasebeleştirmeye Dön</Link></div>
- <div className="mt-6 flex gap-2"><Link href="/admin/accounting/reconciliation?type=CUSTOMER" className={"rounded-xl px-5 py-3 font-bold "+(type==="CUSTOMER"?"bg-blue-900 text-white":"bg-white")}>Müşteri Cari</Link><Link href="/admin/accounting/reconciliation?type=SUPPLIER" className={"rounded-xl px-5 py-3 font-bold "+(type==="SUPPLIER"?"bg-blue-900 text-white":"bg-white")}>Tedarikçi Cari</Link></div>
- <form className="mt-4 grid gap-3 rounded-2xl bg-slate-100 p-4 md:grid-cols-4"><input type="hidden" name="type" value={type}/><input name="from" type="date" defaultValue={q.from} className="rounded-xl border p-3"/><input name="to" type="date" defaultValue={q.to} className="rounded-xl border p-3"/><input name="q" defaultValue={q.q} placeholder="Firma / cari kodu" className="rounded-xl border p-3"/><button className="rounded-xl bg-slate-900 font-bold text-white">Filtrele</button></form>
- <div className="mt-5"><ConfigurableDataTable storageKey={"account-reconciliation-"+type.toLowerCase()+"-v1"} columns={columns} rows={rows} minWidth="1050px"/></div></section>;
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const money = (value: number) =>
+  value.toLocaleString("tr-TR", { style: "currency", currency: "TRY" });
+
+const inRange = (date: Date, from?: Date, to?: Date) =>
+  (!from || date >= from) && (!to || date <= to);
+
+export default async function ReconciliationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string; q?: string; from?: string; to?: string }>;
+}) {
+  await AuthorizationService.requireAdminPortalAccess();
+  const q = await searchParams;
+  const type = q.type === "SUPPLIER" ? "SUPPLIER" : "CUSTOMER";
+  const from = q.from ? new Date(q.from + "T00:00:00+03:00") : undefined;
+  const to = q.to ? new Date(q.to + "T23:59:59+03:00") : undefined;
+  const range = from || to
+    ? { transactionDate: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+    : {};
+
+  const columns = [
+    { key: "code", label: "Kod" },
+    { key: "company", label: "Firma" },
+    { key: "positive", label: "Alacak / (+)" },
+    { key: "negative", label: "Borç / (-)" },
+    { key: "balance", label: "Bakiye (+/-)" },
+    { key: "movementCount", label: "Hareket" },
+    { key: "lastMovement", label: "Son Hareket" },
+  ];
+
+  let rows: Array<{ key: string | number; cells: Record<string, React.ReactNode> }> = [];
+
+  if (type === "CUSTOMER") {
+    const customers = await prisma.customer.findMany({
+      where: q.q
+        ? { OR: [{ companyName: { contains: q.q, mode: "insensitive" } }, { customerCode: { contains: q.q, mode: "insensitive" } }] }
+        : {},
+      select: {
+        id: true,
+        customerCode: true,
+        companyName: true,
+        orders: {
+          where: { status: { not: OrderStatus.DRAFT } },
+          select: { orderDate: true, totalAmount: true },
+        },
+        accountEntries: {
+          where: { ...range, entryType: { in: [CustomerAccountEntryType.REFUND, CustomerAccountEntryType.PAYMENT] } },
+          select: { entryType: true, amount: true, transactionDate: true },
+        },
+        accountingEntries: {
+          where: { ...range, movementType: { not: "PAYMENT_IN" } },
+          select: { movementType: true, totalAmount: true, transactionDate: true },
+        },
+      },
+      orderBy: { companyName: "asc" },
+    });
+
+    rows = customers.map((customer) => {
+      let positive = 0;
+      let negative = 0;
+      const dates: Date[] = [];
+
+      for (const order of customer.orders) {
+        if (!inRange(order.orderDate, from, to)) continue;
+        positive += order.totalAmount; // Gelir (+)
+        dates.push(order.orderDate);
+      }
+      for (const entry of customer.accountEntries) {
+        if (entry.entryType === CustomerAccountEntryType.PAYMENT) positive += entry.amount; // Ödeme giriş (+)
+        if (entry.entryType === CustomerAccountEntryType.REFUND) negative += entry.amount; // Satış iadesi (-)
+        dates.push(entry.transactionDate);
+      }
+      for (const entry of customer.accountingEntries) {
+        if (entry.movementType === "INCOME") positive += entry.totalAmount;
+        if (entry.movementType === "EXPENSE" || entry.movementType === "PAYMENT_OUT") negative += entry.totalAmount;
+        dates.push(entry.transactionDate);
+      }
+
+      const balance = positive - negative;
+      return {
+        key: customer.id,
+        cells: {
+          code: customer.customerCode,
+          company: customer.companyName,
+          positive: money(positive),
+          negative: money(-negative),
+          balance: <strong className={balance < 0 ? "text-red-700" : "text-green-700"}>{money(balance)}</strong>,
+          movementCount: dates.length,
+          lastMovement: dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))).toLocaleDateString("tr-TR") : "-",
+        },
+      };
+    });
+  } else {
+    const suppliers = await prisma.supplier.findMany({
+      where: q.q ? { name: { contains: q.q, mode: "insensitive" } } : {},
+      select: {
+        id: true,
+        name: true,
+        purchaseOrders: {
+          where: { status: { notIn: [PurchaseOrderStatus.DRAFT, PurchaseOrderStatus.CANCELLED] } },
+          select: { orderDate: true, totalAmount: true },
+        },
+        accountingEntries: {
+          where: range,
+          select: { movementType: true, totalAmount: true, transactionDate: true },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    rows = suppliers.map((supplier) => {
+      let positive = 0;
+      let negative = 0;
+      const dates: Date[] = [];
+
+      for (const purchase of supplier.purchaseOrders) {
+        if (!inRange(purchase.orderDate, from, to)) continue;
+        negative += purchase.totalAmount; // Gider (-)
+        dates.push(purchase.orderDate);
+      }
+      for (const entry of supplier.accountingEntries) {
+        if (entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN") positive += entry.totalAmount;
+        if (entry.movementType === "EXPENSE" || entry.movementType === "PAYMENT_OUT") negative += entry.totalAmount;
+        dates.push(entry.transactionDate);
+      }
+
+      const balance = positive - negative;
+      return {
+        key: supplier.id,
+        cells: {
+          code: `TED-${String(supplier.id).padStart(6, "0")}`,
+          company: supplier.name,
+          positive: money(positive),
+          negative: money(-negative),
+          balance: <strong className={balance < 0 ? "text-red-700" : "text-green-700"}>{money(balance)}</strong>,
+          movementCount: dates.length,
+          lastMovement: dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))).toLocaleDateString("tr-TR") : "-",
+        },
+      };
+    });
+  }
+
+  return (
+    <section className="p-4 sm:p-6 lg:p-10">
+      <div className="flex justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold uppercase text-emerald-700">Muhasebeleştirme</p>
+          <h1 className="text-3xl font-black">Cari Hesap Mutabakatı</h1>
+          <p className="mt-2 text-slate-500">Cari Hareketler ile aynı Gelir / Gider / İade / Ödeme yön kuralından türetilen dönem bakiyeleri.</p>
+        </div>
+        <Link href="/admin/accounting" className="h-fit rounded-xl border bg-white px-5 py-3 font-bold">Muhasebeleştirmeye Dön</Link>
+      </div>
+      <div className="mt-6 flex gap-2">
+        <Link href="/admin/accounting/reconciliation?type=CUSTOMER" className={"rounded-xl px-5 py-3 font-bold " + (type === "CUSTOMER" ? "bg-blue-900 text-white" : "bg-white")}>Müşteri Cari</Link>
+        <Link href="/admin/accounting/reconciliation?type=SUPPLIER" className={"rounded-xl px-5 py-3 font-bold " + (type === "SUPPLIER" ? "bg-blue-900 text-white" : "bg-white")}>Tedarikçi Cari</Link>
+      </div>
+      <form className="mt-4 grid gap-3 rounded-2xl bg-slate-100 p-4 md:grid-cols-4">
+        <input type="hidden" name="type" value={type} />
+        <input name="from" type="date" defaultValue={q.from} className="rounded-xl border p-3" />
+        <input name="to" type="date" defaultValue={q.to} className="rounded-xl border p-3" />
+        <input name="q" defaultValue={q.q} placeholder="Firma / cari kodu" className="rounded-xl border p-3" />
+        <button className="rounded-xl bg-slate-900 font-bold text-white">Filtrele</button>
+      </form>
+      <div className="mt-5">
+        <ConfigurableDataTable storageKey={"account-reconciliation-" + type.toLowerCase() + "-v2"} columns={columns} rows={rows} minWidth="1050px" />
+      </div>
+    </section>
+  );
 }
