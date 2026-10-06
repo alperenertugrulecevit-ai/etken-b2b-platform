@@ -57,7 +57,7 @@ export default async function CurrentAccountsPage() {
       },
     }),
     prisma.accountingEntry.findMany({
-      where: { OR: [{ partyType: "SUPPLIER" }, { partyType: "CUSTOMER", movementType: { not: "PAYMENT_IN" } }] },
+      where: { NOT: { AND: [{ partyType: "CUSTOMER" }, { movementType: "PAYMENT_IN" }] } },
       orderBy: { transactionDate: "desc" },
       take: 1500,
       select: {
@@ -144,7 +144,7 @@ export default async function CurrentAccountsPage() {
     })),
     ...accountingEntries.map((entry) => ({
       id: `accounting-${entry.id}`,
-      customerType: entry.supplier ? "Tedarikçi" as const : entry.customer?.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      customerType: entry.supplier ? "Tedarikçi" as const : entry.customer ? (entry.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const) : "Diğer" as const,
       movement: (entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN" ? "Gelir" : "Gider") as "Gelir" | "Gider",
       date: dateText(entry.transactionDate),
       customerCode: entry.customer?.customerCode ?? (entry.supplier ? `TED-${String(entry.supplier.id).padStart(6, "0")}` : ""),
