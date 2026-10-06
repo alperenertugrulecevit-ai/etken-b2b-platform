@@ -85,7 +85,7 @@ if (
         />
 
         <div className="mt-6 rounded-xl bg-orange-50 p-4 text-center text-sm text-slate-700">
-          Bireysel hesabınız yok mu? <Link href="/register" className="font-black text-[#EF4B23]">Üye Ol</Link>
+          Hesabınız yok mu? <Link href="/register" className="font-black text-[#EF4B23]">Bireysel veya kurumsal üye olun</Link>
         </div>
 
         <div className="mt-7 border-t border-slate-200 pt-6 text-center">
