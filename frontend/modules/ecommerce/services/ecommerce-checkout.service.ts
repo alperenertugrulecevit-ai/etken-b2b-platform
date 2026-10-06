@@ -23,6 +23,7 @@ export type EcommerceCheckoutInput = {
   city: string;
   district: string;
   postalCode: string | null;
+  shippingAddressId?: number | null;
   invoiceType: "INDIVIDUAL" | "CORPORATE";
   invoiceName: string;
   invoiceTaxOffice: string | null;
@@ -146,12 +147,30 @@ export class EcommerceCheckoutService {
 
     const order = await prisma.$transaction(async (tx) => {
       let customerId = input.accountCustomerId ?? null;
+      let existingShippingAddressId: number | null = null;
       if (customerId) {
         const existingCustomer = await tx.customer.findFirst({
           where: { id: customerId, customerType: CustomerType.INDIVIDUAL, isActive: true },
           select: { id: true },
         });
         if (!existingCustomer) throw new EcommerceCheckoutError("Bireysel müşteri hesabı bulunamadı.");
+
+        const requestedAddressId = Number(input.shippingAddressId);
+        if (!Number.isInteger(requestedAddressId) || requestedAddressId <= 0) {
+          throw new EcommerceCheckoutError("Kayıtlı teslimat adresinizi seçin.");
+        }
+        const memberAddress = await tx.customerAddress.findFirst({
+          where: {
+            id: requestedAddressId,
+            customerId,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!memberAddress) {
+          throw new EcommerceCheckoutError("Seçilen teslimat adresi hesabınıza ait değil veya pasif.");
+        }
+        existingShippingAddressId = memberAddress.id;
       } else {
         const customer = await tx.customer.create({
           data: {
@@ -173,24 +192,27 @@ export class EcommerceCheckoutService {
         customerId = customer.id;
       }
 
-      const shippingAddress = await tx.customerAddress.create({
-        data: {
-          customerId,
-          addressCode: "WEB-" + idToken,
-          title: "Teslimat Adresi",
-          addressType: "DELIVERY",
-          contactName: fullName,
-          phone,
-          address,
-          city,
-          district,
-          postalCode,
-          isDefault: true,
-          isActive: true,
-        },
-        select: { id: true },
-      });
-      const shippingAddressId = shippingAddress.id;
+      let shippingAddressId = existingShippingAddressId;
+      if (!shippingAddressId) {
+        const shippingAddress = await tx.customerAddress.create({
+          data: {
+            customerId,
+            addressCode: "WEB-" + idToken,
+            title: "Teslimat Adresi",
+            addressType: "DELIVERY",
+            contactName: fullName,
+            phone,
+            address,
+            city,
+            district,
+            postalCode,
+            isDefault: true,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        shippingAddressId = shippingAddress.id;
+      }
 
       return tx.order.create({
         data: {

@@ -21,8 +21,10 @@ export async function submitEcommerceOrderAction(input: EcommerceCheckoutInput):
       accountCustomerId: isIndividual ? user.customerId : null,
       placedByUserId: isIndividual ? user.id : null,
       placedByUsername: isIndividual ? (user.fullName ?? user.username) : null,
+      shippingAddressId: isIndividual ? input.shippingAddressId ?? null : null,
     });
     revalidatePath("/admin/orders");
+    revalidatePath("/account/orders");
     return { success: true, orderId: order.id, orderNumber: order.orderNumber };
   } catch (error) {
     console.error("B2C sipariş oluşturma hatası:", error);
