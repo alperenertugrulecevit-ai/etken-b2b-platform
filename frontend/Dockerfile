@@ -67,4 +67,4 @@ USER nextjs
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy || echo \"WARNING: Prisma migration failed; starting application with the existing schema.\"; exec node server.js"]
+CMD ["sh", "-c", "node ./scripts/bootstrap-accounting-schema.cjs && exec node server.js"]
