@@ -9,7 +9,7 @@ import { OrderCancellationService } from "@/modules/orders/services/order-cancel
 
 export async function cancelCustomerOrder(orderId:number, formData:FormData){
  const user=await SessionService.getCurrentUser();
- if(!user||user.userType!==UserType.CUSTOMER||!user.customerId) throw new Error("Oturum açmanız gerekiyor.");
+ if(!user||user.userType!==UserType.CUSTOMER||!user.customerId||!user.customer?.isActive) throw new Error("Oturum açmanız gerekiyor.");
  const order=await prisma.order.findFirst({where:{id:orderId,...getCustomerOrderWhere(user)},select:{id:true,status:true}});
  if(!order) throw new Error("Sipariş bulunamadı.");
  if(order.status !== OrderStatus.PENDING && order.status !== OrderStatus.APPROVED) throw new Error("Bu sipariş artık doğrudan iptal edilemez.");
