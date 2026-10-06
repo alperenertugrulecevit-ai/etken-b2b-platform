@@ -132,3 +132,68 @@ export async function deactivateCustomerAddress(formData: FormData) {
   revalidatePath("/account/addresses");
   revalidatePath("/checkout");
 }
+
+
+export async function updateCustomerAddress(formData: FormData) {
+  const { customerId } = await requireCustomer();
+  const addressId = Number(formData.get("addressId"));
+  if (!Number.isInteger(addressId) || addressId <= 0) throw new Error("Geçersiz adres.");
+
+  const title = String(formData.get("title") ?? "").trim().slice(0, 80);
+  const requestedType = String(formData.get("addressType") ?? "DELIVERY");
+  const addressType = requestedType === "INVOICE" ? "INVOICE" : requestedType === "BOTH" ? "BOTH" : "DELIVERY";
+  const address = String(formData.get("address") ?? "").trim().slice(0, 500);
+  const city = String(formData.get("city") ?? "").trim().slice(0, 80);
+  const district = String(formData.get("district") ?? "").trim().slice(0, 80);
+  const postalCode = String(formData.get("postalCode") ?? "").trim().slice(0, 20) || null;
+  if (!title || !address || !city || !district) throw new Error("Adres bilgilerini eksiksiz doldurun.");
+
+  const current = await prisma.customerAddress.findFirst({
+    where: { id: addressId, customerId, isActive: true },
+    select: { id: true, isDefault: true, addressType: true },
+  });
+  if (!current) throw new Error("Adres bulunamadı.");
+
+  const deliveryCapable = addressType === "DELIVERY" || addressType === "BOTH";
+
+  await prisma.$transaction(async (tx) => {
+    await tx.customerAddress.update({
+      where: { id: addressId },
+      data: {
+        title,
+        addressType,
+        address,
+        city,
+        district,
+        postalCode,
+        isDefault: current.isDefault && deliveryCapable,
+      },
+    });
+
+    if (current.isDefault && !deliveryCapable) {
+      const nextAddress = await tx.customerAddress.findFirst({
+        where: {
+          customerId,
+          isActive: true,
+          addressType: { in: ["DELIVERY", "BOTH"] },
+          id: { not: addressId },
+        },
+        orderBy: [{ createdAt: "asc" }],
+        select: { id: true },
+      });
+      if (nextAddress) {
+        await tx.customerAddress.update({ where: { id: nextAddress.id }, data: { isDefault: true } });
+      }
+    } else if (deliveryCapable && !current.isDefault) {
+      const defaultCount = await tx.customerAddress.count({
+        where: { customerId, isActive: true, isDefault: true, addressType: { in: ["DELIVERY", "BOTH"] } },
+      });
+      if (defaultCount === 0) {
+        await tx.customerAddress.update({ where: { id: addressId }, data: { isDefault: true } });
+      }
+    }
+  });
+
+  revalidatePath("/account/addresses");
+  revalidatePath("/checkout");
+}
