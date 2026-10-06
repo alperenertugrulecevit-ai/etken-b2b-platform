@@ -30,7 +30,8 @@ export default async function AccountPage(){
   {title:"Ürünler",desc:"Kataloğu, fiyatları ve stokları inceleyin.",href:"/products",type:"products",tone:"text-orange-600 bg-orange-50"},
   {title:"Sepetim",desc:"Sepetinizdeki ürünleri tamamlayın.",href:"/cart",type:"cart",tone:"text-emerald-600 bg-emerald-50"},
   {title:"Siparişlerim",desc:"Geçmiş siparişlerinizi ve durumlarını görün.",href:"/account/orders",type:"orders",tone:"text-violet-600 bg-violet-50"},
-  ...(isIndividual?[{title:"Adreslerim",desc:"Teslimat adreslerinizi yönetin.",href:"/account/addresses",type:"address",tone:"text-cyan-600 bg-cyan-50"}]:[]),
+  {title:"Hesap Bilgilerim",desc:isIndividual?"İletişim bilgilerinizi yönetin.":"Firma ve yetkili bilgilerinizi görüntüleyin.",href:"/account/profile",type:"profile",tone:"text-indigo-600 bg-indigo-50"},
+  {title:"Adreslerim",desc:isIndividual?"Teslimat adreslerinizi yönetin.":"Fatura ve teslimat adreslerinizi yönetin.",href:"/account/addresses",type:"address",tone:"text-cyan-600 bg-cyan-50"},
   {title:"Şifrem",desc:"Hesap güvenliğiniz için şifrenizi değiştirin.",href:"/change-password?returnTo=%2Faccount",type:"password",tone:"text-slate-600 bg-slate-100"},
  ];
  return <><Header/><main className="mx-auto min-h-[calc(100vh-150px)] max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
@@ -44,7 +45,7 @@ export default async function AccountPage(){
    </div>
   </section>
   <div className="mt-6"><h2 className="text-3xl font-black text-[#071b3b]">Hesap Menüsü</h2><p className="mt-1 text-base text-slate-500">Yapmak istediğiniz işlemi seçin.</p></div>
-  <section className={`mt-5 grid gap-4 sm:grid-cols-2 ${menu.length>=5?"xl:grid-cols-5":"xl:grid-cols-4"}`}>
+  <section className={`mt-5 grid gap-4 sm:grid-cols-2 ${menu.length>=6?"xl:grid-cols-6":menu.length>=5?"xl:grid-cols-5":"xl:grid-cols-4"}`}>
    {menu.map(item=><Link key={item.href} href={item.href} className="group flex min-h-[250px] flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
     <div className={`flex h-20 w-20 items-center justify-center rounded-2xl ${item.tone}`}><MenuIcon type={item.type}/></div>
     <h3 className="mt-6 text-2xl font-black text-[#071b3b]">{item.title}</h3>
