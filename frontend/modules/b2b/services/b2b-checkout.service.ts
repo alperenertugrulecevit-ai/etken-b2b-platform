@@ -265,6 +265,7 @@ export class B2BCheckoutService {
     const [
       customer,
       address,
+      invoiceAddress,
       products,
     ] = await Promise.all([
       prisma.customer.findFirst({
@@ -289,6 +290,20 @@ export class B2BCheckoutService {
         },
         select: {
           id: true,
+        },
+      }),
+      prisma.customerAddress.findFirst({
+        where: {
+          customerId: user.customerId,
+          isActive: true,
+          addressType: { in: ["INVOICE", "BOTH"] },
+        },
+        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+        select: {
+          address: true,
+          city: true,
+          district: true,
+          postalCode: true,
         },
       }),
       prisma.product.findMany({
@@ -558,6 +573,10 @@ export class B2BCheckoutService {
           invoiceName: customer.companyName,
           invoiceTaxOffice: customer.taxOffice,
           invoiceTaxNumber: customer.taxNumber,
+          invoiceAddress: invoiceAddress?.address ?? null,
+          invoiceCity: invoiceAddress?.city ?? null,
+          invoiceDistrict: invoiceAddress?.district ?? null,
+          invoicePostalCode: invoiceAddress?.postalCode ?? null,
           statusHistory: {
             create: {
               status:
