@@ -36,12 +36,16 @@ export default async function CheckoutPage() {
         discountRate: true,
         creditLimit: true,
         paymentTermDays: true,
+        companyName: true,
+        taxOffice: true,
+        taxNumber: true,
         addresses: {
           where: getCustomerAddressWhere(user),
           orderBy: [{ isDefault: "desc" }, { title: "asc" }],
           select: {
             id: true,
             title: true,
+            addressType: true,
             address: true,
             city: true,
             district: true,
@@ -52,6 +56,8 @@ export default async function CheckoutPage() {
     });
 
     if (customer) {
+      const deliveryAddresses = customer.addresses.filter((item) => item.addressType === "DELIVERY" || item.addressType === "BOTH");
+      const invoiceAddresses = customer.addresses.filter((item) => item.addressType === "INVOICE" || item.addressType === "BOTH");
       return (
         <>
           <Header />
@@ -63,7 +69,13 @@ export default async function CheckoutPage() {
                 Kurumsal siparişlerde minimum sepet tutarı KDV hariç 1.000 TL’dir.
               </p>
               <B2BCheckoutForm
-                addresses={customer.addresses}
+                addresses={deliveryAddresses}
+                invoiceAddresses={invoiceAddresses}
+                invoiceProfile={{
+                  companyName: customer.companyName,
+                  taxOffice: customer.taxOffice,
+                  taxNumber: customer.taxNumber,
+                }}
                 discountRate={customer.discountRate}
                 creditLimit={customer.creditLimit}
                 paymentTermDays={customer.paymentTermDays}
@@ -87,11 +99,12 @@ export default async function CheckoutPage() {
             phone: true,
             email: true,
             addresses: {
-              where: { isActive: true, addressType: { in: ["DELIVERY", "BOTH"] } },
+              where: { isActive: true },
               orderBy: [{ isDefault: "desc" }, { title: "asc" }],
               select: {
                 id: true,
                 title: true,
+                addressType: true,
                 address: true,
                 city: true,
                 district: true,

@@ -25,6 +25,7 @@ export type B2BCheckoutItemInput = {
 
 export type B2BCheckoutInput = {
   shippingAddressId: number;
+  invoiceAddressId: number;
   paymentMethod:
     | "BANK_TRANSFER"
     | "CURRENT_ACCOUNT";
@@ -229,6 +230,22 @@ export class B2BCheckoutService {
       );
     }
 
+    const invoiceAddressId =
+      Number(
+        input.invoiceAddressId
+      );
+
+    if (
+      !Number.isInteger(
+        invoiceAddressId
+      ) ||
+      invoiceAddressId <= 0
+    ) {
+      throw new B2BCheckoutError(
+        "Fatura adresi seçmelisiniz."
+      );
+    }
+
     const paymentMethod =
       input.paymentMethod ===
       "CURRENT_ACCOUNT"
@@ -295,11 +312,11 @@ export class B2BCheckoutService {
       }),
       prisma.customerAddress.findFirst({
         where: {
+          id: invoiceAddressId,
           customerId: user.customerId,
           isActive: true,
           addressType: { in: ["INVOICE", "BOTH"] },
         },
-        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
         select: {
           address: true,
           city: true,
@@ -343,6 +360,12 @@ export class B2BCheckoutService {
     if (!address) {
       throw new B2BCheckoutError(
         "Teslimat adresi müşteriye ait değil veya pasif durumda."
+      );
+    }
+
+    if (!invoiceAddress) {
+      throw new B2BCheckoutError(
+        "Fatura adresi müşteriye ait değil, fatura kullanımına uygun değil veya pasif durumda."
       );
     }
 
@@ -574,10 +597,10 @@ export class B2BCheckoutService {
           invoiceName: customer.companyName,
           invoiceTaxOffice: customer.taxOffice,
           invoiceTaxNumber: customer.taxNumber,
-          invoiceAddress: invoiceAddress?.address ?? null,
-          invoiceCity: invoiceAddress?.city ?? null,
-          invoiceDistrict: invoiceAddress?.district ?? null,
-          invoicePostalCode: invoiceAddress?.postalCode ?? null,
+          invoiceAddress: invoiceAddress.address,
+          invoiceCity: invoiceAddress.city,
+          invoiceDistrict: invoiceAddress.district,
+          invoicePostalCode: invoiceAddress.postalCode,
           statusHistory: {
             create: {
               status:

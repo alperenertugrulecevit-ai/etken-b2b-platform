@@ -252,8 +252,15 @@ export default function Header() {
 
               <span>
                 <small className="block text-[9px] font-semibold text-violet-600">Bireysel / Kurumsal</small>
-                <strong className="block text-[12px] text-[#202B38]">Giriş / Üye Ol</strong>
+                <strong className="block text-[12px] text-[#202B38]">Giriş / Hesabım</strong>
               </span>
+            </Link>
+
+            <Link
+              href="/register"
+              className="hidden min-h-11 items-center rounded-xl border border-orange-200 bg-orange-50 px-3 text-[11px] font-black text-[#EF4B23] transition hover:bg-orange-100 xl:flex"
+            >
+              ÜYE OL
             </Link>
 
             <Link

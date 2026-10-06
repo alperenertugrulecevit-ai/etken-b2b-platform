@@ -7,7 +7,7 @@ import { SessionService } from "@/modules/auth/services/session.service";
 
 export const dynamic="force-dynamic";
 export const revalidate=0;
-export const metadata={title:"Kurumsal Hesabım | ETKEN Ofis"};
+export const metadata={title:"Hesabım | ETKEN Ofis"};
 
 function MenuIcon({type}:{type:string}){
  const c="h-10 w-10";

@@ -19,6 +19,7 @@ type MemberProfile = {
   addresses: Array<{
     id: number;
     title: string;
+    addressType: string;
     address: string;
     city: string;
     district: string;
@@ -32,9 +33,13 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode, mem
   const { cart, isHydrated, clearCart } = useCart();
   const [invoiceType, setInvoiceType] = useState<"INDIVIDUAL" | "CORPORATE">("INDIVIDUAL");
   const [pending, setPending] = useState(false);
+  const [invoiceSameAsShipping, setInvoiceSameAsShipping] = useState(true);
   const [message, setMessage] = useState("");
-  const defaultMemberAddress = memberProfile?.addresses.find((item) => item.isDefault) ?? memberProfile?.addresses[0] ?? null;
+  const deliveryAddresses = memberProfile?.addresses.filter((item) => item.addressType === "DELIVERY" || item.addressType === "BOTH") ?? [];
+  const invoiceAddresses = memberProfile?.addresses.filter((item) => item.addressType === "INVOICE" || item.addressType === "BOTH") ?? [];
+  const defaultMemberAddress = deliveryAddresses.find((item) => item.isDefault) ?? deliveryAddresses[0] ?? null;
   const [memberAddressId, setMemberAddressId] = useState(defaultMemberAddress ? String(defaultMemberAddress.id) : "");
+  const [memberInvoiceAddressId, setMemberInvoiceAddressId] = useState(invoiceAddresses[0] ? String(invoiceAddresses[0].id) : "");
 
   const totals = useMemo(() => {
     const net = cart.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
@@ -59,11 +64,17 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode, mem
         lastName: String(data.get("lastName") ?? memberProfile?.contactName?.split(" ").slice(1).join(" ") ?? ""),
         email: String(data.get("email") ?? memberProfile?.email ?? ""),
         phone: String(data.get("phone") ?? memberProfile?.phone ?? ""),
-        address: String(data.get("address") ?? defaultMemberAddress?.address ?? ""),
-        city: String(data.get("city") ?? defaultMemberAddress?.city ?? ""),
-        district: String(data.get("district") ?? defaultMemberAddress?.district ?? ""),
-        postalCode: String(data.get("postalCode") ?? defaultMemberAddress?.postalCode ?? "") || null,
+        address: String(data.get("address") ?? ""),
+        city: String(data.get("city") ?? ""),
+        district: String(data.get("district") ?? ""),
+        postalCode: String(data.get("postalCode") ?? "") || null,
         shippingAddressId: memberProfile && memberAddressId ? Number(memberAddressId) : null,
+        invoiceSameAsShipping,
+        invoiceAddressId: memberProfile && !invoiceSameAsShipping && memberInvoiceAddressId ? Number(memberInvoiceAddressId) : null,
+        invoiceAddress: String(data.get("invoiceAddress") ?? "") || null,
+        invoiceCity: String(data.get("invoiceCity") ?? "") || null,
+        invoiceDistrict: String(data.get("invoiceDistrict") ?? "") || null,
+        invoicePostalCode: String(data.get("invoicePostalCode") ?? "") || null,
         invoiceType,
         invoiceName: String(data.get("invoiceName") ?? ""),
         invoiceTaxOffice: String(data.get("invoiceTaxOffice") ?? "") || null,
@@ -111,7 +122,7 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode, mem
           <h2 className="text-xl font-black">Teslimat Bilgileri</h2>
           {memberProfile ? (
             <div className="mt-5 space-y-3">
-              {memberProfile.addresses.length ? memberProfile.addresses.map((item) => (
+              {deliveryAddresses.length ? deliveryAddresses.map((item) => (
                 <label key={item.id} className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 p-4">
                   <input type="radio" name="memberAddress" value={item.id} checked={memberAddressId === String(item.id)} onChange={(event) => setMemberAddressId(event.target.value)} />
                   <span>
@@ -162,6 +173,28 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode, mem
                 <label className="text-sm font-semibold">Vergi No<input name="invoiceTaxNumber" required maxLength={30} className={field} /></label>
               </>
             ) : null}
+            <label className="sm:col-span-2 flex items-center gap-3 rounded-xl bg-slate-50 p-4 text-sm font-semibold">
+              <input type="checkbox" checked={invoiceSameAsShipping} onChange={(event) => setInvoiceSameAsShipping(event.target.checked)} />
+              Fatura adresim teslimat adresimle aynı
+            </label>
+            {!invoiceSameAsShipping && memberProfile ? (
+              <div className="sm:col-span-2 space-y-3">
+                {invoiceAddresses.length ? invoiceAddresses.map((item) => (
+                  <label key={item.id} className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 p-4">
+                    <input type="radio" name="memberInvoiceAddress" value={item.id} checked={memberInvoiceAddressId === String(item.id)} onChange={(event) => setMemberInvoiceAddressId(event.target.value)} />
+                    <span><strong className="block">{item.title}</strong><span className="mt-1 block text-sm text-slate-600">{item.address}, {item.district} / {item.city}</span></span>
+                  </label>
+                )) : <div className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">Kayıtlı fatura adresiniz yok. Hesabım &gt; Adreslerim bölümünden fatura adresi ekleyin.</div>}
+              </div>
+            ) : null}
+            {!invoiceSameAsShipping && !memberProfile ? (
+              <>
+                <label className="text-sm font-semibold sm:col-span-2">Fatura Adresi<textarea name="invoiceAddress" required maxLength={500} rows={3} className={field} /></label>
+                <label className="text-sm font-semibold">Fatura İl<input name="invoiceCity" required maxLength={80} className={field} /></label>
+                <label className="text-sm font-semibold">Fatura İlçe<input name="invoiceDistrict" required maxLength={80} className={field} /></label>
+                <label className="text-sm font-semibold">Fatura Posta Kodu<input name="invoicePostalCode" maxLength={20} className={field} /></label>
+              </>
+            ) : null}
           </div>
         </section>
 
@@ -191,7 +224,7 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode, mem
         </div>
         <p className="mt-3 text-xs text-slate-500">Tüm fiyatlar KDV dahildir. Bireysel alışverişte minimum sipariş tutarı yoktur.</p>
         {message ? <div role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{message}</div> : null}
-        <button type="submit" disabled={pending || Boolean(memberProfile && !memberAddressId)}
+        <button type="submit" disabled={pending || Boolean(memberProfile && (!memberAddressId || (!invoiceSameAsShipping && !memberInvoiceAddressId)))}
           className="mt-6 w-full rounded-xl bg-[#EF4B23] py-4 font-black text-white hover:bg-[#D83D18] disabled:bg-slate-300">
           {pending ? "Sipariş oluşturuluyor..." : "Siparişi Tamamla"}
         </button>

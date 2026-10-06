@@ -24,6 +24,12 @@ export type EcommerceCheckoutInput = {
   district: string;
   postalCode: string | null;
   shippingAddressId?: number | null;
+  invoiceSameAsShipping?: boolean;
+  invoiceAddressId?: number | null;
+  invoiceAddress?: string | null;
+  invoiceCity?: string | null;
+  invoiceDistrict?: string | null;
+  invoicePostalCode?: string | null;
   invoiceType: "INDIVIDUAL" | "CORPORATE";
   invoiceName: string;
   invoiceTaxOffice: string | null;
@@ -70,6 +76,10 @@ export class EcommerceCheckoutService {
     const taxOffice = clean(input.invoiceTaxOffice, 100);
     const taxNumber = clean(input.invoiceTaxNumber, 30);
     const customerNote = clean(input.customerNote, 1000);
+    const requestedInvoiceAddress = clean(input.invoiceAddress, 500);
+    const requestedInvoiceCity = clean(input.invoiceCity, 80);
+    const requestedInvoiceDistrict = clean(input.invoiceDistrict, 80);
+    const requestedInvoicePostalCode = clean(input.invoicePostalCode, 20);
 
     if (!firstName || !lastName || !email || !phone || !address || !city || !district) {
       throw new EcommerceCheckoutError("Teslimat ve iletişim bilgilerini eksiksiz doldurun.");
@@ -148,6 +158,12 @@ export class EcommerceCheckoutService {
     const order = await prisma.$transaction(async (tx) => {
       let customerId = input.accountCustomerId ?? null;
       let existingShippingAddressId: number | null = null;
+      let invoiceSnapshot = {
+        address: input.invoiceSameAsShipping === false ? requestedInvoiceAddress : address,
+        city: input.invoiceSameAsShipping === false ? requestedInvoiceCity : city,
+        district: input.invoiceSameAsShipping === false ? requestedInvoiceDistrict : district,
+        postalCode: input.invoiceSameAsShipping === false ? requestedInvoicePostalCode : postalCode,
+      };
       if (customerId) {
         const existingCustomer = await tx.customer.findFirst({
           where: { id: customerId, customerType: CustomerType.INDIVIDUAL, isActive: true },
@@ -166,12 +182,38 @@ export class EcommerceCheckoutService {
             isActive: true,
             addressType: { in: ["DELIVERY", "BOTH"] },
           },
-          select: { id: true },
+          select: { id: true, address: true, city: true, district: true, postalCode: true },
         });
         if (!memberAddress) {
           throw new EcommerceCheckoutError("Seçilen teslimat adresi hesabınıza ait değil veya pasif.");
         }
         existingShippingAddressId = memberAddress.id;
+        if (input.invoiceSameAsShipping !== false) {
+          invoiceSnapshot = {
+            address: memberAddress.address,
+            city: memberAddress.city,
+            district: memberAddress.district,
+            postalCode: memberAddress.postalCode,
+          };
+        } else {
+          const requestedInvoiceAddressId = Number(input.invoiceAddressId);
+          if (!Number.isInteger(requestedInvoiceAddressId) || requestedInvoiceAddressId <= 0) {
+            throw new EcommerceCheckoutError("Kayıtlı fatura adresinizi seçin.");
+          }
+          const memberInvoiceAddress = await tx.customerAddress.findFirst({
+            where: {
+              id: requestedInvoiceAddressId,
+              customerId,
+              isActive: true,
+              addressType: { in: ["INVOICE", "BOTH"] },
+            },
+            select: { address: true, city: true, district: true, postalCode: true },
+          });
+          if (!memberInvoiceAddress) {
+            throw new EcommerceCheckoutError("Seçilen fatura adresi hesabınıza ait değil veya pasif.");
+          }
+          invoiceSnapshot = memberInvoiceAddress;
+        }
       } else {
         const customer = await tx.customer.create({
           data: {
@@ -191,6 +233,10 @@ export class EcommerceCheckoutService {
           select: { id: true },
         });
         customerId = customer.id;
+      }
+
+      if (!invoiceSnapshot.address || !invoiceSnapshot.city || !invoiceSnapshot.district) {
+        throw new EcommerceCheckoutError("Fatura adresi bilgilerini eksiksiz doldurun.");
       }
 
       let shippingAddressId = existingShippingAddressId;
@@ -240,10 +286,10 @@ export class EcommerceCheckoutService {
           invoiceName: invoiceName ?? fullName,
           invoiceTaxOffice: input.invoiceType === "CORPORATE" ? taxOffice : null,
           invoiceTaxNumber: input.invoiceType === "CORPORATE" ? taxNumber : null,
-          invoiceAddress: address,
-          invoiceCity: city,
-          invoiceDistrict: district,
-          invoicePostalCode: postalCode,
+          invoiceAddress: invoiceSnapshot.address,
+          invoiceCity: invoiceSnapshot.city,
+          invoiceDistrict: invoiceSnapshot.district,
+          invoicePostalCode: invoiceSnapshot.postalCode,
           paymentStatus: "PENDING",
           paymentProvider: "BANK_TRANSFER",
           statusHistory: {
