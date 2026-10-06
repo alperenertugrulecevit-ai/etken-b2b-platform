@@ -31,7 +31,7 @@ export default async function AccountPage(){
   {title:"Sepetim",desc:"Sepetinizdeki ürünleri tamamlayın.",href:"/cart",type:"cart",tone:"text-emerald-600 bg-emerald-50"},
   {title:"Siparişlerim",desc:"Geçmiş siparişlerinizi ve durumlarını görün.",href:"/account/orders",type:"orders",tone:"text-violet-600 bg-violet-50"},
   {title:"Hesap Bilgilerim",desc:isIndividual?"İletişim bilgilerinizi yönetin.":"Firma ve yetkili bilgilerinizi görüntüleyin.",href:"/account/profile",type:"profile",tone:"text-indigo-600 bg-indigo-50"},
-  {title:"Adreslerim",desc:isIndividual?"Teslimat adreslerinizi yönetin.":"Fatura ve teslimat adreslerinizi yönetin.",href:"/account/addresses",type:"address",tone:"text-cyan-600 bg-cyan-50"},
+  {title:"Adreslerim",desc:"Fatura ve teslimat adreslerinizi yönetin.",href:"/account/addresses",type:"address",tone:"text-cyan-600 bg-cyan-50"},
   {title:"Şifrem",desc:"Hesap güvenliğiniz için şifrenizi değiştirin.",href:"/change-password?returnTo=%2Faccount",type:"password",tone:"text-slate-600 bg-slate-100"},
  ];
  return <><Header/><main className="mx-auto min-h-[calc(100vh-150px)] max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
@@ -41,7 +41,7 @@ export default async function AccountPage(){
    <div className="relative z-10 max-w-[650px] p-7 sm:p-10">
     <p className="text-sm font-black uppercase tracking-wide text-[#ef4b23]">{isIndividual?"Bireysel Hesabım":"Kurumsal Hesabım"}</p>
     <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-5xl">{customer.companyName}</h1>
-    <p className="mt-3 max-w-lg text-lg leading-7 text-slate-600">{isIndividual?"Siparişlerinizi ve teslimat adreslerinizi tek yerden yönetin.":"Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz."}</p>
+    <p className="mt-3 max-w-lg text-lg leading-7 text-slate-600">{isIndividual?"Siparişlerinizi, fatura ve teslimat adreslerinizi tek yerden yönetin.":"Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz."}</p>
    </div>
   </section>
   <div className="mt-6"><h2 className="text-3xl font-black text-[#071b3b]">Hesap Menüsü</h2><p className="mt-1 text-base text-slate-500">Yapmak istediğiniz işlemi seçin.</p></div>
