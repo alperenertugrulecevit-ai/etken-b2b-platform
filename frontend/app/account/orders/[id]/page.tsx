@@ -35,6 +35,15 @@ const STATUS_LABELS:
     CANCELLED: "İptal Edildi",
   };
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Ödeme Bekleniyor",
+  PAID: "Ödendi",
+  FAILED: "Ödeme Başarısız",
+  REFUNDED: "İade Edildi",
+  PARTIALLY_REFUNDED: "Kısmi İade",
+  CANCELLED: "İptal",
+};
+
 function formatCurrency(
   value: number
 ) {
@@ -204,11 +213,17 @@ export default async function CustomerOrderDetailPage({
             Ödeme
           </p>
           <p className="mt-2 font-bold">
-            {order.paymentMethod ===
-            B2BPaymentMethod.CURRENT_ACCOUNT
+            {order.paymentMethod === B2BPaymentMethod.CURRENT_ACCOUNT
               ? "Cari Hesap"
-              : "Havale / EFT"}
+              : order.paymentMethod === B2BPaymentMethod.CREDIT_CARD
+                ? "Kredi Kartı"
+                : "Havale / EFT"}
           </p>
+          {order.paymentStatus ? (
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              {PAYMENT_STATUS_LABELS[order.paymentStatus] ?? order.paymentStatus}
+            </p>
+          ) : null}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-500">
@@ -337,6 +352,33 @@ export default async function CustomerOrderDetailPage({
             {order.shippingAddress.district} /{" "}
             {order.shippingAddress.city}
           </p>
+        </section>
+      ) : null}
+
+      {order.invoiceAddress ? (
+        <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-black">Fatura Bilgileri</h2>
+          {order.invoiceName ? <p className="mt-3 font-semibold">{order.invoiceName}</p> : null}
+          {order.invoiceTaxOffice || order.invoiceTaxNumber ? (
+            <p className="mt-1 text-sm text-slate-500">
+              {order.invoiceTaxOffice ? `Vergi Dairesi: ${order.invoiceTaxOffice}` : ""}
+              {order.invoiceTaxOffice && order.invoiceTaxNumber ? " · " : ""}
+              {order.invoiceTaxNumber ? `VKN / TCKN: ${order.invoiceTaxNumber}` : ""}
+            </p>
+          ) : null}
+          <p className="mt-2 text-slate-600">
+            {order.invoiceAddress}, {order.invoiceDistrict} / {order.invoiceCity}
+            {order.invoicePostalCode ? ` · ${order.invoicePostalCode}` : ""}
+          </p>
+        </section>
+      ) : null}
+
+      {order.cancellationStatus ? (
+        <section className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+          <h2 className="text-lg font-black text-red-900">İptal / İade Durumu</h2>
+          <p className="mt-2 text-sm font-semibold text-red-800">{order.cancellationStatus}</p>
+          {order.cancellationReason ? <p className="mt-1 text-sm text-red-700">{order.cancellationReason}</p> : null}
+          {order.cancellationRefundStatus ? <p className="mt-2 text-sm text-red-800">Para iadesi: {order.cancellationRefundStatus}</p> : null}
         </section>
       ) : null}
 
