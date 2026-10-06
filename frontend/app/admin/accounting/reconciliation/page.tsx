@@ -16,7 +16,7 @@ const inRange = (date: Date, from?: Date, to?: Date) =>
 export default async function ReconciliationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; q?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ type?: string; companyType?: string; q?: string; from?: string; to?: string }>;
 }) {
   await AuthorizationService.requireAdminPortalAccess();
   const q = await searchParams;
@@ -29,6 +29,7 @@ export default async function ReconciliationPage({
 
   const columns = [
     { key: "code", label: "Kod" },
+    { key: "companyType", label: "Firma Tipi" },
     { key: "company", label: "Firma" },
     { key: "positive", label: "Alacak / (+)" },
     { key: "negative", label: "Borç / (-)" },
@@ -41,16 +42,17 @@ export default async function ReconciliationPage({
 
   if (type === "CUSTOMER") {
     const customers = await prisma.customer.findMany({
-      where: q.q
-        ? { OR: [{ companyName: { contains: q.q, mode: "insensitive" } }, { customerCode: { contains: q.q, mode: "insensitive" } }] }
-        : {},
+      where: {
+        ...(q.companyType === "ECOMMERCE" ? { customerCode: { startsWith: "EC-" } } : q.companyType === "CORPORATE" ? { customerCode: { not: { startsWith: "EC-" } } } : {}),
+        ...(q.q ? { OR: [{ companyName: { contains: q.q, mode: "insensitive" } }, { customerCode: { contains: q.q, mode: "insensitive" } }] } : {}),
+      },
       select: {
         id: true,
         customerCode: true,
         companyName: true,
         accountEntries: {
-          where: { ...range, entryType: { in: [CustomerAccountEntryType.REFUND, CustomerAccountEntryType.PAYMENT] } },
-          select: { entryType: true, amount: true, transactionDate: true },
+          where: { ...range, entryType: { in: [CustomerAccountEntryType.ORDER, CustomerAccountEntryType.PAYMENT, CustomerAccountEntryType.ADJUSTMENT, CustomerAccountEntryType.REFUND] } },
+          select: { entryType: true, direction: true, amount: true, transactionDate: true },
         },
         accountingEntries: {
           where: { ...range, movementType: { not: "PAYMENT_IN" } },
@@ -66,7 +68,11 @@ export default async function ReconciliationPage({
       const dates: Date[] = [];
 
       for (const entry of customer.accountEntries) {
-        if (entry.entryType === CustomerAccountEntryType.PAYMENT) positive += entry.amount; // Gerçekleşen tahsilat (+)\n        if (entry.entryType === CustomerAccountEntryType.REFUND) negative += entry.amount; // Gerçekleşen iade ödemesi (-)
+        // Müşteri cari bakiyesi gerçek muhasebe çiftleriyle kapanır:
+        // satış ORDER/DEBIT (+) -> tahsilat PAYMENT/CREDIT (-)
+        // ürün iadesi ADJUSTMENT/CREDIT (-) -> müşteriye refund REFUND/DEBIT (+)
+        if (entry.direction === "DEBIT") positive += entry.amount;
+        if (entry.direction === "CREDIT") negative += entry.amount;
         dates.push(entry.transactionDate);
       }
       for (const entry of customer.accountingEntries) {
@@ -80,6 +86,7 @@ export default async function ReconciliationPage({
         key: customer.id,
         cells: {
           code: customer.customerCode,
+          companyType: customer.customerCode.startsWith("EC-") ? "E-Ticaret Müşteri" : "Kurumsal Müşteri",
           company: customer.companyName,
           positive: money(positive),
           negative: money(-negative),
@@ -118,8 +125,8 @@ export default async function ReconciliationPage({
         dates.push(purchase.orderDate);
       }
       for (const entry of supplier.accountingEntries) {
-        if (entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN") positive += entry.totalAmount;
-        if (entry.movementType === "EXPENSE" || entry.movementType === "PAYMENT_OUT") negative += entry.totalAmount;
+        if (entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN" || entry.movementType === "PAYMENT_OUT") positive += entry.totalAmount;
+        if (entry.movementType === "EXPENSE") negative += entry.totalAmount;
         dates.push(entry.transactionDate);
       }
 
@@ -128,6 +135,7 @@ export default async function ReconciliationPage({
         key: supplier.id,
         cells: {
           code: `TED-${String(supplier.id).padStart(6, "0")}`,
+          companyType: "Tedarikçi",
           company: supplier.name,
           positive: money(positive),
           negative: money(-negative),
@@ -145,7 +153,7 @@ export default async function ReconciliationPage({
         <div>
           <p className="text-sm font-bold uppercase text-emerald-700">Muhasebeleştirme</p>
           <h1 className="text-3xl font-black">Cari Hesap Mutabakatı</h1>
-          <p className="mt-2 text-slate-500">Cari hareket yönlerini izler; müşteri mutabakat bakiyesi gerçekleşen tahsilat ve iade ödemelerini esas alır, satış/iade operasyonunu ödeme ile ikinci kez saymaz.</p>
+          <p className="mt-2 text-slate-500">Müşteri carisinde satış (+) / tahsilat (-) ve ürün iadesi (-) / iade ödemesi (+) karşılıklı kapanır; açık kalan tutar gerçek cari bakiyeyi gösterir.</p>
         </div>
         <Link href="/admin/accounting" className="h-fit rounded-xl border bg-white px-5 py-3 font-bold">Muhasebeleştirmeye Dön</Link>
       </div>
@@ -153,15 +161,16 @@ export default async function ReconciliationPage({
         <Link href="/admin/accounting/reconciliation?type=CUSTOMER" className={"rounded-xl px-5 py-3 font-bold " + (type === "CUSTOMER" ? "bg-blue-900 text-white" : "bg-white")}>Müşteri Cari</Link>
         <Link href="/admin/accounting/reconciliation?type=SUPPLIER" className={"rounded-xl px-5 py-3 font-bold " + (type === "SUPPLIER" ? "bg-blue-900 text-white" : "bg-white")}>Tedarikçi Cari</Link>
       </div>
-      <form className="mt-4 grid gap-3 rounded-2xl bg-slate-100 p-4 md:grid-cols-4">
+      <form className="mt-4 grid gap-3 rounded-2xl bg-slate-100 p-4 md:grid-cols-5">
         <input type="hidden" name="type" value={type} />
         <input name="from" type="date" defaultValue={q.from} className="rounded-xl border p-3" />
         <input name="to" type="date" defaultValue={q.to} className="rounded-xl border p-3" />
+        <select name="companyType" defaultValue={q.companyType ?? ""} className="rounded-xl border bg-white p-3"><option value="">Tüm firma tipleri</option>{type === "CUSTOMER" ? <><option value="CORPORATE">Kurumsal Müşteri</option><option value="ECOMMERCE">E-Ticaret Müşteri</option></> : <option value="SUPPLIER">Tedarikçi</option>}</select>
         <input name="q" defaultValue={q.q} placeholder="Firma / cari kodu" className="rounded-xl border p-3" />
         <button className="rounded-xl bg-slate-900 font-bold text-white">Filtrele</button>
       </form>
       <div className="mt-5">
-        <ConfigurableDataTable storageKey={"account-reconciliation-" + type.toLowerCase() + "-v2"} columns={columns} rows={rows} minWidth="1050px" />
+        <ConfigurableDataTable storageKey={"account-reconciliation-" + type.toLowerCase() + "-v2"} columns={columns} rows={rows} minWidth="1200px" />
       </div>
     </section>
   );
