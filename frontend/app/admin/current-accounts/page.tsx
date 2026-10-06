@@ -19,7 +19,8 @@ export default async function CurrentAccountsPage() {
       take: 1500,
       select: {
         id: true, orderNumber: true, orderDate: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true,
-        customer: { select: { customerCode: true, companyName: true, customerType: true } },
+        source: true,
+        customer: { select: { customerCode: true, companyName: true, companyType: true } },
         dispatchLines: {
           where: { dispatchDocument: { status: "ISSUED" } },
           select: { dispatchDocument: { select: { dispatchNumber: true } } },
@@ -43,8 +44,8 @@ export default async function CurrentAccountsPage() {
       take: 1500,
       select: {
         id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
-        customer: { select: { customerCode: true, companyName: true, customerType: true } },
-        order: { select: { orderNumber: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true } },
+        customer: { select: { customerCode: true, companyName: true, companyType: true } },
+        order: { select: { orderNumber: true, source: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true } },
       },
     }),
     prisma.customerAccountEntry.findMany({
@@ -53,7 +54,8 @@ export default async function CurrentAccountsPage() {
       take: 1500,
       select: {
         id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
-        customer: { select: { customerCode: true, companyName: true, customerType: true } },
+        customer: { select: { customerCode: true, companyName: true, companyType: true } },
+        order: { select: { source: true } },
       },
     }),
     prisma.accountingEntry.findMany({
@@ -64,7 +66,7 @@ export default async function CurrentAccountsPage() {
         id: true, transactionDate: true, companyName: true, partyType: true, customerId: true, supplierId: true,
         documentType: true, movementType: true, documentNo: true, bankReference: true, netAmount: true, vatRate: true, vatAmount: true,
         totalAmount: true, description: true,
-        customer: { select: { customerCode: true, companyName: true, customerType: true } },
+        customer: { select: { customerCode: true, companyName: true, companyType: true } },
         supplier: { select: { id: true, name: true } },
       },
     }),
@@ -85,7 +87,7 @@ export default async function CurrentAccountsPage() {
   const rows: CurrentAccountRow[] = [
     ...orders.map((order) => ({
       id: `sale-${order.id}`,
-      customerType: order.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      companyType: order.source === "ECOMMERCE" || order.customer.customerCode.startsWith("EC-") ? "E-Ticaret Müşteri" as const : "Kurumsal Müşteri" as const,
       movement: "Gelir" as const,
       direction: "IN" as const,
       date: dateText(order.orderDate),
@@ -100,7 +102,7 @@ export default async function CurrentAccountsPage() {
     })),
     ...purchases.map((purchase) => ({
       id: `purchase-${purchase.id}`,
-      customerType: "Tedarikçi" as const,
+      companyType: "Tedarikçi" as const,
       movement: "Gider" as const,
       direction: "OUT" as const,
       date: dateText(purchase.orderDate),
@@ -117,7 +119,7 @@ export default async function CurrentAccountsPage() {
       const split = splitRefund(refund);
       return {
       id: `refund-${refund.id}`,
-      customerType: refund.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      companyType: refund.order?.source === "ECOMMERCE" || refund.customer.customerCode.startsWith("EC-") ? "E-Ticaret Müşteri" as const : "Kurumsal Müşteri" as const,
       movement: "İade" as const,
       direction: "OUT" as const,
       date: dateText(refund.transactionDate),
@@ -133,9 +135,9 @@ export default async function CurrentAccountsPage() {
     }),
     ...customerPayments.map((payment) => ({
       id: `payment-${payment.id}`,
-      customerType: payment.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const,
+      companyType: payment.order?.source === "ECOMMERCE" || payment.customer.customerCode.startsWith("EC-") ? "E-Ticaret Müşteri" as const : "Kurumsal Müşteri" as const,
       movement: "Ödeme" as const,
-      direction: "IN" as const,
+      direction: "OUT" as const,
       date: dateText(payment.transactionDate),
       customerCode: payment.customer.customerCode,
       customerName: payment.customer.companyName,
@@ -148,9 +150,9 @@ export default async function CurrentAccountsPage() {
     })),
     ...accountingEntries.map((entry) => ({
       id: `accounting-${entry.id}`,
-      customerType: entry.supplier ? "Tedarikçi" as const : entry.customer ? (entry.customer.customerType === "INDIVIDUAL" ? "Bireysel" as const : "Kurumsal" as const) : "Diğer" as const,
+      companyType: entry.supplier ? "Tedarikçi" as const : entry.customer ? (entry.customer.customerCode.startsWith("EC-") ? "E-Ticaret Müşteri" as const : "Kurumsal Müşteri" as const) : "Diğer" as const,
       movement: (entry.movementType === "INCOME" ? "Gelir" : entry.movementType === "EXPENSE" ? "Gider" : "Ödeme") as "Gelir" | "Gider" | "Ödeme",
-      direction: (entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN" ? "IN" : "OUT") as "IN" | "OUT",
+      direction: (entry.supplier && entry.movementType === "PAYMENT_OUT" ? "IN" : entry.customer && entry.movementType === "PAYMENT_IN" ? "OUT" : entry.movementType === "INCOME" || entry.movementType === "PAYMENT_IN" ? "IN" : "OUT") as "IN" | "OUT",
       date: dateText(entry.transactionDate),
       customerCode: entry.customer?.customerCode ?? (entry.supplier ? `TED-${String(entry.supplier.id).padStart(6, "0")}` : ""),
       customerName: entry.customer?.companyName ?? entry.supplier?.name ?? entry.companyName,
