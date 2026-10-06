@@ -19,7 +19,8 @@ export default async function CustomerAddressesPage(){
    <form action={createCustomerAddress} className="h-fit rounded-2xl bg-white p-5 shadow-sm">
     <h2 className="text-xl font-black">Yeni Adres</h2>
     <div className="mt-4 space-y-4">
-     <label className="block text-sm font-bold">Adres Başlığı<input name="title" required maxLength={80} placeholder="Ev, İş..." className="mt-2 w-full rounded-xl border p-3"/></label>
+     <label className="block text-sm font-bold">Adres Türü<select name="addressType" className="mt-2 w-full rounded-xl border p-3"><option value="DELIVERY">Teslimat Adresi</option><option value="INVOICE">Fatura Adresi</option></select></label>
+     <label className="block text-sm font-bold">Adres Başlığı<input name="title" required maxLength={80} placeholder="Ev, İş, Muhasebe..." className="mt-2 w-full rounded-xl border p-3"/></label>
      <label className="block text-sm font-bold">Açık Adres<textarea name="address" required maxLength={500} rows={3} className="mt-2 w-full rounded-xl border p-3"/></label>
      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><CityDistrictSelect cities={cities} districtsByCityCode={districtsByCityCode}/></div>
      <label className="block text-sm font-bold">Posta Kodu<input name="postalCode" maxLength={20} className="mt-2 w-full rounded-xl border p-3"/></label>
