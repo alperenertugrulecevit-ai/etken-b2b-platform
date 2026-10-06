@@ -16,6 +16,8 @@ async function requireCustomer() {
 export async function createCustomerAddress(formData: FormData) {
   const { customerId } = await requireCustomer();
   const title = String(formData.get("title") ?? "").trim().slice(0, 80);
+  const requestedType = String(formData.get("addressType") ?? "DELIVERY");
+  const addressType = requestedType === "INVOICE" ? "INVOICE" : "DELIVERY";
   const address = String(formData.get("address") ?? "").trim().slice(0, 500);
   const city = String(formData.get("city") ?? "").trim().slice(0, 80);
   const district = String(formData.get("district") ?? "").trim().slice(0, 80);
@@ -38,14 +40,14 @@ export async function createCustomerAddress(formData: FormData) {
       customerId,
       addressCode: "ADR-" + Date.now().toString(36).toUpperCase(),
       title,
-      addressType: "DELIVERY",
+      addressType,
       contactName: customer?.contactName ?? null,
       phone: customer?.phone ?? null,
       address,
       city,
       district,
       postalCode,
-      isDefault: deliveryCount === 0,
+      isDefault: addressType === "DELIVERY" && deliveryCount === 0,
       isActive: true,
     },
   });
