@@ -87,7 +87,7 @@ export default async function CheckoutPage() {
             phone: true,
             email: true,
             addresses: {
-              where: { isActive: true },
+              where: { isActive: true, addressType: { in: ["DELIVERY", "BOTH"] } },
               orderBy: [{ isDefault: "desc" }, { title: "asc" }],
               select: {
                 id: true,
