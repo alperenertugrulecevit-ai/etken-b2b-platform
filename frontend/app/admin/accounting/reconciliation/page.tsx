@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CustomerAccountEntryType, OrderStatus, PurchaseOrderStatus } from "@prisma/client";
+import { CustomerAccountEntryType, PurchaseOrderStatus } from "@prisma/client";
 import ConfigurableDataTable from "@/components/admin/ConfigurableDataTable";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
@@ -48,10 +48,6 @@ export default async function ReconciliationPage({
         id: true,
         customerCode: true,
         companyName: true,
-        orders: {
-          where: { status: { not: OrderStatus.DRAFT } },
-          select: { orderDate: true, totalAmount: true },
-        },
         accountEntries: {
           where: { ...range, entryType: { in: [CustomerAccountEntryType.REFUND, CustomerAccountEntryType.PAYMENT] } },
           select: { entryType: true, amount: true, transactionDate: true },
@@ -69,14 +65,8 @@ export default async function ReconciliationPage({
       let negative = 0;
       const dates: Date[] = [];
 
-      for (const order of customer.orders) {
-        if (!inRange(order.orderDate, from, to)) continue;
-        positive += order.totalAmount; // Gelir (+)
-        dates.push(order.orderDate);
-      }
       for (const entry of customer.accountEntries) {
-        if (entry.entryType === CustomerAccountEntryType.PAYMENT) positive += entry.amount; // Ödeme giriş (+)
-        if (entry.entryType === CustomerAccountEntryType.REFUND) negative += entry.amount; // Satış iadesi (-)
+        if (entry.entryType === CustomerAccountEntryType.PAYMENT) positive += entry.amount; // Gerçekleşen tahsilat (+)\n        if (entry.entryType === CustomerAccountEntryType.REFUND) negative += entry.amount; // Gerçekleşen iade ödemesi (-)
         dates.push(entry.transactionDate);
       }
       for (const entry of customer.accountingEntries) {
@@ -155,7 +145,7 @@ export default async function ReconciliationPage({
         <div>
           <p className="text-sm font-bold uppercase text-emerald-700">Muhasebeleştirme</p>
           <h1 className="text-3xl font-black">Cari Hesap Mutabakatı</h1>
-          <p className="mt-2 text-slate-500">Cari Hareketler ile aynı Gelir / Gider / İade / Ödeme yön kuralından türetilen dönem bakiyeleri.</p>
+          <p className="mt-2 text-slate-500">Cari hareket yönlerini izler; müşteri mutabakat bakiyesi gerçekleşen tahsilat ve iade ödemelerini esas alır, satış/iade operasyonunu ödeme ile ikinci kez saymaz.</p>
         </div>
         <Link href="/admin/accounting" className="h-fit rounded-xl border bg-white px-5 py-3 font-bold">Muhasebeleştirmeye Dön</Link>
       </div>
