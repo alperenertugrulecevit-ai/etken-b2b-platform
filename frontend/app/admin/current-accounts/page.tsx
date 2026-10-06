@@ -20,7 +20,7 @@ export default async function CurrentAccountsPage() {
       select: {
         id: true, orderNumber: true, orderDate: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true,
         source: true,
-        customer: { select: { customerCode: true, companyName: true, companyType: true } },
+        customer: { select: { customerCode: true, companyName: true, customerType: true } },
         dispatchLines: {
           where: { dispatchDocument: { status: "ISSUED" } },
           select: { dispatchDocument: { select: { dispatchNumber: true } } },
@@ -44,7 +44,7 @@ export default async function CurrentAccountsPage() {
       take: 1500,
       select: {
         id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
-        customer: { select: { customerCode: true, companyName: true, companyType: true } },
+        customer: { select: { customerCode: true, companyName: true, customerType: true } },
         order: { select: { orderNumber: true, source: true, subtotal: true, discountAmount: true, vatAmount: true, totalAmount: true } },
       },
     }),
@@ -54,7 +54,7 @@ export default async function CurrentAccountsPage() {
       take: 1500,
       select: {
         id: true, amount: true, description: true, referenceNo: true, transactionDate: true,
-        customer: { select: { customerCode: true, companyName: true, companyType: true } },
+        customer: { select: { customerCode: true, companyName: true, customerType: true } },
         order: { select: { source: true } },
       },
     }),
@@ -66,7 +66,7 @@ export default async function CurrentAccountsPage() {
         id: true, transactionDate: true, companyName: true, partyType: true, customerId: true, supplierId: true,
         documentType: true, movementType: true, documentNo: true, bankReference: true, netAmount: true, vatRate: true, vatAmount: true,
         totalAmount: true, description: true,
-        customer: { select: { customerCode: true, companyName: true, companyType: true } },
+        customer: { select: { customerCode: true, companyName: true, customerType: true } },
         supplier: { select: { id: true, name: true } },
       },
     }),
