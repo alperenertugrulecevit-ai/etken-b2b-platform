@@ -292,9 +292,15 @@ describe(
 
     it("müşterinin yetkili olmadığı teslimat adresini reddeder", async () => {
       setDatabaseFixtures();
-      mocks.addressFindFirst.mockResolvedValue(
-        null
-      );
+      mocks.addressFindFirst
+        .mockReset()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          address: "Fatura Cad. No: 1",
+          city: "İstanbul",
+          district: "Şişli",
+          postalCode: "34381",
+        });
 
       await expect(
         B2BCheckoutService.createOrder(
