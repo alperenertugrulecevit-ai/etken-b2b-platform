@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 export type CurrentAccountRow = {
   id: string;
-  customerType: "Bireysel" | "Kurumsal" | "Tedarikçi" | "Diğer";
+  companyType: "Kurumsal Müşteri" | "E-Ticaret Müşteri" | "Tedarikçi" | "Diğer";
   movement: "Gelir" | "Gider" | "İade" | "Ödeme";
   direction: "IN" | "OUT";
   date: string;
@@ -23,7 +23,7 @@ type ColumnKey = keyof Omit<CurrentAccountRow, "id" | "direction">;
 type Column = { key: ColumnKey; label: string };
 
 const initialColumns: Column[] = [
-  { key: "customerType", label: "Cari Tipi" },
+  { key: "companyType", label: "Firma Tipi" },
   { key: "movement", label: "Cari Hareket" },
   { key: "date", label: "Tarih" },
   { key: "customerCode", label: "Cari Kodu" },
@@ -38,7 +38,7 @@ const initialColumns: Column[] = [
 ];
 
 const filterKeys: ColumnKey[] = [
-  "customerType", "movement", "date", "customerCode",
+  "companyType", "movement", "date", "customerCode",
   "customerName", "orderNo", "documentNo",
 ];
 
@@ -102,10 +102,10 @@ export default function CurrentAccountDashboard({ rows }: { rows: CurrentAccount
           {initialColumns.filter((c) => filterKeys.includes(c.key) && c.key !== "date").map((column) => (
             <label key={column.key}>
               <span className="mb-1 block text-xs font-bold uppercase text-slate-500">{column.label}</span>
-              {column.key === "customerType" || column.key === "movement" ? (
+              {column.key === "companyType" || column.key === "movement" ? (
                 <select className="w-full rounded-xl border bg-white p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))}>
                   <option value="">Tümü</option>
-                  {(column.key === "customerType" ? ["Bireysel", "Kurumsal", "Tedarikçi", "Diğer"] : ["Gelir", "Gider", "İade", "Ödeme"]).map((x) => <option key={x} value={x}>{x}</option>)}
+                  {(column.key === "companyType" ? ["Kurumsal Müşteri", "E-Ticaret Müşteri", "Tedarikçi", "Diğer"] : ["Gelir", "Gider", "İade", "Ödeme"]).map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               ) : (
                 <input type={column.key === "date" ? "date" : "text"} className="w-full rounded-xl border p-3" value={filters[column.key] ?? ""} onChange={(e) => setFilters((f) => ({ ...f, [column.key]: e.target.value }))} />
