@@ -24,6 +24,11 @@ type AddressOption = {
 type Props = {
   addresses:
     AddressOption[];
+  invoiceProfile: {
+    companyName: string;
+    taxOffice: string | null;
+    taxNumber: string | null;
+  };
   discountRate: number;
   creditLimit: number;
   paymentTermDays: number;
@@ -43,6 +48,7 @@ function formatCurrency(
 
 export default function B2BCheckoutForm({
   addresses,
+  invoiceProfile,
   discountRate,
   creditLimit,
   paymentTermDays,
@@ -307,6 +313,17 @@ export default function B2BCheckoutForm({
               )}
             </div>
           )}
+        </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow">
+          <h2 className="text-xl font-bold">Fatura Bilgileri</h2>
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+            <strong className="block text-slate-900">{invoiceProfile.companyName}</strong>
+            <p className="mt-1 text-slate-600">Vergi Dairesi: {invoiceProfile.taxOffice || "-"}</p>
+            <p className="mt-1 text-slate-600">VKN / TCKN: {invoiceProfile.taxNumber || "-"}</p>
+            <p className="mt-3 text-xs text-slate-500">Fatura adresi, hesabınızdaki aktif fatura / merkez adresinden sipariş anında kaydedilir.</p>
+          </div>
+          <Link href="/account/addresses" className="mt-3 inline-block text-sm font-bold text-blue-900 hover:underline">Fatura ve teslimat adreslerini yönet</Link>
         </section>
 
         <section className="rounded-2xl bg-white p-6 shadow">
