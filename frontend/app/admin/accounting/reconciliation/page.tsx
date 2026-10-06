@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CustomerAccountEntryType, PurchaseOrderStatus } from "@prisma/client";
+import { PurchaseOrderStatus } from "@prisma/client";
 import ConfigurableDataTable from "@/components/admin/ConfigurableDataTable";
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
@@ -51,8 +51,8 @@ export default async function ReconciliationPage({
         customerCode: true,
         companyName: true,
         accountEntries: {
-          where: { ...range, entryType: { in: [CustomerAccountEntryType.ORDER, CustomerAccountEntryType.PAYMENT, CustomerAccountEntryType.ADJUSTMENT, CustomerAccountEntryType.REFUND] } },
-          select: { entryType: true, direction: true, amount: true, transactionDate: true },
+          where: range,
+          select: { direction: true, amount: true, transactionDate: true },
         },
         accountingEntries: {
           where: { ...range, movementType: { not: "PAYMENT_IN" } },

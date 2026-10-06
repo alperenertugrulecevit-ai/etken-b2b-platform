@@ -4,7 +4,7 @@ import { CustomerAccountEntryDirection, CustomerAccountEntryType, OrderStatus } 
 import { prisma } from "@/lib/prisma";
 import { AuthorizationService } from "@/modules/authorization/services/authorization.service";
 import { confirmEcommerceBankTransferPayment, updateOrderStatus } from "@/app/admin/orders/[id]/actions";
-import { refundCancelledEcommerceOrder } from "./actions";
+import { refundCancelledEcommerceOrder, repairEcommerceAccountLedger } from "./actions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -53,7 +53,7 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
     <div>
       <p className="text-xs font-black uppercase tracking-wider text-[#EF4B23]">E-Ticaret Yönetimi</p>
       <h1 className="mt-2 text-3xl font-black">E-Ticaret Siparişleri</h1>
-      <p className="mt-2 text-sm text-slate-500">Ödeme, operasyon onayı, iptal ve iade durumlarını tek ekrandan takip edin.</p>
+      <p className="mt-2 text-sm text-slate-500">Ödeme, operasyon onayı, iptal ve iade durumlarını tek ekrandan takip edin.</p>\n      {canManage?<form action={repairEcommerceAccountLedger} className="mt-4"><button className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-black text-amber-900">E-Ticaret Cari Bütünlüğünü Onar</button><p className="mt-1 text-xs text-slate-500">Yalnız eksik ve kanıtlanabilir cari hareketleri tamamlar; mevcut hareketleri çoğaltmaz.</p></form>:null}
     </div>
     {query.refunded==="1"?<div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">Ödeme iadesi cari hesaba işlendi.</div>:null}
 
