@@ -17,7 +17,7 @@ export async function createCustomerAddress(formData: FormData) {
   const { customerId } = await requireCustomer();
   const title = String(formData.get("title") ?? "").trim().slice(0, 80);
   const requestedType = String(formData.get("addressType") ?? "DELIVERY");
-  const addressType = requestedType === "INVOICE" ? "INVOICE" : "DELIVERY";
+  const addressType = requestedType === "INVOICE" ? "INVOICE" : requestedType === "BOTH" ? "BOTH" : "DELIVERY";
   const address = String(formData.get("address") ?? "").trim().slice(0, 500);
   const city = String(formData.get("city") ?? "").trim().slice(0, 80);
   const district = String(formData.get("district") ?? "").trim().slice(0, 80);
@@ -47,7 +47,7 @@ export async function createCustomerAddress(formData: FormData) {
       city,
       district,
       postalCode,
-      isDefault: addressType === "DELIVERY" && deliveryCount === 0,
+      isDefault: (addressType === "DELIVERY" || addressType === "BOTH") && deliveryCount === 0,
       isActive: true,
     },
   });
@@ -86,6 +86,48 @@ export async function setDefaultCustomerAddress(formData: FormData) {
       data: { isDefault: true },
     }),
   ]);
+
+  revalidatePath("/account/addresses");
+  revalidatePath("/checkout");
+}
+
+
+export async function deactivateCustomerAddress(formData: FormData) {
+  const { customerId } = await requireCustomer();
+  const addressId = Number(formData.get("addressId"));
+  if (!Number.isInteger(addressId) || addressId <= 0) throw new Error("Geçersiz adres.");
+
+  const address = await prisma.customerAddress.findFirst({
+    where: { id: addressId, customerId, isActive: true },
+    select: { id: true, isDefault: true, addressType: true },
+  });
+  if (!address) throw new Error("Adres bulunamadı.");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.customerAddress.update({
+      where: { id: address.id },
+      data: { isActive: false, isDefault: false },
+    });
+
+    if (address.isDefault && (address.addressType === "DELIVERY" || address.addressType === "BOTH")) {
+      const nextAddress = await tx.customerAddress.findFirst({
+        where: {
+          customerId,
+          isActive: true,
+          addressType: { in: ["DELIVERY", "BOTH"] },
+          id: { not: address.id },
+        },
+        orderBy: [{ createdAt: "asc" }],
+        select: { id: true },
+      });
+      if (nextAddress) {
+        await tx.customerAddress.update({
+          where: { id: nextAddress.id },
+          data: { isDefault: true },
+        });
+      }
+    }
+  });
 
   revalidatePath("/account/addresses");
   revalidatePath("/checkout");
