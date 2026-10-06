@@ -252,7 +252,7 @@ export default function Header() {
 
               <span>
                 <small className="block text-[9px] font-semibold text-violet-600">Bireysel / Kurumsal</small>
-                <strong className="block text-[12px] text-[#202B38]">Giriş / Hesabım</strong>
+                <strong className="block text-[12px] text-[#202B38]">Giriş / Üye Ol</strong>
               </span>
             </Link>
 
@@ -470,7 +470,7 @@ export default function Header() {
                 }
                 className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold"
               >
-                Müşteri Girişi / Hesabım
+                Giriş Yap / Hesabım
               </Link>
 
               <Link
@@ -484,7 +484,7 @@ export default function Header() {
               </Link>
 
               <Link href="/register" onClick={closeMenu} className="rounded-xl bg-orange-50 px-4 py-3 text-sm font-bold text-[#EF4B23]">
-                Bireysel Üye Ol
+                Bireysel / Kurumsal Üye Ol
               </Link>
             </div>
 
