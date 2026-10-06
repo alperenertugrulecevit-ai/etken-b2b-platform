@@ -128,6 +128,7 @@ function createInput(
 ): B2BCheckoutInput {
   return {
     shippingAddressId: 100,
+    invoiceAddressId: 200,
     paymentMethod:
       "BANK_TRANSFER",
     requestedDate: null,
@@ -162,11 +163,21 @@ function setDatabaseFixtures({
     paymentTermDays: 30,
     discountRate,
     creditLimit,
+    companyName: "Örnek Kurumsal Müşteri",
+    taxOffice: "Şişli",
+    taxNumber: "1234567890",
   });
 
-  mocks.addressFindFirst.mockResolvedValue({
-    id: 100,
-  });
+  mocks.addressFindFirst
+    .mockResolvedValueOnce({
+      id: 100,
+    })
+    .mockResolvedValueOnce({
+      address: "Fatura Cad. No: 1",
+      city: "İstanbul",
+      district: "Şişli",
+      postalCode: "34381",
+    });
 
   mocks.productFindMany.mockResolvedValue([
     {
@@ -416,6 +427,14 @@ describe(
         totalAmount: 1296,
         customerNote:
           "Kapıya teslim",
+        invoiceType: "CORPORATE",
+        invoiceName: "Örnek Kurumsal Müşteri",
+        invoiceTaxOffice: "Şişli",
+        invoiceTaxNumber: "1234567890",
+        invoiceAddress: "Fatura Cad. No: 1",
+        invoiceCity: "İstanbul",
+        invoiceDistrict: "Şişli",
+        invoicePostalCode: "34381",
         accountEntries: {
           create: {
             customerId: 10,
