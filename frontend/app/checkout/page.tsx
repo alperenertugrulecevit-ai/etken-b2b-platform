@@ -75,6 +75,34 @@ export default async function CheckoutPage() {
     }
   }
 
+  const individualCustomer =
+    user?.userType === UserType.CUSTOMER &&
+    user.customerId &&
+    user.customer?.isActive &&
+    user.customer.customerType === CustomerType.INDIVIDUAL
+      ? await prisma.customer.findUnique({
+          where: { id: user.customerId },
+          select: {
+            contactName: true,
+            phone: true,
+            email: true,
+            addresses: {
+              where: { isActive: true },
+              orderBy: [{ isDefault: "desc" }, { title: "asc" }],
+              select: {
+                id: true,
+                title: true,
+                address: true,
+                city: true,
+                district: true,
+                postalCode: true,
+                isDefault: true,
+              },
+            },
+          },
+        })
+      : null;
+
   const cities = getCities();
   const districtsByCityCode = getDistrictsOfEachCity();
 
@@ -88,7 +116,7 @@ export default async function CheckoutPage() {
           <p className="mb-8 mt-2 text-slate-500">
             Üye olmadan teslimat ve fatura bilgilerinizi girerek sipariş oluşturabilirsiniz.
           </p>
-          <EcommerceCheckoutForm cities={cities} districtsByCityCode={districtsByCityCode} />
+          <EcommerceCheckoutForm cities={cities} districtsByCityCode={districtsByCityCode} memberProfile={individualCustomer} />
         </div>
       </main>
     </>
