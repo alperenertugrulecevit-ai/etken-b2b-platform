@@ -75,7 +75,7 @@ export async function setDefaultCustomerAddress(formData: FormData) {
       where: {
         customerId,
         isActive: true,
-        addressType: "DELIVERY",
+        addressType: { in: ["DELIVERY", "BOTH"] },
       },
       data: { isDefault: false },
     }),
