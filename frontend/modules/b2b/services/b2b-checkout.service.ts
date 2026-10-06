@@ -287,6 +287,7 @@ export class B2BCheckoutService {
         where: {
           id: shippingAddressId,
           ...getCustomerAddressWhere(user),
+          addressType: { in: ["DELIVERY", "BOTH"] },
         },
         select: {
           id: true,
