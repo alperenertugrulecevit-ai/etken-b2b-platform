@@ -61,9 +61,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/bootstrap-accounting-schema.cjs ./scripts/bootstrap-accounting-schema.cjs
 
 USER nextjs
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy || echo \"WARNING: Prisma migration failed; starting application with the existing schema.\"; exec node server.js"]
+CMD ["sh", "-c", "node ./scripts/bootstrap-accounting-schema.cjs && exec node server.js"]
