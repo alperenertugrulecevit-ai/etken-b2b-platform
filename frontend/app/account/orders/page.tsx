@@ -379,6 +379,7 @@ export default async function CustomerOrdersPage({
                   <th className="px-5 py-3">Tarih</th>
                   <th className="px-5 py-3">Satır</th>
                   <th className="px-5 py-3">Durum</th>
+                  <th className="px-5 py-3">Ödeme</th>
                   <th className="px-5 py-3 text-right">Toplam</th>
                 </tr>
               </thead>
@@ -411,6 +412,9 @@ export default async function CustomerOrdersPage({
                       >
                         {STATUS_LABELS[order.status]}
                       </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-600">
+                      {order.paymentStatus === "PAID" ? "Ödendi" : order.paymentStatus === "REFUNDED" ? "İade Edildi" : order.paymentStatus === "PARTIALLY_REFUNDED" ? "Kısmi İade" : order.paymentStatus === "FAILED" ? "Başarısız" : order.paymentStatus ? "Ödeme Bekleniyor" : "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-bold">
                       {formatCurrency(order.totalAmount)} ₺
