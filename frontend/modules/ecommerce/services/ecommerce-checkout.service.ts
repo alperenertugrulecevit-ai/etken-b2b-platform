@@ -240,6 +240,10 @@ export class EcommerceCheckoutService {
           invoiceName: invoiceName ?? fullName,
           invoiceTaxOffice: input.invoiceType === "CORPORATE" ? taxOffice : null,
           invoiceTaxNumber: input.invoiceType === "CORPORATE" ? taxNumber : null,
+          invoiceAddress: address,
+          invoiceCity: city,
+          invoiceDistrict: district,
+          invoicePostalCode: postalCode,
           paymentStatus: "PENDING",
           paymentProvider: "BANK_TRANSFER",
           statusHistory: {
