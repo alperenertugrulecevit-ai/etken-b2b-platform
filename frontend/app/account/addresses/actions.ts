@@ -90,3 +90,45 @@ export async function setDefaultCustomerAddress(formData: FormData) {
   revalidatePath("/account/addresses");
   revalidatePath("/checkout");
 }
+
+
+export async function deactivateCustomerAddress(formData: FormData) {
+  const { customerId } = await requireCustomer();
+  const addressId = Number(formData.get("addressId"));
+  if (!Number.isInteger(addressId) || addressId <= 0) throw new Error("Geçersiz adres.");
+
+  const address = await prisma.customerAddress.findFirst({
+    where: { id: addressId, customerId, isActive: true },
+    select: { id: true, isDefault: true, addressType: true },
+  });
+  if (!address) throw new Error("Adres bulunamadı.");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.customerAddress.update({
+      where: { id: address.id },
+      data: { isActive: false, isDefault: false },
+    });
+
+    if (address.isDefault && (address.addressType === "DELIVERY" || address.addressType === "BOTH")) {
+      const nextAddress = await tx.customerAddress.findFirst({
+        where: {
+          customerId,
+          isActive: true,
+          addressType: { in: ["DELIVERY", "BOTH"] },
+          id: { not: address.id },
+        },
+        orderBy: [{ createdAt: "asc" }],
+        select: { id: true },
+      });
+      if (nextAddress) {
+        await tx.customerAddress.update({
+          where: { id: nextAddress.id },
+          data: { isDefault: true },
+        });
+      }
+    }
+  });
+
+  revalidatePath("/account/addresses");
+  revalidatePath("/checkout");
+}
