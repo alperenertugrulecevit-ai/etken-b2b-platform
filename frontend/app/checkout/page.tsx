@@ -36,6 +36,9 @@ export default async function CheckoutPage() {
         discountRate: true,
         creditLimit: true,
         paymentTermDays: true,
+        companyName: true,
+        taxOffice: true,
+        taxNumber: true,
         addresses: {
           where: getCustomerAddressWhere(user),
           orderBy: [{ isDefault: "desc" }, { title: "asc" }],
@@ -64,6 +67,11 @@ export default async function CheckoutPage() {
               </p>
               <B2BCheckoutForm
                 addresses={customer.addresses}
+                invoiceProfile={{
+                  companyName: customer.companyName,
+                  taxOffice: customer.taxOffice,
+                  taxNumber: customer.taxNumber,
+                }}
                 discountRate={customer.discountRate}
                 creditLimit={customer.creditLimit}
                 paymentTermDays={customer.paymentTermDays}
@@ -97,6 +105,18 @@ export default async function CheckoutPage() {
                 district: true,
                 postalCode: true,
                 isDefault: true,
+              },
+            },
+            invoiceAddresses: {
+              where: { isActive: true, addressType: { in: ["INVOICE", "BOTH"] } },
+              orderBy: [{ isDefault: "desc" }, { title: "asc" }],
+              select: {
+                id: true,
+                title: true,
+                address: true,
+                city: true,
+                district: true,
+                postalCode: true,
               },
             },
           },
