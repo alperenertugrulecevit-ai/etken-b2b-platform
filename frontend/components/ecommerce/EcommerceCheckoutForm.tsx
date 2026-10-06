@@ -12,12 +12,29 @@ function money(value: number) {
   return value.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default function EcommerceCheckoutForm({ cities, districtsByCityCode }: { cities: Array<{code:string;name:string}>; districtsByCityCode: Record<string,string[]> }) {
+type MemberProfile = {
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  addresses: Array<{
+    id: number;
+    title: string;
+    address: string;
+    city: string;
+    district: string;
+    postalCode: string | null;
+    isDefault: boolean;
+  }>;
+} | null;
+
+export default function EcommerceCheckoutForm({ cities, districtsByCityCode, memberProfile }: { cities: Array<{code:string;name:string}>; districtsByCityCode: Record<string,string[]>; memberProfile: MemberProfile }) {
   const router = useRouter();
   const { cart, isHydrated, clearCart } = useCart();
   const [invoiceType, setInvoiceType] = useState<"INDIVIDUAL" | "CORPORATE">("INDIVIDUAL");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const defaultMemberAddress = memberProfile?.addresses.find((item) => item.isDefault) ?? memberProfile?.addresses[0] ?? null;
+  const [memberAddressId, setMemberAddressId] = useState(defaultMemberAddress ? String(defaultMemberAddress.id) : "");
 
   const totals = useMemo(() => {
     const net = cart.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
@@ -38,14 +55,15 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode }: {
 
     try {
       const result = await submitEcommerceOrderAction({
-        firstName: String(data.get("firstName") ?? ""),
-        lastName: String(data.get("lastName") ?? ""),
-        email: String(data.get("email") ?? ""),
-        phone: String(data.get("phone") ?? ""),
-        address: String(data.get("address") ?? ""),
-        city: String(data.get("city") ?? ""),
-        district: String(data.get("district") ?? ""),
-        postalCode: String(data.get("postalCode") ?? "") || null,
+        firstName: String(data.get("firstName") ?? memberProfile?.contactName?.split(" ")[0] ?? ""),
+        lastName: String(data.get("lastName") ?? memberProfile?.contactName?.split(" ").slice(1).join(" ") ?? ""),
+        email: String(data.get("email") ?? memberProfile?.email ?? ""),
+        phone: String(data.get("phone") ?? memberProfile?.phone ?? ""),
+        address: String(data.get("address") ?? defaultMemberAddress?.address ?? ""),
+        city: String(data.get("city") ?? defaultMemberAddress?.city ?? ""),
+        district: String(data.get("district") ?? defaultMemberAddress?.district ?? ""),
+        postalCode: String(data.get("postalCode") ?? defaultMemberAddress?.postalCode ?? "") || null,
+        shippingAddressId: memberProfile && memberAddressId ? Number(memberAddressId) : null,
         invoiceType,
         invoiceName: String(data.get("invoiceName") ?? ""),
         invoiceTaxOffice: String(data.get("invoiceTaxOffice") ?? "") || null,
@@ -91,6 +109,24 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode }: {
       <div className="space-y-6">
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-black">Teslimat Bilgileri</h2>
+          {memberProfile ? (
+            <div className="mt-5 space-y-3">
+              {memberProfile.addresses.length ? memberProfile.addresses.map((item) => (
+                <label key={item.id} className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 p-4">
+                  <input type="radio" name="memberAddress" value={item.id} checked={memberAddressId === String(item.id)} onChange={(event) => setMemberAddressId(event.target.value)} />
+                  <span>
+                    <strong className="block">{item.title}{item.isDefault ? " · Varsayılan" : ""}</strong>
+                    <span className="mt-1 block text-sm text-slate-600">{item.address}, {item.district} / {item.city}</span>
+                  </span>
+                </label>
+              )) : (
+                <div className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                  Kayıtlı teslimat adresiniz yok. Hesabım &gt; Adreslerim bölümünden adres ekleyin.
+                </div>
+              )}
+              <p className="text-sm text-slate-500">{memberProfile.email} · {memberProfile.phone}</p>
+            </div>
+          ) : (
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-semibold">Ad<input name="firstName" required maxLength={80} className={field} /></label>
             <label className="text-sm font-semibold">Soyad<input name="lastName" required maxLength={80} className={field} /></label>
@@ -100,6 +136,7 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode }: {
             <label className="text-sm font-semibold sm:col-span-2">Adres<textarea name="address" required maxLength={500} rows={3} className={field} /></label>
             <label className="text-sm font-semibold">Posta Kodu<input name="postalCode" maxLength={20} className={field} /></label>
           </div>
+          )}
         </section>
 
         <section className="rounded-2xl bg-white p-6 shadow-sm">
@@ -154,7 +191,7 @@ export default function EcommerceCheckoutForm({ cities, districtsByCityCode }: {
         </div>
         <p className="mt-3 text-xs text-slate-500">Tüm fiyatlar KDV dahildir. Bireysel alışverişte minimum sipariş tutarı yoktur.</p>
         {message ? <div role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{message}</div> : null}
-        <button type="submit" disabled={pending}
+        <button type="submit" disabled={pending || Boolean(memberProfile && !memberAddressId)}
           className="mt-6 w-full rounded-xl bg-[#EF4B23] py-4 font-black text-white hover:bg-[#D83D18] disabled:bg-slate-300">
           {pending ? "Sipariş oluşturuluyor..." : "Siparişi Tamamla"}
         </button>
