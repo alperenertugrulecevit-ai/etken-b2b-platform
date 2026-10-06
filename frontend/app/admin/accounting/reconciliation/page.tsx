@@ -49,8 +49,8 @@ export default async function ReconciliationPage({
         customerCode: true,
         companyName: true,
         accountEntries: {
-          where: { ...range, entryType: { in: [CustomerAccountEntryType.REFUND, CustomerAccountEntryType.PAYMENT] } },
-          select: { entryType: true, amount: true, transactionDate: true },
+          where: { ...range, entryType: { in: [CustomerAccountEntryType.ORDER, CustomerAccountEntryType.PAYMENT, CustomerAccountEntryType.ADJUSTMENT, CustomerAccountEntryType.REFUND] } },
+          select: { entryType: true, direction: true, amount: true, transactionDate: true },
         },
         accountingEntries: {
           where: { ...range, movementType: { not: "PAYMENT_IN" } },
@@ -66,7 +66,11 @@ export default async function ReconciliationPage({
       const dates: Date[] = [];
 
       for (const entry of customer.accountEntries) {
-        if (entry.entryType === CustomerAccountEntryType.PAYMENT) positive += entry.amount; // Gerçekleşen tahsilat (+)\n        if (entry.entryType === CustomerAccountEntryType.REFUND) negative += entry.amount; // Gerçekleşen iade ödemesi (-)
+        // Müşteri cari bakiyesi gerçek muhasebe çiftleriyle kapanır:
+        // satış ORDER/DEBIT (+) -> tahsilat PAYMENT/CREDIT (-)
+        // ürün iadesi ADJUSTMENT/CREDIT (-) -> müşteriye refund REFUND/DEBIT (+)
+        if (entry.direction === "DEBIT") positive += entry.amount;
+        if (entry.direction === "CREDIT") negative += entry.amount;
         dates.push(entry.transactionDate);
       }
       for (const entry of customer.accountingEntries) {
@@ -145,7 +149,7 @@ export default async function ReconciliationPage({
         <div>
           <p className="text-sm font-bold uppercase text-emerald-700">Muhasebeleştirme</p>
           <h1 className="text-3xl font-black">Cari Hesap Mutabakatı</h1>
-          <p className="mt-2 text-slate-500">Cari hareket yönlerini izler; müşteri mutabakat bakiyesi gerçekleşen tahsilat ve iade ödemelerini esas alır, satış/iade operasyonunu ödeme ile ikinci kez saymaz.</p>
+          <p className="mt-2 text-slate-500">Müşteri carisinde satış (+) / tahsilat (-) ve ürün iadesi (-) / iade ödemesi (+) karşılıklı kapanır; açık kalan tutar gerçek cari bakiyeyi gösterir.</p>
         </div>
         <Link href="/admin/accounting" className="h-fit rounded-xl border bg-white px-5 py-3 font-bold">Muhasebeleştirmeye Dön</Link>
       </div>
