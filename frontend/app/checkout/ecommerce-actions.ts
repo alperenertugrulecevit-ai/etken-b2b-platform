@@ -24,6 +24,7 @@ export async function submitEcommerceOrderAction(input: EcommerceCheckoutInput):
       shippingAddressId: isIndividual ? input.shippingAddressId ?? null : null,
     });
     revalidatePath("/admin/orders");
+    revalidatePath("/account/orders");
     return { success: true, orderId: order.id, orderNumber: order.orderNumber };
   } catch (error) {
     console.error("B2C sipariş oluşturma hatası:", error);
