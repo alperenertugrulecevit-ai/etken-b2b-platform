@@ -230,6 +230,22 @@ export class B2BCheckoutService {
       );
     }
 
+    const invoiceAddressId =
+      Number(
+        input.invoiceAddressId
+      );
+
+    if (
+      !Number.isInteger(
+        invoiceAddressId
+      ) ||
+      invoiceAddressId <= 0
+    ) {
+      throw new B2BCheckoutError(
+        "Fatura adresi seçmelisiniz."
+      );
+    }
+
     const paymentMethod =
       input.paymentMethod ===
       "CURRENT_ACCOUNT"
@@ -296,7 +312,7 @@ export class B2BCheckoutService {
       }),
       prisma.customerAddress.findFirst({
         where: {
-          id: Number(input.invoiceAddressId),
+          id: invoiceAddressId,
           customerId: user.customerId,
           isActive: true,
           addressType: { in: ["INVOICE", "BOTH"] },
