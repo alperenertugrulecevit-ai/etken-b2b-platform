@@ -164,6 +164,7 @@ export class EcommerceCheckoutService {
             id: requestedAddressId,
             customerId,
             isActive: true,
+            addressType: { in: ["DELIVERY", "BOTH"] },
           },
           select: { id: true },
         });
