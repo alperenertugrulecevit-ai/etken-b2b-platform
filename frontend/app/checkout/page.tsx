@@ -95,11 +95,12 @@ export default async function CheckoutPage() {
             phone: true,
             email: true,
             addresses: {
-              where: { isActive: true, addressType: { in: ["DELIVERY", "BOTH"] } },
+              where: { isActive: true },
               orderBy: [{ isDefault: "desc" }, { title: "asc" }],
               select: {
                 id: true,
                 title: true,
+                addressType: true,
                 address: true,
                 city: true,
                 district: true,
@@ -107,19 +108,7 @@ export default async function CheckoutPage() {
                 isDefault: true,
               },
             },
-            invoiceAddresses: {
-              where: { isActive: true, addressType: { in: ["INVOICE", "BOTH"] } },
-              orderBy: [{ isDefault: "desc" }, { title: "asc" }],
-              select: {
-                id: true,
-                title: true,
-                address: true,
-                city: true,
-                district: true,
-                postalCode: true,
-              },
-            },
-          },
+
         })
       : null;
 
