@@ -74,12 +74,14 @@ export async function confirmEcommerceOrderDeliveryAction(f:FormData){
   if(!Number.isInteger(orderId)||orderId<=0) throw new Error("Geçerli bir sipariş seçin.");
   await ShipmentPlanningService.confirmEcommerceOrderDelivery({orderId,actor:a});
   revalidatePath("/admin/shipping-planning/tracking");
+  revalidatePath("/admin/e-ticaret/cargo-tracking");
+  revalidatePath("/account/orders");
   revalidatePath("/order-tracking");
  }catch(e){
   const message=e instanceof Error?e.message:"Teslimat onaylanamadı.";
-  redirect("/admin/shipping-planning/tracking?deliveryError="+encodeURIComponent(message));
+  redirect("/admin/e-ticaret/cargo-tracking?deliveryError="+encodeURIComponent(message));
  }
- redirect("/admin/shipping-planning/tracking?delivered=1");
+ redirect("/admin/e-ticaret/cargo-tracking?delivered=1");
 }
 
 
@@ -95,11 +97,13 @@ export async function updateEcommerceCargoTrackingAction(f:FormData){
    actor:a,
   });
   revalidatePath("/admin/shipping-planning/tracking");
+  revalidatePath("/admin/e-ticaret/cargo-tracking");
+  revalidatePath("/account/orders");
   revalidatePath("/order-tracking");
   revalidatePath(`/account/orders/${orderId}`);
  }catch(e){
   const message=e instanceof Error?e.message:"Kargo takip bilgisi kaydedilemedi.";
-  redirect("/admin/shipping-planning/tracking?trackingError="+encodeURIComponent(message));
+  redirect("/admin/e-ticaret/cargo-tracking?trackingError="+encodeURIComponent(message));
  }
- redirect("/admin/shipping-planning/tracking?trackingUpdated=1");
+ redirect("/admin/e-ticaret/cargo-tracking?trackingUpdated=1");
 }
