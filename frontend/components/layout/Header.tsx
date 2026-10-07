@@ -197,7 +197,6 @@ export default function Header() {
   return (
     <>
       <div className="fixed inset-x-0 top-0 z-50 bg-white shadow-sm">
-      <div className="fixed inset-x-0 top-0 z-50 bg-white shadow-sm">
       <div className="hidden border-b border-blue-900 bg-[#0B3B88] text-white lg:block">
         <div className="mx-auto flex min-h-8 max-w-[1600px] items-center justify-between px-4 text-[10px] font-black sm:px-6">
           <div className="flex items-center gap-8">
