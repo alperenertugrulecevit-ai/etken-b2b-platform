@@ -60,6 +60,20 @@ export class ShipmentPlanningService {
   static listCarriers(){ return prisma.shippingCarrier.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},orderBy:[{isActive:"desc"},{name:"asc"}]}); }
   static listVehicles(){ return prisma.shippingVehicle.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},include:{carrier:true},orderBy:[{isActive:"desc"},{plate:"asc"}]}); }
   static listRoutes(){ return prisma.shippingRoute.findMany({where:{tenantId:TENANT_ID,companyId:COMPANY_ID},orderBy:[{isActive:"desc"},{routeNumber:"asc"}]}); }
+  static async updateCarrierIntegration(input:{carrierId:string;trackingUrlTemplate?:string|null;integrationProvider?:string|null;integrationEnabled:boolean}){
+    const carrier=await prisma.shippingCarrier.findFirst({where:{id:input.carrierId,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});
+    if(!carrier) throw new Error("Taşıyıcı bulunamadı.");
+    const template=clean(input.trackingUrlTemplate);
+    if(template){
+      if(!template.includes("{trackingNumber}")) throw new Error("Takip URL şablonu {trackingNumber} alanını içermelidir.");
+      try{const test=new URL(template.replace("{trackingNumber}","TEST123"));if(!["http:","https:"].includes(test.protocol))throw new Error();}catch{throw new Error("Takip URL şablonu geçerli bir http/https adresi olmalıdır.");}
+    }
+    return prisma.shippingCarrier.update({where:{id:carrier.id},data:{
+      trackingUrlTemplate:template,
+      integrationProvider:clean(input.integrationProvider),
+      integrationEnabled:input.integrationEnabled,
+    }});
+  }
   static async setCarrierActive(id:string,isActive:boolean){const row=await prisma.shippingCarrier.findFirst({where:{id,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});if(!row)throw new Error("Taşıyıcı bulunamadı.");return prisma.shippingCarrier.update({where:{id:row.id},data:{isActive}});}
   static async setVehicleActive(id:string,isActive:boolean){const row=await prisma.shippingVehicle.findFirst({where:{id,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});if(!row)throw new Error("Araç bulunamadı.");return prisma.shippingVehicle.update({where:{id:row.id},data:{isActive}});}
   static async setRouteActive(id:string,isActive:boolean){const row=await prisma.shippingRoute.findFirst({where:{id,tenantId:TENANT_ID,companyId:COMPANY_ID},select:{id:true}});if(!row)throw new Error("Rota bulunamadı.");return prisma.shippingRoute.update({where:{id:row.id},data:{isActive}});}
@@ -497,10 +511,13 @@ export class ShipmentPlanningService {
     return prisma.$transaction(async tx=>{
       const order=await tx.order.findFirst({
         where:{id:input.orderId,source:OrderSource.ECOMMERCE},
-        select:{id:true,orderNumber:true,status:true},
+        select:{id:true,orderNumber:true,status:true,carrier:{select:{trackingUrlTemplate:true}}},
       });
       if(!order) throw new Error("E-ticaret siparişi bulunamadı.");
       if(order.status===OrderStatus.CANCELLED) throw new Error("İptal edilmiş siparişe kargo takip bilgisi girilemez.");
+      if(!trackingUrl && order.carrier?.trackingUrlTemplate){
+        trackingUrl=order.carrier.trackingUrlTemplate.replace("{trackingNumber}",encodeURIComponent(trackingNumber)).slice(0,500);
+      }
       const now=new Date();
       await tx.order.update({
         where:{id:order.id},
