@@ -274,6 +274,39 @@ export default async function Home() {
 
       <HomeHeroSlider />
 
+      <section className="mx-auto w-full max-w-[1600px] px-3 pb-2 sm:px-4 lg:px-5">
+        <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            ["Hızlı ve Güvenilir", "İstanbul içi hızlı teslimat", "delivery", "bg-orange-500"],
+            ["Kurumsal Avantajlar", "İşletmenize özel çözümler", "shield", "bg-blue-500"],
+            ["Geniş Ürün Yelpazesi", "Ofisin tüm ihtiyaçları", "check", "bg-emerald-500"],
+            ["Güvenli Ödeme", "Korunan ödeme süreci", "payment", "bg-violet-500"],
+            ["Müşteri Desteği", "Sipariş öncesi ve sonrası", "support", "bg-red-500"],
+          ].map(([title, description, icon, tone]) => (
+            <div key={title} className="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 last:border-0 sm:border-r lg:border-b-0">
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${tone}`}>
+                <HomeBenefitIcon type={icon} />
+              </span>
+              <div>
+                <strong className="block text-[11px] font-black text-[#071729]">{title}</strong>
+                <span className="block text-[9px] text-slate-500">{description}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <ProductSection
+        title="Sizin için seçtiklerimiz"
+        eyebrow="ÖNE ÇIKAN ÜRÜNLER"
+        description="En çok tercih edilen ürünleri hemen keşfedin"
+        products={
+          featured
+        }
+        badge="Öne Çıkan"
+        compactTop
+      />
+
       <ProductSection
         title="Yeni Eklenenler"
         eyebrow="YENİ ÜRÜNLER"
