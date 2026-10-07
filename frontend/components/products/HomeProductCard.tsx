@@ -103,7 +103,7 @@ export default function HomeProductCard({
         href={`/products/${product.code}`}
         className="block"
       >
-        <div className="bg-white p-3">
+        <div className="bg-white px-3 pt-3">
           <ProductImage
             imageUrl={
               product.imageUrl
@@ -111,19 +111,19 @@ export default function HomeProductCard({
             productName={
               product.name
             }
-            className="h-40 rounded-xl p-3 transition duration-300 group-hover:scale-[1.03] sm:h-44"
-            fallbackClassName="h-40 rounded-xl text-4xl sm:h-44"
+            className="h-28 rounded-xl p-2 transition duration-300 group-hover:scale-[1.03] sm:h-32"
+            fallbackClassName="h-28 rounded-xl text-3xl sm:h-32"
           />
         </div>
 
-        <div className="px-4">
+        <div className="px-3">
           <p className="text-[11px] font-black uppercase tracking-wide text-[#EF4B23]">
             {
               product.brand
             }
           </p>
 
-          <h3 className="mt-1.5 line-clamp-2 min-h-11 text-sm font-bold leading-5 text-slate-900">
+          <h3 className="mt-1 line-clamp-2 min-h-9 text-[12px] font-bold leading-[17px] text-slate-900">
             {
               product.name
             }
@@ -137,7 +137,7 @@ export default function HomeProductCard({
         </div>
       </Link>
 
-      <div className="mt-auto px-4 pb-4 pt-3">
+      <div className="mt-auto px-3 pb-3 pt-2">
         {isComingSoon ? (
           <div>
             <p className="text-base font-black text-amber-700">
@@ -151,7 +151,7 @@ export default function HomeProductCard({
           </div>
         ) : (
           <>
-            <p className="text-xl font-black text-[#EF4B23]">
+            <p className="text-[17px] font-black text-[#EF4B23]">
               {formatCurrency(
                 grossPrice,
               )}{" "}
@@ -193,17 +193,17 @@ export default function HomeProductCard({
         </div>
 
         {cartItem && !isComingSoon && !isOutOfStock ? (
-          <div className="mt-3 flex overflow-hidden rounded-xl border border-[#EF4B23]">
-            <button type="button" onClick={() => decreaseQty(product.code)} className="w-11 bg-orange-50 text-lg font-black text-[#EF4B23] hover:bg-orange-100">−</button>
+          <div className="mt-2 flex overflow-hidden rounded-lg border border-[#EF4B23]">
+            <button type="button" onClick={() => decreaseQty(product.code)} className="w-9 bg-orange-50 text-base font-black text-[#EF4B23] hover:bg-orange-100">−</button>
             <span className="flex flex-1 items-center justify-center bg-[#EF4B23] py-2.5 text-sm font-black text-white">{cartItem.qty}</span>
-            <button type="button" disabled={cartItem.qty >= product.availableStock} onClick={() => increaseQty(product.code)} className="w-11 bg-orange-50 text-lg font-black text-[#EF4B23] hover:bg-orange-100 disabled:text-slate-300">+</button>
+            <button type="button" disabled={cartItem.qty >= product.availableStock} onClick={() => increaseQty(product.code)} className="w-9 bg-orange-50 text-base font-black text-[#EF4B23] hover:bg-orange-100 disabled:text-slate-300">+</button>
           </div>
         ) : (
           <button
             type="button"
             onClick={handleAdd}
             disabled={isComingSoon || isOutOfStock}
-            className="mt-3 w-full rounded-xl bg-[#EF4B23] py-2.5 text-sm font-black text-white transition hover:bg-[#D83D18] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            className="mt-2 w-full rounded-lg bg-[#EF4B23] py-2 text-[12px] font-black text-white transition hover:bg-[#D83D18] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
             {isComingSoon ? "Yakında" : isOutOfStock ? "Stokta Yok" : "Sepete Ekle"}
           </button>

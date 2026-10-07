@@ -301,14 +301,16 @@ export default async function Home() {
       <section className="mx-auto w-full max-w-[1600px] px-3 pb-2 sm:px-4 lg:px-5">
         <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:grid-cols-2 lg:grid-cols-5">
           {[
-            ["Hızlı ve Güvenilir", "İstanbul içi hızlı teslimat"],
-            ["Kurumsal Avantajlar", "İşletmenize özel çözümler"],
-            ["Geniş Ürün Yelpazesi", "Ofisin tüm ihtiyaçları"],
-            ["Güvenli Ödeme", "Korunan ödeme süreci"],
-            ["Müşteri Desteği", "Sipariş öncesi ve sonrası"],
-          ].map(([title, description], index) => (
-            <div key={title} className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0 sm:border-r lg:border-b-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-50 text-sm font-black text-[#EF4B23]">{index + 1}</span>
+            ["Hızlı ve Güvenilir", "İstanbul içi hızlı teslimat", "delivery", "bg-orange-500"],
+            ["Kurumsal Avantajlar", "İşletmenize özel çözümler", "shield", "bg-blue-500"],
+            ["Geniş Ürün Yelpazesi", "Ofisin tüm ihtiyaçları", "check", "bg-emerald-500"],
+            ["Güvenli Ödeme", "Korunan ödeme süreci", "payment", "bg-violet-500"],
+            ["Müşteri Desteği", "Sipariş öncesi ve sonrası", "support", "bg-red-500"],
+          ].map(([title, description, icon, tone]) => (
+            <div key={title} className="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 last:border-0 sm:border-r lg:border-b-0">
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${tone}`}>
+                <HomeBenefitIcon type={icon} />
+              </span>
               <div>
                 <strong className="block text-[11px] font-black text-[#071729]">{title}</strong>
                 <span className="block text-[9px] text-slate-500">{description}</span>
@@ -402,7 +404,7 @@ function ProductSection({
     <section
       className={`mx-auto max-w-[1600px] px-4 sm:px-6 ${
         compactTop
-          ? "pb-4 pt-1"
+          ? "pb-3 pt-1"
           : "py-4"
       }`}
     >
@@ -437,7 +439,7 @@ function ProductSection({
         </Link>
       </div>
 
-      <div className="mt-2.5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {products
           .slice(
             0,
@@ -463,6 +465,16 @@ function ProductSection({
       </div>
     </section>
   );
+}
+
+
+function HomeBenefitIcon({ type }: { type: string }) {
+  const common = "h-5 w-5";
+  if (type === "delivery") return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={common} aria-hidden="true"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>;
+  if (type === "payment") return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={common} aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>;
+  if (type === "support") return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={common} aria-hidden="true"><path d="M4 13v-1a8 8 0 0116 0v1"/><path d="M4 13h3v6H5a2 2 0 01-2-2v-2a2 2 0 012-2zM20 13h-3v6h2a2 2 0 002-2v-2a2 2 0 00-2-2zM17 19c-1 2-3 2-5 2"/></svg>;
+  if (type === "check") return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={common} aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>;
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={common} aria-hidden="true"><path d="M12 3l7 3v5c0 4.8-2.8 8.1-7 10-4.2-1.9-7-5.2-7-10V6z"/><path d="M8.5 12l2.2 2.2 4.8-5"/></svg>;
 }
 
 function CorporateSolution() {
