@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import Header from "@/components/layout/Header";
 import ProductImage from "@/components/products/ProductImage";
-import { cancelCustomerOrder } from "./actions";
+import { cancelCustomerOrder, requestCustomerEcommerceReturn } from "./actions";
 import {
   notFound,
   redirect,
@@ -12,6 +12,7 @@ import {
   CustomerAccountEntryDirection,
   CustomerAccountEntryType,
   OrderStatus,
+  OrderType,
   UserType,
 } from "@prisma/client";
 
@@ -127,6 +128,13 @@ export default async function CustomerOrderDetailPage({
           },
           orderBy: {
             createdAt: "desc",
+          },
+        },
+        ecommerceReturns: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            items: { orderBy: { createdAt: "asc" } },
+            refunds: { orderBy: { createdAt: "desc" } },
           },
         },
       },
@@ -379,6 +387,45 @@ export default async function CustomerOrderDetailPage({
           <p className="mt-2 text-sm font-semibold text-red-800">{order.cancellationStatus}</p>
           {order.cancellationReason ? <p className="mt-1 text-sm text-red-700">{order.cancellationReason}</p> : null}
           {order.cancellationRefundStatus ? <p className="mt-2 text-sm text-red-800">Para iadesi: {order.cancellationRefundStatus}</p> : null}
+        </section>
+      ) : null}
+
+      {order.ecommerceReturns.length ? (
+        <section className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4">
+          <h2 className="text-lg font-black text-violet-950">Ürün İade Süreci</h2>
+          <div className="mt-3 space-y-3">
+            {order.ecommerceReturns.map((ret) => {
+              const statusLabel: Record<string,string> = {REQUESTED:"İade Talebi Alındı",PRE_RECEIVED:"Depo Ön Kabulü Yapıldı",RECEIVING:"İade Girişi Devam Ediyor",QUALITY_CONTROL:"Kalite Kontrol",PARTIALLY_COMPLETED:"Kısmi Tamamlandı",WAREHOUSE_COMPLETED:"Depo İşlemi Tamamlandı",FINANCE_PENDING:"Para İadesi Bekleniyor",COMPLETED:"İade Tamamlandı",REJECTED:"İade Reddedildi",CANCELLED:"İade İptal Edildi"};
+              const refundLabel: Record<string,string> = {WAITING:"Değerlendirme Bekliyor",ELIGIBLE:"Para İadesine Uygun",REVIEW_REQUIRED:"İnceleme Bekliyor",REQUESTED:"Para İadesi Talebi Oluşturuldu",REFUNDED:"Para İadesi Yapıldı",REJECTED:"Para İadesi Uygun Değil"};
+              const received=ret.items.reduce((sum,item)=>sum+item.receivedQuantity,0);
+              const expected=ret.items.reduce((sum,item)=>sum+item.expectedQuantity,0);
+              const refunded=ret.refunds.filter(r=>r.status==="REFUNDED").reduce((sum,r)=>sum+r.amount,0);
+              return <article key={ret.id} className="rounded-xl bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div><p className="font-black">{ret.returnNumber}</p><p className="mt-1 text-sm text-violet-800">{statusLabel[ret.status]??ret.status}</p></div>
+                  <p className="text-xs font-bold text-slate-500">{ret.createdAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</p>
+                </div>
+                {ret.note?<p className="mt-2 text-sm text-slate-600">Talep nedeni: {ret.note}</p>:null}
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                  <div><span className="text-slate-500">Ürün kabulü</span><p className="font-bold">{received} / {expected} adet</p></div>
+                  <div><span className="text-slate-500">Finans</span><p className="font-bold">{refundLabel[ret.refundStatus]??ret.refundStatus}</p></div>
+                  <div><span className="text-slate-500">İade edilen</span><p className="font-bold">{formatCurrency(refunded)} ₺</p></div>
+                </div>
+                <div className="mt-3 space-y-1 text-xs text-slate-600">{ret.items.map(item=><p key={item.id}>{item.productCode} · {item.productName} · Beklenen {item.expectedQuantity} / Gelen {item.receivedQuantity}</p>)}</div>
+              </article>;
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {order.orderType===OrderType.ECOMMERCE && (order.status===OrderStatus.SHIPPED || order.status===OrderStatus.DELIVERED) && !order.ecommerceReturns.some(r=>!["COMPLETED","REJECTED","CANCELLED"].includes(r.status)) ? (
+        <section className="mt-4 rounded-xl border border-violet-200 bg-white p-4 shadow-sm">
+          <h2 className="font-black">Ürün İade Talebi</h2>
+          <p className="mt-1 text-sm text-slate-600">İade talebiniz depo ön kabulü, kalite kontrolü ve finans değerlendirmesiyle mevcut iade sürecine alınır. Talep oluşturmak tek başına stok veya para iadesi hareketi oluşturmaz.</p>
+          <form action={requestCustomerEcommerceReturn.bind(null,order.id)} className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <input name="reason" required minLength={5} maxLength={500} placeholder="İade nedeninizi yazın" className="min-w-0 flex-1 rounded-xl border p-3"/>
+            <button className="rounded-xl bg-violet-700 px-5 py-3 font-black text-white">İade Talebi Oluştur</button>
+          </form>
         </section>
       ) : null}
 
