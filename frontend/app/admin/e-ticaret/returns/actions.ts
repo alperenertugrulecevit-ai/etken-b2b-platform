@@ -48,7 +48,7 @@ export async function matchEcommercePreReceiptToOrder(formData:FormData){
 
     let er=await tx.ecommerceReturn.findFirst({
       where:pre.mode==="RETURN_CODE"
-        ? {originalOrderId:order.id,OR:[{externalReturnCode:pre.scannedCode},{status:EcommerceReturnStatus.REQUESTED}]}
+        ? {originalOrderId:order.id,externalReturnCode:pre.scannedCode}
         : {originalOrderId:order.id,status:{in:[EcommerceReturnStatus.REQUESTED,EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING]}},
       orderBy:{createdAt:"desc"},
     });
