@@ -329,9 +329,9 @@ export default async function CustomerOrderDetailPage({
       ) : null}
 
       {order.cargoTrackingNumber ? (
-        <section className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <section id="cargo-tracking" className="mt-4 scroll-mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <h2 className="text-lg font-black text-blue-950">
-            Kargo Takibi
+            Kargomu Takip Et
           </h2>
           <p className="mt-2 text-sm text-blue-900">
             Kargo takip numaranız
@@ -348,7 +348,9 @@ export default async function CustomerOrderDetailPage({
             >
               Kargomu Takip Et
             </a>
-          ) : null}
+          ) : (
+            <p className="mt-3 text-xs font-semibold text-blue-700">Kargo firması bağlantısı henüz tanımlı değil. Takip hareketleri geldikçe bu ekranda görüntülenecek.</p>
+          )}
         </section>
       ) : null}
 
