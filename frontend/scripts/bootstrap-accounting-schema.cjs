@@ -59,7 +59,7 @@ const statements = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "CargoTrackingEvent_provider_trackingNumber_externalEventId_key" ON "CargoTrackingEvent"("provider","trackingNumber","externalEventId")`,
   `CREATE INDEX IF NOT EXISTS "CargoTrackingEvent_orderId_eventAt_idx" ON "CargoTrackingEvent"("orderId","eventAt")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "PaymentGatewaySetting_tenantId_companyId_provider_key" ON "PaymentGatewaySetting"("tenantId","companyId","provider")`,
-  `DO $ BEGIN CREATE TYPE "AccountingDocumentType" AS ENUM ('MEAL','FUEL','ENERGY','TELECOMMUNICATION','CONSUMABLE','WATER','OTHER_INCOME','OTHER_EXPENSE','PAYMENT_RECEIPT','INCOME_RECEIPT'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+  `CREATE TYPE \"AccountingDocumentType\" AS ENUM ('MEAL','FUEL','ENERGY','TELECOMMUNICATION','CONSUMABLE','WATER','OTHER_INCOME','OTHER_EXPENSE','PAYMENT_RECEIPT','INCOME_RECEIPT')`,
   `DO $$ BEGIN CREATE TYPE "AccountingMovementType" AS ENUM ('EXPENSE','INCOME','PAYMENT_OUT','PAYMENT_IN'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingPaymentType" AS ENUM ('CASH','DEFERRED','BANK_TRANSFER','CREDIT_CARD','OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingPartyType" AS ENUM ('CUSTOMER','SUPPLIER','OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
