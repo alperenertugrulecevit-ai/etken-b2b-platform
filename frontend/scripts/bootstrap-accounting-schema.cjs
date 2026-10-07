@@ -18,7 +18,7 @@ const statements = [
   `ALTER TABLE "ShippingCarrier" ADD COLUMN IF NOT EXISTS "integrationProvider" TEXT`,
   `ALTER TABLE "ShippingCarrier" ADD COLUMN IF NOT EXISTS "integrationEnabled" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "ShippingCarrier" ADD COLUMN IF NOT EXISTS "integrationConfig" JSONB`,
-  `DO $ BEGIN CREATE TYPE "BankTransactionMatchStatus" AS ENUM ('UNMATCHED','MATCHED','IGNORED'); EXCEPTION WHEN duplicate_object THEN NULL; END $;`,
+  `CREATE TYPE "BankTransactionMatchStatus" AS ENUM ('UNMATCHED','MATCHED','IGNORED')`,
   `CREATE TABLE IF NOT EXISTS "BankTransaction" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL DEFAULT 'tenant_etken',
@@ -42,8 +42,8 @@ const statements = [
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "BankTransaction_pkey" PRIMARY KEY ("id")
   )`,
-  `DO $ BEGIN ALTER TABLE "BankTransaction" ADD CONSTRAINT "BankTransaction_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "B2BBankAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $;`,
-  `DO $ BEGIN ALTER TABLE "BankTransaction" ADD CONSTRAINT "BankTransaction_matchedOrderId_fkey" FOREIGN KEY ("matchedOrderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $;`,
+  `ALTER TABLE "BankTransaction" ADD CONSTRAINT "BankTransaction_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "B2BBankAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
+  `ALTER TABLE "BankTransaction" ADD CONSTRAINT "BankTransaction_matchedOrderId_fkey" FOREIGN KEY ("matchedOrderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "BankTransaction_bankAccountId_externalId_key" ON "BankTransaction"("bankAccountId","externalId")`,
   `CREATE INDEX IF NOT EXISTS "BankTransaction_tenantId_companyId_matchStatus_transactionDate_idx" ON "BankTransaction"("tenantId","companyId","matchStatus","transactionDate")`,
   `CREATE INDEX IF NOT EXISTS "BankTransaction_matchedOrderId_idx" ON "BankTransaction"("matchedOrderId")`,
@@ -91,7 +91,7 @@ const statements = [
 ];
 
 async function main() {
-  for (const sql of statements) await prisma.$executeRawUnsafe(sql);
+  for (const sql of statements) {\n    try {\n      await prisma.$executeRawUnsafe(sql);\n    } catch (error) {\n      if (error?.meta?.code === "42710") continue;\n      throw error;\n    }\n  }
 
   const invoiceColumns = await prisma.$queryRawUnsafe(
     `SELECT column_name
