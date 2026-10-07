@@ -38,6 +38,7 @@ export async function refundCancelledEcommerceOrder(orderId: number, formData: F
     event:"REFUNDED",
     email:order.ecommerceEmail,
     orderNumber:order.orderNumber,
+    refundContext:"ORDER_CANCELLATION",
   });
 
   revalidatePath("/admin/e-ticaret/orders");

@@ -172,11 +172,22 @@ export async function updateOrderStatus(
     const actorName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
       : user.username;
-    await OrderCancellationService.request({
+    const cancellation = await OrderCancellationService.request({
       orderId,
       reason: statusNote ?? "Yönetim paneli sipariş iptali",
       actor: { userId: user.id, displayName: actorName },
     });
+    const notificationOrder = await prisma.order.findUnique({
+      where:{id:orderId},
+      select:{source:true,orderNumber:true,ecommerceEmail:true},
+    });
+    if(notificationOrder?.source===OrderSource.ECOMMERCE){
+      await EcommerceNotificationService.send({
+        event:cancellation.stockReturnRequired?"CANCELLATION_REQUESTED":"CANCELLED",
+        email:notificationOrder.ecommerceEmail,
+        orderNumber:notificationOrder.orderNumber,
+      });
+    }
     revalidatePath("/admin/orders");
     revalidatePath("/admin/order-grouping");
     revalidatePath("/admin/picking-operations");
@@ -756,13 +767,14 @@ export async function confirmEcommerceBankTransferPayment(
         visibleToCustomer: true,
       },
     });
-    return { orderNumber:order.orderNumber, ecommerceEmail:order.ecommerceEmail };
+    return { orderNumber:order.orderNumber, ecommerceEmail:order.ecommerceEmail, paymentMethod:order.paymentMethod };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   await EcommerceNotificationService.send({
     event:"PAYMENT_CONFIRMED",
     email:notification.ecommerceEmail,
     orderNumber:notification.orderNumber,
+    paymentMethod:notification.paymentMethod,
   });
 
   const detailPath = `/admin/orders/${orderId}`;
@@ -783,6 +795,18 @@ export async function completeOrderCancellationRefund(orderId:number,formData:Fo
     reference,
     actor:{userId:user.id,displayName:actorName},
   });
+  const notificationOrder=await prisma.order.findUnique({
+    where:{id:orderId},
+    select:{source:true,orderNumber:true,ecommerceEmail:true},
+  });
+  if(notificationOrder?.source===OrderSource.ECOMMERCE){
+    await EcommerceNotificationService.send({
+      event:"REFUNDED",
+      email:notificationOrder.ecommerceEmail,
+      orderNumber:notificationOrder.orderNumber,
+      refundContext:"ORDER_CANCELLATION",
+    });
+  }
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   revalidatePath("/account/orders");

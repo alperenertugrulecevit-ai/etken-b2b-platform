@@ -461,6 +461,7 @@ export async function markEcommerceRefundCompleted(formData:FormData){
     event:"REFUNDED",
     email:notification.ecommerceEmail,
     orderNumber:notification.orderNumber,
+    refundContext:"PRODUCT_RETURN",
   });
   refresh();
   revalidatePath(`/account/orders/${notification.orderId}`);

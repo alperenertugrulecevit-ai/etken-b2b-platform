@@ -14,7 +14,17 @@ const STATUS: Record<string,string> = {
   PACKING:"Paketleniyor", READY_TO_SHIP:"Sevke Hazır", SHIPPED:"Sevk Edildi",
   DELIVERED:"Teslim Edildi", CANCELLED:"İptal Edildi", DRAFT:"Taslak",
 };
-const PAYMENT: Record<string,string> = { PENDING:"Ödeme Bekleniyor", PAID:"Ödendi", REFUNDED:"İade Edildi" };
+const PAYMENT: Record<string,string> = {
+  PENDING:"Ödeme Bekleniyor",
+  WAITING:"Ödeme Bekleniyor",
+  PAID:"Ödendi",
+  COMPLETED:"Ödendi",
+  FAILED:"Ödeme Başarısız",
+  REFUND_PENDING:"Para İadesi Bekleniyor",
+  PARTIALLY_REFUNDED:"Kısmi İade",
+  REFUNDED:"İade Edildi",
+  CANCELLED:"İptal",
+};
 function money(v:number){return v.toLocaleString("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 export default async function EcommerceOrdersPage({searchParams}:{searchParams:Promise<{status?:string;payment?:string;q?:string;refunded?:string}>}) {
@@ -64,7 +74,14 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
         {Object.entries(STATUS).map(([v,l])=><option key={v} value={v}>{l}</option>)}
       </select>
       <select name="payment" defaultValue={payment} className="rounded-xl border bg-white p-3">
-        <option value="">Tüm Ödeme Durumları</option><option value="PENDING">Ödeme Bekleniyor</option><option value="PAID">Ödendi</option><option value="REFUNDED">İade Edildi</option>
+        <option value="">Tüm Ödeme Durumları</option>
+        <option value="PENDING">Ödeme Bekleniyor</option>
+        <option value="PAID">Ödendi</option>
+        <option value="FAILED">Ödeme Başarısız</option>
+        <option value="REFUND_PENDING">Para İadesi Bekleniyor</option>
+        <option value="PARTIALLY_REFUNDED">Kısmi İade</option>
+        <option value="REFUNDED">İade Edildi</option>
+        <option value="CANCELLED">İptal</option>
       </select>
       <button className="rounded-xl bg-slate-900 px-5 py-3 font-black text-white">Filtrele</button>
     </form>

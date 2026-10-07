@@ -56,6 +56,8 @@ const mocks = vi.hoisted(
       vi.fn(),
     cancellationUndo:
       vi.fn(),
+    notificationSend:
+      vi.fn(),
   })
 );
 
@@ -115,6 +117,10 @@ vi.mock(
     prisma: {
       $transaction:
         mocks.transaction,
+      order: {
+        findUnique:
+          mocks.orderFindUnique,
+      },
     },
   })
 );
@@ -134,6 +140,15 @@ vi.mock(
       request: mocks.cancellationRequest,
       completeRefund: mocks.cancellationRefund,
       undoRequest: mocks.cancellationUndo,
+    },
+  })
+);
+
+vi.mock(
+  "@/modules/ecommerce/services/ecommerce-notification.service",
+  () => ({
+    EcommerceNotificationService: {
+      send: mocks.notificationSend,
     },
   })
 );
@@ -389,6 +404,11 @@ describe(
 
     it("iptal talebini kontrollü iptal servisine yönlendirir", async () => {
       mocks.cancellationRequest.mockResolvedValue({orderNumber:"B2B20260803-TEST",stockReturnRequired:false,physicalQuantity:0});
+      mocks.orderFindUnique.mockResolvedValue({
+        source:OrderSource.B2B,
+        orderNumber:"B2B20260803-TEST",
+        ecommerceEmail:null,
+      });
       await updateOrderStatus(501, createStatusForm(OrderStatus.CANCELLED));
       expect(mocks.cancellationRequest).toHaveBeenCalledWith(expect.objectContaining({
         orderId:501,
