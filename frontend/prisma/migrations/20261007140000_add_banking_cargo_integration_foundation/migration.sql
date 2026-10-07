@@ -3,7 +3,8 @@ ADD COLUMN "bankCode" TEXT,
 ADD COLUMN "accountNo" TEXT,
 ADD COLUMN "swiftCode" TEXT,
 ADD COLUMN "apiProvider" TEXT,
-ADD COLUMN "apiEnabled" BOOLEAN NOT NULL DEFAULT false;
+ADD COLUMN "apiEnabled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "paymentNoteTemplate" TEXT NOT NULL DEFAULT 'Ödeme açıklamasına sipariş numaranızı yazınız: {ORDER_NUMBER}';
 
 CREATE TYPE "BankTransactionMatchStatus" AS ENUM ('UNMATCHED', 'MATCHED', 'IGNORED');
 
