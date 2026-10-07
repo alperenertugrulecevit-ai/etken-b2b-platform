@@ -557,6 +557,11 @@ model B2BBankAccount {
   accountHolder String
   iban          String
   currency      String  @default("TRY")
+  accountNumber String?
+  swiftCode     String?
+  paymentNoteTemplate String?
+  integrationProvider String?
+  integrationEnabled Boolean @default(false)
 
   isActive  Boolean @default(true)
   sortOrder Int     @default(0)
@@ -3643,6 +3648,9 @@ model ShippingCarrier {
   email String?
   address String?
   contactName String?
+  trackingUrlTemplate String?
+  integrationProvider String?
+  integrationEnabled Boolean @default(false)
   isActive Boolean @default(true)
   notes String?
   createdAt DateTime @default(now())
