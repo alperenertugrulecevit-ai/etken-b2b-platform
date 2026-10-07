@@ -46,13 +46,13 @@ export default function HomeHeroSlider(_props: HomeHeroSliderProps = {}) {
 
   return (
     <section className="bg-white">
-      <div className="w-full px-3 pb-2 pt-2 sm:px-4 lg:px-5">
+      <div className="w-full px-3 pb-1 pt-1 sm:px-4 lg:px-5">
         <div
           className="relative mx-auto w-full max-w-[1600px]"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >
-          <div className="relative aspect-[1600/300] min-h-[190px] max-h-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+          <div className="relative aspect-[1600/260] min-h-[150px] max-h-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
             {slides.map((slide, index) => (
               <div key={slide.src} className={`absolute inset-0 transition-opacity duration-500 ${index === activeIndex ? "opacity-100" : "pointer-events-none opacity-0"}`}>
                 {!failedSlides[index] ? (
