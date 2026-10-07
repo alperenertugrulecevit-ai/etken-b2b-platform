@@ -319,6 +319,7 @@ export class EcommerceCheckoutService {
       event:"ORDER_RECEIVED",
       email,
       orderNumber:order.orderNumber,
+      paymentMethod:B2BPaymentMethod.BANK_TRANSFER,
     });
     return order;
   }
