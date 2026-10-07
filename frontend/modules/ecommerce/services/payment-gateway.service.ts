@@ -2,13 +2,14 @@ import "server-only";
 import {B2BPaymentMethod,CustomerAccountEntryDirection,CustomerAccountEntryType,CustomerAccountPaymentMethod,PaymentTransactionStatus,Prisma} from "@prisma/client";
 import {prisma} from "@/lib/prisma";
 import {getPaymentProvider} from "./payment-provider-adapter";
+import {B2B_CONSTANTS} from "@/modules/b2b/constants/b2b.constants";
 
 export class PaymentGatewayService{
  static async initialize(orderId:number,callbackUrl:string){
   const order=await prisma.order.findFirst({where:{id:orderId,source:"ECOMMERCE",paymentMethod:B2BPaymentMethod.CREDIT_CARD},select:{id:true,orderNumber:true,totalAmount:true,ecommerceEmail:true,paymentStatus:true}});
   if(!order)throw new Error("Kart ödemesine uygun sipariş bulunamadı.");
   if(order.paymentStatus==="PAID")throw new Error("Sipariş zaten ödenmiş.");
-  const setting=await prisma.paymentGatewaySetting.findFirst({where:{tenantId:"tenant_etken",companyId:"company_etken_office",isActive:true}});
+  const setting=await prisma.paymentGatewaySetting.findFirst({where:{tenantId:B2B_CONSTANTS.TENANT_ID,companyId:B2B_CONSTANTS.COMPANY_ID,isActive:true}});
   if(!setting)throw new Error("Kredi kartı ödeme altyapısı hazır; canlı sanal POS sağlayıcısı henüz etkinleştirilmedi.");
   const adapter=getPaymentProvider(setting.provider);
   const init=await adapter.initialize({orderId:order.id,orderNumber:order.orderNumber,amount:order.totalAmount,currency:"TRY",email:order.ecommerceEmail??"",callbackUrl});
