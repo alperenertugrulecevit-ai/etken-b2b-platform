@@ -42,7 +42,10 @@ export default function HomeProductCard({
   badge,
 }: Props) {
   const {
+    cart,
     addToCart,
+    increaseQty,
+    decreaseQty,
   } = useCart();
 
   const grossPrice =
@@ -53,6 +56,10 @@ export default function HomeProductCard({
 
   const isComingSoon =
     product.price <= 0;
+
+  const cartItem = cart.find(
+    (item) => item.code === product.code,
+  );
 
   const isOutOfStock =
     !isComingSoon &&
@@ -185,23 +192,22 @@ export default function HomeProductCard({
           ) : null}
         </div>
 
-        <button
-          type="button"
-          onClick={
-            handleAdd
-          }
-          disabled={
-            isComingSoon ||
-            isOutOfStock
-          }
-          className="mt-3 w-full rounded-xl bg-[#202B38] py-2.5 text-sm font-black text-white transition hover:bg-[#EF4B23] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-        >
-          {isComingSoon
-            ? "Yakında"
-            : isOutOfStock
-              ? "Stokta Yok"
-              : "Sepete Ekle"}
-        </button>
+        {cartItem && !isComingSoon && !isOutOfStock ? (
+          <div className="mt-3 flex overflow-hidden rounded-xl border border-[#EF4B23]">
+            <button type="button" onClick={() => decreaseQty(product.code)} className="w-11 bg-orange-50 text-lg font-black text-[#EF4B23] hover:bg-orange-100">−</button>
+            <span className="flex flex-1 items-center justify-center bg-[#EF4B23] py-2.5 text-sm font-black text-white">{cartItem.qty}</span>
+            <button type="button" disabled={cartItem.qty >= product.availableStock} onClick={() => increaseQty(product.code)} className="w-11 bg-orange-50 text-lg font-black text-[#EF4B23] hover:bg-orange-100 disabled:text-slate-300">+</button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={isComingSoon || isOutOfStock}
+            className="mt-3 w-full rounded-xl bg-[#EF4B23] py-2.5 text-sm font-black text-white transition hover:bg-[#D83D18] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            {isComingSoon ? "Yakında" : isOutOfStock ? "Stokta Yok" : "Sepete Ekle"}
+          </button>
+        )}
       </div>
     </article>
   );
