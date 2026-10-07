@@ -71,28 +71,23 @@ export default function HomeHeroSlider({
         "text-slate-600",
 
       title:
-        "Ofisinizin tüm ihtiyaçları",
+        "Ofisiniz için",
 
       highlight:
-        "tek platformda.",
+        "tüm ihtiyaçlar tek yerde!",
 
       description:
-        "Kırtasiye, temizlik, gıda, ambalaj ve iş güvenliği ürünlerinde kurumsal satın alma deneyimi.",
+        "Kırtasiye, temizlik, gıda, teknoloji ve daha fazlası kurumsal avantajlarla Etken Ofis’te.",
 
       primaryLabel:
-        "Ürünleri İncele",
+        "Alışverişe Başla →",
 
       primaryHref:
         "/products",
 
-      secondaryLabel:
-        "Kurumsal Giriş",
-
-      secondaryHref:
-        "/customer-login",
 
       backgroundClassName:
-        "from-slate-50 via-white to-slate-100",
+        "from-[#f7fafc] via-white to-[#eaf1f7]",
 
       product:
         officeProduct ??
@@ -375,10 +370,10 @@ export default function HomeHeroSlider({
             }
           >
             <div
-              className={`relative h-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm sm:h-[300px] xl:h-[305px]`}
+              className={`relative h-[235px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm sm:h-[270px] xl:h-[280px]`}
             >
-              <div className="relative h-full px-7 py-4 sm:grid sm:items-center sm:gap-3 sm:px-8 sm:py-5 md:grid-cols-[minmax(0,1.12fr)_minmax(250px,0.88fr)] lg:px-8 xl:px-10">
-                <div className="relative z-10 w-[62%] sm:w-auto sm:max-w-[540px]">
+              <div className="relative h-full px-7 py-4 sm:grid sm:items-center sm:gap-3 sm:px-8 sm:py-5 md:grid-cols-[minmax(0,0.82fr)_minmax(420px,1.18fr)] lg:px-10 xl:px-12">
+                <div className="relative z-10 w-[62%] sm:w-auto sm:max-w-[470px]">
                   <span
                     className={`inline-flex rounded-full bg-white/85 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.08em] shadow-sm sm:px-3 sm:text-[10px] ${slide.eyebrowClassName}`}
                   >
@@ -387,7 +382,7 @@ export default function HomeHeroSlider({
                     }
                   </span>
 
-                  <h1 className="mt-2.5 text-[19px] font-black leading-[1.05] tracking-tight text-[#172435] sm:mt-3 sm:text-[29px] xl:text-[32px]">
+                  <h1 className="mt-2.5 text-[19px] font-black leading-[1.05] tracking-tight text-[#172435] sm:mt-3 sm:text-[30px] xl:text-[34px]">
                     {
                       slide.title
                     }
@@ -456,16 +451,16 @@ export default function HomeHeroSlider({
                   </Link>
                 ) : null}
 
-                <div className="relative hidden h-[250px] items-center justify-center md:flex">
+                <div className="relative hidden h-[230px] items-center justify-center md:flex">
                   {slide.productCluster && slide.productCluster.length > 1 ? (
                     <div className="relative h-full w-full">
                       {slide.productCluster.slice(0, 5).map((product, index) => {
                         const positions = [
-                          "left-[2%] top-[16%] z-[4] h-[150px] w-[42%] -rotate-6",
-                          "left-[29%] top-[2%] z-[6] h-[205px] w-[48%] rotate-2",
-                          "right-[0%] top-[22%] z-[5] h-[145px] w-[38%] rotate-6",
-                          "left-[7%] bottom-[0%] z-[7] h-[105px] w-[32%] rotate-3",
-                          "right-[8%] bottom-[0%] z-[8] h-[110px] w-[32%] -rotate-3",
+                          "left-[0%] top-[14%] z-[4] h-[145px] w-[32%] -rotate-6",
+                          "left-[22%] top-[0%] z-[6] h-[205px] w-[38%] rotate-2",
+                          "right-[0%] top-[16%] z-[5] h-[155px] w-[31%] rotate-5",
+                          "left-[8%] bottom-[-2%] z-[7] h-[115px] w-[27%] rotate-2",
+                          "right-[19%] bottom-[-2%] z-[8] h-[120px] w-[28%] -rotate-3",
                         ];
                         return (
                           <Link key={product.code} href={`/products/${product.code}`} className={`group absolute flex items-center justify-center transition duration-500 hover:z-20 hover:scale-110 ${positions[index]}`}>
@@ -474,7 +469,7 @@ export default function HomeHeroSlider({
                         );
                       })}
                       <div className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full border border-white/80 bg-white/90 px-4 py-1.5 text-[10px] font-black text-[#172435] shadow-lg backdrop-blur">
-                        Kırtasiye · Temizlik · Gıda · Ambalaj
+                        İşiniz için Güçlü Çözümler
                       </div>
                     </div>
                   ) : slide.product ? (
