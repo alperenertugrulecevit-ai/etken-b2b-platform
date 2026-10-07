@@ -566,6 +566,7 @@ model B2BBankAccount {
   swiftCode String?
   apiProvider String?
   apiEnabled Boolean @default(false)
+  paymentNoteTemplate String @default("Ödeme açıklamasına sipariş numaranızı yazınız: {ORDER_NUMBER}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
