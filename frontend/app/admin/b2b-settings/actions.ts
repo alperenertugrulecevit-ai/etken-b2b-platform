@@ -194,6 +194,7 @@ export async function saveB2BBankAccountAction(
           swiftCode,
           apiProvider,
           apiEnabled,
+          paymentNoteTemplate,
           sortOrder,
         },
       });
