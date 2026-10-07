@@ -13,8 +13,12 @@ export async function GET() {
     Boolean(user.customerId) &&
     Boolean(user.customer?.isActive);
 
+  const accountName = isCustomerLoggedIn
+    ? user?.customer?.companyName?.trim() || user?.fullName?.trim() || null
+    : null;
+
   return NextResponse.json(
-    { isCustomerLoggedIn },
+    { isCustomerLoggedIn, accountName },
     {
       headers: {
         "Cache-Control": "no-store, max-age=0",
