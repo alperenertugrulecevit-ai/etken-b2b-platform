@@ -46,7 +46,21 @@ export async function matchEcommercePreReceiptToOrder(formData:FormData){
     if(!order||order.orderType!==OrderType.ECOMMERCE) throw new Error("E-Ticaret siparişi bulunamadı.");
     if(!["SHIPPED","DELIVERED"].includes(order.status)) throw new Error("İade girişi için siparişin fiziksel olarak sevk edilmiş olması gerekir.");
 
-    let er=await tx.ecommerceReturn.findFirst({where:pre.mode==="RETURN_CODE"?{originalOrderId:order.id,externalReturnCode:pre.scannedCode}:{originalOrderId:order.id,status:{in:[EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING]}}});
+    let er=await tx.ecommerceReturn.findFirst({
+      where:pre.mode==="RETURN_CODE"
+        ? {originalOrderId:order.id,OR:[{externalReturnCode:pre.scannedCode},{status:EcommerceReturnStatus.REQUESTED}]}
+        : {originalOrderId:order.id,status:{in:[EcommerceReturnStatus.REQUESTED,EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING]}},
+      orderBy:{createdAt:"desc"},
+    });
+    if(er?.status===EcommerceReturnStatus.REQUESTED){
+      er=await tx.ecommerceReturn.update({
+        where:{id:er.id},
+        data:{
+          status:EcommerceReturnStatus.PRE_RECEIVED,
+          externalReturnCode:pre.mode==="RETURN_CODE"?pre.scannedCode:er.externalReturnCode,
+        },
+      });
+    }
     if(!er){
       const priorReceivedRows=await tx.ecommerceReturnItem.groupBy({
         by:["orderItemId"],
