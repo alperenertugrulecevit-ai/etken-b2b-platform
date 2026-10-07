@@ -20,8 +20,6 @@ function formatCurrency(
 }
 
 export default function CartPage() {
-  const repeated = false;
-  const unavailable = 0;
   const {
     cart,
     isHydrated,
