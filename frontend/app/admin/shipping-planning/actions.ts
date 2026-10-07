@@ -13,6 +13,24 @@ export async function createVehicleAction(_:ShippingAdminState,f:FormData):Promi
 export async function createRouteAction(_:ShippingAdminState,f:FormData):Promise<ShippingAdminState>{try{await auth();await ShipmentPlanningService.createRoute({routeNumber:v(f,"routeNumber"),name:v(f,"name"),description:v(f,"description")});revalidatePath("/admin/shipping-planning/routes");return {success:true,message:"Rota kaydedildi."}}catch(e){return fail(e)}}
 export async function createShipmentAction(_:ShippingAdminState,f:FormData):Promise<ShippingAdminState>{try{const a=await auth();const d=new Date(v(f,"shipmentDate")+"T12:00:00");const r=await ShipmentPlanningService.createShipment({shipmentDate:d,carrierId:v(f,"carrierId"),vehicleId:v(f,"vehicleId"),routeIds:f.getAll("routeIds").map(String),driverName:v(f,"driverName"),driverPhone:v(f,"driverPhone"),driverIdentityNo:v(f,"driverIdentityNo"),notes:v(f,"notes"),actor:a});revalidatePath("/admin/shipping-planning");return {success:true,message:`${r.shipmentNumber} sevkiyat numarası oluşturuldu.`}}catch(e){return fail(e)}}
 
+export async function updateCarrierIntegrationAction(f:FormData){
+ try{
+  await auth();
+  await ShipmentPlanningService.updateCarrierIntegration({
+   carrierId:v(f,"carrierId"),
+   trackingUrlTemplate:v(f,"trackingUrlTemplate"),
+   integrationProvider:v(f,"integrationProvider"),
+   integrationEnabled:v(f,"integrationEnabled")==="true",
+  });
+  revalidatePath("/admin/shipping-planning/carriers");
+  revalidatePath("/admin/shipping-planning/tracking");
+ }catch(e){
+  const message=e instanceof Error?e.message:"Kargo entegrasyon ayarı kaydedilemedi.";
+  redirect("/admin/shipping-planning/carriers?integrationError="+encodeURIComponent(message));
+ }
+ redirect("/admin/shipping-planning/carriers?integrationUpdated=1");
+}
+
 export async function setCarrierActiveAction(f:FormData){await auth();await ShipmentPlanningService.setCarrierActive(v(f,"id"),v(f,"active")==="true");revalidatePath("/admin/shipping-planning/carriers");}
 export async function setVehicleActiveAction(f:FormData){await auth();await ShipmentPlanningService.setVehicleActive(v(f,"id"),v(f,"active")==="true");revalidatePath("/admin/shipping-planning/vehicles");}
 export async function setRouteActiveAction(f:FormData){await auth();await ShipmentPlanningService.setRouteActive(v(f,"id"),v(f,"active")==="true");revalidatePath("/admin/shipping-planning/routes");}

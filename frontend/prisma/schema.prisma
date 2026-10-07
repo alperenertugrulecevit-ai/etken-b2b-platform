@@ -494,6 +494,7 @@ model Order {
   stockReturnEvents          StockReturnEvent[]
   ecommerceReturns           EcommerceReturn[]
   ecommerceReturnPreReceipts EcommerceReturnPreReceipt[]
+  bankTransactions BankTransaction[] @relation("BankTransactionMatchedOrder")
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -560,12 +561,56 @@ model B2BBankAccount {
 
   isActive  Boolean @default(true)
   sortOrder Int     @default(0)
+  bankCode  String?
+  accountNo String?
+  swiftCode String?
+  apiProvider String?
+  apiEnabled Boolean @default(false)
+  paymentNoteTemplate String @default("Ödeme açıklamasına sipariş numaranızı yazınız: {ORDER_NUMBER}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  bankTransactions BankTransaction[]
+
   @@unique([tenantId, companyId, iban])
   @@index([tenantId, companyId, isActive])
+}
+
+enum BankTransactionMatchStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+model BankTransaction {
+  id String @id @default(cuid())
+  tenantId String @default("tenant_etken")
+  companyId String @default("company_etken_office")
+  bankAccountId Int
+  externalId String
+  transactionDate DateTime
+  amount Float
+  currency String @default("TRY")
+  senderName String?
+  senderIban String?
+  description String?
+  bankReference String?
+  matchStatus BankTransactionMatchStatus @default(UNMATCHED)
+  matchedOrderId Int?
+  matchedAt DateTime?
+  matchedByUserId String?
+  matchedByName String?
+  rawPayload Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bankAccount B2BBankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  matchedOrder Order? @relation("BankTransactionMatchedOrder", fields: [matchedOrderId], references: [id], onDelete: SetNull)
+
+  @@unique([bankAccountId, externalId])
+  @@index([tenantId, companyId, matchStatus, transactionDate])
+  @@index([matchedOrderId])
 }
 
 model CustomerAccountEntry {
@@ -3647,6 +3692,10 @@ model ShippingCarrier {
   notes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  trackingUrlTemplate String?
+  integrationProvider String?
+  integrationEnabled Boolean @default(false)
+  integrationConfig Json?
   vehicles ShippingVehicle[]
   shipments Shipment[]
   orders Order[]
