@@ -9,7 +9,21 @@ const slides = [
   { src: "/home-hero/etken-hero-02.jpg", alt: "Etken Ofis - kurumsal tedarik ürünleri" },
 ] as const;
 
-type HomeHeroSliderProps = {\n  productCount?: number;\n  featuredProducts?: Array<{\n    id: number;\n    code: string;\n    name: string;\n    brand: string;\n    imageUrl: string | null;\n    price: number;\n    vat: number;\n    availableStock: number;\n  }>;\n};\n\nexport default function HomeHeroSlider(_props: HomeHeroSliderProps = {}) {
+type HomeHeroSliderProps = {
+  productCount?: number;
+  featuredProducts?: Array<{
+    id: number;
+    code: string;
+    name: string;
+    brand: string;
+    imageUrl: string | null;
+    price: number;
+    vat: number;
+    availableStock: number;
+  }>;
+};
+
+export default function HomeHeroSlider(_props: HomeHeroSliderProps = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
