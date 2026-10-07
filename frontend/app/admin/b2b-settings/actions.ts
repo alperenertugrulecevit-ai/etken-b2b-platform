@@ -148,6 +148,7 @@ export async function saveB2BBankAccountAction(
   const swiftCode = nullableText(formData, "swiftCode", 20)?.toUpperCase() ?? null;
   const apiProvider = nullableText(formData, "apiProvider", 80);
   const apiEnabled = formData.get("apiEnabled") === "on";
+  const paymentNoteTemplate = text(formData, "paymentNoteTemplate", 240) || "Ödeme açıklamasına sipariş numaranızı yazınız: {ORDER_NUMBER}";
   const sortOrderValue = Number(formData.get("sortOrder") ?? 0);
   const sortOrder = Number.isInteger(sortOrderValue) ? sortOrderValue : 0;
 
@@ -176,7 +177,7 @@ export async function saveB2BBankAccountAction(
       }
       await prisma.b2BBankAccount.update({
         where: { id },
-        data: { bankName, branchName, accountHolder, iban, currency, bankCode, accountNo, swiftCode, apiProvider, apiEnabled, sortOrder },
+        data: { bankName, branchName, accountHolder, iban, currency, bankCode, accountNo, swiftCode, apiProvider, apiEnabled, paymentNoteTemplate, sortOrder },
       });
     } else {
       await prisma.b2BBankAccount.create({
