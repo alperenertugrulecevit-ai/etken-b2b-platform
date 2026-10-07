@@ -356,8 +356,8 @@ export default function HomeHeroSlider({
 
   return (
     <section className="bg-white">
-      <div className="mx-auto max-w-[1600px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
-        <div className="grid items-stretch gap-4 lg:grid-cols-2">
+      <div className="w-full px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <div className="grid items-stretch gap-3 lg:grid-cols-[1.55fr_1fr]">
           <div
             className="relative min-w-0"
             onMouseEnter={() =>
@@ -372,7 +372,7 @@ export default function HomeHeroSlider({
             }
           >
             <div
-              className={`relative h-[238px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm sm:h-[270px] xl:h-[285px]`}
+              className={`relative h-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm sm:h-[300px] xl:h-[320px]`}
             >
               <div className="relative h-full px-7 py-4 sm:grid sm:items-center sm:gap-3 sm:px-8 sm:py-5 md:grid-cols-[minmax(0,1.12fr)_minmax(250px,0.88fr)] lg:px-8 xl:px-10">
                 <div className="relative z-10 w-[62%] sm:w-auto sm:max-w-[540px]">
@@ -454,7 +454,7 @@ export default function HomeHeroSlider({
                 ) : null}
 
                 {/* MASAÜSTÜ ÜRÜN GÖRSELİ - MEVCUT YAPI */}
-                <div className="relative hidden h-[215px] items-center justify-center md:flex">
+                <div className="relative hidden h-[250px] items-center justify-center md:flex">
                   {slide.product ? (
                     <Link
                       href={`/products/${slide.product.code}`}
@@ -467,8 +467,8 @@ export default function HomeHeroSlider({
                         productName={
                           slide.product.name
                         }
-                        className="h-[170px] w-full max-w-[280px] rounded-xl bg-transparent object-contain p-3 transition duration-500 group-hover:scale-[1.03]"
-                        fallbackClassName="h-[170px] w-full max-w-[280px] rounded-xl text-5xl"
+                        className="h-[215px] w-full max-w-[390px] rounded-xl bg-transparent object-contain p-2 transition duration-500 group-hover:scale-[1.04]"
+                        fallbackClassName="h-[215px] w-full max-w-[390px] rounded-xl text-5xl"
                       />
 
                       <div className="absolute bottom-1 right-1 max-w-[210px] rounded-xl border border-white/70 bg-white/95 px-3 py-2 shadow-md backdrop-blur">
@@ -575,13 +575,13 @@ function OfficeBreakPromo() {
   return (
     <Link
       href="/products?category=G%C4%B1da%20ve%20Mutfak"
-      className="group relative hidden h-[270px] min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-[#FFF8EA] shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg lg:block xl:h-[285px]"
+      className="group relative hidden h-[300px] min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-[#FFF8EA] shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg lg:block xl:h-[320px]"
       aria-label="Gıda ve Mutfak ürünlerini keşfet"
     >
       <img
         src="/ofis-molasi-banner.png"
         alt="Etken Ofis Ofis Molası"
-        className="absolute inset-0 h-full w-full object-contain object-center transition duration-500 group-hover:scale-[1.01]"
+        className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 group-hover:scale-[1.02]"
       />
 
       <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/[0.03]" />
