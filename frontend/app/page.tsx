@@ -298,6 +298,26 @@ export default async function Home() {
         }
       />
 
+      <section className="mx-auto w-full max-w-[1600px] px-3 pb-2 sm:px-4 lg:px-5">
+        <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            ["Hızlı ve Güvenilir", "İstanbul içi hızlı teslimat"],
+            ["Kurumsal Avantajlar", "İşletmenize özel çözümler"],
+            ["Geniş Ürün Yelpazesi", "Ofisin tüm ihtiyaçları"],
+            ["Güvenli Ödeme", "Korunan ödeme süreci"],
+            ["Müşteri Desteği", "Sipariş öncesi ve sonrası"],
+          ].map(([title, description], index) => (
+            <div key={title} className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0 sm:border-r lg:border-b-0">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-50 text-sm font-black text-[#EF4B23]">{index + 1}</span>
+              <div>
+                <strong className="block text-[11px] font-black text-[#071729]">{title}</strong>
+                <span className="block text-[9px] text-slate-500">{description}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <ProductSection
         title="Sizin için seçtiklerimiz"
         eyebrow="ÖNE ÇIKAN ÜRÜNLER"
