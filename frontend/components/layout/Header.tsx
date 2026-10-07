@@ -9,6 +9,7 @@ import {
 import {
   useCart,
 } from "@/context/CartContext";
+import ProductSearchBox from "@/components/products/ProductSearchBox";
 
 type CategoryIconType =
   | "office"
@@ -273,21 +274,7 @@ export default function Header() {
             action="/products"
             className="hidden min-w-0 flex-1 lg:flex"
           >
-            <div className="flex w-full overflow-hidden rounded-xl border border-[#EF4B23] bg-white shadow-sm">
-              <input
-                type="search"
-                name="q"
-                placeholder="Ürün, marka, barkod veya ürün kodu ara..."
-                className="min-w-0 flex-1 px-5 py-3 text-[13px] text-slate-700 outline-none placeholder:text-slate-400"
-              />
-
-              <button
-                type="submit"
-                className="min-w-28 bg-[#EF4B23] px-6 text-xs font-black text-white transition hover:bg-[#D83D18]"
-              >
-                ARA
-              </button>
-            </div>
+            <ProductSearchBox />
           </form>
 
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
@@ -356,21 +343,7 @@ export default function Header() {
             action="/products"
             className="mx-auto flex max-w-[1600px] px-4 py-2 sm:px-6"
           >
-            <div className="flex w-full overflow-hidden rounded-xl border border-slate-300 bg-slate-50">
-              <input
-                type="search"
-                name="q"
-                placeholder="Ürün veya marka ara..."
-                className="min-w-0 flex-1 bg-transparent px-4 py-2 text-xs outline-none"
-              />
-
-              <button
-                type="submit"
-                className="bg-[#EF4B23] px-4 text-xs font-black text-white"
-              >
-                ARA
-              </button>
-            </div>
+            <ProductSearchBox mobile />
           </form>
         </div>
 
