@@ -88,6 +88,11 @@ export default function Header() {
     setCustomerAccountName,
   ] = useState<string | null>(null);
 
+  const totalAmount = cart.reduce(
+    (total, item) => total + item.unitPrice * item.qty * (1 + item.vatRate / 100),
+    0,
+  );
+
   const totalQty =
     cart.reduce(
       (
@@ -329,7 +334,7 @@ export default function Header() {
                 </small>
 
                 <strong className="block text-[12px]">
-                  {totalQty} ürün
+                  {totalQty} ürün · {totalAmount.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                 </strong>
               </span>
 
