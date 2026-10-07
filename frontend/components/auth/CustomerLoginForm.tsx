@@ -6,10 +6,6 @@ import {
 } from "react";
 import Link from "next/link";
 import {
-  useRouter,
-} from "next/navigation";
-
-import {
   customerLoginAction,
 } from "@/app/customer-login/actions";
 
@@ -20,7 +16,6 @@ type CustomerLoginFormProps = {
 export default function CustomerLoginForm({
   successMessage = "",
 }: CustomerLoginFormProps) {
-  const router = useRouter();
   const [
     username,
     setUsername,
