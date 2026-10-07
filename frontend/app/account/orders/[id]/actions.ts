@@ -37,6 +37,10 @@ export async function requestCustomerEcommerceReturn(orderId:number, formData:Fo
  if(reason.length<5) throw new Error("İade nedenini en az 5 karakter olarak yazın.");
 
  await prisma.$transaction(async tx=>{
+  // Serialize return allocation for this order so two simultaneous requests cannot
+  // both calculate against the same remaining shipped quantity.
+  await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
+
   const prior=await tx.ecommerceReturnItem.groupBy({
    by:["orderItemId"],where:{ecommerceReturn:{originalOrderId:order.id,status:{not:EcommerceReturnStatus.CANCELLED}}},
    _sum:{expectedQuantity:true},
