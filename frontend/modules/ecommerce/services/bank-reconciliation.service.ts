@@ -38,37 +38,46 @@ export class BankReconciliationService {
         select: { id: true },
       });
       if (!account) throw new Error("Banka hesabı bulunamadı.");
-      const existing = await prisma.bankTransaction.findUnique({
-        where: { bankAccountId_externalId: { bankAccountId: row.bankAccountId, externalId: row.externalId.trim() } },
-        select: { id: true },
-      });
-      if (existing) continue;
-      await prisma.bankTransaction.create({
-        data: {
-          tenantId: B2B_CONSTANTS.TENANT_ID,
-          companyId: B2B_CONSTANTS.COMPANY_ID,
-          bankAccountId: row.bankAccountId,
-          externalId: row.externalId.trim(),
-          transactionDate: row.transactionDate,
-          amount: row.amount,
-          currency: (row.currency ?? "TRY").trim().toUpperCase(),
-          senderName: row.senderName?.trim() || null,
-          senderIban: row.senderIban?.replace(/\s+/g, "").toUpperCase() || null,
-          description: row.description?.trim() || null,
-          bankReference: row.bankReference?.trim() || null,
-          rawPayload: row.rawPayload,
-        },
-      });
-      imported += 1;
+      const externalId = row.externalId.trim();
+      try {
+        await prisma.bankTransaction.create({
+          data: {
+            tenantId: B2B_CONSTANTS.TENANT_ID,
+            companyId: B2B_CONSTANTS.COMPANY_ID,
+            bankAccountId: row.bankAccountId,
+            externalId,
+            transactionDate: row.transactionDate,
+            amount: row.amount,
+            currency: (row.currency ?? "TRY").trim().toUpperCase(),
+            senderName: row.senderName?.trim() || null,
+            senderIban: row.senderIban?.replace(/\s+/g, "").toUpperCase() || null,
+            description: row.description?.trim() || null,
+            bankReference: row.bankReference?.trim() || null,
+            rawPayload: row.rawPayload,
+          },
+        });
+        imported += 1;
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") continue;
+        throw error;
+      }
     }
     return { imported };
   }
 
   static async matchTransaction(input: { transactionId: string; orderId: number; actor: { userId: string; displayName: string } }) {
     const result = await prisma.$transaction(async (tx) => {
-      const bankTx = await tx.bankTransaction.findUnique({ where: { id: input.transactionId } });
+      const bankTx = await tx.bankTransaction.findFirst({
+        where: {
+          id: input.transactionId,
+          tenantId: B2B_CONSTANTS.TENANT_ID,
+          companyId: B2B_CONSTANTS.COMPANY_ID,
+        },
+      });
       if (!bankTx) throw new Error("Banka hareketi bulunamadı.");
-      if (bankTx.matchStatus === BankTransactionMatchStatus.MATCHED) throw new Error("Banka hareketi daha önce eşleştirilmiş.");
+      if (bankTx.matchStatus !== BankTransactionMatchStatus.UNMATCHED) {
+        throw new Error("Yalnızca eşleştirilmemiş banka hareketleri siparişe bağlanabilir.");
+      }
 
       const order = await tx.order.findUnique({
         where: { id: input.orderId },
@@ -120,14 +129,32 @@ export class BankReconciliationService {
       return { orderNumber:order.orderNumber,email:order.ecommerceEmail,paymentMethod:order.paymentMethod };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    await EcommerceNotificationService.send({ event:"PAYMENT_CONFIRMED",email:result.email,orderNumber:result.orderNumber,paymentMethod:result.paymentMethod });
+    try {
+      await EcommerceNotificationService.send({ event:"PAYMENT_CONFIRMED",email:result.email,orderNumber:result.orderNumber,paymentMethod:result.paymentMethod });
+    } catch (error) {
+      console.error("Ödeme onay bildirimi gönderilemedi:", error);
+    }
     return result;
   }
 
   static async ignoreTransaction(transactionId: string, actor: { userId: string; displayName: string }) {
-    return prisma.bankTransaction.update({
-      where:{id:transactionId},
-      data:{matchStatus:BankTransactionMatchStatus.IGNORED,matchedAt:new Date(),matchedByUserId:actor.userId,matchedByName:actor.displayName},
+    const result = await prisma.bankTransaction.updateMany({
+      where: {
+        id: transactionId,
+        tenantId: B2B_CONSTANTS.TENANT_ID,
+        companyId: B2B_CONSTANTS.COMPANY_ID,
+        matchStatus: BankTransactionMatchStatus.UNMATCHED,
+      },
+      data: {
+        matchStatus: BankTransactionMatchStatus.IGNORED,
+        matchedAt: new Date(),
+        matchedByUserId: actor.userId,
+        matchedByName: actor.displayName,
+      },
     });
+    if (result.count !== 1) {
+      throw new Error("Banka hareketi bulunamadı veya artık işlem yapılabilir durumda değil.");
+    }
+    return { ignored: true };
   }
 }

@@ -161,6 +161,9 @@ export async function saveB2BBankAccountAction(
   if (!/^[A-Z]{3}$/.test(currency)) {
     return { success: false, message: "Para birimi üç harfli olmalıdır. Örnek: TRY." };
   }
+  if (apiEnabled && !apiProvider) {
+    return { success: false, message: "Banka API entegrasyonu aktif edilecekse sağlayıcı kodu zorunludur." };
+  }
 
   try {
     if (id) {
@@ -194,6 +197,7 @@ export async function saveB2BBankAccountAction(
           swiftCode,
           apiProvider,
           apiEnabled,
+          paymentNoteTemplate,
           sortOrder,
         },
       });
