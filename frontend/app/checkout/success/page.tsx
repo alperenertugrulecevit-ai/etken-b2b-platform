@@ -18,8 +18,13 @@ export default async function CheckoutSuccessPage({
     select: { id:true, paymentMethod:true, paymentStatus:true },
   }) : null;
   const isBankTransfer = order?.paymentMethod === B2BPaymentMethod.BANK_TRANSFER;
-  const paymentSettled = ["PAID","REFUNDED"].includes(order?.paymentStatus?.toUpperCase() ?? "");
-  const bankAccounts = order && isBankTransfer && !paymentSettled ? await prisma.b2BBankAccount.findMany({
+  const showBankTransferDetails =
+    Boolean(order) &&
+    isBankTransfer &&
+    !["PAID", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELLED"].includes(
+      order?.paymentStatus?.toUpperCase() ?? ""
+    );
+  const bankAccounts = showBankTransferDetails ? await prisma.b2BBankAccount.findMany({
     where: { tenantId:B2B_CONSTANTS.TENANT_ID, companyId:B2B_CONSTANTS.COMPANY_ID, isActive:true },
     orderBy:[{sortOrder:"asc"},{id:"asc"}],
     select:{id:true,bankName:true,branchName:true,accountHolder:true,iban:true,currency:true},
