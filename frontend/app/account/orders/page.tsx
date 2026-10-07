@@ -389,6 +389,7 @@ export default async function CustomerOrdersPage({
                   <th className="px-5 py-3">Satır</th>
                   <th className="px-5 py-3">Durum</th>
                   <th className="px-5 py-3">Ödeme</th>
+                  <th className="px-5 py-3">Kargo</th>
                   <th className="px-5 py-3 text-right">Toplam</th>
                 </tr>
               </thead>
@@ -424,6 +425,11 @@ export default async function CustomerOrdersPage({
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-600">
                       {order.paymentStatus ? (PAYMENT_STATUS_LABELS[order.paymentStatus] ?? order.paymentStatus) : "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {order.cargoTrackingNumber ? (
+                        order.cargoTrackingUrl ? <a href={order.cargoTrackingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-lg bg-blue-900 px-3 py-2 text-xs font-black text-white">Kargomu Takip Et</a> : <Link href={"/account/orders/" + order.id + "#cargo-tracking"} className="inline-flex rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-900">Kargomu Takip Et</Link>
+                      ) : <span className="text-xs text-slate-400">Takip no bekleniyor</span>}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-bold">
                       {formatCurrency(order.totalAmount)} ₺
