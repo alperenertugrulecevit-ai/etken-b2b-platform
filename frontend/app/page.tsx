@@ -272,31 +272,7 @@ export default async function Home() {
     <main className="min-h-screen bg-[#F7F8FA] text-slate-900">
       <Header />
 
-      <HomeHeroSlider
-        productCount={
-          productCount
-        }
-        featuredProduct={
-          featured[0] ??
-          null
-        }
-        newestProduct={
-          newProducts[0] ??
-          null
-        }
-        officeProduct={
-          officeProducts[0] ??
-          null
-        }
-        cleaningProduct={
-          cleaningProducts[0] ??
-          null
-        }
-        foodProduct={
-          foodProducts[0] ??
-          null
-        }
-      />
+      <HomeHeroSlider />
 
       <section className="mx-auto w-full max-w-[1600px] px-3 pb-2 sm:px-4 lg:px-5">
         <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:grid-cols-2 lg:grid-cols-5">
@@ -402,9 +378,9 @@ function ProductSection({
 
   return (
     <section
-      className={`mx-auto max-w-[1600px] px-4 sm:px-6 ${
+      className={`mx-auto max-w-[1600px] px-3 sm:px-4 lg:px-5 ${
         compactTop
-          ? "pb-3 pt-1"
+          ? "pb-2 pt-0.5"
           : "py-4"
       }`}
     >
@@ -439,7 +415,7 @@ function ProductSection({
         </Link>
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-1.5 grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-5">
         {products
           .slice(
             0,
