@@ -91,7 +91,14 @@ const statements = [
 ];
 
 async function main() {
-  for (const sql of statements) {\n    try {\n      await prisma.$executeRawUnsafe(sql);\n    } catch (error) {\n      if (error?.meta?.code === "42710") continue;\n      throw error;\n    }\n  }
+  for (const sql of statements) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (error) {
+      if (error?.meta?.code === "42710") continue;
+      throw error;
+    }
+  }
 
   const invoiceColumns = await prisma.$queryRawUnsafe(
     `SELECT column_name
