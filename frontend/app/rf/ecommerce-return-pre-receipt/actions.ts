@@ -60,14 +60,29 @@ export async function createEcommerceReturnPreReceipt(_prev:PreReceiptState,form
         : EcommerceReturnPreReceiptOutcome.UNDELIVERED_RETURN;
 
       if(mode===EcommerceReturnPreReceiptMode.RETURN_CODE){
-        const ro=await tx.returnOrder.findFirst({
+        const customerReturn=await tx.ecommerceReturn.findFirst({
+          where:{externalReturnCode:{equals:scannedCode,mode:"insensitive"},status:{in:[EcommerceReturnStatus.REQUESTED,EcommerceReturnStatus.PRE_RECEIVED,EcommerceReturnStatus.RECEIVING]}},
+          include:{originalOrder:{select:{id:true,orderNumber:true,orderType:true}}},
+        });
+        if(customerReturn&&customerReturn.originalOrder.orderType===OrderType.ECOMMERCE){
+          originalOrderId=customerReturn.originalOrder.id;
+          orderNumber=customerReturn.originalOrder.orderNumber;
+          ecommerceReturnId=customerReturn.id;
+          matchStatus=EcommerceReturnPreReceiptMatchStatus.MATCHED;
+          outcome=EcommerceReturnPreReceiptOutcome.RETURN_ENTRY_PENDING;
+          if(customerReturn.status===EcommerceReturnStatus.REQUESTED){
+            await tx.ecommerceReturn.update({where:{id:customerReturn.id},data:{status:EcommerceReturnStatus.PRE_RECEIVED}});
+          }
+        }
+
+        const ro=!customerReturn?await tx.returnOrder.findFirst({
           where:{OR:[{customerDocumentNo:{equals:scannedCode,mode:"insensitive"}},{returnNumber:{equals:scannedCode,mode:"insensitive"}}]},
           include:{
             originalOrder:{select:{id:true,orderNumber:true,orderType:true}},
             items:true,
           },
-        });
-        if(ro&&ro.originalOrder.orderType===OrderType.ECOMMERCE){
+        }):null;
+        if(!customerReturn&&ro&&ro.originalOrder.orderType===OrderType.ECOMMERCE){
           originalOrderId=ro.originalOrder.id;
           orderNumber=ro.originalOrder.orderNumber;
           matchStatus=EcommerceReturnPreReceiptMatchStatus.MATCHED;
