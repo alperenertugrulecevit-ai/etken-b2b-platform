@@ -15,6 +15,11 @@ type BankAccount = {
   accountHolder: string;
   iban: string;
   currency: string;
+  bankCode: string | null;
+  accountNo: string | null;
+  swiftCode: string | null;
+  apiProvider: string | null;
+  apiEnabled: boolean;
   isActive: boolean;
   sortOrder: number;
 };
@@ -88,6 +93,26 @@ function AccountForm({ account }: { account?: BankAccount }) {
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
           </select>
+        </label>
+        <label className="text-sm font-semibold">
+          Banka Kodu
+          <input name="bankCode" defaultValue={account?.bankCode ?? ""} maxLength={30} className="mt-2 w-full rounded-xl border border-slate-300 p-3" />
+        </label>
+        <label className="text-sm font-semibold">
+          Hesap No
+          <input name="accountNo" defaultValue={account?.accountNo ?? ""} maxLength={50} className="mt-2 w-full rounded-xl border border-slate-300 p-3" />
+        </label>
+        <label className="text-sm font-semibold">
+          SWIFT / BIC
+          <input name="swiftCode" defaultValue={account?.swiftCode ?? ""} maxLength={20} className="mt-2 w-full rounded-xl border border-slate-300 p-3 uppercase" />
+        </label>
+        <label className="text-sm font-semibold">
+          API Sağlayıcı
+          <input name="apiProvider" defaultValue={account?.apiProvider ?? ""} maxLength={80} placeholder="Canlı entegrasyonda doldurulur" className="mt-2 w-full rounded-xl border border-slate-300 p-3" />
+        </label>
+        <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm font-semibold md:col-span-2">
+          <input type="checkbox" name="apiEnabled" defaultChecked={account?.apiEnabled ?? false} />
+          Banka API entegrasyonu aktif
         </label>
         <label className="text-sm font-semibold">
           Görüntüleme Sırası
