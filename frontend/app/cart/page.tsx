@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import Header from "@/components/layout/Header";
 import {
@@ -20,6 +21,9 @@ function formatCurrency(
 }
 
 export default function CartPage() {
+  const searchParams=useSearchParams();
+  const repeated=searchParams.get("repeated")==="true";
+  const unavailable=Math.max(0,Number(searchParams.get("unavailable")??0)||0);
   const {
     cart,
     isHydrated,
@@ -68,6 +72,11 @@ export default function CartPage() {
 
       <main className="min-h-screen bg-slate-100">
         <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+          {repeated ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+            Geçmiş siparişinizdeki satışa açık ürünler güncel fiyat ve kullanılabilir stokla sepete eklendi.
+            {unavailable>0 ? ` ${unavailable} ürün şu anda satışa açık veya stokta olmadığı için eklenmedi.` : ""}
+          </div> : null}
+
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-black">
