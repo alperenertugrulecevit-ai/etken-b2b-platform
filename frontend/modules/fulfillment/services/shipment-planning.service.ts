@@ -14,6 +14,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { ShippingService } from "@/modules/fulfillment/services/shipping.service";
 import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
+import { buildTrackingUrl } from "@/modules/fulfillment/services/cargo-provider-adapter";
 
 const TENANT_ID = "tenant_etken";
 const COMPANY_ID = "company_etken_office";
@@ -68,9 +69,11 @@ export class ShipmentPlanningService {
       if(!template.includes("{trackingNumber}")) throw new Error("Takip URL şablonu {trackingNumber} alanını içermelidir.");
       try{const test=new URL(template.replace("{trackingNumber}","TEST123"));if(!["http:","https:"].includes(test.protocol))throw new Error();}catch{throw new Error("Takip URL şablonu geçerli bir http/https adresi olmalıdır.");}
     }
+    const provider=clean(input.integrationProvider);
+    if(input.integrationEnabled && !provider) throw new Error("Kargo API entegrasyonu aktif edilecekse sağlayıcı kodu zorunludur.");
     return prisma.shippingCarrier.update({where:{id:carrier.id},data:{
       trackingUrlTemplate:template,
-      integrationProvider:clean(input.integrationProvider),
+      integrationProvider:provider,
       integrationEnabled:input.integrationEnabled,
     }});
   }
@@ -516,7 +519,7 @@ export class ShipmentPlanningService {
       if(!order) throw new Error("E-ticaret siparişi bulunamadı.");
       if(order.status===OrderStatus.CANCELLED) throw new Error("İptal edilmiş siparişe kargo takip bilgisi girilemez.");
       if(!trackingUrl && order.carrier?.trackingUrlTemplate){
-        trackingUrl=order.carrier.trackingUrlTemplate.replace("{trackingNumber}",encodeURIComponent(trackingNumber)).slice(0,500);
+        trackingUrl=buildTrackingUrl(order.carrier.trackingUrlTemplate,trackingNumber)?.slice(0,500)??null;
       }
       const now=new Date();
       await tx.order.update({
@@ -575,11 +578,15 @@ export class ShipmentPlanningService {
       select:{orderNumber:true,ecommerceEmail:true},
     });
     if(notificationOrder){
-      await EcommerceNotificationService.send({
-        event:"DELIVERED",
-        email:notificationOrder.ecommerceEmail,
-        orderNumber:notificationOrder.orderNumber,
-      });
+      try {
+        await EcommerceNotificationService.send({
+          event:"DELIVERED",
+          email:notificationOrder.ecommerceEmail,
+          orderNumber:notificationOrder.orderNumber,
+        });
+      } catch (error) {
+        console.error("Teslimat bildirimi gönderilemedi:", error);
+      }
     }
     return result;
   }
