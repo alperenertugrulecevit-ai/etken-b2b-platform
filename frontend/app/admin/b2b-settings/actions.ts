@@ -143,6 +143,11 @@ export async function saveB2BBankAccountAction(
   const accountHolder = text(formData, "accountHolder", 160);
   const iban = normalizeIban(text(formData, "iban", 64));
   const currency = text(formData, "currency", 3).toUpperCase() || "TRY";
+  const bankCode = nullableText(formData, "bankCode", 30);
+  const accountNo = nullableText(formData, "accountNo", 50);
+  const swiftCode = nullableText(formData, "swiftCode", 20)?.toUpperCase() ?? null;
+  const apiProvider = nullableText(formData, "apiProvider", 80);
+  const apiEnabled = formData.get("apiEnabled") === "on";
   const sortOrderValue = Number(formData.get("sortOrder") ?? 0);
   const sortOrder = Number.isInteger(sortOrderValue) ? sortOrderValue : 0;
 
@@ -171,7 +176,7 @@ export async function saveB2BBankAccountAction(
       }
       await prisma.b2BBankAccount.update({
         where: { id },
-        data: { bankName, branchName, accountHolder, iban, currency, sortOrder },
+        data: { bankName, branchName, accountHolder, iban, currency, bankCode, accountNo, swiftCode, apiProvider, apiEnabled, sortOrder },
       });
     } else {
       await prisma.b2BBankAccount.create({
@@ -183,6 +188,11 @@ export async function saveB2BBankAccountAction(
           accountHolder,
           iban,
           currency,
+          bankCode,
+          accountNo,
+          swiftCode,
+          apiProvider,
+          apiEnabled,
           sortOrder,
         },
       });
