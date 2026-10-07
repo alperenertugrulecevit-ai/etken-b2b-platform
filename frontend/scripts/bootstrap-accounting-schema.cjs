@@ -48,7 +48,24 @@ const statements = [
 
 async function main() {
   for (const sql of statements) await prisma.$executeRawUnsafe(sql);
-  console.log("Accounting schema bootstrap completed.");
+
+  const invoiceColumns = await prisma.$queryRawUnsafe(
+    `SELECT column_name
+       FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'Order'
+        AND column_name IN ('invoiceAddress', 'invoiceCity', 'invoiceDistrict', 'invoicePostalCode')`
+  );
+
+  const found = new Set(invoiceColumns.map((row) => row.column_name));
+  const required = ["invoiceAddress", "invoiceCity", "invoiceDistrict", "invoicePostalCode"];
+  const missing = required.filter((column) => !found.has(column));
+
+  if (missing.length > 0) {
+    throw new Error(`Order invoice schema bootstrap verification failed. Missing columns: ${missing.join(", ")}`);
+  }
+
+  console.log("Accounting schema bootstrap completed. Order invoice columns verified.");
 }
 
 main()
