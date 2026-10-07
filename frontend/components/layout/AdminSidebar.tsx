@@ -128,6 +128,6 @@ function SidebarContent({profile}:{profile:AuthorizationProfile}){
  </div>
 }
 export default async function AdminSidebar(){const profile=await AuthorizationService.requireAdminPortalAccess();return <>
- <aside id="admin-sidebar" className="hidden min-h-screen w-[275px] shrink-0 bg-gradient-to-b from-[#0b2d50] via-[#123e68] to-[#082541] p-3 text-white lg:block"><div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto pr-1"><SidebarContent profile={profile}/></div></aside>
+ <aside id="admin-sidebar" className="hidden h-screen w-[275px] shrink-0 bg-gradient-to-b from-[#0b2d50] via-[#123e68] to-[#082541] p-3 text-white lg:block"><div className="fixed inset-y-0 left-0 w-[275px] overflow-y-auto p-3 pr-4"><SidebarContent profile={profile}/></div></aside>
  <details className="border-b border-slate-800 bg-slate-950 text-white lg:hidden"><summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4 font-bold"><span>ETKEN OFİS · Yönetim</span><span className="rounded-lg bg-slate-800 px-3 py-2">☰ Menü</span></summary><div className="max-h-[80vh] overflow-y-auto border-t border-slate-800 p-4"><SidebarContent profile={profile}/></div></details>
  </>}
