@@ -795,6 +795,18 @@ export async function completeOrderCancellationRefund(orderId:number,formData:Fo
     reference,
     actor:{userId:user.id,displayName:actorName},
   });
+  const notificationOrder=await prisma.order.findUnique({
+    where:{id:orderId},
+    select:{source:true,orderNumber:true,ecommerceEmail:true},
+  });
+  if(notificationOrder?.source===OrderSource.ECOMMERCE){
+    await EcommerceNotificationService.send({
+      event:"REFUNDED",
+      email:notificationOrder.ecommerceEmail,
+      orderNumber:notificationOrder.orderNumber,
+      refundContext:"ORDER_CANCELLATION",
+    });
+  }
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   revalidatePath("/account/orders");
