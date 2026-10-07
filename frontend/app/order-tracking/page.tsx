@@ -87,6 +87,7 @@ export default async function OrderTrackingPage({
             paymentMethod: true,
             cargoTrackingNumber: true,
             cargoTrackingUrl: true,
+            cargoEvents: { orderBy: { eventAt: "desc" }, take: 50, select: { id:true,status:true,description:true,location:true,eventAt:true,provider:true } },
             accountEntries: {
               where: {
                 direction: CustomerAccountEntryDirection.DEBIT,
@@ -364,6 +365,13 @@ export default async function OrderTrackingPage({
                   {order.cargoTrackingUrl ? (
                     <a href={order.cargoTrackingUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl bg-blue-900 px-4 py-2 text-sm font-black text-white">Kargoyu Takip Et</a>
                   ) : null}
+                </div>
+              ) : null}
+
+              {order.cargoTrackingNumber && order.cargoEvents.length > 0 ? (
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <h2 className="text-lg font-black">Kargo Hareketleri</h2>
+                  <div className="mt-4 space-y-3">{order.cargoEvents.map(event=><div key={event.id} className="rounded-xl bg-slate-50 p-4"><div className="flex flex-wrap justify-between gap-2"><strong>{event.description??event.status}</strong><span className="text-xs text-slate-500">{event.eventAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</span></div>{event.location?<p className="mt-1 text-sm text-slate-600">{event.location}</p>:null}<p className="mt-1 text-xs text-slate-400">{event.provider}</p></div>)}</div>
                 </div>
               ) : null}
 

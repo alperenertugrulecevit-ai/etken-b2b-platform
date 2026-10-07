@@ -21,12 +21,17 @@ export type CargoStatusResult = {
   status: string;
   deliveredAt?: Date | null;
   raw?: unknown;
+  externalEventId?: string | null;
+  description?: string | null;
+  location?: string | null;
+  eventAt?: Date | null;
 };
 
 export interface CargoProviderAdapter {
   provider: string;
   createShipment(input: CargoCreateShipmentInput): Promise<CargoCreateShipmentResult>;
   getStatus(trackingNumber: string): Promise<CargoStatusResult>;
+  getEvents?(trackingNumber: string): Promise<CargoStatusResult[]>;
   cancelShipment?(trackingNumber: string): Promise<void>;
 }
 

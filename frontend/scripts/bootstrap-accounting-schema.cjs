@@ -47,7 +47,19 @@ const statements = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "BankTransaction_bankAccountId_externalId_key" ON "BankTransaction"("bankAccountId","externalId")`,
   `CREATE INDEX IF NOT EXISTS "BankTransaction_tenantId_companyId_matchStatus_transactionDate_idx" ON "BankTransaction"("tenantId","companyId","matchStatus","transactionDate")`,
   `CREATE INDEX IF NOT EXISTS "BankTransaction_matchedOrderId_idx" ON "BankTransaction"("matchedOrderId")`,
-  `DO $$ BEGIN CREATE TYPE "AccountingDocumentType" AS ENUM ('MEAL','FUEL','ENERGY','TELECOMMUNICATION','CONSUMABLE','WATER','OTHER_INCOME','OTHER_EXPENSE','PAYMENT_RECEIPT','INCOME_RECEIPT'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+  `CREATE TYPE "PaymentTransactionStatus" AS ENUM ('CREATED','PENDING','AUTHORIZED','PAID','FAILED','CANCELLED','REFUNDED','PARTIALLY_REFUNDED')`,
+  `CREATE TYPE "CargoTrackingEventStatus" AS ENUM ('CREATED','LABEL_CREATED','PICKED_UP','IN_TRANSIT','AT_BRANCH','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED','RETURNING','RETURNED','CANCELLED','UNKNOWN')`,
+  `CREATE TABLE IF NOT EXISTS "PaymentTransaction" ("id" TEXT PRIMARY KEY,"orderId" INTEGER NOT NULL,"provider" TEXT NOT NULL,"externalId" TEXT,"status" "PaymentTransactionStatus" NOT NULL DEFAULT 'CREATED',"amount" DOUBLE PRECISION NOT NULL,"currency" TEXT NOT NULL DEFAULT 'TRY',"installment" INTEGER NOT NULL DEFAULT 1,"maskedCard" TEXT,"cardBrand" TEXT,"threeDSecure" BOOLEAN NOT NULL DEFAULT false,"providerReference" TEXT,"errorCode" TEXT,"errorMessage" TEXT,"rawPayload" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"paidAt" TIMESTAMP(3),"refundedAmount" DOUBLE PRECISION NOT NULL DEFAULT 0)`,
+  `CREATE TABLE IF NOT EXISTS "CargoTrackingEvent" ("id" TEXT PRIMARY KEY,"orderId" INTEGER NOT NULL,"provider" TEXT NOT NULL,"trackingNumber" TEXT NOT NULL,"externalEventId" TEXT,"status" "CargoTrackingEventStatus" NOT NULL DEFAULT 'UNKNOWN',"description" TEXT,"location" TEXT,"eventAt" TIMESTAMP(3) NOT NULL,"rawPayload" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+  `CREATE TABLE IF NOT EXISTS "PaymentGatewaySetting" ("id" SERIAL PRIMARY KEY,"tenantId" TEXT NOT NULL,"companyId" TEXT NOT NULL,"provider" TEXT NOT NULL,"displayName" TEXT NOT NULL,"isActive" BOOLEAN NOT NULL DEFAULT false,"testMode" BOOLEAN NOT NULL DEFAULT true,"threeDSecureRequired" BOOLEAN NOT NULL DEFAULT true,"installmentEnabled" BOOLEAN NOT NULL DEFAULT false,"config" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+  `ALTER TABLE "PaymentTransaction" ADD CONSTRAINT "PaymentTransaction_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+  `ALTER TABLE "CargoTrackingEvent" ADD CONSTRAINT "CargoTrackingEvent_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "PaymentTransaction_provider_externalId_key" ON "PaymentTransaction"("provider","externalId")`,
+  `CREATE INDEX IF NOT EXISTS "PaymentTransaction_orderId_status_idx" ON "PaymentTransaction"("orderId","status")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "CargoTrackingEvent_provider_trackingNumber_externalEventId_key" ON "CargoTrackingEvent"("provider","trackingNumber","externalEventId")`,
+  `CREATE INDEX IF NOT EXISTS "CargoTrackingEvent_orderId_eventAt_idx" ON "CargoTrackingEvent"("orderId","eventAt")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "PaymentGatewaySetting_tenantId_companyId_provider_key" ON "PaymentGatewaySetting"("tenantId","companyId","provider")`,
+  `CREATE TYPE \"AccountingDocumentType\" AS ENUM ('MEAL','FUEL','ENERGY','TELECOMMUNICATION','CONSUMABLE','WATER','OTHER_INCOME','OTHER_EXPENSE','PAYMENT_RECEIPT','INCOME_RECEIPT')`,
   `DO $$ BEGIN CREATE TYPE "AccountingMovementType" AS ENUM ('EXPENSE','INCOME','PAYMENT_OUT','PAYMENT_IN'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingPaymentType" AS ENUM ('CASH','DEFERRED','BANK_TRANSFER','CREDIT_CARD','OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingPartyType" AS ENUM ('CUSTOMER','SUPPLIER','OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
@@ -120,14 +132,17 @@ async function main() {
     `SELECT
        to_regclass('"BankTransaction"') IS NOT NULL AS "bankTransactionReady",
        EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='B2BBankAccount' AND column_name='apiEnabled') AS "bankAccountReady",
-       EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='ShippingCarrier' AND column_name='integrationEnabled') AS "carrierReady"`
+       EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='ShippingCarrier' AND column_name='integrationEnabled') AS "carrierReady",
+       to_regclass('"PaymentTransaction"') IS NOT NULL AS "paymentReady",
+       to_regclass('"CargoTrackingEvent"') IS NOT NULL AS "cargoEventReady",
+       to_regclass('"PaymentGatewaySetting"') IS NOT NULL AS "gatewayReady"`
   );
   const ready = readiness[0];
-  if (!ready?.bankTransactionReady || !ready?.bankAccountReady || !ready?.carrierReady) {
+  if (!ready?.bankTransactionReady || !ready?.bankAccountReady || !ready?.carrierReady || !ready?.paymentReady || !ready?.cargoEventReady || !ready?.gatewayReady) {
     throw new Error("Banking/cargo runtime schema bootstrap verification failed.");
   }
 
-  console.log("Runtime schema bootstrap completed. Order invoice, banking and cargo schema verified.");
+  console.log("Runtime schema bootstrap completed. Order invoice, banking, cargo tracking and payment gateway schema verified.");
 }
 
 main()

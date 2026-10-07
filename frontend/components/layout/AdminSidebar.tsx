@@ -75,6 +75,7 @@ const groups:MenuGroup[]=[
  {title:"E-Ticaret Yönetimi",icon:"🛍️",items:[
   {href:"/admin/e-ticaret/orders",icon:"🛒",label:"E-Ticaret Siparişleri",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
   {href:"/admin/e-ticaret/bank-reconciliation",icon:"🏦",label:"Banka / Havale Mutabakatı",permissionCodes:["ORDER_MANAGE"]},
+  {href:"/admin/e-ticaret/payment-gateways",icon:"💳",label:"Sanal POS / Kredi Kartı",permissionCodes:["ORDER_MANAGE"]},
   {href:"/admin/e-ticaret/cargo-tracking",icon:"📍",label:"Kargo Takip",permissionCodes:["ORDER_VIEW","SHIPPING_EXECUTE"]},
   {href:"/admin/e-ticaret/packaging",icon:"📦",label:"E-Ticaret Paketleme",permissionCodes:["ORDER_VIEW","ORDER_MANAGE"]},
   {href:"/admin/e-ticaret/returns",icon:"↩️",label:"E-Ticaret İade Giriş",permissionCodes:["RECEIVING_VIEW","RECEIVING_EXECUTE"]},

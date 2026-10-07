@@ -495,6 +495,8 @@ model Order {
   ecommerceReturns           EcommerceReturn[]
   ecommerceReturnPreReceipts EcommerceReturnPreReceipt[]
   bankTransactions BankTransaction[] @relation("BankTransactionMatchedOrder")
+  paymentTransactions PaymentTransaction[]
+  cargoEvents CargoTrackingEvent[]
 
   @@index([customerId])
   @@index([shippingAddressId])
@@ -611,6 +613,98 @@ model BankTransaction {
   @@unique([bankAccountId, externalId])
   @@index([tenantId, companyId, matchStatus, transactionDate])
   @@index([matchedOrderId])
+}
+
+enum PaymentTransactionStatus {
+  CREATED
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model PaymentTransaction {
+  id String @id @default(cuid())
+  orderId Int
+  provider String
+  externalId String?
+  status PaymentTransactionStatus @default(CREATED)
+  amount Float
+  currency String @default("TRY")
+  installment Int @default(1)
+  maskedCard String?
+  cardBrand String?
+  threeDSecure Boolean @default(false)
+  providerReference String?
+  errorCode String?
+  errorMessage String?
+  rawPayload Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  paidAt DateTime?
+  refundedAmount Float @default(0)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([orderId, status])
+  @@index([provider, status, createdAt])
+}
+
+enum CargoTrackingEventStatus {
+  CREATED
+  LABEL_CREATED
+  PICKED_UP
+  IN_TRANSIT
+  AT_BRANCH
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_FAILED
+  RETURNING
+  RETURNED
+  CANCELLED
+  UNKNOWN
+}
+
+model CargoTrackingEvent {
+  id String @id @default(cuid())
+  orderId Int
+  provider String
+  trackingNumber String
+  externalEventId String?
+  status CargoTrackingEventStatus @default(UNKNOWN)
+  description String?
+  location String?
+  eventAt DateTime
+  rawPayload Json?
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, trackingNumber, externalEventId])
+  @@index([orderId, eventAt])
+  @@index([trackingNumber, eventAt])
+}
+
+model PaymentGatewaySetting {
+  id Int @id @default(autoincrement())
+  tenantId String
+  companyId String
+  provider String
+  displayName String
+  isActive Boolean @default(false)
+  testMode Boolean @default(true)
+  threeDSecureRequired Boolean @default(true)
+  installmentEnabled Boolean @default(false)
+  config Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, companyId, provider])
+  @@index([tenantId, companyId, isActive])
 }
 
 model CustomerAccountEntry {

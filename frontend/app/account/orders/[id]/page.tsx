@@ -151,6 +151,7 @@ export default async function CustomerOrderDetailPage({
           },
           select: { amount: true },
         },
+        cargoEvents: { orderBy: { eventAt: "desc" }, take: 50 },
         statusHistory: {
           where: {
             visibleToCustomer:
@@ -348,6 +349,13 @@ export default async function CustomerOrderDetailPage({
               Kargomu Takip Et
             </a>
           ) : null}
+        </section>
+      ) : null}
+
+      {order.cargoTrackingNumber && order.cargoEvents.length ? (
+        <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-black">Kargo Hareketleri</h2>
+          <div className="mt-3 space-y-2">{order.cargoEvents.map(event=><div key={event.id} className="rounded-lg bg-slate-50 p-3"><div className="flex justify-between gap-3"><strong>{event.description??event.status}</strong><span className="text-xs text-slate-500">{event.eventAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</span></div>{event.location?<p className="mt-1 text-sm text-slate-600">{event.location}</p>:null}</div>)}</div>
         </section>
       ) : null}
 
