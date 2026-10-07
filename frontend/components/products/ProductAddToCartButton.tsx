@@ -16,6 +16,7 @@ type Props = {
     price: number;
     vat: number;
     availableStock: number;
+    imageUrl?: string | null;
   };
 };
 
@@ -54,6 +55,8 @@ export default function ProductAddToCartButton({
       vatRate: product.vat,
       availableStock:
         product.availableStock,
+      imageUrl:
+        product.imageUrl ?? null,
       qty: 1,
     });
 
