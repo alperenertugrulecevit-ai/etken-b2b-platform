@@ -107,7 +107,10 @@ export default function ProductList({
   ] = useState(false);
 
   const {
+    cart,
     addToCart,
+    increaseQty,
+    decreaseQty,
   } = useCart();
   useEffect(() => {
   setSearch(
@@ -441,7 +444,7 @@ export default function ProductList({
       <div className="grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
       <aside
         className={
-          "h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm " +
+          "h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-[154px] lg:max-h-[calc(100vh-170px)] lg:overflow-y-auto " +
           (mobileFiltersOpen ? "block" : "hidden lg:block")
         }
       >
@@ -572,6 +575,7 @@ export default function ProductList({
       </aside>
 
       <section>
+        <div className="sticky top-[126px] z-30 mb-4 bg-slate-100 py-2">
         <input
           value={
             search
@@ -586,8 +590,9 @@ export default function ProductList({
             )
           }
           placeholder="Ürün, marka, kod veya barkod ara..."
-          className="mb-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#EF4B23]"
+          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#EF4B23]"
         />
+        </div>
 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-gray-500">
           <span>
@@ -648,6 +653,10 @@ export default function ProductList({
                 const cannotAddToCart =
                   isComingSoon ||
                   isOutOfStock;
+
+                const cartItem = cart.find(
+                  (item) => item.code === product.code,
+                );
 
                 return (
                   <article
@@ -755,24 +764,24 @@ export default function ProductList({
                       )}
                     </Link>
 
-                    <button
-                      type="button"
-                      disabled={
-                        cannotAddToCart
-                      }
-                      onClick={() =>
-                        handleAdd(
-                          product,
-                        )
-                      }
-                      className="mt-3 w-full rounded-lg bg-[#202B38] py-2.5 text-sm font-bold text-white transition hover:bg-[#111923] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
-                    >
-                      {isComingSoon
-                        ? "Yakında Stokta"
-                        : isOutOfStock
-                          ? "Stokta Yok"
-                          : "Sepete Ekle"}
-                    </button>
+                    {cartItem && !cannotAddToCart ? (
+                      <div className="mt-3 flex overflow-hidden rounded-lg border border-[#EF4B23]">
+                        <button type="button" onClick={() => decreaseQty(product.code)} className="w-11 bg-orange-50 text-lg font-black text-[#EF4B23] hover:bg-orange-100">−</button>
+                        <button type="button" onClick={() => handleAdd(product)} className="min-w-0 flex-1 bg-[#EF4B23] py-2.5 text-sm font-bold text-white hover:bg-[#D83D18]">
+                          Sepette {cartItem.qty}
+                        </button>
+                        <button type="button" disabled={cartItem.qty >= product.availableStock} onClick={() => increaseQty(product.code)} className="w-11 bg-orange-50 text-lg font-black text-[#EF4B23] hover:bg-orange-100 disabled:cursor-not-allowed disabled:text-slate-300">+</button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={cannotAddToCart}
+                        onClick={() => handleAdd(product)}
+                        className="mt-3 w-full rounded-lg bg-[#EF4B23] py-2.5 text-sm font-bold text-white transition hover:bg-[#D83D18] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                      >
+                        {isComingSoon ? "Yakında Stokta" : isOutOfStock ? "Stokta Yok" : "Sepete Ekle"}
+                      </button>
+                    )}
                   </article>
                 );
               },
