@@ -471,6 +471,7 @@ export default async function CustomerOrderDetailPage({
                   <div><p className="font-black">{ret.returnNumber}</p><p className="mt-1 text-sm text-violet-800">{statusLabel[ret.status]??ret.status}</p></div>
                   <p className="text-xs font-bold text-slate-500">{ret.createdAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</p>
                 </div>
+                {ret.externalReturnCode?<div className="mt-3 rounded-lg bg-violet-100 p-3"><p className="text-xs font-bold uppercase text-violet-700">İade Kodu</p><p className="mt-1 break-all font-mono font-black text-violet-950">{ret.externalReturnCode}</p><p className="mt-1 text-xs text-violet-700">İade gönderinizde bu kodu kullanın ve saklayın.</p></div>:null}
                 {ret.note?<p className="mt-2 text-sm text-slate-600">Talep nedeni: {ret.note}</p>:null}
                 <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
                   <div><span className="text-slate-500">Ürün kabulü</span><p className="font-bold">{received} / {expected} adet</p></div>
@@ -488,9 +489,22 @@ export default async function CustomerOrderDetailPage({
         <section className="mt-4 rounded-xl border border-violet-200 bg-white p-4 shadow-sm">
           <h2 className="font-black">Ürün İade Talebi</h2>
           <p className="mt-1 text-sm text-slate-600">İade talebiniz depo ön kabulü, kalite kontrolü ve finans değerlendirmesiyle mevcut iade sürecine alınır. Talep oluşturmak tek başına stok veya para iadesi hareketi oluşturmaz.</p>
-          <form action={requestCustomerEcommerceReturn.bind(null,order.id)} className="mt-3 flex flex-col gap-3 sm:flex-row">
-            <input name="reason" required minLength={5} maxLength={500} placeholder="İade nedeninizi yazın" className="min-w-0 flex-1 rounded-xl border p-3"/>
-            <button className="rounded-xl bg-violet-700 px-5 py-3 font-black text-white">İade Talebi Oluştur</button>
+          <form action={requestCustomerEcommerceReturn.bind(null,order.id)} className="mt-4 space-y-4">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50"><tr><th className="px-4 py-3">Ürün</th><th className="px-4 py-3">İadeye Açık</th><th className="px-4 py-3">İade Adedi</th></tr></thead>
+                <tbody>{order.items.map(item=>{
+                  const previous=order.ecommerceReturns.filter(r=>r.status!=="CANCELLED").flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
+                  const maxReturn=Math.max(0,item.shippedQuantity-previous);
+                  if(maxReturn<=0)return null;
+                  return <tr key={item.id} className="border-t border-slate-100"><td className="px-4 py-3"><strong>{item.productName}</strong><p className="text-xs text-slate-500">{item.productCode}</p></td><td className="px-4 py-3 font-bold">{maxReturn} adet</td><td className="px-4 py-3"><input type="number" name={`returnQty_${item.id}`} min={0} max={maxReturn} defaultValue={0} className="w-24 rounded-lg border p-2 text-center font-bold"/></td></tr>;
+                })}</tbody>
+              </table>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input name="reason" required minLength={5} maxLength={500} placeholder="İade nedeninizi yazın" className="min-w-0 flex-1 rounded-xl border p-3"/>
+              <button className="rounded-xl bg-violet-700 px-5 py-3 font-black text-white">İade Talebi Oluştur</button>
+            </div>
           </form>
         </section>
       ) : null}
