@@ -189,6 +189,16 @@ export default function Header() {
 
   return (
     <>
+      <div className="hidden border-b border-blue-900 bg-[#0B3B88] text-white lg:block">
+        <div className="mx-auto flex min-h-8 max-w-[1600px] items-center justify-between px-4 text-[10px] font-black sm:px-6">
+          <div className="flex items-center gap-8">
+            <Link href="/products" className="transition hover:text-orange-200">Tüm Kampanyalar</Link>
+            <Link href="/products" className="transition hover:text-orange-200">Fırsat Ürünleri</Link>
+          </div>
+          <Link href="/register" className="transition hover:text-orange-200">Kurumsal avantajlardan yararlanın →</Link>
+        </div>
+      </div>
+
       <div className="bg-[#071729] text-white">
         <div className="mx-auto flex min-h-9 max-w-[1600px] items-center justify-between gap-4 px-4 text-[11px] font-semibold sm:px-6">
           <div className="flex items-center gap-7">
