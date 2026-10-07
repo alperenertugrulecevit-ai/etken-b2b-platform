@@ -48,14 +48,18 @@ export async function requestCustomerEcommerceReturn(orderId:number, formData:Fo
    _sum:{expectedQuantity:true},
   });
   const priorByItem=new Map(prior.map(row=>[row.orderItemId,row._sum.expectedQuantity??0]));
-  const returnable=order.items.map(item=>({
-   item,quantity:Math.max(0,item.shippedQuantity-(priorByItem.get(item.id)??0)),
-  })).filter(row=>row.quantity>0);
-  if(!returnable.length) throw new Error("Bu siparişte iadeye açık sevk edilmiş ürün kalmadı.");
+  const returnable=order.items.map(item=>{
+   const maxQuantity=Math.max(0,item.shippedQuantity-(priorByItem.get(item.id)??0));
+   const raw=Number(formData.get(`returnQty_${item.id}`)??0);
+   const requestedQuantity=Number.isFinite(raw)?Math.max(0,Math.floor(raw)):0;
+   if(requestedQuantity>maxQuantity) throw new Error(`${item.productCode} için en fazla ${maxQuantity} adet iade talebi oluşturabilirsiniz.`);
+   return {item,quantity:requestedQuantity,maxQuantity};
+  }).filter(row=>row.quantity>0);
+  if(!returnable.length) throw new Error("İade etmek istediğiniz en az bir ürün ve adet seçin.");
 
   const returnNumber=`ETI-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${randomUUID().replaceAll("-","").slice(0,8).toUpperCase()}`;
   await tx.ecommerceReturn.create({data:{
-   returnNumber,originalOrderId:order.id,status:EcommerceReturnStatus.REQUESTED,refundStatus:EcommerceReturnRefundStatus.WAITING,note:reason,
+   returnNumber,externalReturnCode:returnNumber,originalOrderId:order.id,status:EcommerceReturnStatus.REQUESTED,refundStatus:EcommerceReturnRefundStatus.WAITING,note:reason,
    items:{create:returnable.map(({item,quantity})=>({
     orderItemId:item.id,productId:item.productId,productCode:item.productCode,productBarcode:item.product.barcode,
     productName:item.productName,expectedQuantity:quantity,customerReason:reason,
