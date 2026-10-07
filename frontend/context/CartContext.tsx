@@ -18,6 +18,7 @@ export type CartItem = {
   unitPrice: number;
   vatRate: number;
   availableStock: number;
+  imageUrl?: string | null;
   qty: number;
 };
 
@@ -119,6 +120,7 @@ function normalizeCartItem(
     vatRate:
       Number(item.vatRate),
     availableStock,
+    imageUrl: typeof item.imageUrl === "string" && item.imageUrl.trim() ? item.imageUrl.trim() : null,
     qty:
       Math.min(
         Number(item.qty),
@@ -233,6 +235,8 @@ export function CartProvider({
                     input.vatRate,
                   availableStock:
                     input.availableStock,
+                  imageUrl:
+                    input.imageUrl ?? item.imageUrl ?? null,
                   qty: Math.min(
                     item.qty +
                       requestedQuantity,
