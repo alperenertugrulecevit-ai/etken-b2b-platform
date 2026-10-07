@@ -39,6 +39,15 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   CANCELLED: "İptal Edildi",
 };
 
+const PAYMENT_STATUS_LABELS: Record<string,string> = {
+  PENDING:"Ödeme Bekleniyor",
+  PAID:"Ödendi",
+  FAILED:"Ödeme Başarısız",
+  REFUNDED:"İade Edildi",
+  PARTIALLY_REFUNDED:"Kısmi İade",
+  CANCELLED:"İptal",
+};
+
 const STATUS_CLASSES: Record<OrderStatus, string> = {
   DRAFT: "bg-slate-100 text-slate-700",
   PENDING: "bg-orange-100 text-orange-700",
@@ -414,7 +423,7 @@ export default async function CustomerOrdersPage({
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-600">
-                      {order.paymentStatus === "PAID" ? "Ödendi" : order.paymentStatus === "REFUNDED" ? "İade Edildi" : order.paymentStatus === "PARTIALLY_REFUNDED" ? "Kısmi İade" : order.paymentStatus === "FAILED" ? "Başarısız" : order.paymentStatus ? "Ödeme Bekleniyor" : "-"}
+                      {order.paymentStatus ? (PAYMENT_STATUS_LABELS[order.paymentStatus] ?? order.paymentStatus) : "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-bold">
                       {formatCurrency(order.totalAmount)} ₺

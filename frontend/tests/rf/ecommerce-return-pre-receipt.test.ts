@@ -4,12 +4,12 @@ import { createEcommerceReturnPreReceipt } from "@/app/rf/ecommerce-return-pre-r
 const mocks=vi.hoisted(()=>({
   requireRfAccess:vi.fn(),transaction:vi.fn(),warehouseFindFirst:vi.fn(),carrierFindFirst:vi.fn(),
   preFindFirst:vi.fn(),returnOrderFindFirst:vi.fn(),ecommerceReturnFindFirst:vi.fn(),orderItemFindMany:vi.fn(),
-  returnItemGroupBy:vi.fn(),ecommerceReturnCreate:vi.fn(),preCreate:vi.fn(),revalidatePath:vi.fn(),
+  returnItemGroupBy:vi.fn(),ecommerceReturnCreate:vi.fn(),ecommerceReturnUpdate:vi.fn(),preCreate:vi.fn(),revalidatePath:vi.fn(),
 }));
 const tx={
   warehouse:{findFirst:mocks.warehouseFindFirst},shippingCarrier:{findFirst:mocks.carrierFindFirst},
   ecommerceReturnPreReceipt:{findFirst:mocks.preFindFirst,create:mocks.preCreate},
-  returnOrder:{findFirst:mocks.returnOrderFindFirst},ecommerceReturn:{findFirst:mocks.ecommerceReturnFindFirst,create:mocks.ecommerceReturnCreate},
+  returnOrder:{findFirst:mocks.returnOrderFindFirst},ecommerceReturn:{findFirst:mocks.ecommerceReturnFindFirst,create:mocks.ecommerceReturnCreate,update:mocks.ecommerceReturnUpdate},
   orderItem:{findMany:mocks.orderItemFindMany},ecommerceReturnItem:{groupBy:mocks.returnItemGroupBy},
 };
 vi.mock("@/modules/authorization/services/authorization.service",()=>({AuthorizationService:{requireRfAccess:mocks.requireRfAccess}}));
@@ -33,6 +33,21 @@ describe("RF e-ticaret iade ön kabul miktar koruması",()=>{
     mocks.orderItemFindMany.mockResolvedValue([{id:101,shippedQuantity:3}]);
     mocks.returnItemGroupBy.mockResolvedValue([{orderItemId:101,_sum:{receivedQuantity:2}}]);
     mocks.ecommerceReturnCreate.mockResolvedValue({id:"er-2"});mocks.preCreate.mockResolvedValue({id:"pre-2"});
+  });
+  it("müşterinin ETI iade kodunu doğrudan eşleştirir ve REQUESTED talebi ön kabule taşır",async()=>{
+    mocks.ecommerceReturnFindFirst.mockResolvedValue({
+      id:"customer-er-1",status:"REQUESTED",
+      originalOrder:{id:10,orderNumber:"SIP-10",orderType:"ECOMMERCE"},
+    });
+    mocks.ecommerceReturnUpdate.mockResolvedValue({id:"customer-er-1",status:"PRE_RECEIVED"});
+    const result=await createEcommerceReturnPreReceipt({success:false,message:""},form());
+    expect(result.success).toBe(true);
+    expect(mocks.ecommerceReturnUpdate).toHaveBeenCalledWith({where:{id:"customer-er-1"},data:{status:"PRE_RECEIVED"}});
+    expect(mocks.returnOrderFindFirst).not.toHaveBeenCalled();
+    expect(mocks.ecommerceReturnCreate).not.toHaveBeenCalled();
+    expect(mocks.preCreate).toHaveBeenCalledWith({data:expect.objectContaining({
+      originalOrderId:10,ecommerceReturnId:"customer-er-1",matchStatus:"MATCHED",outcome:"RETURN_ENTRY_PENDING",
+    })});
   });
   it("önceki iadeleri düşerek yeni dosyayı kalan sevk miktarıyla sınırlar",async()=>{
     const result=await createEcommerceReturnPreReceipt({success:false,message:""},form());

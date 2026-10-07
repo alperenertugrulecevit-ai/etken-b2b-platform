@@ -3,7 +3,7 @@ import Link from "next/link";
 import Header from "@/components/layout/Header";
 import ProductImage from "@/components/products/ProductImage";
 import RepeatOrderButton from "@/components/account/RepeatOrderButton";
-import { cancelCustomerOrder, requestCustomerEcommerceReturn } from "./actions";
+import { cancelCustomerEcommerceReturn, cancelCustomerOrder, requestCustomerEcommerceReturn } from "./actions";
 import {
   notFound,
   redirect,
@@ -36,6 +36,21 @@ const STATUS_LABELS:
     DELIVERED: "Teslim Edildi",
     CANCELLED: "İptal Edildi",
   };
+
+const CANCELLATION_STATUS_LABELS: Record<string,string> = {
+  REQUESTED:"İptal Talebi Alındı",
+  APPROVED:"İptal Onaylandı",
+  REJECTED:"İptal Reddedildi",
+  COMPLETED:"İptal Tamamlandı",
+  CANCELLED:"İptal Talebi Kapatıldı",
+};
+const CANCELLATION_REFUND_STATUS_LABELS: Record<string,string> = {
+  NOT_REQUIRED:"Para İadesi Gerekmiyor",
+  WAITING:"Para İadesi Bekleniyor",
+  REQUESTED:"Para İadesi Talebi Oluşturuldu",
+  REFUNDED:"Para İadesi Yapıldı",
+  REJECTED:"Para İadesi Reddedildi",
+};
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   PENDING: "Ödeme Bekleniyor",
@@ -111,6 +126,20 @@ export default async function CustomerOrderDetailPage({
       },
       include: {
         shippingAddress: true,
+        shippingHandlingUnitOrders: {
+          include: {
+            shippingHandlingUnit: {
+              include: {
+                dispatchDocument: true,
+                shipmentHandlingUnit: {
+                  include: {
+                    shipment: { include: { carrier: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
         items: {
           orderBy: { id: "asc" },
           include: { product: { select: { imageUrl: true, isActive: true, price: true, vat: true, stock: true, reservedStock: true, code: true, name: true } } },
@@ -151,6 +180,16 @@ export default async function CustomerOrderDetailPage({
     return [{productId:item.productId,code:item.product.code,name:item.product.name,unitPrice:item.product.price,vatRate:item.product.vat,availableStock,qty:Math.min(Math.max(1,item.quantity-item.cancelledQuantity),availableStock)}];
   });
   const unavailableRepeatItemCount=order.items.length-repeatOrderItems.length;
+
+  const shipmentDetails=Array.from(new Map(order.shippingHandlingUnitOrders.map(({shippingHandlingUnit})=>{
+    const shipment=shippingHandlingUnit.shipmentHandlingUnit?.shipment;
+    const shipmentNumber=shipment?.shipmentNumber??null;
+    const dispatchNumber=shippingHandlingUnit.dispatchDocument?.dispatchNumber??null;
+    const shippedAt=shipment?.shippedAt??shippingHandlingUnit.shippedAt??null;
+    if(!shipmentNumber&&!dispatchNumber&&!shippedAt)return null;
+    const key=shipmentNumber??dispatchNumber??shippedAt?.toISOString()??"";
+    return [key,{shipmentNumber,dispatchNumber,carrierName:shipment?.carrier?.name??null,shippedAt}] as const;
+  }).filter((item):item is NonNullable<typeof item>=>item!==null)).values());
 
   const refundAmount = order.accountEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const hasRefund = refundAmount > 0;
@@ -236,7 +275,9 @@ export default async function CustomerOrderDetailPage({
               ? "Cari Hesap"
               : order.paymentMethod === B2BPaymentMethod.CREDIT_CARD
                 ? "Kredi Kartı"
-                : "Havale / EFT"}
+                : order.paymentMethod === B2BPaymentMethod.BANK_TRANSFER
+                  ? "Havale / EFT"
+                  : "Belirtilmedi"}
           </p>
           {order.paymentStatus ? (
             <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -303,6 +344,20 @@ export default async function CustomerOrderDetailPage({
           ) : null}
         </section>
       ) : null}
+
+      {shipmentDetails.length>0 ? (
+        <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-black">Sevkiyat Bilgileri</h2>
+          <div className="mt-3 space-y-3">{shipmentDetails.map((shipment,index)=><article key={shipment.shipmentNumber??shipment.dispatchNumber??index} className="rounded-xl bg-slate-50 p-4">
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              {shipment.carrierName?<div><p className="text-xs font-bold uppercase text-slate-500">Taşıyıcı</p><p className="mt-1 font-bold">{shipment.carrierName}</p></div>:null}
+              {shipment.shipmentNumber?<div><p className="text-xs font-bold uppercase text-slate-500">Sevkiyat No</p><p className="mt-1 font-bold">{shipment.shipmentNumber}</p></div>:null}
+              {shipment.dispatchNumber?<div><p className="text-xs font-bold uppercase text-slate-500">İrsaliye / Sevk Belgesi</p><p className="mt-1 font-bold">{shipment.dispatchNumber}</p></div>:null}
+              {shipment.shippedAt?<div><p className="text-xs font-bold uppercase text-slate-500">Sevk Tarihi</p><p className="mt-1 font-bold">{shipment.shippedAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</p></div>:null}
+            </div>
+          </article>)}</div>
+        </section>
+      ):null}
 
       {order.paymentMethod ===
       B2BPaymentMethod.BANK_TRANSFER ? (
@@ -395,9 +450,9 @@ export default async function CustomerOrderDetailPage({
       {order.cancellationStatus ? (
         <section className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
           <h2 className="text-lg font-black text-red-900">İptal / İade Durumu</h2>
-          <p className="mt-2 text-sm font-semibold text-red-800">{order.cancellationStatus}</p>
+          <p className="mt-2 text-sm font-semibold text-red-800">{CANCELLATION_STATUS_LABELS[order.cancellationStatus]??order.cancellationStatus}</p>
           {order.cancellationReason ? <p className="mt-1 text-sm text-red-700">{order.cancellationReason}</p> : null}
-          {order.cancellationRefundStatus ? <p className="mt-2 text-sm text-red-800">Para iadesi: {order.cancellationRefundStatus}</p> : null}
+          {order.cancellationRefundStatus ? <p className="mt-2 text-sm text-red-800">Para iadesi: {CANCELLATION_REFUND_STATUS_LABELS[order.cancellationRefundStatus]??order.cancellationRefundStatus}</p> : null}
         </section>
       ) : null}
 
@@ -416,6 +471,7 @@ export default async function CustomerOrderDetailPage({
                   <div><p className="font-black">{ret.returnNumber}</p><p className="mt-1 text-sm text-violet-800">{statusLabel[ret.status]??ret.status}</p></div>
                   <p className="text-xs font-bold text-slate-500">{ret.createdAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</p>
                 </div>
+                {ret.externalReturnCode?<div className="mt-3 rounded-lg bg-violet-100 p-3"><p className="text-xs font-bold uppercase text-violet-700">İade Kodu</p><p className="mt-1 break-all font-mono font-black text-violet-950">{ret.externalReturnCode}</p><p className="mt-1 text-xs text-violet-700">İade gönderinizde bu kodu kullanın ve saklayın.</p></div>:null}
                 {ret.note?<p className="mt-2 text-sm text-slate-600">Talep nedeni: {ret.note}</p>:null}
                 <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
                   <div><span className="text-slate-500">Ürün kabulü</span><p className="font-bold">{received} / {expected} adet</p></div>
@@ -423,19 +479,36 @@ export default async function CustomerOrderDetailPage({
                   <div><span className="text-slate-500">İade edilen</span><p className="font-bold">{formatCurrency(refunded)} ₺</p></div>
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-slate-600">{ret.items.map(item=><p key={item.id}>{item.productCode} · {item.productName} · Beklenen {item.expectedQuantity} / Gelen {item.receivedQuantity}</p>)}</div>
+                {ret.status==="REQUESTED"?<form action={cancelCustomerEcommerceReturn.bind(null,order.id,ret.id)} className="mt-3"><button className="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-black text-red-700">İade Talebini İptal Et</button></form>:null}
               </article>;
             })}
           </div>
         </section>
       ) : null}
 
-      {order.orderType===OrderType.ECOMMERCE && (order.status===OrderStatus.SHIPPED || order.status===OrderStatus.DELIVERED) && !order.ecommerceReturns.some(r=>!["COMPLETED","REJECTED","CANCELLED"].includes(r.status)) ? (
+      {order.orderType===OrderType.ECOMMERCE && (order.status===OrderStatus.SHIPPED || order.status===OrderStatus.DELIVERED) && order.items.some(item=>{
+        const previous=order.ecommerceReturns.filter(r=>!["CANCELLED","REJECTED"].includes(r.status)).flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
+        return item.shippedQuantity>previous;
+      }) ? (
         <section className="mt-4 rounded-xl border border-violet-200 bg-white p-4 shadow-sm">
           <h2 className="font-black">Ürün İade Talebi</h2>
           <p className="mt-1 text-sm text-slate-600">İade talebiniz depo ön kabulü, kalite kontrolü ve finans değerlendirmesiyle mevcut iade sürecine alınır. Talep oluşturmak tek başına stok veya para iadesi hareketi oluşturmaz.</p>
-          <form action={requestCustomerEcommerceReturn.bind(null,order.id)} className="mt-3 flex flex-col gap-3 sm:flex-row">
-            <input name="reason" required minLength={5} maxLength={500} placeholder="İade nedeninizi yazın" className="min-w-0 flex-1 rounded-xl border p-3"/>
-            <button className="rounded-xl bg-violet-700 px-5 py-3 font-black text-white">İade Talebi Oluştur</button>
+          <form action={requestCustomerEcommerceReturn.bind(null,order.id)} className="mt-4 space-y-4">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50"><tr><th className="px-4 py-3">Ürün</th><th className="px-4 py-3">İadeye Açık</th><th className="px-4 py-3">İade Adedi</th></tr></thead>
+                <tbody>{order.items.map(item=>{
+                  const previous=order.ecommerceReturns.filter(r=>!["CANCELLED","REJECTED"].includes(r.status)).flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
+                  const maxReturn=Math.max(0,item.shippedQuantity-previous);
+                  if(maxReturn<=0)return null;
+                  return <tr key={item.id} className="border-t border-slate-100"><td className="px-4 py-3"><strong>{item.productName}</strong><p className="text-xs text-slate-500">{item.productCode}</p></td><td className="px-4 py-3 font-bold">{maxReturn} adet</td><td className="px-4 py-3"><input type="number" name={`returnQty_${item.id}`} min={0} max={maxReturn} defaultValue={0} className="w-24 rounded-lg border p-2 text-center font-bold"/></td></tr>;
+                })}</tbody>
+              </table>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input name="reason" required minLength={5} maxLength={500} placeholder="İade nedeninizi yazın" className="min-w-0 flex-1 rounded-xl border p-3"/>
+              <button className="rounded-xl bg-violet-700 px-5 py-3 font-black text-white">İade Talebi Oluştur</button>
+            </div>
           </form>
         </section>
       ) : null}
