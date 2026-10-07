@@ -196,6 +196,7 @@ export default function Header() {
 
   return (
     <>
+      <div className="fixed inset-x-0 top-0 z-50 bg-white shadow-sm">
       <div className="hidden border-b border-blue-900 bg-[#0B3B88] text-white lg:block">
         <div className="mx-auto flex min-h-8 max-w-[1600px] items-center justify-between px-4 text-[10px] font-black sm:px-6">
           <div className="flex items-center gap-8">
@@ -206,7 +207,6 @@ export default function Header() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="bg-[#071729] text-white">
         <div className="mx-auto flex min-h-9 max-w-[1600px] items-center justify-between gap-4 px-4 text-[11px] font-semibold sm:px-6">
           <div className="flex items-center gap-7">
@@ -421,9 +421,11 @@ export default function Header() {
       </header>
       </div>
 
+      <div className="h-[154px] lg:h-[202px]" aria-hidden="true" />
+
       <div
         className={
-          "fixed inset-0 z-50 lg:hidden " +
+          "fixed inset-0 z-[60] lg:hidden " +
           (isMenuOpen
             ? "pointer-events-auto"
             : "pointer-events-none")
