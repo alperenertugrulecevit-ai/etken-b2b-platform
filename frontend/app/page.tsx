@@ -90,7 +90,7 @@ export default async function Home() {
     officeRaw,
     cleaningRaw,
     foodRaw,
-    productCount,
+    _productCount,
   ] =
     await Promise.all([
       prisma.product.findMany({
