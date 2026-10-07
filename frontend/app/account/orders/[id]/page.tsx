@@ -487,7 +487,7 @@ export default async function CustomerOrderDetailPage({
       ) : null}
 
       {order.orderType===OrderType.ECOMMERCE && (order.status===OrderStatus.SHIPPED || order.status===OrderStatus.DELIVERED) && order.items.some(item=>{
-        const previous=order.ecommerceReturns.filter(r=>r.status!=="CANCELLED").flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
+        const previous=order.ecommerceReturns.filter(r=>!["CANCELLED","REJECTED"].includes(r.status)).flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
         return item.shippedQuantity>previous;
       }) ? (
         <section className="mt-4 rounded-xl border border-violet-200 bg-white p-4 shadow-sm">
@@ -498,7 +498,7 @@ export default async function CustomerOrderDetailPage({
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-slate-50"><tr><th className="px-4 py-3">Ürün</th><th className="px-4 py-3">İadeye Açık</th><th className="px-4 py-3">İade Adedi</th></tr></thead>
                 <tbody>{order.items.map(item=>{
-                  const previous=order.ecommerceReturns.filter(r=>r.status!=="CANCELLED").flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
+                  const previous=order.ecommerceReturns.filter(r=>!["CANCELLED","REJECTED"].includes(r.status)).flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
                   const maxReturn=Math.max(0,item.shippedQuantity-previous);
                   if(maxReturn<=0)return null;
                   return <tr key={item.id} className="border-t border-slate-100"><td className="px-4 py-3"><strong>{item.productName}</strong><p className="text-xs text-slate-500">{item.productCode}</p></td><td className="px-4 py-3 font-bold">{maxReturn} adet</td><td className="px-4 py-3"><input type="number" name={`returnQty_${item.id}`} min={0} max={maxReturn} defaultValue={0} className="w-24 rounded-lg border p-2 text-center font-bold"/></td></tr>;
