@@ -27,7 +27,7 @@ export default async function CheckoutSuccessPage({
   const bankAccounts = showBankTransferDetails ? await prisma.b2BBankAccount.findMany({
     where: { tenantId:B2B_CONSTANTS.TENANT_ID, companyId:B2B_CONSTANTS.COMPANY_ID, isActive:true },
     orderBy:[{sortOrder:"asc"},{id:"asc"}],
-    select:{id:true,bankName:true,branchName:true,accountHolder:true,iban:true,currency:true},
+    select:{id:true,bankName:true,branchName:true,accountHolder:true,iban:true,currency:true,paymentNoteTemplate:true},
   }) : [];
 
   return (
@@ -66,7 +66,7 @@ export default async function CheckoutSuccessPage({
           {bankAccounts.length > 0 ? (
             <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left">
               <h2 className="font-black text-amber-950">Havale / EFT Bilgileri</h2>
-              <p className="mt-1 text-xs text-amber-900">Ödeme açıklamasına sipariş numaranızı yazın: <strong>{orderNumber}</strong></p>
+              <p className="mt-1 text-xs text-amber-900">{bankAccounts[0]?.paymentNoteTemplate?.replace("{ORDER_NUMBER}", orderNumber) ?? <>Ödeme açıklamasına sipariş numaranızı yazın: <strong>{orderNumber}</strong></>}</p>
               <div className="mt-3 space-y-3">{bankAccounts.map(account=><div key={account.id} className="rounded-lg bg-white p-3">
                 <p className="font-black">{account.bankName}{account.branchName ? " · "+account.branchName : ""}</p>
                 <p className="mt-2 text-xs text-slate-500">Hesap Sahibi</p><p className="text-sm font-bold">{account.accountHolder}</p>
