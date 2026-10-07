@@ -494,7 +494,7 @@ model Order {
   stockReturnEvents          StockReturnEvent[]
   ecommerceReturns           EcommerceReturn[]
   ecommerceReturnPreReceipts EcommerceReturnPreReceipt[]
-  bankTransactions BankTransaction[]
+  bankTransactions BankTransaction[] @relation("BankTransactionMatchedOrder")
 
   @@index([customerId])
   @@index([shippingAddressId])
