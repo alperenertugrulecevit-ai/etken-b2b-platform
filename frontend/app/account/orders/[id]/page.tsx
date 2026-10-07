@@ -3,7 +3,7 @@ import Link from "next/link";
 import Header from "@/components/layout/Header";
 import ProductImage from "@/components/products/ProductImage";
 import RepeatOrderButton from "@/components/account/RepeatOrderButton";
-import { cancelCustomerOrder, requestCustomerEcommerceReturn } from "./actions";
+import { cancelCustomerEcommerceReturn, cancelCustomerOrder, requestCustomerEcommerceReturn } from "./actions";
 import {
   notFound,
   redirect,
@@ -479,13 +479,17 @@ export default async function CustomerOrderDetailPage({
                   <div><span className="text-slate-500">İade edilen</span><p className="font-bold">{formatCurrency(refunded)} ₺</p></div>
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-slate-600">{ret.items.map(item=><p key={item.id}>{item.productCode} · {item.productName} · Beklenen {item.expectedQuantity} / Gelen {item.receivedQuantity}</p>)}</div>
+                {ret.status==="REQUESTED"?<form action={cancelCustomerEcommerceReturn.bind(null,order.id,ret.id)} className="mt-3"><button className="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-black text-red-700">İade Talebini İptal Et</button></form>:null}
               </article>;
             })}
           </div>
         </section>
       ) : null}
 
-      {order.orderType===OrderType.ECOMMERCE && (order.status===OrderStatus.SHIPPED || order.status===OrderStatus.DELIVERED) && !order.ecommerceReturns.some(r=>!["COMPLETED","REJECTED","CANCELLED"].includes(r.status)) ? (
+      {order.orderType===OrderType.ECOMMERCE && (order.status===OrderStatus.SHIPPED || order.status===OrderStatus.DELIVERED) && order.items.some(item=>{
+        const previous=order.ecommerceReturns.filter(r=>r.status!=="CANCELLED").flatMap(r=>r.items).filter(r=>r.orderItemId===item.id).reduce((sum,r)=>sum+r.expectedQuantity,0);
+        return item.shippedQuantity>previous;
+      }) ? (
         <section className="mt-4 rounded-xl border border-violet-200 bg-white p-4 shadow-sm">
           <h2 className="font-black">Ürün İade Talebi</h2>
           <p className="mt-1 text-sm text-slate-600">İade talebiniz depo ön kabulü, kalite kontrolü ve finans değerlendirmesiyle mevcut iade sürecine alınır. Talep oluşturmak tek başına stok veya para iadesi hareketi oluşturmaz.</p>
