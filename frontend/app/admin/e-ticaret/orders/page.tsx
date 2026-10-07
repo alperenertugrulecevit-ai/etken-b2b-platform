@@ -50,7 +50,7 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
     orderBy:{createdAt:"desc"},
     take:250,
     select:{
-      id:true,orderNumber:true,createdAt:true,status:true,totalAmount:true,paymentStatus:true,paymentReference:true,
+      id:true,orderNumber:true,createdAt:true,status:true,totalAmount:true,paymentStatus:true,paymentReference:true,paymentMethod:true,
       ecommerceEmail:true,customer:{select:{companyName:true}},
       accountEntries:{
         where:{direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND},
@@ -93,8 +93,10 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
           <th className="p-4">Tutar</th><th className="p-4">Ödeme</th><th className="p-4">Operasyon</th><th className="p-4">Aksiyon</th>
         </tr></thead>
         <tbody>{orders.map(o=>{
-          const paid=o.paymentStatus?.toUpperCase()==="PAID";
-          const refunded=o.paymentStatus?.toUpperCase()==="REFUNDED";
+          const paymentStatus=o.paymentStatus?.toUpperCase()??"";
+          const paid=paymentStatus==="PAID";
+          const refundPending=paymentStatus==="REFUND_PENDING";
+          const refunded=paymentStatus==="REFUNDED";
           const refundAmount=o.accountEntries.reduce((sum,entry)=>sum+entry.amount,0);
           const hasPartialRefund=refundAmount>0&&!refunded;
           const netCollected=Math.max(0,o.totalAmount-refundAmount);
@@ -116,7 +118,7 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
             <td className="p-4 font-bold">{STATUS[o.status]??o.status}</td>
             <td className="p-4">
               <div className="min-w-[260px] space-y-2">
-                {canManage&&!paid&&!refunded&&o.status!==OrderStatus.CANCELLED?<form action={confirmEcommerceBankTransferPayment.bind(null,o.id)} className="flex gap-2">
+                {canManage&&o.paymentMethod==="BANK_TRANSFER"&&!paid&&!refunded&&o.status!==OrderStatus.CANCELLED?<form action={confirmEcommerceBankTransferPayment.bind(null,o.id)} className="flex gap-2">
                   <input name="paymentReference" required maxLength={120} placeholder="Dekont / banka ref." className="min-w-0 flex-1 rounded-lg border px-3 py-2"/>
                   <button className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white">Ödeme Onayla</button>
                 </form>:null}
@@ -124,7 +126,7 @@ export default async function EcommerceOrdersPage({searchParams}:{searchParams:P
                   <input type="hidden" name="status" value="APPROVED"/><input type="hidden" name="statusNote" value="Ödeme onaylandı; sipariş WMS operasyonuna aktarıldı."/>
                   <button className="w-full rounded-lg bg-blue-900 px-3 py-2 font-bold text-white">Siparişi Onayla ve WMS'e Aktar</button>
                 </form>:null}
-                {canManage&&o.status===OrderStatus.CANCELLED&&paid?<form action={refundCancelledEcommerceOrder.bind(null,o.id)} className="flex gap-2">
+                {canManage&&o.status===OrderStatus.CANCELLED&&(paid||refundPending)?<form action={refundCancelledEcommerceOrder.bind(null,o.id)} className="flex gap-2">
                   <input name="refundReference" required maxLength={120} placeholder="İade banka ref." className="min-w-0 flex-1 rounded-lg border px-3 py-2"/>
                   <button className="rounded-lg bg-violet-700 px-3 py-2 font-bold text-white">İadeyi Kaydet</button>
                 </form>:null}
