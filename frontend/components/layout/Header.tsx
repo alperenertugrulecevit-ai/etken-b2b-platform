@@ -235,7 +235,7 @@ export default function Header() {
         </div>
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] items-center gap-6 px-3 py-2 sm:px-4 lg:px-5">
           <button
             type="button"

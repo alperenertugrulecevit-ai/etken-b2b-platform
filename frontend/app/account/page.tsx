@@ -34,23 +34,23 @@ export default async function AccountPage(){
   {title:"Adreslerim",desc:"Fatura ve teslimat adreslerinizi yönetin.",href:"/account/addresses",type:"address",tone:"text-cyan-600 bg-cyan-50"},
   {title:"Şifrem",desc:"Hesap güvenliğiniz için şifrenizi değiştirin.",href:"/change-password?returnTo=%2Faccount",type:"password",tone:"text-slate-600 bg-slate-100"},
  ];
- return <><Header/><main className="mx-auto min-h-[calc(100vh-150px)] max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
-  <section className="relative min-h-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+ return <><Header/><main className="mx-auto min-h-[calc(100vh-150px)] max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+  <section className="relative min-h-[205px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
    <img src="/account-hero-approved.jpg" alt="" className="absolute inset-y-0 right-0 hidden h-full w-[62%] object-cover object-right md:block" />
    <div className="absolute inset-0 hidden bg-gradient-to-r from-white via-white via-40% to-transparent md:block" />
-   <div className="relative z-10 max-w-[650px] p-7 sm:p-10">
+   <div className="relative z-10 max-w-[650px] p-6 sm:p-7">
     <p className="text-sm font-black uppercase tracking-wide text-[#ef4b23]">{isIndividual?"Bireysel Hesabım":"Kurumsal Hesabım"}</p>
-    <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-5xl">{customer.companyName}</h1>
-    <p className="mt-3 max-w-lg text-lg leading-7 text-slate-600">{isIndividual?"Siparişlerinizi, fatura ve teslimat adreslerinizi tek yerden yönetin.":"Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz."}</p>
+    <h1 className="mt-2 text-3xl font-black text-[#071b3b] sm:text-4xl">{customer.companyName}</h1>
+    <p className="mt-2 max-w-lg text-sm leading-6 text-slate-600">{isIndividual?"Siparişlerinizi, fatura ve teslimat adreslerinizi tek yerden yönetin.":"Ofis, temizlik ve endüstriyel ürünler için güvenilir tedarik çözümünüz."}</p>
    </div>
   </section>
-  <div className="mt-6"><h2 className="text-3xl font-black text-[#071b3b]">Hesap Menüsü</h2><p className="mt-1 text-base text-slate-500">Yapmak istediğiniz işlemi seçin.</p></div>
-  <section className={`mt-5 grid gap-4 sm:grid-cols-2 ${menu.length>=6?"xl:grid-cols-6":menu.length>=5?"xl:grid-cols-5":"xl:grid-cols-4"}`}>
-   {menu.map(item=><Link key={item.href} href={item.href} className="group flex min-h-[250px] flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-    <div className={`flex h-20 w-20 items-center justify-center rounded-2xl ${item.tone}`}><MenuIcon type={item.type}/></div>
-    <h3 className="mt-6 text-2xl font-black text-[#071b3b]">{item.title}</h3>
-    <p className="mt-2 text-base leading-6 text-slate-500">{item.desc}</p>
-    <span className={`mt-auto flex h-11 w-14 items-center justify-center rounded-full text-2xl font-bold ${item.tone}`}>→</span>
+  <div className="mt-4"><h2 className="text-2xl font-black text-[#071b3b]">Hesap Menüsü</h2><p className="mt-1 text-sm text-slate-500">Yapmak istediğiniz işlemi seçin.</p></div>
+  <section className={`mt-3 grid gap-3 sm:grid-cols-2 ${menu.length>=6?"xl:grid-cols-6":menu.length>=5?"xl:grid-cols-5":"xl:grid-cols-4"}`}>
+   {menu.map(item=><Link key={item.href} href={item.href} className="group flex min-h-[170px] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.tone}`}><MenuIcon type={item.type}/></div>
+    <h3 className="mt-3 text-base font-black text-[#071b3b]">{item.title}</h3>
+    <p className="mt-1 text-xs leading-5 text-slate-500">{item.desc}</p>
+    <span className={`mt-3 flex h-8 w-10 items-center justify-center rounded-full text-lg font-bold ${item.tone}`}>→</span>
    </Link>)}
   </section>
  </main></>
