@@ -484,23 +484,24 @@ export class ShipmentPlanningService {
     const trackingNumber=input.trackingNumber.trim().slice(0,120);
     if(!trackingNumber) throw new Error("Kargo takip numarası zorunludur.");
     const rawUrl=clean(input.trackingUrl);
-    let trackingUrl:string|null=null;
-    if(rawUrl){
-      try {
-        const parsed=new URL(rawUrl);
-        if(parsed.protocol!=="https:" && parsed.protocol!=="http:") throw new Error();
-        trackingUrl=parsed.toString().slice(0,500);
-      } catch {
-        throw new Error("Kargo takip bağlantısı geçerli bir http/https adresi olmalıdır.");
-      }
-    }
     return prisma.$transaction(async tx=>{
       const order=await tx.order.findFirst({
         where:{id:input.orderId,source:OrderSource.ECOMMERCE},
-        select:{id:true,orderNumber:true,status:true},
+        select:{id:true,orderNumber:true,status:true,carrier:{select:{trackingUrlTemplate:true}}},
       });
       if(!order) throw new Error("E-ticaret siparişi bulunamadı.");
       if(order.status===OrderStatus.CANCELLED) throw new Error("İptal edilmiş siparişe kargo takip bilgisi girilemez.");
+      const generatedUrl = rawUrl || order.carrier?.trackingUrlTemplate?.replaceAll("{TRACKING_NUMBER}", encodeURIComponent(trackingNumber)) || null;
+      let trackingUrl:string|null=null;
+      if(generatedUrl){
+        try {
+          const parsed=new URL(generatedUrl);
+          if(parsed.protocol!=="https:" && parsed.protocol!=="http:") throw new Error();
+          trackingUrl=parsed.toString().slice(0,500);
+        } catch {
+          throw new Error("Kargo takip bağlantısı geçerli bir http/https adresi olmalıdır.");
+        }
+      }
       const now=new Date();
       await tx.order.update({
         where:{id:order.id},
