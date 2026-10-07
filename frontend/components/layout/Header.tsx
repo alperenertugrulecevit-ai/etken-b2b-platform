@@ -9,6 +9,7 @@ import {
 import {
   useCart,
 } from "@/context/CartContext";
+import ProductSearchBox from "@/components/products/ProductSearchBox";
 
 type CategoryIconType =
   | "office"
@@ -87,6 +88,11 @@ export default function Header() {
     customerAccountName,
     setCustomerAccountName,
   ] = useState<string | null>(null);
+
+  const totalAmount = cart.reduce(
+    (total, item) => total + item.unitPrice * item.qty * (1 + item.vatRate / 100),
+    0,
+  );
 
   const totalQty =
     cart.reduce(
@@ -183,6 +189,16 @@ export default function Header() {
 
   return (
     <>
+      <div className="hidden border-b border-blue-900 bg-[#0B3B88] text-white lg:block">
+        <div className="mx-auto flex min-h-8 max-w-[1600px] items-center justify-between px-4 text-[10px] font-black sm:px-6">
+          <div className="flex items-center gap-8">
+            <Link href="/products" className="transition hover:text-orange-200">Tüm Kampanyalar</Link>
+            <Link href="/products" className="transition hover:text-orange-200">Fırsat Ürünleri</Link>
+          </div>
+          <Link href="/register" className="transition hover:text-orange-200">Kurumsal avantajlardan yararlanın →</Link>
+        </div>
+      </div>
+
       <div className="bg-[#071729] text-white">
         <div className="mx-auto flex min-h-9 max-w-[1600px] items-center justify-between gap-4 px-4 text-[11px] font-semibold sm:px-6">
           <div className="flex items-center gap-7">
@@ -268,21 +284,7 @@ export default function Header() {
             action="/products"
             className="hidden min-w-0 flex-1 lg:flex"
           >
-            <div className="flex w-full overflow-hidden rounded-xl border border-[#EF4B23] bg-white shadow-sm">
-              <input
-                type="search"
-                name="q"
-                placeholder="Ürün, marka, barkod veya ürün kodu ara..."
-                className="min-w-0 flex-1 px-5 py-3 text-[13px] text-slate-700 outline-none placeholder:text-slate-400"
-              />
-
-              <button
-                type="submit"
-                className="min-w-28 bg-[#EF4B23] px-6 text-xs font-black text-white transition hover:bg-[#D83D18]"
-              >
-                ARA
-              </button>
-            </div>
+            <ProductSearchBox />
           </form>
 
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
@@ -329,7 +331,7 @@ export default function Header() {
                 </small>
 
                 <strong className="block text-[12px]">
-                  {totalQty} ürün
+                  {totalQty} ürün · {totalAmount.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                 </strong>
               </span>
 
@@ -351,21 +353,7 @@ export default function Header() {
             action="/products"
             className="mx-auto flex max-w-[1600px] px-4 py-2 sm:px-6"
           >
-            <div className="flex w-full overflow-hidden rounded-xl border border-slate-300 bg-slate-50">
-              <input
-                type="search"
-                name="q"
-                placeholder="Ürün veya marka ara..."
-                className="min-w-0 flex-1 bg-transparent px-4 py-2 text-xs outline-none"
-              />
-
-              <button
-                type="submit"
-                className="bg-[#EF4B23] px-4 text-xs font-black text-white"
-              >
-                ARA
-              </button>
-            </div>
+            <ProductSearchBox mobile />
           </form>
         </div>
 

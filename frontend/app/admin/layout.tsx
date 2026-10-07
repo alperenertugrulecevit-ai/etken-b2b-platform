@@ -70,7 +70,7 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-slate-100 lg:flex">
       <AdminSidebar />
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 lg:ml-0">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
           {/* MOBİL / TABLET KOMPAKT ÜST ALAN */}
           <div className="lg:hidden">
