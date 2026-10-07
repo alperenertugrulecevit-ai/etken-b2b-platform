@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import Header from "@/components/layout/Header";
+import ProductImage from "@/components/products/ProductImage";
 import {
   useCart,
 } from "@/context/CartContext";
@@ -141,7 +142,16 @@ export default function CartPage() {
                         className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                       >
                         <div className="flex flex-wrap justify-between gap-5">
-                          <div>
+                          <div className="flex min-w-0 flex-1 gap-4">
+                            <Link href={`/products/${item.code}`} className="shrink-0">
+                              <ProductImage
+                                imageUrl={item.imageUrl ?? null}
+                                productName={item.name}
+                                className="h-24 w-24 rounded-xl border border-slate-200 p-2 sm:h-28 sm:w-28"
+                                fallbackClassName="h-24 w-24 rounded-xl border border-slate-200 text-3xl sm:h-28 sm:w-28"
+                              />
+                            </Link>
+                            <div className="min-w-0">
                             <Link
                               href={`/products/${item.code}`}
                               className="text-base font-black text-slate-900 hover:text-[#EF4B23]"
@@ -172,6 +182,7 @@ export default function CartPage() {
                             <p className="mt-1 text-xs text-slate-500">
                               KDV hariç {formatCurrency(item.unitPrice)} ₺ · KDV %{item.vatRate}
                             </p>
+                            </div>
                           </div>
 
                           <div className="text-right">
