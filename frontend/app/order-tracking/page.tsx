@@ -159,7 +159,7 @@ export default async function OrderTrackingPage({
     ? await prisma.b2BBankAccount.findMany({
         where: { tenantId: B2B_CONSTANTS.TENANT_ID, companyId: B2B_CONSTANTS.COMPANY_ID, isActive: true },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        select: { id:true, bankName:true, branchName:true, accountHolder:true, iban:true, currency:true },
+        select: { id:true, bankName:true, branchName:true, accountHolder:true, iban:true, currency:true, paymentNoteTemplate:true },
       })
     : [];
 
@@ -283,7 +283,7 @@ export default async function OrderTrackingPage({
               {bankAccounts.length > 0 ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
                   <h2 className="text-lg font-black text-amber-950">Havale / EFT Bilgileri</h2>
-                  <p className="mt-2 text-sm text-amber-900">Ödeme açıklamasına sipariş numaranızı yazın: <strong>{order.orderNumber}</strong></p>
+                  <p className="mt-2 text-sm text-amber-900">{bankAccounts[0]?.paymentNoteTemplate?.replace("{ORDER_NUMBER}", order.orderNumber) ?? <>Ödeme açıklamasına sipariş numaranızı yazın: <strong>{order.orderNumber}</strong></>}</p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {bankAccounts.map((account) => <div key={account.id} className="rounded-xl bg-white p-4">
                       <p className="font-black">{account.bankName}</p>
