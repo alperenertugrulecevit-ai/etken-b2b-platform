@@ -3,7 +3,12 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const statements = [
-  // Runtime-safe compatibility bootstrap for migrations that production may not have applied yet.\n  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceAddress" TEXT`,\n  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceCity" TEXT`,\n  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceDistrict" TEXT`,\n  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoicePostalCode" TEXT`,\n  `DO $$ BEGIN CREATE TYPE "AccountingDocumentType" AS ENUM ('MEAL','FUEL','ENERGY','TELECOMMUNICATION','CONSUMABLE','WATER','OTHER_INCOME','OTHER_EXPENSE','PAYMENT_RECEIPT','INCOME_RECEIPT'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+  // Runtime-safe compatibility bootstrap for migrations that production may not have applied yet.
+  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceAddress" TEXT`,
+  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceCity" TEXT`,
+  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceDistrict" TEXT`,
+  `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoicePostalCode" TEXT`,
+  `DO $$ BEGIN CREATE TYPE "AccountingDocumentType" AS ENUM ('MEAL','FUEL','ENERGY','TELECOMMUNICATION','CONSUMABLE','WATER','OTHER_INCOME','OTHER_EXPENSE','PAYMENT_RECEIPT','INCOME_RECEIPT'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingMovementType" AS ENUM ('EXPENSE','INCOME','PAYMENT_OUT','PAYMENT_IN'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingPaymentType" AS ENUM ('CASH','DEFERRED','BANK_TRANSFER','CREDIT_CARD','OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingPartyType" AS ENUM ('CUSTOMER','SUPPLIER','OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
