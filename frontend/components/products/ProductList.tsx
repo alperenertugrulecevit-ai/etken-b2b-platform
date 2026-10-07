@@ -343,6 +343,9 @@ export default function ProductList({
       availableStock:
         product.availableStock,
 
+      imageUrl:
+        product.imageUrl,
+
       qty: 1,
     });
 
