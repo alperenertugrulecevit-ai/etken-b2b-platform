@@ -15,14 +15,14 @@ export default function CustomerLogoutButton() {
         method: "POST",
         cache: "no-store",
         credentials: "same-origin",
-        redirect: "follow",
+        redirect: "manual",
       });
 
-      if (!response.ok) {
+      if (response.status !== 303 && response.type !== "opaqueredirect") {
         throw new Error(`Logout failed with status ${response.status}`);
       }
 
-      window.location.replace("/");
+      window.location.assign("/");
     } catch (error) {
       console.error("Müşteri oturumu kapatılamadı:", error);
       setIsLoggingOut(false);

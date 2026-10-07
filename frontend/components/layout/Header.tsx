@@ -83,6 +83,11 @@ export default function Header() {
     setIsCustomerLoggedIn,
   ] = useState(false);
 
+  const [
+    customerAccountName,
+    setCustomerAccountName,
+  ] = useState<string | null>(null);
+
   const totalQty =
     cart.reduce(
       (
@@ -107,14 +112,19 @@ export default function Header() {
       )
       .then((data) => {
         if (active) {
-          setIsCustomerLoggedIn(
-            data.isCustomerLoggedIn === true,
+          const loggedIn = data.isCustomerLoggedIn === true;
+          setIsCustomerLoggedIn(loggedIn);
+          setCustomerAccountName(
+            loggedIn && typeof data.accountName === "string"
+              ? data.accountName
+              : null,
           );
         }
       })
       .catch(() => {
         if (active) {
           setIsCustomerLoggedIn(false);
+          setCustomerAccountName(null);
         }
       });
 
@@ -276,21 +286,28 @@ export default function Header() {
           </form>
 
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
-            <Link
-              href="/customer-login"
-              className="hidden min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-[#202B38] transition hover:border-violet-300 hover:bg-violet-50 md:flex"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-                <UserIcon />
-              </span>
-              GİRİŞ
-            </Link>
+            {!isCustomerLoggedIn ? (
+              <Link
+                href="/customer-login"
+                className="hidden min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-[#202B38] transition hover:border-violet-300 hover:bg-violet-50 md:flex"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                  <UserIcon />
+                </span>
+                GİRİŞ
+              </Link>
+            ) : null}
 
             <Link
               href="/account"
-              className="hidden min-h-11 items-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-[11px] font-black text-violet-700 transition hover:bg-violet-100 md:flex"
+              className="hidden min-h-11 flex-col items-start justify-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-violet-700 transition hover:bg-violet-100 md:flex"
             >
-              HESABIM
+              <span className="text-[11px] font-black">HESABIM</span>
+              {isCustomerLoggedIn && customerAccountName ? (
+                <span className="mt-0.5 max-w-40 truncate text-[9px] font-semibold text-violet-600">
+                  {customerAccountName}
+                </span>
+              ) : null}
             </Link>
 
             <Link

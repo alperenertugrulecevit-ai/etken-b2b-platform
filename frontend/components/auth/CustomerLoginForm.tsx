@@ -6,10 +6,6 @@ import {
 } from "react";
 import Link from "next/link";
 import {
-  useRouter,
-} from "next/navigation";
-
-import {
   customerLoginAction,
 } from "@/app/customer-login/actions";
 
@@ -20,7 +16,6 @@ type CustomerLoginFormProps = {
 export default function CustomerLoginForm({
   successMessage = "",
 }: CustomerLoginFormProps) {
-  const router = useRouter();
   const [
     username,
     setUsername,
@@ -68,12 +63,9 @@ export default function CustomerLoginForm({
 const destination =
   result.mustChangePassword
     ? "/change-password?returnTo=%2Faccount"
-    : "/account";
+    : "/";
 
-      router.replace(
-        destination,
-      );
-      router.refresh();
+      window.location.replace(destination);
     } catch (error) {
       console.error(
         "Müşteri girişi tamamlanamadı:",
