@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import Link from "next/link";
+
 const AUTO_CHANGE_MS = 6000;
 
 const slides = [
@@ -26,6 +28,7 @@ type HomeHeroSliderProps = {
 export default function HomeHeroSlider(_props: HomeHeroSliderProps = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [failedSlides, setFailedSlides] = useState<Record<number, boolean>>({});
 
   const nextSlide = useCallback(() => {
     setActiveIndex((current) => (current + 1) % slides.length);
@@ -51,13 +54,35 @@ export default function HomeHeroSlider(_props: HomeHeroSliderProps = {}) {
         >
           <div className="relative aspect-[1600/300] min-h-[190px] max-h-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
             {slides.map((slide, index) => (
-              <img
-                key={slide.src}
-                src={slide.src}
-                alt={slide.alt}
-                className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500 ${index === activeIndex ? "opacity-100" : "pointer-events-none opacity-0"}`}
-                draggable={false}
-              />
+              <div key={slide.src} className={`absolute inset-0 transition-opacity duration-500 ${index === activeIndex ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+                {!failedSlides[index] ? (
+                  <img
+                    src={slide.src}
+                    alt={slide.alt}
+                    className="h-full w-full object-cover object-center"
+                    draggable={false}
+                    onError={() => setFailedSlides((current) => ({ ...current, [index]: true }))}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-between overflow-hidden bg-gradient-to-r from-[#F4F8FF] via-white to-[#FFF3E8] px-8 sm:px-12 lg:px-20">
+                    <div className="max-w-2xl">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-[#EF4B23]">ETKEN OFİS</p>
+                      <h2 className="mt-3 text-2xl font-black leading-tight text-[#071729] sm:text-3xl lg:text-4xl">
+                        {index === 0 ? "Ofisiniz için tüm ihtiyaçlar tek yerde!" : "Kurumsal tedarikte güçlü çözümler"}
+                      </h2>
+                      <p className="mt-3 max-w-xl text-sm font-semibold text-slate-600 sm:text-base">
+                        Kırtasiye, temizlik, gıda, ambalaj, iş güvenliği ve teknoloji ürünleri tek noktada.
+                      </p>
+                      <Link href="/products" className="mt-5 inline-flex rounded-xl bg-[#EF4B23] px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-[#D83D18]">
+                        Alışverişe Başla →
+                      </Link>
+                    </div>
+                    <div className="hidden h-40 w-40 shrink-0 items-center justify-center rounded-full bg-white/80 text-center text-xl font-black text-[#0B3B88] shadow-lg md:flex lg:h-52 lg:w-52">
+                      İşiniz için<br />Güçlü Çözümler
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
