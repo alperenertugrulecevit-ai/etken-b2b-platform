@@ -756,13 +756,14 @@ export async function confirmEcommerceBankTransferPayment(
         visibleToCustomer: true,
       },
     });
-    return { orderNumber:order.orderNumber, ecommerceEmail:order.ecommerceEmail };
+    return { orderNumber:order.orderNumber, ecommerceEmail:order.ecommerceEmail, paymentMethod:order.paymentMethod };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   await EcommerceNotificationService.send({
     event:"PAYMENT_CONFIRMED",
     email:notification.ecommerceEmail,
     orderNumber:notification.orderNumber,
+    paymentMethod:notification.paymentMethod,
   });
 
   const detailPath = `/admin/orders/${orderId}`;
