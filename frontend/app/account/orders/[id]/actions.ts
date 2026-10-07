@@ -37,12 +37,6 @@ export async function requestCustomerEcommerceReturn(orderId:number, formData:Fo
  if(reason.length<5) throw new Error("İade nedenini en az 5 karakter olarak yazın.");
 
  await prisma.$transaction(async tx=>{
-  const active=await tx.ecommerceReturn.findFirst({
-   where:{originalOrderId:order.id,status:{notIn:[EcommerceReturnStatus.COMPLETED,EcommerceReturnStatus.REJECTED,EcommerceReturnStatus.CANCELLED]}},
-   select:{id:true},
-  });
-  if(active) throw new Error("Bu sipariş için devam eden bir iade süreci zaten var.");
-
   const prior=await tx.ecommerceReturnItem.groupBy({
    by:["orderItemId"],where:{ecommerceReturn:{originalOrderId:order.id,status:{not:EcommerceReturnStatus.CANCELLED}}},
    _sum:{expectedQuantity:true},
@@ -67,6 +61,32 @@ export async function requestCustomerEcommerceReturn(orderId:number, formData:Fo
   }});
   await tx.orderStatusHistory.create({data:{
    orderId:order.id,status:order.status,note:"İade talebiniz alındı. Kargo/depo kabul süreci bekleniyor.",
+   changedByUserId:user.id,changedByUsername:user.fullName??user.username,visibleToCustomer:true,
+  }});
+ },{maxWait:10000,timeout:30000});
+
+ revalidatePath("/account/orders");
+ revalidatePath("/account/orders/"+orderId);
+}
+
+
+export async function cancelCustomerEcommerceReturn(orderId:number,ecommerceReturnId:string){
+ const user=await SessionService.getCurrentUser();
+ if(!user||user.userType!==UserType.CUSTOMER||!user.customerId||!user.customer?.isActive) throw new Error("Oturum açmanız gerekiyor.");
+ const order=await prisma.order.findFirst({where:{id:orderId,...getCustomerOrderWhere(user)},select:{id:true,status:true}});
+ if(!order) throw new Error("Sipariş bulunamadı.");
+
+ await prisma.$transaction(async tx=>{
+  const er=await tx.ecommerceReturn.findFirst({
+   where:{id:ecommerceReturnId,originalOrderId:order.id},
+   include:{preReceipts:{select:{id:true}},items:{select:{receivedQuantity:true}}},
+  });
+  if(!er) throw new Error("İade talebi bulunamadı.");
+  if(er.status!==EcommerceReturnStatus.REQUESTED) throw new Error("Depo kabul süreci başlamış iade talebi müşteri tarafından iptal edilemez.");
+  if(er.preReceipts.length>0||er.items.some(item=>item.receivedQuantity>0)) throw new Error("Depo kabul kaydı bulunan iade talebi iptal edilemez.");
+  await tx.ecommerceReturn.update({where:{id:er.id},data:{status:EcommerceReturnStatus.CANCELLED}});
+  await tx.orderStatusHistory.create({data:{
+   orderId:order.id,status:order.status,note:`${er.returnNumber} numaralı ürün iade talebiniz iptal edildi.`,
    changedByUserId:user.id,changedByUsername:user.fullName??user.username,visibleToCustomer:true,
   }});
  },{maxWait:10000,timeout:30000});
