@@ -42,7 +42,7 @@ export async function requestCustomerEcommerceReturn(orderId:number, formData:Fo
   await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
 
   const prior=await tx.ecommerceReturnItem.groupBy({
-   by:["orderItemId"],where:{ecommerceReturn:{originalOrderId:order.id,status:{not:EcommerceReturnStatus.CANCELLED}}},
+   by:["orderItemId"],where:{ecommerceReturn:{originalOrderId:order.id,status:{notIn:[EcommerceReturnStatus.CANCELLED,EcommerceReturnStatus.REJECTED]}}},
    _sum:{expectedQuantity:true},
   });
   const priorByItem=new Map(prior.map(row=>[row.orderItemId,row._sum.expectedQuantity??0]));
