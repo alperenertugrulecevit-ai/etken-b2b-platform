@@ -9,7 +9,7 @@ const slides = [
   { src: "/home-hero/etken-hero-02.jpg", alt: "Etken Ofis - kurumsal tedarik ürünleri" },
 ] as const;
 
-export default function HomeHeroSlider() {
+type HomeHeroSliderProps = {\n  productCount?: number;\n  featuredProducts?: unknown[];\n};\n\nexport default function HomeHeroSlider(_props: HomeHeroSliderProps = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
