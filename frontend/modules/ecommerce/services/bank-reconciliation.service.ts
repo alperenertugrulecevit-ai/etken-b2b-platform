@@ -38,28 +38,29 @@ export class BankReconciliationService {
         select: { id: true },
       });
       if (!account) throw new Error("Banka hesabı bulunamadı.");
-      const existing = await prisma.bankTransaction.findUnique({
-        where: { bankAccountId_externalId: { bankAccountId: row.bankAccountId, externalId: row.externalId.trim() } },
-        select: { id: true },
-      });
-      if (existing) continue;
-      await prisma.bankTransaction.create({
-        data: {
-          tenantId: B2B_CONSTANTS.TENANT_ID,
-          companyId: B2B_CONSTANTS.COMPANY_ID,
-          bankAccountId: row.bankAccountId,
-          externalId: row.externalId.trim(),
-          transactionDate: row.transactionDate,
-          amount: row.amount,
-          currency: (row.currency ?? "TRY").trim().toUpperCase(),
-          senderName: row.senderName?.trim() || null,
-          senderIban: row.senderIban?.replace(/\s+/g, "").toUpperCase() || null,
-          description: row.description?.trim() || null,
-          bankReference: row.bankReference?.trim() || null,
-          rawPayload: row.rawPayload,
-        },
-      });
-      imported += 1;
+      const externalId = row.externalId.trim();
+      try {
+        await prisma.bankTransaction.create({
+          data: {
+            tenantId: B2B_CONSTANTS.TENANT_ID,
+            companyId: B2B_CONSTANTS.COMPANY_ID,
+            bankAccountId: row.bankAccountId,
+            externalId,
+            transactionDate: row.transactionDate,
+            amount: row.amount,
+            currency: (row.currency ?? "TRY").trim().toUpperCase(),
+            senderName: row.senderName?.trim() || null,
+            senderIban: row.senderIban?.replace(/\s+/g, "").toUpperCase() || null,
+            description: row.description?.trim() || null,
+            bankReference: row.bankReference?.trim() || null,
+            rawPayload: row.rawPayload,
+          },
+        });
+        imported += 1;
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") continue;
+        throw error;
+      }
     }
     return { imported };
   }
