@@ -3876,6 +3876,7 @@ enum EcommerceReturnPreReceiptOutcome {
 }
 
 enum EcommerceReturnStatus {
+  REQUESTED
   PRE_RECEIVED
   RECEIVING
   QUALITY_CONTROL
