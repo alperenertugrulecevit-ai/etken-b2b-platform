@@ -20,6 +20,7 @@ type BankAccount = {
   swiftCode: string | null;
   apiProvider: string | null;
   apiEnabled: boolean;
+  paymentNoteTemplate: string;
   isActive: boolean;
   sortOrder: number;
 };
@@ -109,6 +110,11 @@ function AccountForm({ account }: { account?: BankAccount }) {
         <label className="text-sm font-semibold">
           API Sağlayıcı
           <input name="apiProvider" defaultValue={account?.apiProvider ?? ""} maxLength={80} placeholder="Canlı entegrasyonda doldurulur" className="mt-2 w-full rounded-xl border border-slate-300 p-3" />
+        </label>
+        <label className="text-sm font-semibold md:col-span-2">
+          Müşteri Ödeme Açıklaması
+          <input name="paymentNoteTemplate" defaultValue={account?.paymentNoteTemplate ?? "Ödeme açıklamasına sipariş numaranızı yazınız: {ORDER_NUMBER}"} maxLength={240} className="mt-2 w-full rounded-xl border border-slate-300 p-3" />
+          <span className="mt-1 block text-xs font-normal text-slate-500">{'{ORDER_NUMBER}'} sipariş numarasıyla otomatik değiştirilir.</span>
         </label>
         <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm font-semibold md:col-span-2">
           <input type="checkbox" name="apiEnabled" defaultChecked={account?.apiEnabled ?? false} />
