@@ -37,6 +37,21 @@ const STATUS_LABELS:
     CANCELLED: "İptal Edildi",
   };
 
+const CANCELLATION_STATUS_LABELS: Record<string,string> = {
+  REQUESTED:"İptal Talebi Alındı",
+  APPROVED:"İptal Onaylandı",
+  REJECTED:"İptal Reddedildi",
+  COMPLETED:"İptal Tamamlandı",
+  CANCELLED:"İptal Talebi Kapatıldı",
+};
+const CANCELLATION_REFUND_STATUS_LABELS: Record<string,string> = {
+  NOT_REQUIRED:"Para İadesi Gerekmiyor",
+  WAITING:"Para İadesi Bekleniyor",
+  REQUESTED:"Para İadesi Talebi Oluşturuldu",
+  REFUNDED:"Para İadesi Yapıldı",
+  REJECTED:"Para İadesi Reddedildi",
+};
+
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   PENDING: "Ödeme Bekleniyor",
   PAID: "Ödendi",
@@ -435,9 +450,9 @@ export default async function CustomerOrderDetailPage({
       {order.cancellationStatus ? (
         <section className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
           <h2 className="text-lg font-black text-red-900">İptal / İade Durumu</h2>
-          <p className="mt-2 text-sm font-semibold text-red-800">{order.cancellationStatus}</p>
+          <p className="mt-2 text-sm font-semibold text-red-800">{CANCELLATION_STATUS_LABELS[order.cancellationStatus]??order.cancellationStatus}</p>
           {order.cancellationReason ? <p className="mt-1 text-sm text-red-700">{order.cancellationReason}</p> : null}
-          {order.cancellationRefundStatus ? <p className="mt-2 text-sm text-red-800">Para iadesi: {order.cancellationRefundStatus}</p> : null}
+          {order.cancellationRefundStatus ? <p className="mt-2 text-sm text-red-800">Para iadesi: {CANCELLATION_REFUND_STATUS_LABELS[order.cancellationRefundStatus]??order.cancellationRefundStatus}</p> : null}
         </section>
       ) : null}
 
