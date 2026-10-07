@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import Header from "@/components/layout/Header";
 import ProductImage from "@/components/products/ProductImage";
+import RepeatOrderButton from "@/components/account/RepeatOrderButton";
 import { cancelCustomerOrder, requestCustomerEcommerceReturn } from "./actions";
 import {
   notFound,
@@ -112,7 +113,7 @@ export default async function CustomerOrderDetailPage({
         shippingAddress: true,
         items: {
           orderBy: { id: "asc" },
-          include: { product: { select: { imageUrl: true } } },
+          include: { product: { select: { imageUrl: true, isActive: true, price: true, vat: true, stock: true, reservedStock: true, code: true, name: true } } },
         },
         accountEntries: {
           where: {
@@ -143,6 +144,13 @@ export default async function CustomerOrderDetailPage({
   if (!order) {
     notFound();
   }
+
+  const repeatOrderItems = order.items.flatMap((item) => {
+    const availableStock=Math.max(0,item.product.stock-item.product.reservedStock);
+    if(!item.product.isActive||item.product.price<=0||availableStock<=0)return [];
+    return [{productId:item.productId,code:item.product.code,name:item.product.name,unitPrice:item.product.price,vatRate:item.product.vat,availableStock,qty:Math.min(Math.max(1,item.quantity-item.cancelledQuantity),availableStock)}];
+  });
+  const unavailableRepeatItemCount=order.items.length-repeatOrderItems.length;
 
   const refundAmount = order.accountEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const hasRefund = refundAmount > 0;
@@ -197,12 +205,15 @@ export default async function CustomerOrderDetailPage({
             )}
           </p>
         </div>
-        <Link
-          href="/account/orders"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold"
-        >
-          Siparişlerime Dön
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <RepeatOrderButton items={repeatOrderItems} unavailableCount={unavailableRepeatItemCount}/>
+          <Link
+            href="/account/orders"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold"
+          >
+            Siparişlerime Dön
+          </Link>
+        </div>
       </div>
 
       <section className="mt-5 grid gap-3 md:grid-cols-3">
