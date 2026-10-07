@@ -68,12 +68,9 @@ export default function CustomerLoginForm({
 const destination =
   result.mustChangePassword
     ? "/change-password?returnTo=%2Faccount"
-    : "/account";
+    : "/";
 
-      router.replace(
-        destination,
-      );
-      router.refresh();
+      window.location.replace(destination);
     } catch (error) {
       console.error(
         "Müşteri girişi tamamlanamadı:",
