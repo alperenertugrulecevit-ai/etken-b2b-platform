@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   await SessionService.logout();
 
   const response = NextResponse.redirect(
-    new URL("/customer-login", request.url),
+    new URL("/", request.url),
     303,
   );
 
@@ -17,5 +17,5 @@ export async function POST(request: NextRequest) {
 }
 
 export function GET(request: NextRequest) {
-  return NextResponse.redirect(new URL("/customer-login", request.url), 303);
+  return NextResponse.redirect(new URL("/", request.url), 303);
 }
