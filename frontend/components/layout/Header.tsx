@@ -16,7 +16,8 @@ type CategoryIconType =
   | "cleaning"
   | "food"
   | "package"
-  | "safety";
+  | "safety"
+  | "technology";
 
 type CategoryItem = {
   title: string;
@@ -66,6 +67,12 @@ const categories: CategoryItem[] = [
     icon: "safety",
     iconClassName:
       "bg-emerald-500 text-white",
+  },
+  {
+    title: "Teknoloji ve Hırdavat",
+    href: "/products?category=Teknoloji%20ve%20H%C4%B1rdavat",
+    icon: "technology",
+    iconClassName: "bg-red-500 text-white",
   },
 ];
 
@@ -199,6 +206,7 @@ export default function Header() {
         </div>
       </div>
 
+      <div className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="bg-[#071729] text-white">
         <div className="mx-auto flex min-h-9 max-w-[1600px] items-center justify-between gap-4 px-4 text-[11px] font-semibold sm:px-6">
           <div className="flex items-center gap-7">
@@ -235,7 +243,7 @@ export default function Header() {
         </div>
       </div>
 
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+      <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] items-center gap-6 px-3 py-2 sm:px-4 lg:px-5">
           <button
             type="button"
@@ -411,6 +419,7 @@ export default function Header() {
           </nav>
         </div>
       </header>
+      </div>
 
       <div
         className={

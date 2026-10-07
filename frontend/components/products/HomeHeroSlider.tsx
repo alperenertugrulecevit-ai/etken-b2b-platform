@@ -360,7 +360,7 @@ export default function HomeHeroSlider({
   return (
     <section className="bg-white">
       <div className="w-full px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
-        <div className="grid items-stretch gap-3 lg:grid-cols-[1.55fr_1fr]">
+        <div className="grid items-stretch">
           <div
             className="relative min-w-0"
             onMouseEnter={() =>
@@ -375,7 +375,7 @@ export default function HomeHeroSlider({
             }
           >
             <div
-              className={`relative h-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm sm:h-[300px] xl:h-[320px]`}
+              className={`relative h-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r ${slide.backgroundClassName} shadow-sm sm:h-[300px] xl:h-[305px]`}
             >
               <div className="relative h-full px-7 py-4 sm:grid sm:items-center sm:gap-3 sm:px-8 sm:py-5 md:grid-cols-[minmax(0,1.12fr)_minmax(250px,0.88fr)] lg:px-8 xl:px-10">
                 <div className="relative z-10 w-[62%] sm:w-auto sm:max-w-[540px]">
@@ -549,28 +549,9 @@ export default function HomeHeroSlider({
               )}
             </div>
           </div>
-
-          <OfficeBreakPromo />
         </div>
       </div>
     </section>
   );
 }
 
-function OfficeBreakPromo() {
-  return (
-    <Link
-      href="/products?category=G%C4%B1da%20ve%20Mutfak"
-      className="group relative hidden h-[300px] min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-[#FFF8EA] shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg lg:block xl:h-[320px]"
-      aria-label="Gıda ve Mutfak ürünlerini keşfet"
-    >
-      <img
-        src="/ofis-molasi-banner.png"
-        alt="Etken Ofis Ofis Molası"
-        className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 group-hover:scale-[1.02]"
-      />
-
-      <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/[0.03]" />
-    </Link>
-  );
-}
