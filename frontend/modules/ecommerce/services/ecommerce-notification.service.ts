@@ -1,18 +1,27 @@
 import "server-only";
 
+import { B2BPaymentMethod } from "@prisma/client";
+
 export type EcommerceNotificationEvent =
   | "ORDER_RECEIVED"
   | "PAYMENT_CONFIRMED"
+  | "CANCELLATION_REQUESTED"
+  | "CANCELLED"
   | "SHIPPED"
   | "DELIVERED"
+  | "RETURN_REQUESTED"
+  | "RETURN_CANCELLED"
   | "REFUNDED";
 
 export type EcommerceNotificationInput = {
   event: EcommerceNotificationEvent;
   email: string | null | undefined;
   orderNumber: string;
+  paymentMethod?: B2BPaymentMethod | null;
   trackingNumber?: string | null;
   trackingUrl?: string | null;
+  returnNumber?: string | null;
+  refundContext?: "ORDER_CANCELLATION" | "PRODUCT_RETURN";
 };
 
 export type EcommerceNotificationResult =
@@ -23,21 +32,46 @@ export type EcommerceNotificationResult =
 const SUBJECTS: Record<EcommerceNotificationEvent,string> = {
   ORDER_RECEIVED: "Siparişiniz alındı",
   PAYMENT_CONFIRMED: "Ödemeniz onaylandı",
+  CANCELLATION_REQUESTED: "Sipariş iptal talebiniz alındı",
+  CANCELLED: "Siparişiniz iptal edildi",
   SHIPPED: "Siparişiniz sevk edildi",
   DELIVERED: "Siparişiniz teslim edildi",
+  RETURN_REQUESTED: "Ürün iade talebiniz alındı",
+  RETURN_CANCELLED: "Ürün iade talebiniz iptal edildi",
   REFUNDED: "Ödemeniz iade edildi",
 };
+
+function paymentName(method:B2BPaymentMethod|null|undefined) {
+  if(method===B2BPaymentMethod.BANK_TRANSFER) return "Havale / EFT";
+  if(method===B2BPaymentMethod.CREDIT_CARD) return "Kredi / Banka Kartı";
+  if(method===B2BPaymentMethod.CURRENT_ACCOUNT) return "Cari Hesap";
+  return "Ödeme";
+}
 
 function message(input:EcommerceNotificationInput) {
   const tracking = input.trackingNumber
     ? `\nKargo takip numarası: ${input.trackingNumber}${input.trackingUrl ? `\nTakip: ${input.trackingUrl}` : ""}`
     : "";
+  const returnInfo = input.returnNumber ? `\nİade numarası: ${input.returnNumber}` : "";
+  const payment = paymentName(input.paymentMethod);
   const body:Record<EcommerceNotificationEvent,string> = {
-    ORDER_RECEIVED: "Siparişiniz sisteme alındı. Havale / EFT ve stok kontrolü sonrasında hazırlık başlayacaktır.",
-    PAYMENT_CONFIRMED: "Havale / EFT ödemeniz onaylandı.",
+    ORDER_RECEIVED: input.paymentMethod===B2BPaymentMethod.BANK_TRANSFER
+      ? "Siparişiniz sisteme alındı. Havale / EFT ödemeniz doğrulandıktan ve stok kontrolü tamamlandıktan sonra hazırlık başlayacaktır."
+      : input.paymentMethod===B2BPaymentMethod.CURRENT_ACCOUNT
+        ? "Siparişiniz sisteme alındı. Cari hesap ve stok kontrollerinin ardından hazırlık başlayacaktır."
+        : input.paymentMethod===B2BPaymentMethod.CREDIT_CARD
+          ? "Siparişiniz sisteme alındı. Ödeme ve stok kontrollerinin ardından hazırlık başlayacaktır."
+          : "Siparişiniz sisteme alındı. Gerekli kontrollerin ardından hazırlık başlayacaktır.",
+    PAYMENT_CONFIRMED: `${payment} ödemeniz onaylandı.`,
+    CANCELLATION_REQUESTED: "Sipariş iptal talebiniz alındı. Toplanmış ürünlerin stok geri alma işlemi tamamlandıktan sonra iptal sonuçlandırılacaktır.",
+    CANCELLED: "Siparişiniz iptal edildi. Ödeme alınmışsa para iadesi süreci ayrıca tamamlanacaktır.",
     SHIPPED: "Siparişiniz sevk edildi." + tracking,
     DELIVERED: "Siparişiniz teslim edildi.",
-    REFUNDED: "İptal edilen siparişinizin ödeme iadesi kaydedildi.",
+    RETURN_REQUESTED: "Ürün iade talebiniz alındı. Kargo/depo kabul süreci bekleniyor." + returnInfo,
+    RETURN_CANCELLED: "Ürün iade talebiniz iptal edildi." + returnInfo,
+    REFUNDED: input.refundContext==="ORDER_CANCELLATION"
+      ? "İptal edilen siparişinizin ödeme iadesi tamamlandı."
+      : "Ürün iadenize ait para iadesi tamamlandı." + returnInfo,
   };
   return `Sipariş: ${input.orderNumber}\n\n${body[input.event]}\n\nETKEN Ofis`;
 }
