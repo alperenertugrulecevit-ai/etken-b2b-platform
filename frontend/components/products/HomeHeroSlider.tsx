@@ -45,6 +45,7 @@ type Slide = {
   backgroundClassName: string;
 
   product?: HeroProduct | null;
+  productCluster?: HeroProduct[];
 
   statLabel?: string;
   statValue?: string;
@@ -96,6 +97,8 @@ export default function HomeHeroSlider({
       product:
         officeProduct ??
         featuredProduct,
+
+      productCluster: [officeProduct, featuredProduct, newestProduct, cleaningProduct, foodProduct].filter(Boolean) as HeroProduct[],
 
       statLabel:
         "Aktif Katalog",
@@ -453,57 +456,40 @@ export default function HomeHeroSlider({
                   </Link>
                 ) : null}
 
-                {/* MASAÜSTÜ ÜRÜN GÖRSELİ - MEVCUT YAPI */}
                 <div className="relative hidden h-[250px] items-center justify-center md:flex">
-                  {slide.product ? (
-                    <Link
-                      href={`/products/${slide.product.code}`}
-                      className="group relative flex h-full w-full items-center justify-center"
-                    >
-                      <ProductImage
-                        imageUrl={
-                          slide.product.imageUrl
-                        }
-                        productName={
-                          slide.product.name
-                        }
-                        className="h-[215px] w-full max-w-[390px] rounded-xl bg-transparent object-contain p-2 transition duration-500 group-hover:scale-[1.04]"
-                        fallbackClassName="h-[215px] w-full max-w-[390px] rounded-xl text-5xl"
-                      />
-
+                  {slide.productCluster && slide.productCluster.length > 1 ? (
+                    <div className="relative h-full w-full">
+                      {slide.productCluster.slice(0, 5).map((product, index) => {
+                        const positions = [
+                          "left-[2%] top-[16%] z-[4] h-[150px] w-[42%] -rotate-6",
+                          "left-[29%] top-[2%] z-[6] h-[205px] w-[48%] rotate-2",
+                          "right-[0%] top-[22%] z-[5] h-[145px] w-[38%] rotate-6",
+                          "left-[7%] bottom-[0%] z-[7] h-[105px] w-[32%] rotate-3",
+                          "right-[8%] bottom-[0%] z-[8] h-[110px] w-[32%] -rotate-3",
+                        ];
+                        return (
+                          <Link key={product.code} href={`/products/${product.code}`} className={`group absolute flex items-center justify-center transition duration-500 hover:z-20 hover:scale-110 ${positions[index]}`}>
+                            <ProductImage imageUrl={product.imageUrl} productName={product.name} className="h-full w-full bg-transparent object-contain drop-shadow-xl" fallbackClassName="h-full w-full rounded-xl text-3xl" />
+                          </Link>
+                        );
+                      })}
+                      <div className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full border border-white/80 bg-white/90 px-4 py-1.5 text-[10px] font-black text-[#172435] shadow-lg backdrop-blur">
+                        Kırtasiye · Temizlik · Gıda · Ambalaj
+                      </div>
+                    </div>
+                  ) : slide.product ? (
+                    <Link href={`/products/${slide.product.code}`} className="group relative flex h-full w-full items-center justify-center">
+                      <ProductImage imageUrl={slide.product.imageUrl} productName={slide.product.name} className="h-[215px] w-full max-w-[390px] rounded-xl bg-transparent object-contain p-2 transition duration-500 group-hover:scale-[1.04]" fallbackClassName="h-[215px] w-full max-w-[390px] rounded-xl text-5xl" />
                       <div className="absolute bottom-1 right-1 max-w-[210px] rounded-xl border border-white/70 bg-white/95 px-3 py-2 shadow-md backdrop-blur">
-                        <p className="text-[9px] font-black uppercase tracking-wide text-[#EF4B23]">
-                          {
-                            slide.product.brand
-                          }
-                        </p>
-
-                        <p className="mt-0.5 line-clamp-2 text-[10px] font-bold leading-4 text-slate-800">
-                          {
-                            slide.product.name
-                          }
-                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-wide text-[#EF4B23]">{slide.product.brand}</p>
+                        <p className="mt-0.5 line-clamp-2 text-[10px] font-bold leading-4 text-slate-800">{slide.product.name}</p>
                       </div>
                     </Link>
-                  ) : (
-                    <div className="flex h-[170px] w-[270px] items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-6xl shadow-sm">
-                      📦
-                    </div>
-                  )}
-
+                  ) : null}
                   {slide.statValue ? (
-                    <div className="absolute right-0 top-0 rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-center shadow-sm backdrop-blur">
-                      <p className="text-[9px] font-bold text-slate-500">
-                        {
-                          slide.statLabel
-                        }
-                      </p>
-
-                      <p className="mt-0.5 text-base font-black text-[#172435]">
-                        {
-                          slide.statValue
-                        }
-                      </p>
+                    <div className="absolute right-0 top-0 z-20 rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-center shadow-sm backdrop-blur">
+                      <p className="text-[9px] font-bold text-slate-500">{slide.statLabel}</p>
+                      <p className="mt-0.5 text-base font-black text-[#172435]">{slide.statValue}</p>
                     </div>
                   ) : null}
                 </div>
