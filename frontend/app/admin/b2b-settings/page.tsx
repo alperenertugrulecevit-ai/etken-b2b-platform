@@ -58,6 +58,7 @@ export default async function B2BSettingsPage() {
         swiftCode: true,
         apiProvider: true,
         apiEnabled: true,
+        paymentNoteTemplate: true,
         isActive: true,
         sortOrder: true,
       },
