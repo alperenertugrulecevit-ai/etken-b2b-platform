@@ -172,11 +172,22 @@ export async function updateOrderStatus(
     const actorName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
       : user.username;
-    await OrderCancellationService.request({
+    const cancellation = await OrderCancellationService.request({
       orderId,
       reason: statusNote ?? "Yönetim paneli sipariş iptali",
       actor: { userId: user.id, displayName: actorName },
     });
+    const notificationOrder = await prisma.order.findUnique({
+      where:{id:orderId},
+      select:{source:true,orderNumber:true,ecommerceEmail:true},
+    });
+    if(notificationOrder?.source===OrderSource.ECOMMERCE){
+      await EcommerceNotificationService.send({
+        event:cancellation.stockReturnRequired?"CANCELLATION_REQUESTED":"CANCELLED",
+        email:notificationOrder.ecommerceEmail,
+        orderNumber:notificationOrder.orderNumber,
+      });
+    }
     revalidatePath("/admin/orders");
     revalidatePath("/admin/order-grouping");
     revalidatePath("/admin/picking-operations");
