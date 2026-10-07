@@ -1,3 +1,4 @@
+import { B2BPaymentMethod } from "@prisma/client";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { prisma } from "@/lib/prisma";
@@ -14,9 +15,16 @@ export default async function CheckoutSuccessPage({
   const orderNumber = query.order?.trim() || "";
   const order = orderNumber ? await prisma.order.findFirst({
     where: { orderNumber, source: "ECOMMERCE" },
-    select: { id:true },
+    select: { id:true, paymentMethod:true, paymentStatus:true },
   }) : null;
-  const bankAccounts = order ? await prisma.b2BBankAccount.findMany({
+  const isBankTransfer = order?.paymentMethod === B2BPaymentMethod.BANK_TRANSFER;
+  const showBankTransferDetails =
+    Boolean(order) &&
+    isBankTransfer &&
+    !["PAID", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELLED"].includes(
+      order?.paymentStatus?.toUpperCase() ?? ""
+    );
+  const bankAccounts = showBankTransferDetails ? await prisma.b2BBankAccount.findMany({
     where: { tenantId:B2B_CONSTANTS.TENANT_ID, companyId:B2B_CONSTANTS.COMPANY_ID, isActive:true },
     orderBy:[{sortOrder:"asc"},{id:"asc"}],
     select:{id:true,bankName:true,branchName:true,accountHolder:true,iban:true,currency:true},
@@ -33,7 +41,13 @@ export default async function CheckoutSuccessPage({
             <p className="mt-3 text-slate-600">Sipariş numaranız: <strong className="text-slate-900">{orderNumber}</strong></p>
           ) : null}
           <p className="mt-3 text-sm leading-6 text-slate-500">
-            Siparişiniz başarıyla kaydedildi. Havale / EFT ödemeniz ve stok kontrolü tamamlandıktan sonra hazırlık süreci başlayacaktır.
+            {isBankTransfer
+              ? "Siparişiniz başarıyla kaydedildi. Havale / EFT ödemeniz doğrulandıktan ve stok kontrolü tamamlandıktan sonra hazırlık süreci başlayacaktır."
+              : order?.paymentMethod === B2BPaymentMethod.CREDIT_CARD
+                ? "Siparişiniz başarıyla kaydedildi. Ödeme ve stok kontrollerinin ardından hazırlık süreci başlayacaktır."
+                : order?.paymentMethod === B2BPaymentMethod.CURRENT_ACCOUNT
+                  ? "Siparişiniz başarıyla kaydedildi. Cari hesap ve stok kontrollerinin ardından hazırlık süreci başlayacaktır."
+                  : "Siparişiniz başarıyla kaydedildi. Kontroller tamamlandıktan sonra hazırlık süreci başlayacaktır."}
           </p>
           <div className="mt-6 grid gap-3 text-left sm:grid-cols-3">
             <div className="rounded-xl bg-slate-50 p-4">
@@ -42,7 +56,7 @@ export default async function CheckoutSuccessPage({
             </div>
             <div className="rounded-xl bg-slate-50 p-4">
               <p className="text-xs font-black uppercase text-slate-500">2. Kontrol</p>
-              <p className="mt-1 text-sm font-bold text-slate-900">Ödeme ve stok kontrolü yapılır.</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">{isBankTransfer ? "Ödeme ve stok kontrolü yapılır." : order?.paymentMethod === B2BPaymentMethod.CURRENT_ACCOUNT ? "Cari hesap ve stok kontrolü yapılır." : "Sipariş ve stok kontrolü yapılır."}</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-4">
               <p className="text-xs font-black uppercase text-slate-500">3. Hazırlık</p>

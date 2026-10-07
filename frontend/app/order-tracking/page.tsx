@@ -1,4 +1,4 @@
-import { CustomerAccountEntryDirection, CustomerAccountEntryType, OrderStatus } from "@prisma/client";
+import { B2BPaymentMethod, CustomerAccountEntryDirection, CustomerAccountEntryType, OrderStatus } from "@prisma/client";
 import Link from "next/link";
 
 import Header from "@/components/layout/Header";
@@ -31,6 +31,7 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   FAILED: "Ödeme Başarısız",
   CANCELLED: "İptal Edildi",
   REFUNDED: "İade Edildi",
+  PARTIALLY_REFUNDED: "Kısmi İade",
 };
 
 function paymentStatusLabel(value: string | null) {
@@ -83,6 +84,7 @@ export default async function OrderTrackingPage({
             createdAt: true,
             totalAmount: true,
             paymentStatus: true,
+            paymentMethod: true,
             cargoTrackingNumber: true,
             cargoTrackingUrl: true,
             accountEntries: {
@@ -147,7 +149,13 @@ export default async function OrderTrackingPage({
   const refundAmount = order?.accountEntries.reduce((sum, entry) => sum + entry.amount, 0) ?? 0;
   const hasRefund = refundAmount > 0;
   const netAmount = order ? Math.max(0, order.totalAmount - refundAmount) : 0;
-  const bankAccounts = order && order.paymentStatus?.toUpperCase() !== "PAID" && order.paymentStatus?.toUpperCase() !== "REFUNDED"
+  const showBankTransferDetails =
+    order?.paymentMethod === B2BPaymentMethod.BANK_TRANSFER &&
+    order.status !== OrderStatus.CANCELLED &&
+    !["PAID", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELLED"].includes(
+      order.paymentStatus?.toUpperCase() ?? ""
+    );
+  const bankAccounts = showBankTransferDetails
     ? await prisma.b2BBankAccount.findMany({
         where: { tenantId: B2B_CONSTANTS.TENANT_ID, companyId: B2B_CONSTANTS.COMPANY_ID, isActive: true },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],

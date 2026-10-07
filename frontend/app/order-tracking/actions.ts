@@ -36,7 +36,7 @@ export async function cancelGuestOrderAction(
   }
 
   try {
-    await OrderCancellationService.request({
+    const cancellation = await OrderCancellationService.request({
       orderId: order.id,
       reason: reason || "Müşteri tarafından e-ticaret sipariş takip ekranından iptal edildi.",
       actor: { userId: "b2c-customer", displayName: "B2C Müşteri" },
@@ -44,7 +44,9 @@ export async function cancelGuestOrderAction(
     revalidatePath("/order-tracking");
     return {
       success: true,
-      message: "Siparişiniz iptal edildi. Ödeme yaptıysanız para iadesi süreci başlatıldı.",
+      message: cancellation.stockReturnRequired
+        ? "İptal talebiniz alındı. Toplanmış ürünler stoğa geri alındıktan sonra sipariş iptali tamamlanacaktır."
+        : "Siparişiniz iptal edildi. Ödeme yaptıysanız para iadesi süreci başlatıldı.",
     };
   } catch (error) {
     return {

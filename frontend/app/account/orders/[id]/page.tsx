@@ -195,9 +195,15 @@ export default async function CustomerOrderDetailPage({
   const hasRefund = refundAmount > 0;
   const netAmount = Math.max(0, order.totalAmount - refundAmount);
 
+  const showBankTransferDetails =
+    order.paymentMethod === B2BPaymentMethod.BANK_TRANSFER &&
+    order.status !== OrderStatus.CANCELLED &&
+    !["PAID", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELLED"].includes(
+      order.paymentStatus?.toUpperCase() ?? ""
+    );
+
   const bankAccounts =
-    order.paymentMethod ===
-    B2BPaymentMethod.BANK_TRANSFER
+    showBankTransferDetails
       ? await prisma.b2BBankAccount.findMany({
           where: {
             tenantId:
@@ -359,8 +365,7 @@ export default async function CustomerOrderDetailPage({
         </section>
       ):null}
 
-      {order.paymentMethod ===
-      B2BPaymentMethod.BANK_TRANSFER ? (
+      {showBankTransferDetails ? (
         <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <h2 className="text-lg font-black text-amber-950">
             Havale / EFT Bilgileri
