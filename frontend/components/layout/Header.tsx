@@ -78,6 +78,11 @@ export default function Header() {
     setIsMenuOpen,
   ] = useState(false);
 
+  const [
+    isCustomerLoggedIn,
+    setIsCustomerLoggedIn,
+  ] = useState(false);
+
   const totalQty =
     cart.reduce(
       (
@@ -88,6 +93,35 @@ export default function Header() {
         item.qty,
       0,
     );
+
+  useEffect(() => {
+    let active = true;
+
+    fetch("/api/public/customer-session", {
+      cache: "no-store",
+    })
+      .then((response) =>
+        response.ok
+          ? response.json()
+          : { isCustomerLoggedIn: false },
+      )
+      .then((data) => {
+        if (active) {
+          setIsCustomerLoggedIn(
+            data.isCustomerLoggedIn === true,
+          );
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setIsCustomerLoggedIn(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -165,7 +199,7 @@ export default function Header() {
             </Link>
 
             <Link
-              href="/order-tracking"
+              href={isCustomerLoggedIn ? "/account/orders" : "/order-tracking"}
               className="flex items-center gap-2 transition hover:text-orange-300"
             >
               <OrderIcon />
@@ -243,17 +277,20 @@ export default function Header() {
 
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
             <Link
-              href="/account"
-              className="hidden min-h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 transition hover:border-violet-300 hover:bg-violet-50 md:flex"
+              href="/customer-login"
+              className="hidden min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-[#202B38] transition hover:border-violet-300 hover:bg-violet-50 md:flex"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
                 <UserIcon />
               </span>
+              GİRİŞ
+            </Link>
 
-              <span>
-                <small className="block text-[9px] font-semibold text-violet-600">Bireysel / Kurumsal</small>
-                <strong className="block text-[12px] text-[#202B38]">Giriş / Hesabım</strong>
-              </span>
+            <Link
+              href="/account"
+              className="hidden min-h-11 items-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-[11px] font-black text-violet-700 transition hover:bg-violet-100 md:flex"
+            >
+              HESABIM
             </Link>
 
             <Link
@@ -471,17 +508,27 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/account"
+                href="/customer-login"
                 onClick={
                   closeMenu
                 }
                 className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold"
               >
-                Giriş Yap / Hesabım
+                Giriş Yap
               </Link>
 
               <Link
-                href="/order-tracking"
+                href="/account"
+                onClick={
+                  closeMenu
+                }
+                className="rounded-xl bg-violet-50 px-4 py-3 text-sm font-bold text-violet-700"
+              >
+                Hesabım
+              </Link>
+
+              <Link
+                href={isCustomerLoggedIn ? "/account/orders" : "/order-tracking"}
                 onClick={
                   closeMenu
                 }
