@@ -8,6 +8,45 @@ const statements = [
   `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceCity" TEXT`,
   `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoiceDistrict" TEXT`,
   `ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "invoicePostalCode" TEXT`,
+  `ALTER TABLE "B2BBankAccount" ADD COLUMN IF NOT EXISTS "bankCode" TEXT`,
+  `ALTER TABLE "B2BBankAccount" ADD COLUMN IF NOT EXISTS "accountNo" TEXT`,
+  `ALTER TABLE "B2BBankAccount" ADD COLUMN IF NOT EXISTS "swiftCode" TEXT`,
+  `ALTER TABLE "B2BBankAccount" ADD COLUMN IF NOT EXISTS "apiProvider" TEXT`,
+  `ALTER TABLE "B2BBankAccount" ADD COLUMN IF NOT EXISTS "apiEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "B2BBankAccount" ADD COLUMN IF NOT EXISTS "paymentNoteTemplate" TEXT NOT NULL DEFAULT 'Ödeme açıklamasına sipariş numaranızı yazınız: {ORDER_NUMBER}'`,
+  `ALTER TABLE "ShippingCarrier" ADD COLUMN IF NOT EXISTS "trackingUrlTemplate" TEXT`,
+  `ALTER TABLE "ShippingCarrier" ADD COLUMN IF NOT EXISTS "integrationProvider" TEXT`,
+  `ALTER TABLE "ShippingCarrier" ADD COLUMN IF NOT EXISTS "integrationEnabled" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "ShippingCarrier" ADD COLUMN IF NOT EXISTS "integrationConfig" JSONB`,
+  `DO $ BEGIN CREATE TYPE "BankTransactionMatchStatus" AS ENUM ('UNMATCHED','MATCHED','IGNORED'); EXCEPTION WHEN duplicate_object THEN NULL; END $;`,
+  `CREATE TABLE IF NOT EXISTS "BankTransaction" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL DEFAULT 'tenant_etken',
+    "companyId" TEXT NOT NULL DEFAULT 'company_etken_office',
+    "bankAccountId" INTEGER NOT NULL,
+    "externalId" TEXT NOT NULL,
+    "transactionDate" TIMESTAMP(3) NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'TRY',
+    "senderName" TEXT,
+    "senderIban" TEXT,
+    "description" TEXT,
+    "bankReference" TEXT,
+    "matchStatus" "BankTransactionMatchStatus" NOT NULL DEFAULT 'UNMATCHED',
+    "matchedOrderId" INTEGER,
+    "matchedAt" TIMESTAMP(3),
+    "matchedByUserId" TEXT,
+    "matchedByName" TEXT,
+    "rawPayload" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "BankTransaction_pkey" PRIMARY KEY ("id")
+  )`,
+  `DO $ BEGIN ALTER TABLE "BankTransaction" ADD CONSTRAINT "BankTransaction_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "B2BBankAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $;`,
+  `DO $ BEGIN ALTER TABLE "BankTransaction" ADD CONSTRAINT "BankTransaction_matchedOrderId_fkey" FOREIGN KEY ("matchedOrderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $;`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "BankTransaction_bankAccountId_externalId_key" ON "BankTransaction"("bankAccountId","externalId")`,
+  `CREATE INDEX IF NOT EXISTS "BankTransaction_tenantId_companyId_matchStatus_transactionDate_idx" ON "BankTransaction"("tenantId","companyId","matchStatus","transactionDate")`,
+  `CREATE INDEX IF NOT EXISTS "BankTransaction_matchedOrderId_idx" ON "BankTransaction"("matchedOrderId")`,
   `DO $$ BEGIN CREATE TYPE "AccountingDocumentType" AS ENUM ('MEAL','FUEL','ENERGY','TELECOMMUNICATION','CONSUMABLE','WATER','OTHER_INCOME','OTHER_EXPENSE','PAYMENT_RECEIPT','INCOME_RECEIPT'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingMovementType" AS ENUM ('EXPENSE','INCOME','PAYMENT_OUT','PAYMENT_IN'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
   `DO $$ BEGIN CREATE TYPE "AccountingPaymentType" AS ENUM ('CASH','DEFERRED','BANK_TRANSFER','CREDIT_CARD','OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
@@ -70,7 +109,18 @@ async function main() {
     throw new Error(`Order invoice schema bootstrap verification failed. Missing columns: ${missing.join(", ")}`);
   }
 
-  console.log("Accounting schema bootstrap completed. Order invoice columns verified.");
+  const readiness = await prisma.$queryRawUnsafe(
+    `SELECT
+       to_regclass('"BankTransaction"') IS NOT NULL AS "bankTransactionReady",
+       EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='B2BBankAccount' AND column_name='apiEnabled') AS "bankAccountReady",
+       EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='ShippingCarrier' AND column_name='integrationEnabled') AS "carrierReady"`
+  );
+  const ready = readiness[0];
+  if (!ready?.bankTransactionReady || !ready?.bankAccountReady || !ready?.carrierReady) {
+    throw new Error("Banking/cargo runtime schema bootstrap verification failed.");
+  }
+
+  console.log("Runtime schema bootstrap completed. Order invoice, banking and cargo schema verified.");
 }
 
 main()
