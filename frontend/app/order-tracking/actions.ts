@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { OrderCancellationService } from "@/modules/orders/services/order-cancellation.service";
+import { EcommerceNotificationService } from "@/modules/ecommerce/services/ecommerce-notification.service";
 
 export type GuestCancellationState = { success: boolean; message: string };
 
@@ -24,7 +25,7 @@ export async function cancelGuestOrderAction(
       ecommerceEmail: { equals: normalizedEmail, mode: "insensitive" },
       source: "ECOMMERCE",
     },
-    select: { id: true, status: true },
+    select: { id: true, status: true, orderNumber: true, ecommerceEmail: true },
   });
 
   if (!order) return { success: false, message: "Sipariş doğrulanamadı." };
@@ -40,6 +41,11 @@ export async function cancelGuestOrderAction(
       orderId: order.id,
       reason: reason || "Müşteri tarafından e-ticaret sipariş takip ekranından iptal edildi.",
       actor: { userId: "b2c-customer", displayName: "B2C Müşteri" },
+    });
+    await EcommerceNotificationService.send({
+      event:cancellation.stockReturnRequired?"CANCELLATION_REQUESTED":"CANCELLED",
+      email:order.ecommerceEmail,
+      orderNumber:order.orderNumber,
     });
     revalidatePath("/order-tracking");
     return {
