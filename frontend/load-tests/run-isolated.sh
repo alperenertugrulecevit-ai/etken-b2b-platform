@@ -19,10 +19,11 @@ cleanup() {
   docker rm -f etken-loadtest-app "$DB" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
 if docker container inspect etken-loadtest-app >/dev/null 2>&1; then
   echo "A test app with reserved name already exists; refusing to interfere." >&2; exit 2
 fi
+
+trap cleanup EXIT
 
 echo "Building app image (no database secrets passed to build)..."
 docker build -t "$IMAGE" .
@@ -52,8 +53,7 @@ docker run -d --name etken-loadtest-app --network "$NET" \
 echo "Checking app readiness..."
 ready=0
 for i in $(seq 1 60); do
-  if docker run --rm --network "$NET" --entrypoint wget busybox:1.36 \
-    -q -O /dev/null http://etken-loadtest-app:8080/api/health 2>/dev/null; then
+  if docker exec etken-loadtest-app node -e 'fetch("http://127.0.0.1:8080/api/health").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))' >/dev/null 2>&1; then
     ready=1; break
   fi
   sleep 2
