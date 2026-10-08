@@ -47,14 +47,13 @@ type Ofis26StockInfo = {
 };
 
 function calculateEtkenPrice(
-  ofis26Price: number,
+  ofis26PriceInclVat: number,
+  productVatRate: number,
 ): number {
-  return Number(
-    (
-      ofis26Price *
-      PRICE_MULTIPLIER
-    ).toFixed(2),
-  );
+  // Product.price is stored excluding VAT. The Ofis26 price is already VAT-inclusive.
+  // Target customer-facing gross price = Ofis26 gross price * 1.25.
+  const targetGrossPrice = Number((ofis26PriceInclVat * PRICE_MULTIPLIER).toFixed(2));
+  return Number((targetGrossPrice / (1 + productVatRate / 100)).toFixed(2));
 }
 
 function isPendingUrl(
@@ -982,6 +981,9 @@ export class Ofis26SupplierSyncService {
 
                 price:
                   true,
+
+                vat:
+                  true,
               },
             },
 
@@ -1260,6 +1262,7 @@ export class Ofis26SupplierSyncService {
     const etkenPrice =
       calculateEtkenPrice(
         ofis26Price,
+        mapping.product.vat,
       );
 
     const effectiveStockStatus =
@@ -1368,8 +1371,8 @@ export class Ofis26SupplierSyncService {
            * Excel fiyatÄ± artÄ±k
            * dikkate alÄ±nmaz.
            *
-           * CanlÄ± Ofis26 fiyatÄ± /
-           * 1.20 kullanılır.
+           * Ofis26 KDV dahil fiyatinin %20 fazlasi hedef satis fiyatidir.
+           * Product.price KDV haric tutulur; satis ekraninda urun KDV'si eklenir.
            */
           price:
             etkenPrice,
