@@ -144,6 +144,20 @@ describe("markEcommerceRefundCompleted amount integrity",()=>{
     await expect(markEcommerceRefundCompleted(data)).rejects.toThrow("kalan uygun iade tutarını aşıyor");
     expect(mocks.accountCreate).not.toHaveBeenCalled();
   });
+  it("tamamlanmış iade kaydını ikinci kez cariye işlemez",async()=>{
+    mocks.refundFindUnique.mockResolvedValue({
+      id:"refund-2",ecommerceReturnId:"return-1",amount:60,status:EcommerceReturnRefundStatus.REFUNDED,
+      ecommerceReturn:{originalOrder:{id:10,orderNumber:"SIP-10",customerId:5,ecommerceEmail:"m@example.com",status:"DELIVERED"}},
+    });
+    const data=new FormData();data.set("refundId","refund-2");data.set("providerReference","REF-2");
+    await expect(markEcommerceRefundCompleted(data)).rejects.toThrow("tamamlanmaya uygun değil");
+    expect(mocks.accountCreate).not.toHaveBeenCalled();
+  });
+  it("banka iade referansı olmadan finans kaydını tamamlamaz",async()=>{
+    const data=new FormData();data.set("refundId","refund-2");
+    await expect(markEcommerceRefundCompleted(data)).rejects.toThrow("referansı zorunludur");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
   it("sıfır veya negatif refund tutarını cariye işlemez",async()=>{
     mocks.refundFindUnique.mockResolvedValue({
       id:"refund-2",ecommerceReturnId:"return-1",amount:0,status:EcommerceReturnRefundStatus.REQUESTED,
