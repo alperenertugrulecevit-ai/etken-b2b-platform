@@ -244,7 +244,7 @@ export default function Header() {
       </div>
 
       <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-6 px-3 py-2 sm:px-4 lg:px-5">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-3 py-2 sm:px-4 lg:gap-6 lg:px-5">
           <button
             type="button"
             onClick={() =>
@@ -260,7 +260,7 @@ export default function Header() {
 
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2.5 sm:gap-3"
+            className="flex min-w-0 shrink items-center gap-1.5 sm:gap-3"
             aria-label="Etken Ofis Ana Sayfa"
           >
             <img
@@ -268,12 +268,12 @@ export default function Header() {
               alt="Etken Ofis"
               width="72"
               height="72"
-              className="h-[46px] w-[46px] shrink-0 object-contain sm:h-[56px] sm:w-[56px] lg:h-[70px] lg:w-[70px]"
+              className="h-[38px] w-[38px] shrink-0 object-contain sm:h-[56px] sm:w-[56px] lg:h-[70px] lg:w-[70px]"
             />
 
             <div className="min-w-0">
               <div className="flex items-baseline whitespace-nowrap">
-                <span className="text-[16px] font-black leading-none tracking-[-0.04em] text-[#071729] sm:text-[22px] lg:text-[32px]">
+                <span className="text-[13px] font-black leading-none tracking-[-0.04em] text-[#071729] sm:text-[22px] lg:text-[32px]">
                   ETKEN
                 </span>
 
@@ -295,7 +295,7 @@ export default function Header() {
             <ProductSearchBox />
           </form>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 lg:gap-2.5">
             {!isCustomerLoggedIn ? (
               <Link
                 href="/customer-login"
@@ -310,7 +310,7 @@ export default function Header() {
 
             <Link
               href="/account"
-              className="hidden min-h-11 flex-col items-start justify-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-violet-700 transition hover:bg-violet-100 md:flex"
+              className="hidden min-h-11 flex-col items-start justify-center rounded-xl border border-violet-200 bg-violet-50 px-2 text-violet-700 transition hover:bg-violet-100 sm:flex lg:px-3"
             >
               <span className="text-[11px] font-black">HESABIM</span>
               {isCustomerLoggedIn && customerAccountName ? (
@@ -321,8 +321,8 @@ export default function Header() {
             </Link>
 
             {isCustomerLoggedIn ? (
-              <form action="/api/public/customer-logout" method="post" className="hidden md:block">
-                <button type="submit" className="min-h-11 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-3 text-[11px] font-black text-rose-700 transition hover:bg-rose-100">
+              <form action="/api/public/customer-logout" method="post" className="hidden sm:block">
+                <button type="submit" className="min-h-11 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-2 text-[10px] font-black text-rose-700 transition hover:bg-rose-100 lg:px-3 lg:text-[11px]">
                   Güvenli Çıkış
                 </button>
               </form>
@@ -337,7 +337,7 @@ export default function Header() {
 
             <Link
               href="/cart"
-              className="relative flex min-h-11 items-center gap-2.5 rounded-xl bg-[#EF4B23] px-4 text-white shadow-sm transition hover:bg-[#D83D18]"
+              className="relative flex min-h-11 items-center gap-1 rounded-xl bg-[#EF4B23] px-2 lg:gap-2.5 lg:px-4 text-white shadow-sm transition hover:bg-[#D83D18]"
             >
               <CartIcon />
 
