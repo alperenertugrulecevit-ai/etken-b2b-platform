@@ -35,6 +35,12 @@ describe("CargoTrackingSyncService provider-independent acceptance", () => {
     expect(mocks.eventCreate).not.toHaveBeenCalled();
   });
 
+  it("rejects an event for a different tracking number without changing the order", async () => {
+    await expect(CargoTrackingSyncService.record(23, "TEST_CARGO", { ...delivered, trackingNumber: "OTHER-TRACK" })).rejects.toThrow("eşleşmiyor");
+    expect(mocks.eventCreate).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("records a new tracking event with provider event ID", async () => {
     await CargoTrackingSyncService.record(23, "TEST_CARGO", { ...delivered, status: "IN_TRANSIT" });
     expect(mocks.eventCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
