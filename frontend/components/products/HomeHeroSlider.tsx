@@ -52,14 +52,14 @@ export default function HomeHeroSlider(_props: HomeHeroSliderProps = {}) {
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >
-          <div className="relative aspect-[1600/260] min-h-[150px] max-h-[260px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+          <div className="relative aspect-[1600/225] min-h-[145px] max-h-[225px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
             {slides.map((slide, index) => (
               <div key={slide.src} className={`absolute inset-0 transition-opacity duration-500 ${index === activeIndex ? "opacity-100" : "pointer-events-none opacity-0"}`}>
                 {!failedSlides[index] ? (
                   <img
                     src={slide.src}
                     alt={slide.alt}
-                    className="h-full w-full object-cover object-center"
+                    className="h-full w-full object-fill"
                     draggable={false}
                     onError={() => setFailedSlides((current) => ({ ...current, [index]: true }))}
                   />

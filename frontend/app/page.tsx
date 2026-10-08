@@ -283,8 +283,8 @@ export default async function Home() {
             ["Güvenli Ödeme", "Korunan ödeme süreci", "payment", "bg-violet-500"],
             ["Müşteri Desteği", "Sipariş öncesi ve sonrası", "support", "bg-red-500"],
           ].map(([title, description, icon, tone]) => (
-            <div key={title} className="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 last:border-0 sm:border-r lg:border-b-0">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${tone}`}>
+            <div key={title} className="flex items-center gap-2 border-b border-slate-100 px-3 py-1.5 last:border-0 sm:border-r lg:border-b-0">
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${tone}`}>
                 <HomeBenefitIcon type={icon} />
               </span>
               <div>
@@ -415,7 +415,7 @@ function ProductSection({
         </Link>
       </div>
 
-      <div className="mt-1.5 grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-1 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
         {products
           .slice(
             0,
