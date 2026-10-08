@@ -14,7 +14,7 @@ const OFIS26_SITE_CODE =
   "OFIS26";
 
 const PRICE_MULTIPLIER =
-  1.25;
+  1.20;
 
 const REQUEST_TIMEOUT_MS =
   20_000;
@@ -1371,7 +1371,7 @@ export class Ofis26SupplierSyncService {
            * Excel fiyatÄ± artÄ±k
            * dikkate alÄ±nmaz.
            *
-           * Ofis26 KDV dahil fiyatinin %25 fazlasi hedef satis fiyatidir.
+           * Ofis26 KDV dahil fiyatinin %20 fazlasi hedef satis fiyatidir.
            * Product.price KDV haric tutulur; satis ekraninda urun KDV'si eklenir.
            */
           price:
