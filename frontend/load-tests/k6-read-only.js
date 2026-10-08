@@ -15,7 +15,7 @@ export const options = {
   thresholds: { http_req_failed: ['rate<0.01'], http_req_duration: ['p(95)<2000'], checks: ['rate>0.99'] },
 };
 
-const paths = ['/', '/products', '/api/health'];
+const paths = ['/', '/products', '/products?q=Synthetic', '/products?category=Office', '/cart', '/api/health'];
 export default function () {
   const path = paths[Math.floor(Math.random() * paths.length)];
   const response = http.get(base + path, { redirects: 3, timeout: '15s', tags: { endpoint: path } });
