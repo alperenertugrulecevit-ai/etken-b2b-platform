@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   paymentFindFirst: vi.fn(),
   paymentFindUnique: vi.fn(),
   paymentUpdate: vi.fn(),
+  paymentUpdateMany: vi.fn(),
   orderUpdate: vi.fn(),
   ledgerFindFirst: vi.fn(),
   ledgerCreate: vi.fn(),
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   refund: vi.fn(),
 }));
 const tx = {
-  paymentTransaction: { findUnique: mocks.paymentFindUnique, update: mocks.paymentUpdate },
+  paymentTransaction: { findUnique: mocks.paymentFindUnique, update: mocks.paymentUpdate, updateMany: mocks.paymentUpdateMany },
   order: { update: mocks.orderUpdate },
   customerAccountEntry: { findFirst: mocks.ledgerFindFirst, create: mocks.ledgerCreate },
 };
@@ -26,7 +27,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     order: { findFirst: mocks.orderFindFirst },
     paymentGatewaySetting: { findFirst: mocks.settingFindFirst },
-    paymentTransaction: { create: mocks.paymentCreate, findFirst: mocks.paymentFindFirst, update: mocks.paymentUpdate },
+    paymentTransaction: { create: mocks.paymentCreate, findFirst: mocks.paymentFindFirst, update: mocks.paymentUpdate, updateMany: mocks.paymentUpdateMany },
     $transaction: mocks.transaction,
   },
 }));
@@ -49,6 +50,7 @@ describe("PaymentGatewayService provider-independent acceptance", () => {
     mocks.paymentFindUnique.mockResolvedValue(payment);
     mocks.ledgerFindFirst.mockResolvedValue(null);
     mocks.paymentUpdate.mockResolvedValue({});
+    mocks.paymentUpdateMany.mockResolvedValue({ count: 1 });
     mocks.orderUpdate.mockResolvedValue({});
     mocks.ledgerCreate.mockResolvedValue({});
     mocks.paymentCreate.mockResolvedValue({});
@@ -96,7 +98,7 @@ describe("PaymentGatewayService provider-independent acceptance", () => {
   it("records FAILED verification without marking the order paid", async () => {
     mocks.verify.mockResolvedValue({ externalId: "ext-17", status: "FAILED" });
     await PaymentGatewayService.verify("TEST_ACCEPTANCE", "ext-17");
-    expect(mocks.paymentUpdate).toHaveBeenCalledWith({ where: { id: "pay-17" }, data: expect.objectContaining({ status: "FAILED" }) });
+    expect(mocks.paymentUpdateMany).toHaveBeenCalledWith({ where: { id: "pay-17", status: { not: "PAID" } }, data: expect.objectContaining({ status: "FAILED" }) });
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 
@@ -106,8 +108,16 @@ describe("PaymentGatewayService provider-independent acceptance", () => {
     expect(mocks.ledgerCreate).toHaveBeenCalledTimes(1);
   });
 
+  it("never regresses a paid payment when a delayed FAILED callback arrives", async () => {
+    mocks.verify.mockResolvedValue({ externalId: "ext-17", status: "FAILED" });
+    mocks.paymentUpdateMany.mockResolvedValue({ count: 0 });
+    await PaymentGatewayService.verify("TEST_ACCEPTANCE", "ext-17");
+    expect(mocks.paymentUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "pay-17", status: { not: "PAID" } } }));
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("does not create a second ledger entry when the payment is already PAID", async () => {
-    mocks.paymentFindUnique.mockResolvedValue({ ...payment, status: "PAID" });
+    mocks.paymentUpdateMany.mockResolvedValue({ count: 0 });
     await PaymentGatewayService.verify("TEST_ACCEPTANCE", "ext-17");
     expect(mocks.ledgerCreate).not.toHaveBeenCalled();
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
