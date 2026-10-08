@@ -274,7 +274,25 @@ export default async function Home() {
 
       <HomeHeroSlider />
 
-      <section className="mx-auto w-full max-w-[1600px] px-3 pb-2 sm:px-4 lg:px-5">
+      <section className="mx-auto w-full max-w-[1600px] px-3 pb-2 sm:px-4 lg:px-5 lg:hidden">
+        <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {[
+            ["Ofis Kırtasiye", "/products?category=Ofis%20K%C4%B1rtasiye", "📋", "bg-blue-500"],
+            ["Temizlik ve Hijyen", "/products?category=Temizlik%20ve%20Hijyen", "🧴", "bg-cyan-500"],
+            ["Gıda ve Mutfak", "/products?category=G%C4%B1da%20ve%20Mutfak", "☕", "bg-orange-500"],
+            ["Ambalaj ve Paketleme", "/products?category=Ambalaj%20ve%20Paketleme", "📦", "bg-violet-500"],
+            ["İş Güvenliği", "/products?category=%C4%B0%C5%9F%20G%C3%BCvenli%C4%9Fi", "🛡", "bg-emerald-500"],
+            ["Teknoloji ve Hırdavat", "/products?category=Teknoloji%20ve%20H%C4%B1rdavat", "⚙", "bg-red-500"],
+          ].map(([name, href, icon, tone]) => (
+            <Link key={name} href={href} className="flex min-h-[110px] flex-col items-center justify-center gap-2 border-b border-r border-slate-100 p-2 text-center">
+              <span className={`flex h-11 w-11 items-center justify-center rounded-xl text-xl text-white ${tone}`} aria-hidden="true">{icon}</span>
+              <span className="text-[11px] font-black leading-tight text-[#071729]">{name}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto hidden w-full max-w-[1600px] px-3 pb-2 sm:px-4 lg:block lg:px-5">
         <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:grid-cols-2 lg:grid-cols-5">
           {[
             ["Hızlı ve Güvenilir", "İstanbul içi hızlı teslimat", "delivery", "bg-orange-500"],
