@@ -320,6 +320,14 @@ export default function Header() {
               ) : null}
             </Link>
 
+            {isCustomerLoggedIn ? (
+              <form action="/api/public/customer-logout" method="post" className="hidden md:block">
+                <button type="submit" className="min-h-11 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-3 text-[11px] font-black text-rose-700 transition hover:bg-rose-100">
+                  Güvenli Çıkış
+                </button>
+              </form>
+            ) : null}
+
             <Link
               href="/register"
               className="hidden min-h-11 items-center rounded-xl border border-orange-200 bg-orange-50 px-3 text-[11px] font-black text-[#EF4B23] transition hover:bg-orange-100 xl:flex"
@@ -523,15 +531,17 @@ export default function Header() {
                 Tüm Ürünler
               </Link>
 
-              <Link
-                href="/customer-login"
-                onClick={
-                  closeMenu
-                }
-                className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold"
-              >
-                Giriş Yap
-              </Link>
+              {!isCustomerLoggedIn ? (
+                <Link href="/customer-login" onClick={closeMenu} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold">
+                  Giriş Yap
+                </Link>
+              ) : (
+                <form action="/api/public/customer-logout" method="post">
+                  <button type="submit" className="w-full rounded-xl bg-rose-50 px-4 py-3 text-left text-sm font-bold text-rose-700">
+                    Güvenli Çıkış
+                  </button>
+                </form>
+              )}
 
               <Link
                 href="/account"
