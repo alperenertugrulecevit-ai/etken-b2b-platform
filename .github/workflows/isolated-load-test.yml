@@ -25,8 +25,13 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        users: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('[{0}]', inputs.users) || '[10,25,50,100]') }}
     env:
-      USERS: ${{ github.event_name == 'workflow_dispatch' && inputs.users || '10' }}
+      USERS: ${{ matrix.users }}
     steps:
       - uses: actions/checkout@v4
         with:
