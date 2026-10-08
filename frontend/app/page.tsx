@@ -97,6 +97,8 @@ export default async function Home() {
         where: {
           isActive:
             true,
+          code: { not: "ETK-KRT-1783" },
+          price: { gt: 0 },
 
           imageUrl: {
             not:
@@ -116,7 +118,7 @@ export default async function Home() {
         ],
 
         take:
-          10,
+          100,
 
         select:
           productSelect,
@@ -243,10 +245,23 @@ export default async function Home() {
       }),
     ]);
 
-  const featured =
-    featuredRaw.map(
-      mapProduct,
-    );
+  const featured = featuredRaw
+    .filter((product) =>
+      product.code !== "ETK-KRT-1783" &&
+      product.price > 0 &&
+      product.stock > product.reservedStock &&
+      Boolean(product.imageUrl?.trim()) &&
+      !/placeholder|no-image|default|missing|fallback/i.test(product.imageUrl ?? "")
+    )
+    .sort((a, b) => {
+      const score = (product: typeof a) => {
+        const name = product.name.toLocaleLowerCase("tr-TR");
+        const preferred = /navigator|leitz|nescaf|fairy|selpak|domestos|kağıt|kâğıt|kahve|deterjan/.test(name);
+        return (preferred ? 1000 : 0) + Math.min(product.stock - product.reservedStock, 100);
+      };
+      return score(b) - score(a);
+    })
+    .map(mapProduct);
 
   const newProducts =
     newRaw.map(
