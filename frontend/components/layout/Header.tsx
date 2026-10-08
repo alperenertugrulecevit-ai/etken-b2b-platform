@@ -188,6 +188,29 @@ export default function Header() {
     isMenuOpen,
   ]);
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  async function handleCustomerLogout(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      const response = await fetch("/api/public/customer-logout", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Çıkış işlemi tamamlanamadı.");
+      setIsCustomerLoggedIn(false);
+      setCustomerAccountName(null);
+      setIsMenuOpen(false);
+      window.location.replace("/?signedOut=" + Date.now());
+    } catch {
+      setIsLoggingOut(false);
+      window.alert("Güvenli çıkış sırasında bir sorun oluştu. Lütfen tekrar deneyin.");
+    }
+  }
+
   function closeMenu() {
     setIsMenuOpen(
       false,
@@ -321,8 +344,8 @@ export default function Header() {
             </Link>
 
             {isCustomerLoggedIn ? (
-              <form action="/api/public/customer-logout" method="post" className="hidden sm:block">
-                <button type="submit" className="min-h-11 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-2 text-[10px] font-black text-rose-700 transition hover:bg-rose-100 lg:px-3 lg:text-[11px]">
+              <form action="/api/public/customer-logout" method="post" onSubmit={handleCustomerLogout} className="hidden sm:block">
+                <button type="submit" disabled={isLoggingOut} className="min-h-11 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-2 text-[10px] font-black text-rose-700 transition hover:bg-rose-100 lg:px-3 lg:text-[11px]">
                   Güvenli Çıkış
                 </button>
               </form>
@@ -536,8 +559,8 @@ export default function Header() {
                   Giriş Yap
                 </Link>
               ) : (
-                <form action="/api/public/customer-logout" method="post">
-                  <button type="submit" className="w-full rounded-xl bg-rose-50 px-4 py-3 text-left text-sm font-bold text-rose-700">
+                <form action="/api/public/customer-logout" method="post" onSubmit={handleCustomerLogout}>
+                  <button type="submit" disabled={isLoggingOut} className="w-full rounded-xl bg-rose-50 px-4 py-3 text-left text-sm font-bold text-rose-700">
                     Güvenli Çıkış
                   </button>
                 </form>
