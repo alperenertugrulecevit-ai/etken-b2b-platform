@@ -22,10 +22,13 @@ export class PaymentGatewayService{
   if(!row)throw new Error("Ödeme işlemi bulunamadı.");
   if(verified.externalId!==externalId)throw new Error("Sağlayıcı ödeme işlem kimliği eşleşmiyor.");
   if(row.amount!==row.order.totalAmount||row.order.paymentMethod!==B2BPaymentMethod.CREDIT_CARD||row.order.source!=="ECOMMERCE")throw new Error("Ödeme tutarı veya sipariş türü eşleşmiyor.");
-  if(verified.status!=="PAID"){await prisma.paymentTransaction.update({where:{id:row.id},data:{status:verified.status as PaymentTransactionStatus,errorMessage:verified.status==="FAILED"?"Sağlayıcı ödemeyi başarısız bildirdi.":null,rawPayload:verified.raw as Prisma.InputJsonValue}});return verified;}
+  if(verified.status!=="PAID"){
+   await prisma.paymentTransaction.updateMany({where:{id:row.id,status:{not:PaymentTransactionStatus.PAID}},data:{status:verified.status as PaymentTransactionStatus,errorMessage:verified.status==="FAILED"?"Sağlayıcı ödemeyi başarısız bildirdi.":null,...(verified.raw===undefined?{}:{rawPayload:verified.raw as Prisma.InputJsonValue})}});
+   return verified;
+  }
   await prisma.$transaction(async tx=>{
-   const locked=await tx.paymentTransaction.findUnique({where:{id:row.id}}); if(!locked||locked.status===PaymentTransactionStatus.PAID)return;
-   await tx.paymentTransaction.update({where:{id:row.id},data:{status:PaymentTransactionStatus.PAID,paidAt:new Date(),providerReference:verified.providerReference,maskedCard:verified.maskedCard,cardBrand:verified.cardBrand,threeDSecure:Boolean(verified.threeDSecure),rawPayload:verified.raw as Prisma.InputJsonValue}});
+   const claimed=await tx.paymentTransaction.updateMany({where:{id:row.id,status:{not:PaymentTransactionStatus.PAID}},data:{status:PaymentTransactionStatus.PAID,paidAt:new Date(),providerReference:verified.providerReference,maskedCard:verified.maskedCard,cardBrand:verified.cardBrand,threeDSecure:Boolean(verified.threeDSecure),...(verified.raw===undefined?{}:{rawPayload:verified.raw as Prisma.InputJsonValue})}});
+   if(claimed.count===0)return;
    await tx.order.update({where:{id:row.orderId},data:{paymentStatus:"PAID",paymentProvider:provider,paymentReference:verified.providerReference??externalId}});
    const exists=await tx.customerAccountEntry.findFirst({where:{orderId:row.orderId,direction:CustomerAccountEntryDirection.CREDIT,entryType:CustomerAccountEntryType.PAYMENT}});
    if(!exists)await tx.customerAccountEntry.create({data:{customerId:row.order.customerId,orderId:row.orderId,direction:CustomerAccountEntryDirection.CREDIT,entryType:CustomerAccountEntryType.PAYMENT,paymentMethod:CustomerAccountPaymentMethod.CREDIT_CARD,amount:row.amount,description:`${row.order.orderNumber} kredi kartı ödemesi`,referenceNo:verified.providerReference??externalId,createdByUsername:"PAYMENT_GATEWAY"}});
