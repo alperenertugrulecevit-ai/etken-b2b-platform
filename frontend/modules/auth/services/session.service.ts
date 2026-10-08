@@ -360,9 +360,15 @@ export class SessionService {
       );
     }
 
-    await CookieService.deleteSessionCookie();
-
-    await WmsContextService.clearActiveContext();
+    try {
+      await CookieService.deleteSessionCookie();
+    } finally {
+      try {
+        await WmsContextService.clearActiveContext();
+      } catch (error) {
+        console.error("Logout WMS context cleanup failed:", error);
+      }
+    }
   }
 
   static async revokeAllUserSessions(
