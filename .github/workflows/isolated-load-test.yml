@@ -1,0 +1,42 @@
+name: Isolated load test (no production)
+on:
+  pull_request:
+    paths:
+      - 'frontend/load-tests/**'
+      - '.github/workflows/isolated-load-test.yml'
+  workflow_dispatch:
+    inputs:
+      users:
+        description: 'Virtual users (10, 25, 50, 100)'
+        type: choice
+        required: true
+        default: '10'
+        options: ['10', '25', '50', '100']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-load-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-load-test:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      USERS: ${{ github.event_name == 'workflow_dispatch' && inputs.users || '10' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Ensure no inherited database credentials
+        run: |
+          test -z "${DATABASE_URL:-}"
+          test -z "${DIRECT_URL:-}"
+      - name: Validate load-test shell syntax
+        run: bash -n frontend/load-tests/run-isolated.sh
+      - name: Run isolated Docker + PostgreSQL + k6
+        working-directory: frontend
+        run: bash load-tests/run-isolated.sh
