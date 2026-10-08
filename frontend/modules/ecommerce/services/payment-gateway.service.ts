@@ -20,6 +20,8 @@ export class PaymentGatewayService{
   const adapter=getPaymentProvider(provider); const verified=await adapter.verify(externalId);
   const row=await prisma.paymentTransaction.findFirst({where:{provider,externalId},include:{order:true}});
   if(!row)throw new Error("Ödeme işlemi bulunamadı.");
+  if(verified.externalId!==externalId)throw new Error("Sağlayıcı ödeme işlem kimliği eşleşmiyor.");
+  if(row.amount!==row.order.totalAmount||row.order.paymentMethod!==B2BPaymentMethod.CREDIT_CARD||row.order.source!=="ECOMMERCE")throw new Error("Ödeme tutarı veya sipariş türü eşleşmiyor.");
   if(verified.status!=="PAID"){await prisma.paymentTransaction.update({where:{id:row.id},data:{status:verified.status as PaymentTransactionStatus,errorMessage:verified.status==="FAILED"?"Sağlayıcı ödemeyi başarısız bildirdi.":null,rawPayload:verified.raw as Prisma.InputJsonValue}});return verified;}
   await prisma.$transaction(async tx=>{
    const locked=await tx.paymentTransaction.findUnique({where:{id:row.id}}); if(!locked||locked.status===PaymentTransactionStatus.PAID)return;

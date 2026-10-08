@@ -31,7 +31,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const order = { id: 17, orderNumber: "WEB-17", totalAmount: 120, ecommerceEmail: "buyer@example.com", paymentStatus: "PENDING", customerId: 4 };
+const order = { id: 17, orderNumber: "WEB-17", totalAmount: 120, ecommerceEmail: "buyer@example.com", paymentStatus: "PENDING", customerId: 4, paymentMethod: "CREDIT_CARD", source: "ECOMMERCE" };
 const payment = { id: "pay-17", orderId: 17, amount: 120, status: "PENDING", order };
 
 describe("PaymentGatewayService provider-independent acceptance", () => {
@@ -78,6 +78,18 @@ describe("PaymentGatewayService provider-independent acceptance", () => {
   it("rejects unknown provider transaction without changing the order", async () => {
     mocks.paymentFindFirst.mockResolvedValue(null);
     await expect(PaymentGatewayService.verify("TEST_ACCEPTANCE", "ext-17")).rejects.toThrow("bulunamadı");
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects provider response with a different transaction identity", async () => {
+    mocks.verify.mockResolvedValue({ externalId: "another-transaction", status: "PAID" });
+    await expect(PaymentGatewayService.verify("TEST_ACCEPTANCE", "ext-17")).rejects.toThrow("kimliği eşleşmiyor");
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a changed order total before marking the order paid", async () => {
+    mocks.paymentFindFirst.mockResolvedValue({ ...payment, order: { ...order, totalAmount: 121 } });
+    await expect(PaymentGatewayService.verify("TEST_ACCEPTANCE", "ext-17")).rejects.toThrow("tutarı veya sipariş türü");
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 
