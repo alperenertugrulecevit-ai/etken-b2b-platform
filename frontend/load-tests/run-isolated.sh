@@ -45,6 +45,12 @@ docker run --rm --network "$NET" \
   -e DATABASE_URL="$DB_URL" -e DIRECT_URL="$DB_URL" \
   "$IMAGE" ./node_modules/.bin/prisma migrate deploy
 
+echo "Seeding synthetic products in ephemeral test DB..."
+docker run --rm --network "$NET" \
+  -v "$PWD/load-tests/seed-synthetic.cjs:/app/load-tests/seed-synthetic.cjs:ro" \
+  -e DATABASE_URL="$DB_URL" -e DIRECT_URL="$DB_URL" \
+  --entrypoint node "$IMAGE" /app/load-tests/seed-synthetic.cjs
+
 echo "Starting isolated app (no cloud credentials or public ports)..."
 docker run -d --name etken-loadtest-app --network "$NET" \
   -e DATABASE_URL="$DB_URL" -e DIRECT_URL="$DB_URL" \
