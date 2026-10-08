@@ -8,6 +8,7 @@ export class CargoTrackingSyncService{
  static async record(orderId:number,provider:string,result:CargoStatusResult){
   const order=await prisma.order.findUnique({where:{id:orderId},select:{id:true,cargoTrackingNumber:true,status:true}});
   if(!order||!order.cargoTrackingNumber)throw new Error("Kargo takipli sipariş bulunamadı.");
+  if(order.cargoTrackingNumber.trim()!==result.trackingNumber.trim())throw new Error("Kargo takip numarası siparişle eşleşmiyor.");
   const eventAt=result.eventAt??result.deliveredAt??new Date(); const status=statusOf(result.status);
   const externalEventId=result.externalEventId?.trim()||`${status}:${eventAt.toISOString()}`;
   const existing=await prisma.cargoTrackingEvent.findFirst({where:{provider,trackingNumber:result.trackingNumber,externalEventId},select:{id:true}});
