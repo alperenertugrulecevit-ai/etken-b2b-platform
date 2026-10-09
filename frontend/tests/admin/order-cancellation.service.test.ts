@@ -147,6 +147,46 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
         pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
     });
   });
+  it("kısmi sevk edilmiş siparişi iade sürecine yönlendirir", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.READY_TO_SHIP,
+      cancellationStatus: null, source: "ECOMMERCE", stockReserved: true,
+      stockDeducted: false, paymentStatus: "PAID", pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 1, cancelledQuantity: 1 }],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("İade Giriş");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderItemUpdate).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("toplanmış ürün varken iptali stok geri alma bekleme durumunda tutar", async () => {
+    mocks.stockMovementCount.mockResolvedValue(0);
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.READY_TO_SHIP,
+      cancellationStatus: null, source: "ECOMMERCE", stockReserved: true,
+      stockDeducted: false, paymentStatus: "PENDING", pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+    const result = await OrderCancellationService.request({ orderId: 782, reason: "test", actor });
+    expect(result).toEqual({ orderNumber: "WEB-782", stockReturnRequired: true, physicalQuantity: 2 });
+    expect(mocks.orderItemUpdate).toHaveBeenCalledWith({
+      where: { id: 1 }, data: { cancelledQuantity: { increment: 1 } },
+    });
+    expect(mocks.orderUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ cancellationStatus: "STOCK_RETURN_PENDING" }),
+    }));
+    expect(mocks.orderUpdate).not.toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: OrderStatus.CANCELLED }),
+    }));
+  });
+
   it("rejects repeated cancellation requests before touching reservations", async () => {
     mocks.orderFindUnique.mockResolvedValue({
       id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
