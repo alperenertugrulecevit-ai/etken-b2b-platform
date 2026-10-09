@@ -51,6 +51,35 @@ describe("OrderCancellationService.undoRequest",()=>{
     expect(mocks.wmsLogCreate).toHaveBeenCalled();
   });
 
+  it("toplama ve paketleme miktarları tutarsızsa iptal geri almayı reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      items: [{
+        id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 1, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 1,
+      }],
+    }));
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("sipariş kalem miktarları tutarsız");
+    expect(mocks.stockMovementCount).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("kısmi sevkiyat kaydı varsa iptal geri almayı reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      items: [{
+        id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 1, cancelledQuantity: 1,
+      }],
+    }));
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("Fiziksel sevki başlamış");
+    expect(mocks.stockMovementCount).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("rezervasyonu bırakılmış e-ticaret siparişinin iptalini geri almaz", async () => {
     mocks.orderFindUnique.mockResolvedValue(pendingOrder({
       source: "ECOMMERCE", stockReserved: false,
