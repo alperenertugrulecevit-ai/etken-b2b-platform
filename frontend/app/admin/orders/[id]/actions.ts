@@ -279,6 +279,17 @@ items: {
        * rezerve edilmemiş sipariş için stok
        * rezervasyonu tekrar denenebilir.
        */
+      if (order.status === OrderStatus.CANCELLED) {
+        throw new Error("İptal edilmiş sipariş yeniden açılamaz. Yeni bir sipariş oluşturmalısınız.");
+      }
+      if (
+        order.status === newStatus &&
+        order.stockReserved &&
+        !order.stockDeducted
+      ) {
+        return;
+      }
+
       // Ecommerce checkout already reserved Product.reservedStock.
       // Do not reserve a second time through WMS on status approval.
       if (
