@@ -33,7 +33,7 @@ export class EcommerceStockReservationService {
       if (!order.stockReserved) return false;
       if (
         order.stockDeducted ||
-        ![OrderStatus.PENDING, OrderStatus.CANCELLED].includes(order.status) ||
+        (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CANCELLED) ||
         order.items.some((item) =>
           item.pickedQuantity !== 0 || item.packedQuantity !== 0 ||
           item.shippedQuantity !== 0 || item.cancelledQuantity !== 0
