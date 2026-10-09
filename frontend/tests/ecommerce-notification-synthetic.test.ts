@@ -94,6 +94,22 @@ describe("Ecommerce notifications (synthetic, no external requests)", () => {
     expect(productReturn.text).toContain("RET-SYNTH-1");
   });
 
+  it("does not send malformed recipients or unsupported events to the provider", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+    for (const email of ["not-an-email", "a".repeat(255) + "@example.invalid"]) {
+      expect(await EcommerceNotificationService.send({ ...event, email }))
+        .toMatchObject({ status: "failed" });
+    }
+    expect(await EcommerceNotificationService.send({
+      ...event, event: "UNKNOWN_EVENT" as typeof event.event,
+    })).toMatchObject({ status: "failed" });
+    expect(await EcommerceNotificationService.send({
+      ...event, orderNumber: " ",
+    })).toMatchObject({ status: "failed" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("rejects plaintext or credential-bearing webhook URLs before sending customer data", async () => {
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock;
