@@ -213,6 +213,8 @@ export class OrderCancellationService {
             assignedHandlingUnits:{select:{id:true},take:1},
             zonePickTasks:{select:{id:true},take:1},
             shippingHandlingUnitOrders:{select:{id:true},take:1},
+            pickingAssignment:{select:{id:true}},
+            items:{select:{pickedQuantity:true,packedQuantity:true,shippedQuantity:true}},
           },
         });
         const recordedPayments = await tx.customerAccountEntry.count({
@@ -239,7 +241,9 @@ export class OrderCancellationService {
           current.pickingRecords.length > 0 ||
           current.assignedHandlingUnits.length > 0 ||
           current.zonePickTasks.length > 0 ||
-          current.shippingHandlingUnitOrders.length > 0
+          current.shippingHandlingUnitOrders.length > 0 ||
+          current.pickingAssignment !== null ||
+          current.items.some(item => item.pickedQuantity > 0 || item.packedQuantity > 0 || item.shippedQuantity > 0)
         ) throw new Error("Otomatik iptal öncesi ödeme veya operasyon durumu değişti; işlem atlandı.");
       }
       if(!order)throw new Error("Sipariş bulunamadı.");
