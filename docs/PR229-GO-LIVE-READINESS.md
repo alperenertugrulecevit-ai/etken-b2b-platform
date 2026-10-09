@@ -69,3 +69,9 @@ Before activating a real gateway, require provider-specific signature verificati
 ### PR229 status as of this revision
 
 Implemented: checkout validation for unsafe identifiers/quantities, invoice type, catalog/total validity and nonzero total; post-commit notification failures no longer cause checkout failure; notification webhook enforces HTTPS and rejects redirects; synthetic tests. Not implemented/verified: atomic reservation lifecycle, bank reconciliation, real POS 3DS/callbacks, carrier label/tracking integration, e-documents, refunds and full PostgreSQL integration/UAT. Keep PR **draft**.
+
+## Atomic checkout reservation implementation (draft)
+
+PR229 now performs sorted per-product conditional `product.updateMany` reservations inside the checkout `prisma.$transaction`, and sets `Order.stockReserved=true` with a timestamp. The conditional predicate checks that the product remains active, in the correct tenant/company, its current reserved stock has not increased since the catalog read, and its stock can cover the observed reservation plus requested quantity. A failed conditional update throws and rolls back all earlier reservations and order writes in that transaction. Mocked tests cover success and lost-race rejection.
+
+**Not yet release-certified:** this is checkout-side allocation only. Confirm WMS does not reserve the same order a second time; verify cancellation/expiry release, picking deduction and shortage handling. Run real two-client PostgreSQL tests with concurrent transactions and an interrupted multi-item checkout. Pending bank-transfer orders now hold inventory immediately, so a defined payment deadline and expiry/release workflow is essential before production. No production deploy or merge is authorized by this change.
