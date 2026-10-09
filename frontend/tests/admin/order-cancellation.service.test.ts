@@ -12,6 +12,8 @@ const tx={
   stockMovement:{count:mocks.stockMovementCount,findMany:mocks.stockMovementFindMany},
   orderItem:{update:mocks.orderItemUpdate},dispatchDocument:{update:mocks.dispatchUpdate},
   wmsOperationLog:{create:mocks.wmsLogCreate},
+  customerAccountEntry: { findFirst: vi.fn(), create: vi.fn() },
+  paymentTransaction: { findFirst: vi.fn() },
 };
 vi.mock("@/lib/prisma",()=>({prisma:{$transaction:mocks.transaction}}));
 vi.mock("@/lib/stock/stock-service",()=>({createStockMovementWithTransaction:mocks.createStockMovement}));
@@ -326,10 +328,10 @@ describe("OrderCancellationService.completeRefund validation", () => {
     tx.customerAccountEntry = {
       findFirst: vi.fn().mockResolvedValue({ amount: 100, paymentMethod: "CREDIT_CARD" }),
       create: vi.fn(),
-    } as typeof tx.customerAccountEntry;
+    };
     tx.paymentTransaction = { findFirst: vi.fn().mockResolvedValue({
       amount: 100, refundedAmount: 0, providerReference: "PAY-1",
-    }) } as typeof tx.paymentTransaction;
+    }) };
   });
   it("does not close a refund without persisted provider evidence", async () => {
     await expect(OrderCancellationService.completeRefund({ orderId: 782, reference: "REF-1", actor }))
