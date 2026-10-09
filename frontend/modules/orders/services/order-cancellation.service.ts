@@ -79,6 +79,13 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
     0,
   );
   if (physicalRemaining > 0) throw new Error("Toplanmış/paketlenmiş ürünlerin tamamı stoğa geri alınmadan iptal tamamlanamaz.");
+  if (order.items.some((item) =>
+    !Number.isSafeInteger(item.quantity) || item.quantity <= 0 ||
+    !Number.isSafeInteger(item.cancelledQuantity) || item.cancelledQuantity !== item.quantity ||
+    item.pickedQuantity !== 0 || item.packedQuantity !== 0 || item.shippedQuantity !== 0
+  )) {
+    throw new Error("İptal sonlandırılamadı: sipariş miktarları ve fiziksel stok geri alma mutabakatı tamamlanmadı.");
+  }
 
   // Web checkout reserves Product.reservedStock directly. Release that global
   // reservation inside the same transaction that completes cancellation.
