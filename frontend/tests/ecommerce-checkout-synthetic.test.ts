@@ -162,6 +162,44 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
+  it("does not create an order when requested quantity exceeds unreserved stock", async () => {
+    mocks.findMany.mockResolvedValueOnce([{
+      id: 1, code: "LT-PRODUCT-0001", name: "Synthetic Product 1",
+      price: 100, vat: 20, stock: 10, reservedStock: 8,
+    }]);
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, items: [{ productId: 1, quantity: 3 }],
+    })).rejects.toThrow("kullanılabilir stok 2 adettir");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it("accepts the exact available stock boundary", async () => {
+    mocks.findMany.mockResolvedValueOnce([{
+      id: 1, code: "LT-PRODUCT-0001", name: "Synthetic Product 1",
+      price: 100, vat: 20, stock: 10, reservedStock: 8,
+    }]);
+    await EcommerceCheckoutService.createOrder({
+      ...input, items: [{ productId: 1, quantity: 2 }],
+    });
+    expect(mocks.orderCreate).toHaveBeenCalledOnce();
+  });
+
+  it("preserves the order total and VAT for multiple catalog items", async () => {
+    mocks.findMany.mockResolvedValueOnce([
+      { id: 1, code: "LT-1", name: "One", price: 100, vat: 20, stock: 10, reservedStock: 0 },
+      { id: 2, code: "LT-2", name: "Two", price: 50, vat: 10, stock: 10, reservedStock: 0 },
+    ]);
+    await EcommerceCheckoutService.createOrder({
+      ...input, items: [{ productId: 1, quantity: 2 }, { productId: 2, quantity: 1 }],
+    });
+    const data = mocks.orderCreate.mock.calls[0][0].data;
+    expect(data.subtotal).toBe(250);
+    expect(data.vatAmount).toBe(45);
+    expect(data.totalAmount).toBe(295);
+    expect(data.accountEntries.create.amount).toBe(295);
+  });
+
   it("rejects invalid customer email before reading products", async () => {
     await expect(EcommerceCheckoutService.createOrder({
       ...input, email: "not-an-email",
