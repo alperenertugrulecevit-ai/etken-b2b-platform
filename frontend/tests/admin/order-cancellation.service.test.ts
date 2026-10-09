@@ -199,20 +199,6 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
       items: [{ id: 1, productId: 10, productCode: "P10", quantity: 3,
         pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 0 }],
     });
-    mocks.orderFindUnique.mockResolvedValueOnce({
-      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
-      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
-      paymentStatus: "PENDING", cancellationStatus: null, pickingAssignment: null,
-      shippingHandlingUnitOrders: [],
-      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
-        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
-    }).mockResolvedValueOnce({
-      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
-      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
-      paymentStatus: "PENDING",
-      items: [{ productId: 10, quantity: 1, cancelledQuantity: 1,
-        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0 }],
-    });
     const result = await OrderCancellationService.request({ orderId: 782, reason: "test", actor });
     expect(result).toEqual({ orderNumber: "WEB-782", stockReturnRequired: true, physicalQuantity: 2 });
     expect(mocks.orderItemUpdate).toHaveBeenCalledWith({
@@ -294,6 +280,20 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
     });
     tx.product = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
     tx.customerAccountEntry = { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() };
+    mocks.orderFindUnique.mockResolvedValueOnce({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", cancellationStatus: null, pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
+    }).mockResolvedValueOnce({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING",
+      items: [{ productId: 10, quantity: 1, cancelledQuantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0 }],
+    });
     const result = await OrderCancellationService.request({ orderId: 782, reason: "test", actor });
     expect(result.stockReturnRequired).toBe(false);
     expect(tx.product.updateMany).toHaveBeenCalledWith(expect.objectContaining({
