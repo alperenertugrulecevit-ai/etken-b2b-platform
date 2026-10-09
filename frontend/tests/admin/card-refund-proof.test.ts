@@ -4,7 +4,6 @@ const mocks = vi.hoisted(() => ({
   orderFindUnique: vi.fn(),
   paymentFindFirst: vi.fn(),
   transactionFindFirst: vi.fn(),
-  refundFindFirst: vi.fn(),
   entryCreate: vi.fn(),
   orderUpdate: vi.fn(),
   transaction: vi.fn(),
@@ -43,7 +42,7 @@ const tx = {
 describe("refund completion fails closed for credit cards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.transaction.mockImplementation(async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx));
+    mocks.transaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => callback(tx));
     mocks.orderFindUnique.mockResolvedValue(order);
     mocks.paymentFindFirst.mockResolvedValue({ amount: 100, paymentMethod: "CREDIT_CARD" });
     mocks.transactionFindFirst.mockResolvedValue(null);
