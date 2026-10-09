@@ -282,7 +282,7 @@ export class OrderCancellationService {
       const order=await tx.order.findUnique({
         where:{id:input.orderId},
         select:{
-          id:true,orderNumber:true,status:true,cancellationStatus:true,cancellationRequestedAt:true,
+          id:true,orderNumber:true,status:true,source:true,stockReserved:true,cancellationStatus:true,cancellationRequestedAt:true,
           stockDeducted:true,
           items:{select:{id:true,productId:true,productCode:true,quantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,cancelledQuantity:true}},
           shippingHandlingUnitOrders:{select:{shippingHandlingUnit:{select:{dispatchDocument:{select:{id:true,status:true}}}}}},
@@ -299,6 +299,13 @@ export class OrderCancellationService {
         where:{orderId:order.id,movementType:StockMovementType.STOCK_RETURN},
       });
       if(stockReturns>0) throw new Error("RF stok geri alma başlamış. Sipariş iptali artık geri alınamaz.");
+
+      // Undo is safe only if the original order still owns its reservation.
+      // Checkout's global reservation has no warehouse movement to recreate.
+      // Never reopen a checkout order whose stock was already released.
+      if (order.source === OrderSource.ECOMMERCE && !order.stockReserved) {
+        throw new Error("E-ticaret rezervasyonu artık aktif değil; iptal geri alma için stok mutabakatı gerekli.");
+      }
 
       const cancellationReleases=await tx.stockMovement.findMany({
         where:{
