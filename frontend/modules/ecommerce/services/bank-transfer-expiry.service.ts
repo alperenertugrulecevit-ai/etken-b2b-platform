@@ -82,7 +82,7 @@ export async function processExpiredBankTransferOrders(input: {
         await OrderCancellationService.request({
           orderId: order.id,
           reason: "Havale/EFT ödemesi 24 saat içinde onaylanmadı.",
-          actor: { userId: "SYSTEM", displayName: "PAYMENT_EXPIRY" },
+          actor: { userId: null, displayName: "PAYMENT_EXPIRY" },
           bankTransferExpiryCutoff: cutoff,
         });
         result.cancelled++;
