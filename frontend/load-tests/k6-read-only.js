@@ -27,6 +27,11 @@ const paths = ['/', '/products', '/products?q=Synthetic', '/products?category=Of
 export default function () {
   const path = paths[Math.floor(Math.random() * paths.length)];
   const response = http.get(base + path, { redirects: 3, timeout: '15s', tags: { endpoint: path } });
-  check(response, { 'HTTP 200': r => r.status === 200 });
+  check(response, {
+    'HTTP 200': r => r.status === 200,
+    'synthetic catalog is rendered': r => !path.startsWith('/products') || r.body.includes('Synthetic Product'),
+    'checkout form is rendered': r => path !== '/checkout' || r.body.includes('Siparişini Tamamla'),
+    'cart page is rendered': r => path !== '/cart' || r.body.includes('Sepetim'),
+  });
   sleep(1);
 }
