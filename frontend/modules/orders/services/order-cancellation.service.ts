@@ -289,6 +289,41 @@ export class OrderCancellationService {
         select:{productId:true,warehouseId:true,reservedChange:true},
       });
 
+      // A cancellation undo must restore every cancelled unit, not merely
+      // the subset that happened to have a warehouse reservation movement.
+      // Otherwise the order reopens with cancelled units permanently missing.
+      const releasableByProduct = new Map<number, number>();
+      for (const release of cancellationReleases) {
+        if (release.warehouseId === null || release.reservedChange >= 0) {
+          throw new Error("İptal geri alma için depo rezervasyon hareketi tutarsız; stok mutabakatı gerekli.");
+        }
+        const quantity = -release.reservedChange;
+        releasableByProduct.set(
+          release.productId,
+          (releasableByProduct.get(release.productId) ?? 0) + quantity,
+        );
+      }
+      const cancelledByProduct = new Map<number, number>();
+      for (const item of order.items) {
+        if (item.cancelledQuantity < 0 || item.cancelledQuantity > item.quantity) {
+          throw new Error("İptal geri alma için sipariş miktarları tutarsız; stok mutabakatı gerekli.");
+        }
+        cancelledByProduct.set(
+          item.productId,
+          (cancelledByProduct.get(item.productId) ?? 0) + item.cancelledQuantity,
+        );
+      }
+      for (const [productId, cancelled] of cancelledByProduct) {
+        if (cancelled !== (releasableByProduct.get(productId) ?? 0)) {
+          throw new Error("İptal geri alma için eksik depo rezervasyonu mevcut; stok mutabakatı gerekli.");
+        }
+      }
+      for (const productId of releasableByProduct.keys()) {
+        if (!cancelledByProduct.has(productId)) {
+          throw new Error("İptal geri alma için eşleşmeyen depo rezervasyonu mevcut; stok mutabakatı gerekli.");
+        }
+      }
+
       const releasedByProduct=new Map<number,number>();
       for(const release of cancellationReleases){
         const quantity=Math.max(0,-release.reservedChange);
