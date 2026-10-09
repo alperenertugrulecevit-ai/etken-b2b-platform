@@ -117,7 +117,7 @@ ledger_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SEL
 history_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "OrderStatusHistory";')"
 after_stock="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc "SELECT md5(string_agg(id::text || ':' || stock::text || ':' || \"reservedStock\"::text, ',' ORDER BY id)) FROM \"Product\" WHERE code LIKE 'LT-PRODUCT-%';")"
 if [[ "$product_count" != 250 || "$order_count" != 0 || "$customer_count" != 0 || "$order_item_count" != 0 || "$ledger_count" != 0 || "$history_count" != 0 || "$baseline_stock" != "$after_stock" ]]; then
-  echo "Read-only invariant failed: synthetic products=$product_count, orders=$order_count, customers=$customer_count" >&2
+  echo "Read-only invariant failed: products=$product_count orders=$order_count customers=$customer_count order_items=$order_item_count ledger=$ledger_count history=$history_count stock_unchanged=$([[ "$baseline_stock" == "$after_stock" ]] && echo yes || echo no)" >&2
   exit 1
 fi
 echo "Read-only invariants passed: 250 synthetic products, unchanged stock/reservations; zero orders, customers, order items, ledger entries and status history."
