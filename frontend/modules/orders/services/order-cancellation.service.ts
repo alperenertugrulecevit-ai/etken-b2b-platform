@@ -163,7 +163,7 @@ export class OrderCancellationService {
       const order=await tx.order.findUnique({
         where:{id:input.orderId},
         select:{
-          id:true,customerId:true,orderNumber:true,status:true,paymentStatus:true,stockReserved:true,stockDeducted:true,
+          id:true,customerId:true,orderNumber:true,status:true,cancellationStatus:true,paymentStatus:true,stockReserved:true,stockDeducted:true,
           pickingAssignment:{select:{id:true}},
           items:{select:{id:true,productId:true,productCode:true,quantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,cancelledQuantity:true}},
           shippingHandlingUnitOrders:{select:{shippingHandlingUnit:{select:{dispatchDocument:{select:{id:true,status:true}}}}}},
@@ -171,6 +171,9 @@ export class OrderCancellationService {
       });
       if(!order)throw new Error("Sipariş bulunamadı.");
       if(order.status===OrderStatus.CANCELLED)throw new Error("Sipariş zaten iptal edilmiş.");
+      if (OrderCancellationService.isBlocked(order.cancellationStatus)) {
+        throw new Error("Sipariş için aktif iptal talebi zaten mevcut; tekrar iptal başlatılamaz.");
+      }
       if (order.items.length === 0) {
         throw new Error("Kalemsiz sipariş için iptal stok mutabakatı yapılamaz.");
       }
