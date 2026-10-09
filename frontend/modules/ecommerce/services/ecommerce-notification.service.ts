@@ -80,7 +80,7 @@ export class EcommerceNotificationService {
   static async send(input:EcommerceNotificationInput):Promise<EcommerceNotificationResult> {
     const email=input.email?.trim().toLowerCase();
     if(!email) return {status:"skipped",reason:"Müşteri e-posta adresi yok."};
-    if (email.length > 254 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return {status:"failed",reason:"Müşteri e-posta adresi geçersiz."};
     }
     if (!input.orderNumber?.trim() || input.orderNumber.length > 120 ||
