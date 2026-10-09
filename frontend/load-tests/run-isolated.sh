@@ -111,8 +111,11 @@ echo "Asserting isolated database was not modified by read-only load..."
 product_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc "SELECT count(*) FROM \"Product\" WHERE code LIKE 'LT-PRODUCT-%';")"
 order_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "Order";')"
 customer_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "Customer";')"
-if [[ "$product_count" != 250 || "$order_count" != 0 || "$customer_count" != 0 ]]; then
+order_item_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "OrderItem";')"
+ledger_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "CustomerAccountEntry";')"
+history_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "OrderStatusHistory";')"
+if [[ "$product_count" != 250 || "$order_count" != 0 || "$customer_count" != 0 || "$order_item_count" != 0 || "$ledger_count" != 0 || "$history_count" != 0 ]]; then
   echo "Read-only invariant failed: synthetic products=$product_count, orders=$order_count, customers=$customer_count" >&2
   exit 1
 fi
-echo "Read-only invariants passed: 250 synthetic products, zero orders and customers."
+echo "Read-only invariants passed: 250 synthetic products; zero orders, customers, order items, ledger entries and status history."
