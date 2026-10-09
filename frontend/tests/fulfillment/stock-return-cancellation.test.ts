@@ -76,6 +76,20 @@ describe("RF stock return cancellation integrity", () => {
     expect(mocks.handlingUnitFindUnique).not.toHaveBeenCalled();
   });
 
+  it("rejects customer cancellation return without an active cancellation request", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 100,
+      status: OrderStatus.PICKING,
+      cancellationStatus: null,
+      items: [],
+    });
+    await expect(StockReturnService.returnOne({
+      ...baseInput, reason: StockReturnReason.CUSTOMER_FULL_CANCEL,
+    })).rejects.toThrow("önce sipariş iptal talebi");
+    expect(mocks.handlingUnitFindUnique).not.toHaveBeenCalled();
+    expect(mocks.stockMovement).not.toHaveBeenCalled();
+  });
+
   it("allows customer cancellation return to pass cancellation preflight", async () => {
     await expect(StockReturnService.returnOne({
       ...baseInput, reason: StockReturnReason.CUSTOMER_FULL_CANCEL,
