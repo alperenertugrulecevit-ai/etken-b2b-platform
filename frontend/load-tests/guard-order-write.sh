@@ -19,4 +19,8 @@ if [[ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" || -n "${GOOGLE_CLOUD_PROJECT:-}"
   echo "Refusing: cloud credentials/project variables are not allowed." >&2
   exit 2
 fi
+if [[ -n "${SMTP_HOST:-}" || -n "${SMTP_PASSWORD:-}" || -n "${RESEND_API_KEY:-}" || -n "${STRIPE_SECRET_KEY:-}" || -n "${IYZICO_API_KEY:-}" || -n "${PAYTR_MERCHANT_KEY:-}" ]]; then
+  echo "Refusing: external email/payment credentials are not allowed." >&2
+  exit 2
+fi
 echo "Ephemeral database URL and side-effect environment guard passed."
