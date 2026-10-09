@@ -270,3 +270,44 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe("OrderCancellationService cancellation finalizer safety", () => {
+  const actor = { userId: "admin", displayName: "Admin" };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.transaction.mockImplementation(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx));
+    mocks.orderUpdate.mockResolvedValue({});
+    mocks.orderItemUpdate.mockResolvedValue({});
+    mocks.releaseOrderPlan.mockResolvedValue(undefined);
+    mocks.stockMovementCount.mockResolvedValue(0);
+    mocks.stockMovementFindMany.mockResolvedValue([]);
+  });
+
+  it("rejects an order without lines before mutating inventory", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, orderNumber: "WEB-782", source: "ECOMMERCE",
+      status: OrderStatus.PENDING, stockReserved: true, stockDeducted: false,
+      cancellationStatus: null, paymentStatus: "PENDING",
+      pickingAssignment: null, shippingHandlingUnitOrders: [], items: [],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("Kalemsiz sipariş");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("routes already deducted physical stock to returns rather than cancellation", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, orderNumber: "WEB-782", source: "ECOMMERCE",
+      status: OrderStatus.READY_TO_SHIP, stockReserved: true, stockDeducted: true,
+      cancellationStatus: null, paymentStatus: "PAID",
+      pickingAssignment: null, shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 1, packedQuantity: 1, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("İade Giriş");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+});
