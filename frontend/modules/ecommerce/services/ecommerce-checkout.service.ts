@@ -87,6 +87,9 @@ export class EcommerceCheckoutService {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new EcommerceCheckoutError("Geçerli bir e-posta adresi girin.");
     }
+    if (input.invoiceType !== "INDIVIDUAL" && input.invoiceType !== "CORPORATE") {
+      throw new EcommerceCheckoutError("Geçersiz fatura türü.");
+    }
     if (input.invoiceType === "CORPORATE" && (!invoiceName || !taxNumber)) {
       throw new EcommerceCheckoutError("Kurumsal fatura için unvan ve vergi numarası zorunludur.");
     }
@@ -162,6 +165,13 @@ export class EcommerceCheckoutService {
     const subtotal = roundMoney(calculatedItems.reduce((sum, item) => sum + item.lineNet, 0));
     const vatAmount = roundMoney(calculatedItems.reduce((sum, item) => sum + item.vatAmount, 0));
     const totalAmount = roundMoney(subtotal + vatAmount);
+    if (
+      !Number.isFinite(subtotal) || !Number.isFinite(vatAmount) ||
+      !Number.isFinite(totalAmount) || subtotal < 0 || vatAmount < 0 ||
+      totalAmount < 0 || totalAmount > Number.MAX_SAFE_INTEGER / 100
+    ) {
+      throw new EcommerceCheckoutError("Sipariş tutarı hesaplanamadı.");
+    }
     const idToken = token();
     const fullName = firstName + " " + lastName;
 
