@@ -192,6 +192,12 @@ export class OrderCancellationService {
         },
       });
 
+      // Acquire an order row lock before evaluating payment/WMS eligibility.
+      // Competing jobs cannot cancel the same order simultaneously.
+      if (input.bankTransferExpiryCutoff) {
+        await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${input.orderId} FOR UPDATE`;
+      }
+
       // Recheck the expiry policy inside the same serializable transaction
       // that performs cancellation. The scheduled job must never trust a
       // previously read payment or WMS state.
