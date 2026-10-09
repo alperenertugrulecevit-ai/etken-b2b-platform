@@ -19,11 +19,17 @@ The read-only scenario visits `/`, `/products`, `/products?q=Synthetic`, `/produ
 
 From `frontend`: `bash load-tests/run-isolated.sh`. Set `USERS=25`, `50` or `100` to change load. These are unauthenticated virtual users. Local Docker performance does not establish Cloud Run autoscaling or production capacity.
 
-## Next phase: synthetic order flow
+## Checkout and PostgreSQL verification
 
-1. Add an explicit test-only transaction harness that refuses any database other than the ephemeral Docker PostgreSQL instance.
-2. Disable external notification and payment/shipping side effects **inside the isolated test process**; do not alter production behavior.
-3. Generate unique synthetic customers and order items. Assert order totals, line items, status history, customer ledger and stock/reservation invariants after every test batch.
-4. Test concurrency and rejection of insufficient stock, duplicate items and invalid addresses. Keep write tests separate from the existing read-only matrix.
+The regular Frontend Quality workflow runs mocked `EcommerceCheckoutService.createOrder` tests for bank-transfer totals, order lines, ledger debit, history, insufficient stock and duplicate products. No database or external service is accessed by those unit tests.
+
+Before each k6 run, `run-isolated.sh` executes two real PostgreSQL probes **only against the disposable internal Docker database**:
+
+- `test-transaction-rollback.cjs` changes a synthetic product reservation inside a transaction and proves rollback restores it.
+- `test-order-integration.cjs` writes a synthetic customer, delivery address, order, order item, status history and customer debit in a transaction, verifies the persisted records **inside the transaction**, then deliberately rolls it back. It verifies all counts and product stock/reservations return to baseline. This exercises Prisma relations and PostgreSQL constraints, not the checkout service's server action.
+
+The read-only k6 run then verifies zero customers/orders/order lines/ledger/history and unchanged stock/reservations. All test processes are isolated from production; no actual payment, email or carrier request is sent.
+
+**Remaining limitations:** These are not end-to-end browser purchases or a committed checkout transaction; concurrent stock reservation, payment gateway callbacks, real notifications and production Cloud Run capacity are not covered. Do not interpret the load metrics as production benchmarks.
 
 Merging these files does not itself deploy, migrate or load-test production.
