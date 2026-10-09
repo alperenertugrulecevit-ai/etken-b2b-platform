@@ -318,12 +318,18 @@ export class EcommerceCheckoutService {
     // The order is already committed. A notification outage must not turn a
     // successful checkout into an error that prompts the buyer to order twice.
     try {
-      await EcommerceNotificationService.send({
+      const notification = await EcommerceNotificationService.send({
         event: "ORDER_RECEIVED",
         email,
         orderNumber: order.orderNumber,
         paymentMethod: B2BPaymentMethod.BANK_TRANSFER,
       });
+      if (notification.status === "failed") {
+        console.error("Checkout notification delivery failed after order commit", {
+          orderId: order.id,
+          reason: notification.reason,
+        });
+      }
     } catch (error) {
       console.error("Checkout notification failed after order commit", {
         orderId: order.id,
