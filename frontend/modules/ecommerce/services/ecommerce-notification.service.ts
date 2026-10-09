@@ -83,6 +83,17 @@ export class EcommerceNotificationService {
 
     const webhook=process.env.ECOMMERCE_EMAIL_WEBHOOK_URL?.trim();
     if(!webhook) return {status:"skipped",reason:"E-posta sağlayıcısı yapılandırılmadı."};
+    // Never send customer addresses or bearer tokens over plaintext transport.
+    let providerUrl: URL;
+    try {
+      providerUrl = new URL(webhook);
+    } catch {
+      return {status:"failed",reason:"E-posta sağlayıcısı adresi geçersiz."};
+    }
+    if (providerUrl.protocol !== "https:" || providerUrl.username || providerUrl.password) {
+      return {status:"failed",reason:"E-posta sağlayıcısı HTTPS kullanmalı ve URL kimlik bilgisi içermemelidir."};
+    }
+
 
     try {
       const response=await fetch(webhook,{
