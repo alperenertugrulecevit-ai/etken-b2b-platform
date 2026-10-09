@@ -95,6 +95,7 @@ echo "Checking read-only database baseline..."
 baseline_products="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc "SELECT count(*) FROM \"Product\" WHERE code LIKE 'LT-PRODUCT-%';")"
 baseline_orders="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "Order";')"
 baseline_customers="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "Customer";')"
+baseline_stock="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc "SELECT md5(string_agg(id::text || ':' || stock::text || ':' || \"reservedStock\"::text, ',' ORDER BY id)) FROM \"Product\" WHERE code LIKE 'LT-PRODUCT-%';")"
 if [[ "$baseline_products" != 250 || "$baseline_orders" != 0 || "$baseline_customers" != 0 ]]; then
   echo "Unexpected baseline: products=$baseline_products orders=$baseline_orders customers=$baseline_customers" >&2
   exit 1
@@ -114,8 +115,9 @@ customer_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'S
 order_item_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "OrderItem";')"
 ledger_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "CustomerAccountEntry";')"
 history_count="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "OrderStatusHistory";')"
-if [[ "$product_count" != 250 || "$order_count" != 0 || "$customer_count" != 0 || "$order_item_count" != 0 || "$ledger_count" != 0 || "$history_count" != 0 ]]; then
+after_stock="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc "SELECT md5(string_agg(id::text || ':' || stock::text || ':' || \"reservedStock\"::text, ',' ORDER BY id)) FROM \"Product\" WHERE code LIKE 'LT-PRODUCT-%';")"
+if [[ "$product_count" != 250 || "$order_count" != 0 || "$customer_count" != 0 || "$order_item_count" != 0 || "$ledger_count" != 0 || "$history_count" != 0 || "$baseline_stock" != "$after_stock" ]]; then
   echo "Read-only invariant failed: synthetic products=$product_count, orders=$order_count, customers=$customer_count" >&2
   exit 1
 fi
-echo "Read-only invariants passed: 250 synthetic products; zero orders, customers, order items, ledger entries and status history."
+echo "Read-only invariants passed: 250 synthetic products, unchanged stock/reservations; zero orders, customers, order items, ledger entries and status history."
