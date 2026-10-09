@@ -3,7 +3,7 @@ name: Security Audit
 on:
   pull_request:
   push:
-    branches: [main, security/automated-audit-20261010]
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '17 4 * * 1'
@@ -64,42 +64,3 @@ jobs:
               print("Health status:",res.status)
               assert res.status==200
           PY
-
-  lockfile-remediation:
-    name: Update vulnerable lockfile dependencies
-    if: github.event_name == 'push' && github.ref == 'refs/heads/security/automated-audit-20261010'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Apply non-breaking dependency fixes to lockfile
-        run: |
-          npm install --global npm@11
-          # npm audit fix exits 1 when unfixable advisories remain; keep safe lockfile updates.
-          npm audit fix --package-lock-only --ignore-scripts || test "$?" -eq 1
-          npm ci --ignore-scripts --no-audit
-      - name: Commit lockfile if updated
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- package-lock.json; then
-            echo "No compatible lockfile changes available"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          git commit -m "chore(security): update compatible vulnerable dependencies"
-          git push origin HEAD:security/automated-audit-20261010
