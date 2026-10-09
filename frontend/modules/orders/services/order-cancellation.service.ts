@@ -97,6 +97,12 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
     !order.stockDeducted &&
     warehouseReservationMovements === 0
   ) {
+    if (order.items.length === 0) {
+      throw new Error("Kalemsiz e-ticaret siparişinin stok rezervasyonu serbest bırakılamaz.");
+    }
+    if (order.items.some((item) => item.quantity <= 0 || !Number.isSafeInteger(item.quantity))) {
+      throw new Error("E-ticaret iptal rezervasyon miktarı geçersiz.");
+    }
     const totals = new Map<number, number>();
     for (const item of order.items) {
       const quantity = (totals.get(item.productId) ?? 0) + item.quantity;
