@@ -87,7 +87,8 @@ jobs:
       - name: Apply non-breaking dependency fixes to lockfile
         run: |
           npm install --global npm@11
-          npm audit fix --package-lock-only --ignore-scripts
+          # npm audit fix exits 1 when unfixable advisories remain; keep safe lockfile updates.
+          npm audit fix --package-lock-only --ignore-scripts || test "$?" -eq 1
           npm ci --ignore-scripts --no-audit
       - name: Commit lockfile if updated
         shell: bash
