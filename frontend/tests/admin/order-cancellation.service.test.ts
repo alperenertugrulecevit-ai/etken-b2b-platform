@@ -51,6 +51,18 @@ describe("OrderCancellationService.undoRequest",()=>{
     expect(mocks.wmsLogCreate).toHaveBeenCalled();
   });
 
+  it("rezervasyonu bırakılmış e-ticaret siparişinin iptalini geri almaz", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      source: "ECOMMERCE", stockReserved: false,
+    }));
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("E-ticaret rezervasyonu artık aktif değil");
+    expect(mocks.stockMovementFindMany).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("eksik depo rezervasyonu varsa iptali geri alıp siparişi açmaz", async () => {
     mocks.stockMovementFindMany.mockResolvedValue([]);
     await expect(OrderCancellationService.undoRequest({
