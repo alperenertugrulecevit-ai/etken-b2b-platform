@@ -241,6 +241,26 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 
+  it("aynı ürün iki satırdaysa WMS rezervasyonunu toplamdan fazla bırakmaz", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "B2B-782", status: OrderStatus.PENDING,
+      cancellationStatus: null, source: "B2B", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", pickingAssignment: null, shippingHandlingUnitOrders: [],
+      items: [
+        { id: 1, productId: 10, productCode: "P10", quantity: 2, pickedQuantity: 1, packedQuantity: 1, shippedQuantity: 0, cancelledQuantity: 0 },
+        { id: 2, productId: 10, productCode: "P10", quantity: 2, pickedQuantity: 1, packedQuantity: 1, shippedQuantity: 0, cancelledQuantity: 0 },
+      ],
+    });
+    mocks.stockMovementFindMany.mockResolvedValue([{ warehouseId: 1, reservedChange: 1 }]);
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("depo rezervasyonu yetersiz");
+    expect(mocks.createStockMovement).toHaveBeenCalledTimes(1);
+    expect(mocks.createStockMovement).toHaveBeenCalledWith(tx, expect.objectContaining({
+      movementType: StockMovementType.RESERVATION_RELEASE, reservedChange: -1,
+    }));
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("blocks cancellation when checkout and warehouse reservation ownership overlap", async () => {
     await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
       .rejects.toThrow("stok mutabakatı gerekli");
