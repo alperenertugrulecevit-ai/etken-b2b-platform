@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 
-type Actor = { userId: string; displayName: string };
+type Actor = { userId: string | null; displayName: string };
 type Tx = Prisma.TransactionClient;
 
 const ACTIVE_CANCELLATION = ["REQUESTED", "STOCK_RETURN_PENDING", "REFUND_PENDING"];
