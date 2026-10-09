@@ -65,6 +65,39 @@ jobs:
           npm run test:coverage
           npm run build
 
+  persist-verified-lockfile:
+    name: Persist validated dependency overrides
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: security/automated-audit-20261010
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Update dependency overrides and lockfile
+        run: |
+          npm pkg set 'overrides.deepmerge-ts=^8.0.0' 'overrides.uuid=^11.1.1'
+          npm install --package-lock-only --ignore-scripts --no-audit
+      - name: Commit verified dependency lockfile
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "fix(security): pin validated patched transitive dependencies"
+          git push origin HEAD:security/automated-audit-20261010
+
   live-security:
     name: Public HTTPS and security headers
     runs-on: ubuntu-latest
