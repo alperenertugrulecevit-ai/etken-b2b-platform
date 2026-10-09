@@ -215,6 +215,16 @@ export class OrderCancellationService {
             shippingHandlingUnitOrders:{select:{id:true},take:1},
           },
         });
+        const recordedPayments = await tx.customerAccountEntry.count({
+          where: {
+            orderId: input.orderId,
+            direction: CustomerAccountEntryDirection.CREDIT,
+            entryType: CustomerAccountEntryType.PAYMENT,
+          },
+        });
+        if (recordedPayments > 0) {
+          throw new Error("Sipariş için tahsilat kaydı bulundu; otomatik iptal durduruldu.");
+        }
         if (!current ||
           current.source !== OrderSource.ECOMMERCE ||
           current.paymentMethod !== "BANK_TRANSFER" ||
