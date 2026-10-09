@@ -93,6 +93,21 @@ describe("Ecommerce notifications (synthetic, no external requests)", () => {
     expect(productReturn.text).toContain("RET-SYNTH-1");
   });
 
+  it("rejects plaintext or credential-bearing webhook URLs before sending customer data", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+    for (const url of [
+      "http://example.invalid/notification",
+      "https://user:password@example.invalid/notification",
+      "not a valid url",
+    ]) {
+      process.env.ECOMMERCE_EMAIL_WEBHOOK_URL = url;
+      expect(await EcommerceNotificationService.send(event))
+        .toMatchObject({ status: "failed" });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("returns failed for non-2xx provider responses", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 });
     expect(await EcommerceNotificationService.send(event))
