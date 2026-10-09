@@ -97,6 +97,12 @@ docker run --rm --network "$NET" \
   -e DATABASE_URL="$DB_URL" -e DIRECT_URL="$DB_URL" -e NODE_ENV=test \
   --entrypoint node "$IMAGE" /app/load-tests/test-transaction-rollback.cjs
 
+echo "Testing real synthetic order persistence inside rollback-only transaction..."
+docker run --rm --network "$NET" \
+  -v "$PWD/load-tests/test-order-integration.cjs:/app/load-tests/test-order-integration.cjs:ro" \
+  -e DATABASE_URL="$DB_URL" -e DIRECT_URL="$DB_URL" -e NODE_ENV=test \
+  --entrypoint node "$IMAGE" /app/load-tests/test-order-integration.cjs
+
 echo "Checking read-only database baseline..."
 baseline_products="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc "SELECT count(*) FROM \"Product\" WHERE code LIKE 'LT-PRODUCT-%';")"
 baseline_orders="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "Order";')"
