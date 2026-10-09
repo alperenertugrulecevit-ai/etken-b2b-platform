@@ -172,6 +172,10 @@ export class EcommerceCheckoutService {
     ) {
       throw new EcommerceCheckoutError("Sipariş tutarı hesaplanamadı.");
     }
+    // Bank transfer checkout must not create an unpayable zero-value order.
+    if (totalAmount <= 0) {
+      throw new EcommerceCheckoutError("Sipariş toplam tutarı sıfırdan büyük olmalıdır.");
+    }
     const idToken = token();
     const fullName = firstName + " " + lastName;
 
