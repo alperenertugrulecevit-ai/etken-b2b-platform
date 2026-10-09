@@ -74,10 +74,13 @@ export class StockReturnService{
   if(!orderNumber||!sourceBarcode||!productBarcode||!targetBarcode||!targetLocationCode)throw new Error("Sipariş, kaynak THM/SVK, ürün, hedef stok THM ve hedef adres zorunludur.");
   if(sourceBarcode===targetBarcode)throw new Error("Kaynak ve hedef THM aynı olamaz.");
   return prisma.$transaction(async tx=>{
-   const order=await tx.order.findUnique({where:{orderNumber},select:{id:true,orderNumber:true,status:true,fulfillmentWarehouseId:true,fulfillment:{select:{flowType:true,waveId:true}},items:{where:{OR:[{product:{barcode:productBarcode}},{productCode:productBarcode}]},select:{id:true,productId:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,product:{select:{barcode:true}}}}}});
+   const order=await tx.order.findUnique({where:{orderNumber},select:{id:true,orderNumber:true,status:true,cancellationStatus:true,fulfillmentWarehouseId:true,fulfillment:{select:{flowType:true,waveId:true}},items:{where:{OR:[{product:{barcode:productBarcode}},{productCode:productBarcode}]},select:{id:true,productId:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,product:{select:{barcode:true}}}}}});
    if(!order)throw new Error("Çıkış siparişi bulunamadı.");
    if(order.status===OrderStatus.SHIPPED||order.status===OrderStatus.DELIVERED)throw new Error("Sipariş SEVK EDİLDİ. Bu işlem yerine İade Giriş kullanılmalıdır.");
    if(order.status===OrderStatus.CANCELLED)throw new Error("İptal edilmiş sipariş geri alma işlemine açık değildir.");
+   if(order.cancellationStatus==="STOCK_RETURN_PENDING"&&!CUSTOMER_REASONS.includes(input.reason))throw new Error("İptal bekleyen siparişte yalnızca müşteri iptali nedeniyle fiziksel stok geri alma yapılabilir.");
+   if(order.cancellationStatus==="REQUESTED"||order.cancellationStatus==="REFUND_PENDING"||order.cancellationStatus==="COMPLETED")throw new Error("Bu siparişin iptal aşaması fiziksel stok geri almaya uygun değil.");
+
    const item=order.items[0]; if(!item)throw new Error("Okutulan ürün bu siparişte bulunmuyor.");
    if(item.shippedQuantity>0)throw new Error("Bu ürünün sevk edilmiş miktarı var. Sevk sonrası miktar İade Giriş ile alınmalıdır.");
    if(item.pickedQuantity<=0)throw new Error("Bu ürün için geri alınabilecek toplanmış miktar bulunmuyor.");
