@@ -97,4 +97,35 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.findMany).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
+  it("rejects invalid customer email before reading products", async () => {
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, email: "not-an-email",
+    })).rejects.toThrow("Geçerli bir e-posta");
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("requires corporate invoice name and tax number", async () => {
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, invoiceType: "CORPORATE", invoiceName: "", invoiceTaxNumber: null,
+    })).rejects.toThrow("Kurumsal fatura");
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("does not notify when the transaction fails", async () => {
+    mocks.transaction.mockRejectedValueOnce(new Error("synthetic transaction rollback"));
+    await expect(EcommerceCheckoutService.createOrder(input))
+      .rejects.toThrow("synthetic transaction rollback");
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing catalog product before creating any records", async () => {
+    mocks.findMany.mockResolvedValueOnce([]);
+    await expect(EcommerceCheckoutService.createOrder(input))
+      .rejects.toThrow("artık satışta olmayan");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
 });
