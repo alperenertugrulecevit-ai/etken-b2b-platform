@@ -80,6 +80,13 @@ export class EcommerceNotificationService {
   static async send(input:EcommerceNotificationInput):Promise<EcommerceNotificationResult> {
     const email=input.email?.trim().toLowerCase();
     if(!email) return {status:"skipped",reason:"Müşteri e-posta adresi yok."};
+    if (email.length > 254 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      return {status:"failed",reason:"Müşteri e-posta adresi geçersiz."};
+    }
+    if (!input.orderNumber?.trim() || input.orderNumber.length > 120 ||
+        !Object.prototype.hasOwnProperty.call(SUBJECTS, input.event)) {
+      return {status:"failed",reason:"Bildirim olayı veya sipariş numarası geçersiz."};
+    }
 
     const webhook=process.env.ECOMMERCE_EMAIL_WEBHOOK_URL?.trim();
     if(!webhook) return {status:"skipped",reason:"E-posta sağlayıcısı yapılandırılmadı."};
