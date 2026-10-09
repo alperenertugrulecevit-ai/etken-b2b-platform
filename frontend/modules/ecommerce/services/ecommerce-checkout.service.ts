@@ -180,6 +180,28 @@ export class EcommerceCheckoutService {
     const fullName = firstName + " " + lastName;
 
     const order = await prisma.$transaction(async (tx) => {
+      // Reserve in a deterministic order to reduce deadlocks between multi-line carts.
+      // A conditional UPDATE is atomic under PostgreSQL READ COMMITTED: a competing
+      // checkout cannot consume the same observed available stock.
+      for (const item of [...items].sort((a, b) => a.productId - b.productId)) {
+        const product = productMap.get(item.productId)!;
+        const reservation = await tx.product.updateMany({
+          where: {
+            id: product.id,
+            tenantId: B2B_CONSTANTS.TENANT_ID,
+            companyId: B2B_CONSTANTS.COMPANY_ID,
+            isActive: true,
+            stock: { gte: product.reservedStock + item.quantity },
+            reservedStock: { lte: product.reservedStock },
+          },
+          data: { reservedStock: { increment: item.quantity } },
+        });
+        if (reservation.count !== 1) {
+          throw new EcommerceCheckoutError(
+            product.name + " için stok değişti. Sepetinizi güncelleyip tekrar deneyin."
+          );
+        }
+      }
       let customerId = input.accountCustomerId ?? null;
       let existingShippingAddressId: number | null = null;
       let invoiceSnapshot = {
@@ -314,6 +336,8 @@ export class EcommerceCheckoutService {
           invoiceCity: invoiceSnapshot.city,
           invoiceDistrict: invoiceSnapshot.district,
           invoicePostalCode: invoiceSnapshot.postalCode,
+          stockReserved: true,
+          stockReservedAt: new Date(),
           paymentStatus: "PENDING",
           paymentProvider: "BANK_TRANSFER",
           statusHistory: {
