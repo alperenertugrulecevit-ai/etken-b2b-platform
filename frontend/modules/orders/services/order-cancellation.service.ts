@@ -182,6 +182,11 @@ export class OrderCancellationService {
 
   static async request(input:{orderId:number;reason:string;actor:Actor;bankTransferExpiryCutoff?:Date}) {
     return prisma.$transaction(async(tx)=>{
+      // Lock before reading mutable order state during expiry cancellation.
+      if (input.bankTransferExpiryCutoff) {
+        await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${input.orderId} FOR UPDATE`;
+      }
+
       const order=await tx.order.findUnique({
         where:{id:input.orderId},
         select:{
@@ -191,12 +196,6 @@ export class OrderCancellationService {
           shippingHandlingUnitOrders:{select:{shippingHandlingUnit:{select:{dispatchDocument:{select:{id:true,status:true}}}}}},
         },
       });
-
-      // Acquire an order row lock before evaluating payment/WMS eligibility.
-      // Competing jobs cannot cancel the same order simultaneously.
-      if (input.bankTransferExpiryCutoff) {
-        await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${input.orderId} FOR UPDATE`;
-      }
 
       // Recheck the expiry policy inside the same serializable transaction
       // that performs cancellation. The scheduled job must never trust a
