@@ -329,15 +329,6 @@ items: {
         return;
       }
 
-      if (
-        order.status ===
-          OrderStatus.CANCELLED
-      ) {
-        throw new Error(
-          "İptal edilmiş sipariş yeniden açılamaz. Yeni bir sipariş oluşturmalısınız."
-        );
-      }
-
       const statusHistory = {
         create: {
           status: newStatus,
