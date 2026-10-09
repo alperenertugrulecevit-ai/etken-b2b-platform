@@ -70,6 +70,26 @@ describe("Ecommerce reservation release (mocked, no database)", () => {
       .rejects.toThrow("tutarsızlığı");
   });
 
+  it("does not release when another worker already claimed the order", async () => {
+    mocks.updateOrder.mockResolvedValueOnce({ count: 0 });
+    expect(await EcommerceStockReservationService.releaseUnpickedOrder(12, "Concurrent cancellation")).toBe(false);
+    expect(mocks.updateProduct).not.toHaveBeenCalled();
+  });
+
+  it("aggregates repeated product lines and releases products in stable order", async () => {
+    mocks.findOrder.mockResolvedValueOnce({
+      ...order,
+      items: [
+        { ...order.items[0], productId: 9, quantity: 1 },
+        { ...order.items[0], productId: 7, quantity: 2 },
+        { ...order.items[0], productId: 7, quantity: 3 },
+      ],
+    });
+    expect(await EcommerceStockReservationService.releaseUnpickedOrder(12, "Cancel")).toBe(true);
+    expect(mocks.updateProduct.mock.calls.map(([args]) => args.where.id)).toEqual([7, 9]);
+    expect(mocks.updateProduct.mock.calls.map(([args]) => args.where.reservedStock.gte)).toEqual([5, 1]);
+  });
+
   it("rejects release of a non-ecommerce order", async () => {
     mocks.findOrder.mockResolvedValueOnce({ ...order, source: "ADMIN" });
     await expect(EcommerceStockReservationService.releaseUnpickedOrder(12, "Cancel"))
