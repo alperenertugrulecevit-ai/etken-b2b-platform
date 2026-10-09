@@ -97,6 +97,21 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.findMany).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
+  it("logs a provider failure result without losing a committed order", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      mocks.notify.mockResolvedValueOnce({ status: "failed", reason: "HTTP 503" });
+      const order = await EcommerceCheckoutService.createOrder(input);
+      expect(order.orderNumber).toBe("WEB-SYNTHETIC");
+      expect(log).toHaveBeenCalledWith(
+        "Checkout notification delivery failed after order commit",
+        expect.objectContaining({ orderId: 123, reason: "HTTP 503" }),
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("returns the committed order even if its notification webhook fails", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
