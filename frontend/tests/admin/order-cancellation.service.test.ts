@@ -51,6 +51,27 @@ describe("OrderCancellationService.undoRequest",()=>{
     expect(mocks.wmsLogCreate).toHaveBeenCalled();
   });
 
+  it("eksik depo rezervasyonu varsa iptali geri alıp siparişi açmaz", async () => {
+    mocks.stockMovementFindMany.mockResolvedValue([]);
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("eksik depo rezervasyonu mevcut");
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderItemUpdate).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("kısmi rezervasyon geri yüklemesiyle iptali geri almaz", async () => {
+    mocks.stockMovementFindMany.mockResolvedValue([
+      { productId: 10, warehouseId: 1, reservedChange: -2 },
+    ]);
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("eksik depo rezervasyonu mevcut");
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("RF stok geri alma başladıysa iptal geri almayı reddeder",async()=>{
     mocks.stockMovementCount.mockResolvedValue(1);
     await expect(OrderCancellationService.undoRequest({orderId:782,reason:"geri al",actor:{userId:"admin",displayName:"Admin"}}))
