@@ -46,6 +46,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://test:test@127.0.0.1:5432/etken_test?schema=public
+      DIRECT_URL: postgresql://test:test@127.0.0.1:5432/etken_test?schema=public
 
     steps:
       - name: Checkout repository
