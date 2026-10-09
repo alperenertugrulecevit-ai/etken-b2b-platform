@@ -200,6 +200,35 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(data.accountEntries.create.amount).toBe(295);
   });
 
+  it("rejects a cart exceeding the maximum line count", async () => {
+    const items = Array.from({ length: 501 }, (_, i) => ({
+      productId: i + 1,
+      quantity: 1,
+    }));
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, items,
+    })).rejects.toThrow("Sepetinizde");
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing delivery contact details before accessing inventory", async () => {
+    for (const missing of ["firstName", "lastName", "phone", "address", "city", "district"] as const) {
+      await expect(EcommerceCheckoutService.createOrder({
+        ...input, [missing]: " ",
+      })).rejects.toThrow("Teslimat ve iletişim");
+    }
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("does not send a notification when order insertion fails", async () => {
+    mocks.orderCreate.mockRejectedValueOnce(new Error("synthetic insert failed"));
+    await expect(EcommerceCheckoutService.createOrder(input))
+      .rejects.toThrow("synthetic insert failed");
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid customer email before reading products", async () => {
     await expect(EcommerceCheckoutService.createOrder({
       ...input, email: "not-an-email",
