@@ -487,6 +487,13 @@ export class OrderCancellationService {
       const payment=await tx.customerAccountEntry.findFirst({where:{orderId:order.id,direction:CustomerAccountEntryDirection.CREDIT,entryType:CustomerAccountEntryType.PAYMENT},select:{amount:true,paymentMethod:true}});
       if(!payment)throw new Error("İade edilecek tahsilat kaydı bulunamadı.");
       if (!input.reference.trim()) throw new Error("İade referansı zorunludur.");
+      const cardPayment = await tx.paymentTransaction.findFirst({
+        where: { orderId: order.id, status: "PAID" },
+        select: { amount: true, refundedAmount: true, providerReference: true },
+      });
+      if (cardPayment && (cardPayment.providerReference !== input.reference || cardPayment.refundedAmount < payment.amount)) {
+        throw new Error("Sanal POS iadesi sağlayıcı işlem kaydıyla doğrulanmadı.");
+      }
       if (!Number.isFinite(payment.amount) || payment.amount <= 0 || payment.amount > order.totalAmount) throw new Error("İade tutarı geçersiz.");
       const existing=await tx.customerAccountEntry.findFirst({where:{orderId:order.id,direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND},select:{id:true,referenceNo:true}});
       if (existing && existing.referenceNo !== input.reference) throw new Error("Farklı referansla iade zaten kaydedilmiş.");
