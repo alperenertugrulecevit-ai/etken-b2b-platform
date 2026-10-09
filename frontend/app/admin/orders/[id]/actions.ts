@@ -261,6 +261,22 @@ items: {
         );
       }
 
+      // Checkout reservations belong to the ecommerce order, not to a WMS
+      // warehouse. A generic status rollback must never emit a warehouse
+      // RESERVATION_RELEASE for these orders: it would release global stock
+      // without an explicit cancellation and corrupt the ownership ledger.
+      if (
+        order.source === OrderSource.ECOMMERCE &&
+        order.stockReserved &&
+        !order.stockDeducted &&
+        (newStatus === OrderStatus.DRAFT || newStatus === OrderStatus.PENDING) &&
+        order.status !== newStatus
+      ) {
+        throw new Error(
+          "E-ticaret siparişinde başlangıç durumuna dönüş için stok rezervasyonu otomatik bırakılamaz. İptal sürecini kullanın.",
+        );
+      }
+
       if (
         hasOperationalPicking &&
         (
