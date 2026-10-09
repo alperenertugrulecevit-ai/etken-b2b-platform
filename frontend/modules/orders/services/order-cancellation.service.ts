@@ -528,7 +528,7 @@ export class OrderCancellationService {
 
   static async completeRefund(input:{orderId:number;reference:string;actor:Actor}){
     return prisma.$transaction(async(tx)=>{
-      const order=await tx.order.findUnique({where:{id:input.orderId},select:{id:true,customerId:true,orderNumber:true,status:true,totalAmount:true,paymentStatus:true,cancellationStatus:true,cancellationRefundStatus:true}});
+      const order=await tx.order.findUnique({where:{id:input.orderId},select:{id:true,customerId:true,orderNumber:true,status:true,totalAmount:true,paymentMethod:true,paymentStatus:true,cancellationStatus:true,cancellationRefundStatus:true}});
       if(!order)throw new Error("Sipariş bulunamadı.");
       if(order.status!==OrderStatus.CANCELLED||order.cancellationStatus!=="REFUND_PENDING"||order.cancellationRefundStatus!=="PENDING")throw new Error("Sipariş para iadesi tamamlamaya uygun değil.");
       const payment=await tx.customerAccountEntry.findFirst({where:{orderId:order.id,direction:CustomerAccountEntryDirection.CREDIT,entryType:CustomerAccountEntryType.PAYMENT},select:{amount:true,paymentMethod:true}});
@@ -538,7 +538,7 @@ export class OrderCancellationService {
         where: { orderId: order.id, status: "PAID" },
         select: { amount: true, refundedAmount: true, providerReference: true },
       });
-      if (cardPayment && (cardPayment.refundedAmount < payment.amount)) {
+      if (order.paymentMethod === "CREDIT_CARD" && (!cardPayment || cardPayment.refundedAmount < payment.amount)) {
         throw new Error("Sanal POS iadesi sağlayıcı işlem kaydıyla doğrulanmadı.");
       }
       if (!Number.isFinite(payment.amount) || payment.amount <= 0 || payment.amount > order.totalAmount) throw new Error("İade tutarı geçersiz.");
