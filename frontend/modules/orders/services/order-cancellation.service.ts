@@ -83,7 +83,20 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
   // Web checkout reserves Product.reservedStock directly. Release that global
   // reservation inside the same transaction that completes cancellation.
   // Never release twice, and never apply this to already shipped stock.
-  if (order.source === OrderSource.ECOMMERCE && order.stockReserved && !order.stockDeducted) {
+  const warehouseReservationMovements = await tx.stockMovement.count({
+    where: {
+      orderId: order.id,
+      movementType: {
+        in: [StockMovementType.RESERVATION_CREATE, StockMovementType.RESERVATION_RELEASE],
+      },
+    },
+  });
+  if (
+    order.source === OrderSource.ECOMMERCE &&
+    order.stockReserved &&
+    !order.stockDeducted &&
+    warehouseReservationMovements === 0
+  ) {
     const totals = new Map<number, number>();
     for (const item of order.items) {
       const quantity = (totals.get(item.productId) ?? 0) + item.quantity;
