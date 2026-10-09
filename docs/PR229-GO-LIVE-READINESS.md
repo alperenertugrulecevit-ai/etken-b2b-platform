@@ -26,3 +26,10 @@ This document is an audit checklist, **not evidence that third-party integration
 - Mocked unit tests and rollback-only probes do **not** prove a successful end-to-end bank confirmation, card payment, carrier booking, e-invoice, or actual refund.
 - Provider integrations require real provider documentation, contracts, test credentials and approved callback URLs. Never fabricate credentials or silently enable real payments.
 - No production migration, merge, deploy or payment operation should be initiated by this draft PR without explicit review.
+
+
+## Critical checkout reservation decision (2026-10-09)
+
+Code inspection confirms `EcommerceCheckoutService.createOrder` currently checks `Product.stock - Product.reservedStock` **before** the database transaction, but does not reserve stock inside the transaction. Two concurrent requests may both pass the same stock check. This is a **release blocker** for oversell prevention, not solved by the synthetic unit tests.
+
+Implementation must reconcile WMS reservation ownership and lifecycle first: order approval, cancellation, picking, shortages, returns, and warehouse stock ledgers. An isolated atomic `reservedStock` increment without release/consumption and warehouse consistency can strand inventory and cause operational discrepancies. Acceptance requires concurrent PostgreSQL integration tests with competing checkout requests, exactly-once reservation, rollback on failure, and full cancellation/fulfilment release tests. No production stock mutation is authorized as part of this draft PR.
