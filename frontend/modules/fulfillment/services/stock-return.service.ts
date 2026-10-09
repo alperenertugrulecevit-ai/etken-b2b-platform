@@ -152,7 +152,7 @@ export class StockReturnService{
    await tx.wmsOperationLog.create({data:{operationType:WmsOperationType.ITEM_TRANSFER,module:"RF_STOCK_RETURN",entityType:"ORDER",entityId:order.id,operatorId:input.actor.userId,operatorName:input.actor.displayName,terminalCode:input.actor.terminalCode??null,barcode:order.orderNumber,sourceBarcode:source.barcode,targetBarcode:target.barcode,orderId:order.id,orderNumber:order.orderNumber,productId:item.productId,productCode:item.productCode,productName:item.productName,quantity:1,warehouseId:operationWarehouseId,targetLocationId:location.id,targetLocationCode:location.code,previousStatus:stage,newStatus:"STOCK",description:`${item.productCode} 1 adet sevk öncesi stoğa geri alındı.`,metadata:{reason:input.reason,stage}}});
 
    const flow=order.fulfillment?.flowType??OrderFulfillmentFlow.DIRECT_ORDER;
-   const progress=await FulfillmentService.refreshOrderProgress(tx,{orderId:order.id,flowType:flow,waveId:order.fulfillment?.waveId??null});
+   await FulfillmentService.refreshOrderProgress(tx,{orderId:order.id,flowType:flow,waveId:order.fulfillment?.waveId??null});
 
    // Yanlış toplama talebi iptal etmez. Fiziksel ürün stoğa döndüğü anda
    // ilgili siparişin eski Zone planını bırakıp kalan ihtiyacı yeniden planla.
@@ -171,11 +171,10 @@ export class StockReturnService{
      await tx.waveOrder.updateMany({where:{waveId,orderId:order.id},data:{isCompleted:false,completedAt:null}});
     }
     await tx.order.update({where:{id:order.id},data:{status:OrderStatus.PICKING,stockReserved:true}});
-   }else if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0&&order.cancellationStatus!=="STOCK_RETURN_PENDING"){
-    // Never bypass the cancellation finalizer for an active cancellation.
-    // It owns the checkout reservation release, credit entry and refund state.
-    await tx.order.update({where:{id:order.id},data:{status:OrderStatus.CANCELLED,stockReserved:false}});
    }
+   // RF scanning never cancels an order by changing status/stockReserved
+   // directly. Only the cancellation service can release checkout stock,
+   // post accounting reversal and decide whether a refund is required.
    if(CUSTOMER_REASONS.includes(input.reason)){
     await OrderCancellationService.tryFinalizeAfterStockReturn(tx,order.id,{
      userId:input.actor.userId,
