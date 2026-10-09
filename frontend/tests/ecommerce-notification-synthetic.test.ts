@@ -55,6 +55,7 @@ describe("Ecommerce notifications (synthetic, no external requests)", () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe("https://example.invalid/notification");
     expect(options.headers.authorization).toBe("Bearer synthetic-test-token");
+    expect(options.redirect).toBe("error");
     const payload = JSON.parse(options.body);
     expect(payload.to).toBe("buyer@example.invalid");
     expect(payload.orderNumber).toBe("WEB-TEST-001");
