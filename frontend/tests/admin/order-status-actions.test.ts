@@ -380,6 +380,57 @@ describe(
       );
     });
 
+    it.each([OrderStatus.APPROVED, OrderStatus.PREPARING, OrderStatus.PICKING, OrderStatus.PACKING, OrderStatus.READY_TO_SHIP])(
+      "e-ticaret rezervasyonunu %s geçişinde ikinci kez oluşturmaz",
+      async (status) => {
+        mocks.orderFindUnique.mockResolvedValue(
+          createOrder({
+            source: OrderSource.ECOMMERCE,
+            status: OrderStatus.PENDING,
+            stockReserved: true,
+          })
+        );
+        await updateOrderStatus(501, createStatusForm(status));
+        expect(mocks.stockMovement).not.toHaveBeenCalled();
+        expect(mocks.getWmsPickableStock).not.toHaveBeenCalled();
+        expect(mocks.orderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ status }),
+          })
+        );
+      }
+    );
+
+    it("iptal edilmiş e-ticaret siparişini rezervasyon bayrağı olsa bile açmaz", async () => {
+      mocks.orderFindUnique.mockResolvedValue(createOrder({
+        source: OrderSource.ECOMMERCE, status: OrderStatus.CANCELLED, stockReserved: true,
+      }));
+      await expect(updateOrderStatus(501, createStatusForm(OrderStatus.APPROVED)))
+        .rejects.toThrow("İptal edilmiş sipariş yeniden açılamaz");
+      expect(mocks.orderUpdate).not.toHaveBeenCalled();
+    });
+
+    it("aynı e-ticaret durumunu tekrar seçince geçmiş kaydı oluşturmaz", async () => {
+      mocks.orderFindUnique.mockResolvedValue(createOrder({
+        source: OrderSource.ECOMMERCE, status: OrderStatus.APPROVED, stockReserved: true,
+      }));
+      await updateOrderStatus(501, createStatusForm(OrderStatus.APPROVED));
+      expect(mocks.orderUpdate).not.toHaveBeenCalled();
+      expect(mocks.stockMovement).not.toHaveBeenCalled();
+    });
+
+    it("e-ticaret siparişinde başlangıç durumuna dönüş global rezervasyonu WMS üzerinden bırakmaz", async () => {
+      mocks.orderFindUnique.mockResolvedValue(createOrder({
+        source: OrderSource.ECOMMERCE,
+        status: OrderStatus.APPROVED,
+        stockReserved: true,
+      }));
+      await expect(updateOrderStatus(501, createStatusForm(OrderStatus.PENDING)))
+        .rejects.toThrow("İptal sürecini kullanın");
+      expect(mocks.stockMovement).not.toHaveBeenCalled();
+      expect(mocks.orderUpdate).not.toHaveBeenCalled();
+    });
+
     it("e-ticaret siparişinde manuel sevk durumunu engeller", async () => {
       mocks.orderFindUnique.mockResolvedValue(
         createOrder({

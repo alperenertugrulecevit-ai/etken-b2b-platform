@@ -87,6 +87,9 @@ export class EcommerceCheckoutService {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new EcommerceCheckoutError("Geçerli bir e-posta adresi girin.");
     }
+    if (input.invoiceType !== "INDIVIDUAL" && input.invoiceType !== "CORPORATE") {
+      throw new EcommerceCheckoutError("Geçersiz fatura türü.");
+    }
     if (input.invoiceType === "CORPORATE" && (!invoiceName || !taxNumber)) {
       throw new EcommerceCheckoutError("Kurumsal fatura için unvan ve vergi numarası zorunludur.");
     }
@@ -101,8 +104,8 @@ export class EcommerceCheckoutService {
     const ids = new Set(items.map((item) => item.productId));
     if (
       ids.size !== items.length ||
-      items.some((item) => !Number.isInteger(item.productId) || item.productId <= 0 ||
-        !Number.isInteger(item.quantity) || item.quantity <= 0)
+      items.some((item) => !Number.isSafeInteger(item.productId) || item.productId <= 0 ||
+        !Number.isSafeInteger(item.quantity) || item.quantity <= 0)
     ) {
       throw new EcommerceCheckoutError("Sepette geçersiz ürün satırı bulunuyor.");
     }
@@ -128,6 +131,16 @@ export class EcommerceCheckoutService {
     const calculatedItems = items.map((item) => {
       const product = productMap.get(item.productId);
       if (!product) throw new EcommerceCheckoutError("Sipariş ürünü bulunamadı.");
+      if (
+        !Number.isFinite(product.price) || product.price < 0 ||
+        !Number.isInteger(product.vat) || product.vat < 0 || product.vat > 100 ||
+        !Number.isSafeInteger(product.stock) || product.stock < 0 ||
+        !Number.isSafeInteger(product.reservedStock) || product.reservedStock < 0
+      ) {
+        throw new EcommerceCheckoutError(
+          product.name + " için fiyat, vergi veya stok bilgisi geçersiz."
+        );
+      }
       const available = Math.max(0, product.stock - product.reservedStock);
       if (item.quantity > available) {
         throw new EcommerceCheckoutError(
@@ -152,10 +165,43 @@ export class EcommerceCheckoutService {
     const subtotal = roundMoney(calculatedItems.reduce((sum, item) => sum + item.lineNet, 0));
     const vatAmount = roundMoney(calculatedItems.reduce((sum, item) => sum + item.vatAmount, 0));
     const totalAmount = roundMoney(subtotal + vatAmount);
+    if (
+      !Number.isFinite(subtotal) || !Number.isFinite(vatAmount) ||
+      !Number.isFinite(totalAmount) || subtotal < 0 || vatAmount < 0 ||
+      totalAmount < 0 || totalAmount > Number.MAX_SAFE_INTEGER / 100
+    ) {
+      throw new EcommerceCheckoutError("Sipariş tutarı hesaplanamadı.");
+    }
+    // Bank transfer checkout must not create an unpayable zero-value order.
+    if (totalAmount <= 0) {
+      throw new EcommerceCheckoutError("Sipariş toplam tutarı sıfırdan büyük olmalıdır.");
+    }
     const idToken = token();
     const fullName = firstName + " " + lastName;
 
     const order = await prisma.$transaction(async (tx) => {
+      // Reserve in a deterministic order to reduce deadlocks between multi-line carts.
+      // A conditional UPDATE is atomic under PostgreSQL READ COMMITTED: a competing
+      // checkout cannot consume the same observed available stock.
+      for (const item of [...items].sort((a, b) => a.productId - b.productId)) {
+        const product = productMap.get(item.productId)!;
+        const reservation = await tx.product.updateMany({
+          where: {
+            id: product.id,
+            tenantId: B2B_CONSTANTS.TENANT_ID,
+            companyId: B2B_CONSTANTS.COMPANY_ID,
+            isActive: true,
+            stock: { gte: product.reservedStock + item.quantity },
+            reservedStock: { lte: product.reservedStock },
+          },
+          data: { reservedStock: { increment: item.quantity } },
+        });
+        if (reservation.count !== 1) {
+          throw new EcommerceCheckoutError(
+            product.name + " için stok değişti. Sepetinizi güncelleyip tekrar deneyin."
+          );
+        }
+      }
       let customerId = input.accountCustomerId ?? null;
       let existingShippingAddressId: number | null = null;
       let invoiceSnapshot = {
@@ -290,6 +336,8 @@ export class EcommerceCheckoutService {
           invoiceCity: invoiceSnapshot.city,
           invoiceDistrict: invoiceSnapshot.district,
           invoicePostalCode: invoiceSnapshot.postalCode,
+          stockReserved: true,
+          stockReservedAt: new Date(),
           paymentStatus: "PENDING",
           paymentProvider: "BANK_TRANSFER",
           statusHistory: {
@@ -315,12 +363,27 @@ export class EcommerceCheckoutService {
         select: { id: true, orderNumber: true, totalAmount: true },
       });
     });
-    await EcommerceNotificationService.send({
-      event:"ORDER_RECEIVED",
-      email,
-      orderNumber:order.orderNumber,
-      paymentMethod:B2BPaymentMethod.BANK_TRANSFER,
-    });
+    // The order is already committed. A notification outage must not turn a
+    // successful checkout into an error that prompts the buyer to order twice.
+    try {
+      const notification = await EcommerceNotificationService.send({
+        event: "ORDER_RECEIVED",
+        email,
+        orderNumber: order.orderNumber,
+        paymentMethod: B2BPaymentMethod.BANK_TRANSFER,
+      });
+      if (notification.status === "failed") {
+        console.error("Checkout notification delivery failed after order commit", {
+          orderId: order.id,
+          reason: notification.reason,
+        });
+      }
+    } catch (error) {
+      console.error("Checkout notification failed after order commit", {
+        orderId: order.id,
+        error: error instanceof Error ? error.message : "unknown error",
+      });
+    }
     return order;
   }
 }

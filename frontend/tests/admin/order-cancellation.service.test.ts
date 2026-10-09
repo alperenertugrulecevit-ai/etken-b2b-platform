@@ -12,6 +12,9 @@ const tx={
   stockMovement:{count:mocks.stockMovementCount,findMany:mocks.stockMovementFindMany},
   orderItem:{update:mocks.orderItemUpdate},dispatchDocument:{update:mocks.dispatchUpdate},
   wmsOperationLog:{create:mocks.wmsLogCreate},
+  customerAccountEntry: { findFirst: vi.fn(), create: vi.fn() },
+  paymentTransaction: { findFirst: vi.fn() },
+  product: { updateMany: vi.fn() },
 };
 vi.mock("@/lib/prisma",()=>({prisma:{$transaction:mocks.transaction}}));
 vi.mock("@/lib/stock/stock-service",()=>({createStockMovementWithTransaction:mocks.createStockMovement}));
@@ -51,6 +54,90 @@ describe("OrderCancellationService.undoRequest",()=>{
     expect(mocks.wmsLogCreate).toHaveBeenCalled();
   });
 
+  it("toplama ve paketleme miktarları tutarsızsa iptal geri almayı reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      items: [{
+        id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 1, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 1,
+      }],
+    }));
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("sipariş kalem miktarları tutarsız");
+    expect(mocks.stockMovementCount).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("kısmi sevkiyat kaydı varsa iptal geri almayı reddeder", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      items: [{
+        id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 1, cancelledQuantity: 1,
+      }],
+    }));
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("Fiziksel sevki başlamış");
+    expect(mocks.stockMovementCount).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("aynı ürünü içeren iki sipariş kaleminin iptal miktarını ayrı ayrı geri alır", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      items: [
+        { id: 1, productId: 10, quantity: 3, pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 1 },
+        { id: 2, productId: 10, quantity: 4, pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 2 },
+      ],
+    }));
+    mocks.stockMovementFindMany.mockResolvedValue([
+      { productId: 10, warehouseId: 1, reservedChange: -3 },
+    ]);
+    await OrderCancellationService.undoRequest({
+      orderId: 782, reason: "operasyon düzeltildi", actor: { userId: "admin", displayName: "Admin" },
+    });
+    expect(mocks.orderItemUpdate).toHaveBeenCalledWith({
+      where: { id: 1 }, data: { cancelledQuantity: { decrement: 1 } },
+    });
+    expect(mocks.orderItemUpdate).toHaveBeenCalledWith({
+      where: { id: 2 }, data: { cancelledQuantity: { decrement: 2 } },
+    });
+    expect(mocks.createStockMovement).toHaveBeenCalledTimes(1);
+  });
+
+  it("rezervasyonu bırakılmış e-ticaret siparişinin iptalini geri almaz", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      source: "ECOMMERCE", stockReserved: false,
+    }));
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("E-ticaret rezervasyonu artık aktif değil");
+    expect(mocks.stockMovementFindMany).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("eksik depo rezervasyonu varsa iptali geri alıp siparişi açmaz", async () => {
+    mocks.stockMovementFindMany.mockResolvedValue([]);
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("eksik depo rezervasyonu mevcut");
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderItemUpdate).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("kısmi rezervasyon geri yüklemesiyle iptali geri almaz", async () => {
+    mocks.stockMovementFindMany.mockResolvedValue([
+      { productId: 10, warehouseId: 1, reservedChange: -2 },
+    ]);
+    await expect(OrderCancellationService.undoRequest({
+      orderId: 782, reason: "geri al", actor: { userId: "admin", displayName: "Admin" },
+    })).rejects.toThrow("eksik depo rezervasyonu mevcut");
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("RF stok geri alma başladıysa iptal geri almayı reddeder",async()=>{
     mocks.stockMovementCount.mockResolvedValue(1);
     await expect(OrderCancellationService.undoRequest({orderId:782,reason:"geri al",actor:{userId:"admin",displayName:"Admin"}}))
@@ -63,5 +150,237 @@ describe("OrderCancellationService.undoRequest",()=>{
     await expect(OrderCancellationService.undoRequest({orderId:782,reason:"geri al",actor:{userId:"admin",displayName:"Admin"}}))
       .rejects.toThrow("Yalnızca stok geri alma bekleyen");
     expect(mocks.stockMovementCount).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrderCancellationService.request ecommerce stock ownership", () => {
+  const actor = { userId: "admin", displayName: "Admin" };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.transaction.mockImplementation(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx));
+    mocks.releaseOrderPlan.mockResolvedValue(undefined);
+    mocks.orderItemUpdate.mockResolvedValue({});
+    mocks.orderUpdate.mockResolvedValue({});
+    mocks.stockMovementFindMany.mockResolvedValue([]);
+    mocks.stockMovementCount.mockResolvedValue(1);
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+  });
+  it("kısmi sevk edilmiş siparişi iade sürecine yönlendirir", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.READY_TO_SHIP,
+      cancellationStatus: null, source: "ECOMMERCE", stockReserved: true,
+      stockDeducted: false, paymentStatus: "PAID", pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 1, cancelledQuantity: 1 }],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("İade Giriş");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderItemUpdate).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("toplanmış ürün varken iptali stok geri alma bekleme durumunda tutar", async () => {
+    mocks.stockMovementCount.mockResolvedValue(0);
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.READY_TO_SHIP,
+      cancellationStatus: null, source: "ECOMMERCE", stockReserved: true,
+      stockDeducted: false, paymentStatus: "PENDING", pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 3,
+        pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+    const result = await OrderCancellationService.request({ orderId: 782, reason: "test", actor });
+    expect(result).toEqual({ orderNumber: "WEB-782", stockReturnRequired: true, physicalQuantity: 2 });
+    expect(mocks.orderItemUpdate).toHaveBeenCalledWith({
+      where: { id: 1 }, data: { cancelledQuantity: { increment: 1 } },
+    });
+    expect(mocks.orderUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ cancellationStatus: "STOCK_RETURN_PENDING" }),
+    }));
+    expect(mocks.orderUpdate).not.toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: OrderStatus.CANCELLED }),
+    }));
+  });
+
+  it("rejects repeated cancellation requests before touching reservations", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      cancellationStatus: "STOCK_RETURN_PENDING",
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", pickingAssignment: null, shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 2,
+        pickedQuantity: 1, packedQuantity: 1, shippedQuantity: 0, cancelledQuantity: 1 }],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "again", actor }))
+      .rejects.toThrow("aktif iptal talebi zaten mevcut");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderItemUpdate).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects inconsistent picked and cancelled quantities before touching stock", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", pickingAssignment: null, shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 1, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 1 }],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("kalem miktarları tutarsız");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("aynı ürün iki satırdaysa WMS rezervasyonunu toplamdan fazla bırakmaz", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "B2B-782", status: OrderStatus.PENDING,
+      cancellationStatus: null, source: "B2B", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", pickingAssignment: null, shippingHandlingUnitOrders: [],
+      items: [
+        { id: 1, productId: 10, productCode: "P10", quantity: 2, pickedQuantity: 1, packedQuantity: 1, shippedQuantity: 0, cancelledQuantity: 0 },
+        { id: 2, productId: 10, productCode: "P10", quantity: 2, pickedQuantity: 1, packedQuantity: 1, shippedQuantity: 0, cancelledQuantity: 0 },
+      ],
+    });
+    mocks.stockMovementFindMany.mockResolvedValue([{ warehouseId: 1, reservedChange: 1 }]);
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("depo rezervasyonu yetersiz");
+    expect(mocks.createStockMovement).toHaveBeenCalledTimes(1);
+    expect(mocks.createStockMovement).toHaveBeenCalledWith(tx, expect.objectContaining({
+      movementType: StockMovementType.RESERVATION_RELEASE, reservedChange: -1,
+    }));
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("accepts fully released historical warehouse reservations during checkout cancellation", async () => {
+    mocks.stockMovementCount.mockResolvedValueOnce(2).mockResolvedValueOnce(2);
+    mocks.stockMovementFindMany.mockResolvedValue([
+      { productId: 10, warehouseId: 1, reservedChange: 1 },
+      { productId: 10, warehouseId: 1, reservedChange: -1 },
+    ]);
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", cancellationStatus: null, pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+    tx.product = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+    tx.customerAccountEntry = { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() };
+    mocks.orderFindUnique.mockResolvedValueOnce({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", cancellationStatus: null, pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
+    }).mockResolvedValueOnce({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING",
+      items: [{ productId: 10, quantity: 1, cancelledQuantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0 }],
+    });
+    const result = await OrderCancellationService.request({ orderId: 782, reason: "test", actor });
+    expect(result.stockReturnRequired).toBe(false);
+    expect(tx.product.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 10, reservedStock: { gte: 1 } },
+      data: { reservedStock: { decrement: 1 } },
+    }));
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+  });
+  it("blocks cancellation when checkout and warehouse reservation ownership overlap", async () => {
+    mocks.stockMovementFindMany.mockResolvedValue([{ productId: 10, warehouseId: 1, reservedChange: 1 }]);
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("stok mutabakatı gerekli");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.orderItemUpdate).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrderCancellationService cancellation finalizer safety", () => {
+  const actor = { userId: "admin", displayName: "Admin" };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.transaction.mockImplementation(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx));
+    mocks.orderUpdate.mockResolvedValue({});
+    mocks.orderItemUpdate.mockResolvedValue({});
+    mocks.releaseOrderPlan.mockResolvedValue(undefined);
+    mocks.stockMovementCount.mockResolvedValue(0);
+    mocks.stockMovementFindMany.mockResolvedValue([]);
+  });
+
+  it("rejects an order without lines before mutating inventory", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, orderNumber: "WEB-782", source: "ECOMMERCE",
+      status: OrderStatus.PENDING, stockReserved: true, stockDeducted: false,
+      cancellationStatus: null, paymentStatus: "PENDING",
+      pickingAssignment: null, shippingHandlingUnitOrders: [], items: [],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("Kalemsiz sipariş");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("routes already deducted physical stock to returns rather than cancellation", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, orderNumber: "WEB-782", source: "ECOMMERCE",
+      status: OrderStatus.READY_TO_SHIP, stockReserved: true, stockDeducted: true,
+      cancellationStatus: null, paymentStatus: "PAID",
+      pickingAssignment: null, shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 1, packedQuantity: 1, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("İade Giriş");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrderCancellationService.completeRefund validation", () => {
+  const actor = { userId: "admin", displayName: "Admin" };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.transaction.mockImplementation(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx));
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.CANCELLED,
+      totalAmount: 100, paymentStatus: "REFUND_PENDING",
+      cancellationStatus: "REFUND_PENDING", cancellationRefundStatus: "PENDING",
+    });
+    tx.customerAccountEntry = {
+      findFirst: vi.fn().mockResolvedValue({ amount: 100, paymentMethod: "CREDIT_CARD" }),
+      create: vi.fn(),
+    };
+    tx.paymentTransaction = { findFirst: vi.fn().mockResolvedValue({
+      amount: 100, refundedAmount: 0, providerReference: "PAY-1",
+    }) };
+  });
+  it("does not close a refund without persisted provider evidence", async () => {
+    await expect(OrderCancellationService.completeRefund({ orderId: 782, reference: "REF-1", actor }))
+      .rejects.toThrow("Sanal POS iadesi");
+    expect(tx.customerAccountEntry.create).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+  it("does not accept an empty refund reference", async () => {
+    await expect(OrderCancellationService.completeRefund({ orderId: 782, reference: " ", actor }))
+      .rejects.toThrow("İade referansı zorunludur");
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 });

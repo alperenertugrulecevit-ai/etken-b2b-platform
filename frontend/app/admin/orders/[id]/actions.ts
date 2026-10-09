@@ -261,6 +261,22 @@ items: {
         );
       }
 
+      // Checkout reservations belong to the ecommerce order, not to a WMS
+      // warehouse. A generic status rollback must never emit a warehouse
+      // RESERVATION_RELEASE for these orders: it would release global stock
+      // without an explicit cancellation and corrupt the ownership ledger.
+      if (
+        order.source === OrderSource.ECOMMERCE &&
+        order.stockReserved &&
+        !order.stockDeducted &&
+        (newStatus === OrderStatus.DRAFT || newStatus === OrderStatus.PENDING) &&
+        order.status !== newStatus
+      ) {
+        throw new Error(
+          "E-ticaret siparişinde başlangıç durumuna dönüş için stok rezervasyonu otomatik bırakılamaz. İptal sürecini kullanın.",
+        );
+      }
+
       if (
         hasOperationalPicking &&
         (
@@ -279,6 +295,41 @@ items: {
        * rezerve edilmemiş sipariş için stok
        * rezervasyonu tekrar denenebilir.
        */
+      if (order.status === OrderStatus.CANCELLED) {
+        throw new Error("İptal edilmiş sipariş yeniden açılamaz. Yeni bir sipariş oluşturmalısınız.");
+      }
+      if (
+        order.status === newStatus &&
+        order.stockReserved &&
+        !order.stockDeducted
+      ) {
+        return;
+      }
+
+      // Ecommerce checkout already reserved Product.reservedStock.
+      // Do not reserve a second time through WMS on status approval.
+      if (
+        order.source === OrderSource.ECOMMERCE &&
+        order.stockReserved &&
+        !order.stockDeducted &&
+        reservationStatuses.includes(newStatus)
+      ) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: newStatus,
+            statusHistory: {
+              create: {
+                status: newStatus,
+                note: statusNote,
+                visibleToCustomer: true,
+              },
+            },
+          },
+        });
+        return;
+      }
+
       const shouldRepairReservation =
         order.status === newStatus &&
         reservationStatuses.includes(
@@ -292,15 +343,6 @@ items: {
         !shouldRepairReservation
       ) {
         return;
-      }
-
-      if (
-        order.status ===
-          OrderStatus.CANCELLED
-      ) {
-        throw new Error(
-          "İptal edilmiş sipariş yeniden açılamaz. Yeni bir sipariş oluşturmalısınız."
-        );
       }
 
       const statusHistory = {

@@ -74,10 +74,14 @@ export class StockReturnService{
   if(!orderNumber||!sourceBarcode||!productBarcode||!targetBarcode||!targetLocationCode)throw new Error("Sipariş, kaynak THM/SVK, ürün, hedef stok THM ve hedef adres zorunludur.");
   if(sourceBarcode===targetBarcode)throw new Error("Kaynak ve hedef THM aynı olamaz.");
   return prisma.$transaction(async tx=>{
-   const order=await tx.order.findUnique({where:{orderNumber},select:{id:true,orderNumber:true,status:true,fulfillmentWarehouseId:true,fulfillment:{select:{flowType:true,waveId:true}},items:{where:{OR:[{product:{barcode:productBarcode}},{productCode:productBarcode}]},select:{id:true,productId:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,product:{select:{barcode:true}}}}}});
+   const order=await tx.order.findUnique({where:{orderNumber},select:{id:true,orderNumber:true,status:true,cancellationStatus:true,fulfillmentWarehouseId:true,fulfillment:{select:{flowType:true,waveId:true}},items:{where:{OR:[{product:{barcode:productBarcode}},{productCode:productBarcode}]},select:{id:true,productId:true,productCode:true,productName:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,product:{select:{barcode:true}}}}}});
    if(!order)throw new Error("Çıkış siparişi bulunamadı.");
    if(order.status===OrderStatus.SHIPPED||order.status===OrderStatus.DELIVERED)throw new Error("Sipariş SEVK EDİLDİ. Bu işlem yerine İade Giriş kullanılmalıdır.");
    if(order.status===OrderStatus.CANCELLED)throw new Error("İptal edilmiş sipariş geri alma işlemine açık değildir.");
+   if(order.cancellationStatus==="STOCK_RETURN_PENDING"&&!CUSTOMER_REASONS.includes(input.reason))throw new Error("İptal bekleyen siparişte yalnızca müşteri iptali nedeniyle fiziksel stok geri alma yapılabilir.");
+   if(order.cancellationStatus==="REQUESTED"||order.cancellationStatus==="REFUND_PENDING"||order.cancellationStatus==="COMPLETED")throw new Error("Bu siparişin iptal aşaması fiziksel stok geri almaya uygun değil.");
+   if(CUSTOMER_REASONS.includes(input.reason)&&order.cancellationStatus!=="STOCK_RETURN_PENDING")throw new Error("Müşteri iptali nedeniyle stok geri alma için önce sipariş iptal talebi oluşturulmalıdır.");
+
    const item=order.items[0]; if(!item)throw new Error("Okutulan ürün bu siparişte bulunmuyor.");
    if(item.shippedQuantity>0)throw new Error("Bu ürünün sevk edilmiş miktarı var. Sevk sonrası miktar İade Giriş ile alınmalıdır.");
    if(item.pickedQuantity<=0)throw new Error("Bu ürün için geri alınabilecek toplanmış miktar bulunmuyor.");
@@ -149,7 +153,7 @@ export class StockReturnService{
    await tx.wmsOperationLog.create({data:{operationType:WmsOperationType.ITEM_TRANSFER,module:"RF_STOCK_RETURN",entityType:"ORDER",entityId:order.id,operatorId:input.actor.userId,operatorName:input.actor.displayName,terminalCode:input.actor.terminalCode??null,barcode:order.orderNumber,sourceBarcode:source.barcode,targetBarcode:target.barcode,orderId:order.id,orderNumber:order.orderNumber,productId:item.productId,productCode:item.productCode,productName:item.productName,quantity:1,warehouseId:operationWarehouseId,targetLocationId:location.id,targetLocationCode:location.code,previousStatus:stage,newStatus:"STOCK",description:`${item.productCode} 1 adet sevk öncesi stoğa geri alındı.`,metadata:{reason:input.reason,stage}}});
 
    const flow=order.fulfillment?.flowType??OrderFulfillmentFlow.DIRECT_ORDER;
-   const progress=await FulfillmentService.refreshOrderProgress(tx,{orderId:order.id,flowType:flow,waveId:order.fulfillment?.waveId??null});
+   await FulfillmentService.refreshOrderProgress(tx,{orderId:order.id,flowType:flow,waveId:order.fulfillment?.waveId??null});
 
    // Yanlış toplama talebi iptal etmez. Fiziksel ürün stoğa döndüğü anda
    // ilgili siparişin eski Zone planını bırakıp kalan ihtiyacı yeniden planla.
@@ -168,9 +172,10 @@ export class StockReturnService{
      await tx.waveOrder.updateMany({where:{waveId,orderId:order.id},data:{isCompleted:false,completedAt:null}});
     }
     await tx.order.update({where:{id:order.id},data:{status:OrderStatus.PICKING,stockReserved:true}});
-   }else if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0){
-    await tx.order.update({where:{id:order.id},data:{status:OrderStatus.CANCELLED,stockReserved:false}});
    }
+   // RF scanning never cancels an order by changing status/stockReserved
+   // directly. Only the cancellation service can release checkout stock,
+   // post accounting reversal and decide whether a refund is required.
    if(CUSTOMER_REASONS.includes(input.reason)){
     await OrderCancellationService.tryFinalizeAfterStockReturn(tx,order.id,{
      userId:input.actor.userId,
