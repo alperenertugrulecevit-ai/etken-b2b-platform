@@ -486,7 +486,10 @@ export class OrderCancellationService {
       if(order.status!==OrderStatus.CANCELLED||order.cancellationStatus!=="REFUND_PENDING"||order.cancellationRefundStatus!=="PENDING")throw new Error("Sipariş para iadesi tamamlamaya uygun değil.");
       const payment=await tx.customerAccountEntry.findFirst({where:{orderId:order.id,direction:CustomerAccountEntryDirection.CREDIT,entryType:CustomerAccountEntryType.PAYMENT},select:{amount:true,paymentMethod:true}});
       if(!payment)throw new Error("İade edilecek tahsilat kaydı bulunamadı.");
-      const existing=await tx.customerAccountEntry.findFirst({where:{orderId:order.id,direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND,referenceNo:input.reference},select:{id:true}});
+      if (!input.reference.trim()) throw new Error("İade referansı zorunludur.");
+      if (!Number.isFinite(payment.amount) || payment.amount <= 0 || payment.amount > order.totalAmount) throw new Error("İade tutarı geçersiz.");
+      const existing=await tx.customerAccountEntry.findFirst({where:{orderId:order.id,direction:CustomerAccountEntryDirection.DEBIT,entryType:CustomerAccountEntryType.REFUND},select:{id:true,referenceNo:true}});
+      if (existing && existing.referenceNo !== input.reference) throw new Error("Farklı referansla iade zaten kaydedilmiş.");
       if(!existing){
         await tx.customerAccountEntry.create({data:{
           customerId:order.customerId,orderId:order.id,direction:CustomerAccountEntryDirection.DEBIT,
