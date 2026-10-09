@@ -36,6 +36,10 @@ export class EcommerceStockReservationService {
         throw new Error("E-ticaret siparişi bulunamadı.");
       }
       if (!order.stockReserved) return false;
+      // An unpaid order is not necessarily expired: bank-transfer matching can
+      // arrive late. Only an explicit cancellation decision may release stock.
+      // This helper deliberately does not infer expiry from paymentTermDays.
+
       if (order.items.length === 0) {
         throw new Error("Sipariş kalemleri olmadan rezervasyon bırakılamaz.");
       }
