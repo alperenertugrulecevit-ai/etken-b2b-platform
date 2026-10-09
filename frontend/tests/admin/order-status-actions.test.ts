@@ -419,6 +419,18 @@ describe(
       expect(mocks.stockMovement).not.toHaveBeenCalled();
     });
 
+    it("e-ticaret siparişinde başlangıç durumuna dönüş global rezervasyonu WMS üzerinden bırakmaz", async () => {
+      mocks.orderFindUnique.mockResolvedValue(createOrder({
+        source: OrderSource.ECOMMERCE,
+        status: OrderStatus.APPROVED,
+        stockReserved: true,
+      }));
+      await expect(updateOrderStatus(501, createStatusForm(OrderStatus.PENDING)))
+        .rejects.toThrow("İptal sürecini kullanın");
+      expect(mocks.stockMovement).not.toHaveBeenCalled();
+      expect(mocks.orderUpdate).not.toHaveBeenCalled();
+    });
+
     it("e-ticaret siparişinde manuel sevk durumunu engeller", async () => {
       mocks.orderFindUnique.mockResolvedValue(
         createOrder({
