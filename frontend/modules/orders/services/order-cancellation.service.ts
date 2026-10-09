@@ -94,9 +94,16 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
   if (
     order.source === OrderSource.ECOMMERCE &&
     order.stockReserved &&
-    !order.stockDeducted &&
-    warehouseReservationMovements === 0
+    !order.stockDeducted
   ) {
+    // Checkout reserves global Product stock without a warehouse movement.
+    // Mixed ownership cannot safely be reconciled by skipping the release:
+    // that would mark the order cancelled while leaving checkout stock held.
+    if (warehouseReservationMovements > 0) {
+      throw new Error(
+        "E-ticaret siparişinde depo rezervasyon hareketleri mevcut. Çift düşüm veya rezervasyon kaçağını önlemek için stok mutabakatı gerekli."
+      );
+    }
     if (order.items.length === 0) {
       throw new Error("Kalemsiz e-ticaret siparişinin stok rezervasyonu serbest bırakılamaz.");
     }
