@@ -171,6 +171,22 @@ export class OrderCancellationService {
       });
       if(!order)throw new Error("Sipariş bulunamadı.");
       if(order.status===OrderStatus.CANCELLED)throw new Error("Sipariş zaten iptal edilmiş.");
+      if (order.items.length === 0) {
+        throw new Error("Kalemsiz sipariş için iptal stok mutabakatı yapılamaz.");
+      }
+      if (order.items.some((item) =>
+        !Number.isSafeInteger(item.quantity) || item.quantity <= 0 ||
+        !Number.isSafeInteger(item.pickedQuantity) || item.pickedQuantity < 0 ||
+        !Number.isSafeInteger(item.packedQuantity) || item.packedQuantity < 0 ||
+        !Number.isSafeInteger(item.shippedQuantity) || item.shippedQuantity < 0 ||
+        !Number.isSafeInteger(item.cancelledQuantity) || item.cancelledQuantity < 0 ||
+        item.pickedQuantity + item.cancelledQuantity > item.quantity ||
+        item.packedQuantity > item.pickedQuantity ||
+        item.shippedQuantity > item.packedQuantity
+      )) {
+        throw new Error("Sipariş kalem miktarları tutarsız; iptal öncesi stok mutabakatı gerekli.");
+      }
+
       if(order.status===OrderStatus.SHIPPED||order.status===OrderStatus.DELIVERED||order.stockDeducted||order.items.some(i=>i.shippedQuantity>0)){
         throw new Error("Sipariş sevk edilmiş. İptal yerine İade Giriş süreci kullanılmalıdır.");
       }
