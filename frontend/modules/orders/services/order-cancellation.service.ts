@@ -180,7 +180,7 @@ export class OrderCancellationService {
     return Boolean(status && ACTIVE_CANCELLATION.includes(status));
   }
 
-  static async request(input:{orderId:number;reason:string;actor:Actor}) {
+  static async request(input:{orderId:number;reason:string;actor:Actor;bankTransferExpiryCutoff?:Date}) {
     return prisma.$transaction(async(tx)=>{
       const order=await tx.order.findUnique({
         where:{id:input.orderId},
@@ -191,6 +191,40 @@ export class OrderCancellationService {
           shippingHandlingUnitOrders:{select:{shippingHandlingUnit:{select:{dispatchDocument:{select:{id:true,status:true}}}}}},
         },
       });
+
+      // Recheck the expiry policy inside the same serializable transaction
+      // that performs cancellation. The scheduled job must never trust a
+      // previously read payment or WMS state.
+      if (input.bankTransferExpiryCutoff) {
+        const current = await tx.order.findUnique({
+          where: { id: input.orderId },
+          select: {
+            source:true, paymentMethod:true, paymentStatus:true, orderDate:true,
+            status:true, stockDeducted:true, cancellationStatus:true,
+            bankTransactions:{select:{id:true},take:1},
+            paymentTransactions:{select:{status:true},take:10},
+            pickingRecords:{select:{id:true},take:1},
+            assignedHandlingUnits:{select:{id:true},take:1},
+            zonePickTasks:{select:{id:true},take:1},
+            shippingHandlingUnitOrders:{select:{id:true},take:1},
+          },
+        });
+        if (!current ||
+          current.source !== OrderSource.ECOMMERCE ||
+          current.paymentMethod !== "BANK_TRANSFER" ||
+          current.status !== OrderStatus.PENDING ||
+          current.orderDate > input.bankTransferExpiryCutoff ||
+          current.stockDeducted ||
+          current.cancellationStatus ||
+          !["PENDING","UNPAID","AWAITING_PAYMENT"].includes(current.paymentStatus ?? "") ||
+          current.bankTransactions.length > 0 ||
+          current.paymentTransactions.length > 0 ||
+          current.pickingRecords.length > 0 ||
+          current.assignedHandlingUnits.length > 0 ||
+          current.zonePickTasks.length > 0 ||
+          current.shippingHandlingUnitOrders.length > 0
+        ) throw new Error("Otomatik iptal öncesi ödeme veya operasyon durumu değişti; işlem atlandı.");
+      }
       if(!order)throw new Error("Sipariş bulunamadı.");
       if(order.status===OrderStatus.CANCELLED)throw new Error("Sipariş zaten iptal edilmiş.");
       if (OrderCancellationService.isBlocked(order.cancellationStatus)) {
