@@ -380,11 +380,17 @@ export class OrderCancellationService {
         releasedByProduct.set(release.productId,(releasedByProduct.get(release.productId)??0)+quantity);
       }
 
+      const remainingByProduct = new Map(releasedByProduct);
       for(const item of order.items){
-        const restoreCancelled=Math.min(item.cancelledQuantity,releasedByProduct.get(item.productId)??0);
+        const available = remainingByProduct.get(item.productId) ?? 0;
+        const restoreCancelled=Math.min(item.cancelledQuantity,available);
         if(restoreCancelled>0){
           await tx.orderItem.update({where:{id:item.id},data:{cancelledQuantity:{decrement:restoreCancelled}}});
+          remainingByProduct.set(item.productId, available - restoreCancelled);
         }
+      }
+      if ([...remainingByProduct.values()].some((quantity) => quantity !== 0)) {
+        throw new Error("İptal geri alma miktarları sipariş kalemleriyle eşleşmiyor; stok mutabakatı gerekli.");
       }
 
       const docs=order.shippingHandlingUnitOrders
