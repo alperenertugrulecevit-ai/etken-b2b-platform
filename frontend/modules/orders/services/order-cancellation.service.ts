@@ -219,25 +219,36 @@ export class OrderCancellationService {
         await tx.orderPickingAssignment.updateMany({where:{orderId:order.id,cancelledAt:null},data:{cancelledAt:new Date()}});
       }
 
-      for(const item of order.items){
-        const unpicked=Math.max(0,item.quantity-item.pickedQuantity-item.cancelledQuantity);
-        if(unpicked>0){
-          const reservations=await reservationByWarehouse(tx,order.id,item.productId);
-          let remaining=unpicked;
-          for(const [warehouseId,reserved] of reservations){
-            if(remaining<=0)break;
-            const release=Math.min(remaining,reserved);
-            await createStockMovementWithTransaction(tx,{
-              productId:item.productId,orderId:order.id,warehouseId,
-              movementType:StockMovementType.RESERVATION_RELEASE,
-              physicalChange:0,reservedChange:-release,
-              documentNumber:order.orderNumber,
-              description:`${order.orderNumber} iptal talebi nedeniyle toplanmamış ${release} adet rezervasyon serbest bırakıldı.`,
-            });
-            remaining-=release;
-          }
-          await tx.orderItem.update({where:{id:item.id},data:{cancelledQuantity:{increment:unpicked}}});
+      // A product can occur on multiple order lines. Consume the warehouse
+      // reservation ledger once per product; never release the same units twice.
+      const remainingReservations = new Map<number, Map<number, number>>();
+      for (const item of order.items) {
+        const unpicked = Math.max(0, item.quantity - item.pickedQuantity - item.cancelledQuantity);
+        if (unpicked <= 0) continue;
+        let warehouses = remainingReservations.get(item.productId);
+        if (!warehouses) {
+          warehouses = new Map(await reservationByWarehouse(tx, order.id, item.productId));
+          remainingReservations.set(item.productId, warehouses);
         }
+        let remaining = unpicked;
+        for (const [warehouseId, reserved] of warehouses) {
+          if (remaining <= 0) break;
+          const release = Math.min(remaining, reserved);
+          if (release <= 0) continue;
+          await createStockMovementWithTransaction(tx, {
+            productId: item.productId, orderId: order.id, warehouseId,
+            movementType: StockMovementType.RESERVATION_RELEASE,
+            physicalChange: 0, reservedChange: -release,
+            documentNumber: order.orderNumber,
+            description: `${order.orderNumber} iptal talebi nedeniyle toplanmamış ${release} adet rezervasyon serbest bırakıldı.`,
+          });
+          warehouses.set(warehouseId, reserved - release);
+          remaining -= release;
+        }
+        if (order.source !== OrderSource.ECOMMERCE && remaining > 0) {
+          throw new Error("İptal için depo rezervasyonu yetersiz; stok mutabakatı gerekli.");
+        }
+        await tx.orderItem.update({ where: { id: item.id }, data: { cancelledQuantity: { increment: unpicked } } });
       }
 
       const docs=order.shippingHandlingUnitOrders
