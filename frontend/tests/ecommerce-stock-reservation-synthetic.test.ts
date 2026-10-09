@@ -90,6 +90,26 @@ describe("Ecommerce reservation release (mocked, no database)", () => {
     expect(mocks.updateProduct.mock.calls.map(([args]) => args.where.reservedStock.gte)).toEqual([5, 1]);
   });
 
+  it("refuses release for an order without lines", async () => {
+    mocks.findOrder.mockResolvedValueOnce({ ...order, items: [] });
+    await expect(EcommerceStockReservationService.releaseUnpickedOrder(12, "Cancel"))
+      .rejects.toThrow("kalemleri");
+    expect(mocks.updateOrder).not.toHaveBeenCalled();
+  });
+
+  it("refuses overflowing aggregate reservation quantities", async () => {
+    mocks.findOrder.mockResolvedValueOnce({
+      ...order,
+      items: [
+        { ...order.items[0], quantity: 2147483647 },
+        { ...order.items[0], quantity: 1 },
+      ],
+    });
+    await expect(EcommerceStockReservationService.releaseUnpickedOrder(12, "Cancel"))
+      .rejects.toThrow("sınırını");
+    expect(mocks.updateProduct).not.toHaveBeenCalled();
+  });
+
   it("rejects release of a non-ecommerce order", async () => {
     mocks.findOrder.mockResolvedValueOnce({ ...order, source: "ADMIN" });
     await expect(EcommerceStockReservationService.releaseUnpickedOrder(12, "Cancel"))
