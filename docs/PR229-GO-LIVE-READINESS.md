@@ -17,7 +17,8 @@ This document is an audit checklist, **not evidence that third-party integration
 
 ## Confirmed in this branch
 
-- Checkout unit tests exercise bank-transfer order shape, VAT/ledger/history, stock rejection, duplicate lines, invalid email, corporate invoice requirements, catalog misses and transaction failure without notification.\n- Checkout now treats a post-commit notification webhook failure as a logged non-fatal error, preventing a committed order from being presented as failed. This is **not** a durable notification retry queue; delivery can still be missed.
+- Checkout unit tests exercise bank-transfer order shape, VAT/ledger/history, stock rejection, duplicate lines, invalid email, corporate invoice requirements, catalog misses and transaction failure without notification.
+- Checkout now treats a post-commit notification webhook failure as a logged non-fatal error, preventing a committed order from being presented as failed. This is **not** a durable notification retry queue; delivery can still be missed.
 - Prior PR228 tests exercise read-only load and a rollback-only synthetic PostgreSQL transaction in an internal Docker network.
 
 ## Known limitations to resolve before launch
@@ -33,3 +34,11 @@ This document is an audit checklist, **not evidence that third-party integration
 Code inspection confirms `EcommerceCheckoutService.createOrder` currently checks `Product.stock - Product.reservedStock` **before** the database transaction, but does not reserve stock inside the transaction. Two concurrent requests may both pass the same stock check. This is a **release blocker** for oversell prevention, not solved by the synthetic unit tests.
 
 Implementation must reconcile WMS reservation ownership and lifecycle first: order approval, cancellation, picking, shortages, returns, and warehouse stock ledgers. An isolated atomic `reservedStock` increment without release/consumption and warehouse consistency can strand inventory and cause operational discrepancies. Acceptance requires concurrent PostgreSQL integration tests with competing checkout requests, exactly-once reservation, rollback on failure, and full cancellation/fulfilment release tests. No production stock mutation is authorized as part of this draft PR.
+
+## Existing schema compatibility audit
+
+The current Prisma schema already includes `Order.stockReserved`, `Order.stockDeducted`, `Order.stockReservedAt`, `Order.stockDeductedAt`, `PaymentTransaction`, `PaymentGatewaySetting`, `CargoTrackingEvent`, `EcommerceReturn` and `EcommerceReturnItem`. Implementations must use and reconcile these models rather than creating parallel payment, tracking, return or reservation records.
+
+The checkout path currently writes `Order.status=PENDING`, `paymentMethod=BANK_TRANSFER` and `paymentStatus=PENDING`. Do not treat an order-level pending payment as captured funds or authorize picking on this signal alone. Any reservation change must verify existing WMS reservation ownership and update `stockReserved` / `stockDeducted` consistently across approval, cancellation, fulfilment and returns.
+
+Before activating a real gateway, require provider-specific signature verification, callback idempotency, amount and currency matching, and finance reconciliation. Before enabling carrier or e-document automation, require authenticated callbacks and provider sandbox receipts. Configuration without provider credentials must remain disabled, never silently mark payments, labels or documents as successful.
