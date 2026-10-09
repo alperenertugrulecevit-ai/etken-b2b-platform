@@ -194,6 +194,26 @@ export class OrderCancellationService {
         throw new Error("Sipariş sevk edilmiş. İptal yerine İade Giriş süreci kullanılmalıdır.");
       }
 
+      // Detect mixed checkout/WMS reservation ownership before changing any
+      // picking tasks, quantities or dispatch documents. Checkout holds a
+      // global Product reservation; WMS movements also affect global stock.
+      // Without an ownership ledger, automatically releasing both is unsafe.
+      if (order.source === OrderSource.ECOMMERCE && order.stockReserved && !order.stockDeducted) {
+        const mixedMovements = await tx.stockMovement.count({
+          where: {
+            orderId: order.id,
+            movementType: {
+              in: [StockMovementType.RESERVATION_CREATE, StockMovementType.RESERVATION_RELEASE],
+            },
+          },
+        });
+        if (mixedMovements > 0) {
+          throw new Error(
+            "E-ticaret siparişinde depo rezervasyon hareketleri mevcut. Çift düşüm veya rezervasyon kaçağını önlemek için stok mutabakatı gerekli.",
+          );
+        }
+      }
+
       await ZonePickingService.releaseOrderPlan(tx,order.id);
       if(order.pickingAssignment){
         await tx.orderPickingAssignment.updateMany({where:{orderId:order.id,cancelledAt:null},data:{cancelledAt:new Date()}});
