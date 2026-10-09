@@ -171,7 +171,9 @@ export class StockReturnService{
      await tx.waveOrder.updateMany({where:{waveId,orderId:order.id},data:{isCompleted:false,completedAt:null}});
     }
     await tx.order.update({where:{id:order.id},data:{status:OrderStatus.PICKING,stockReserved:true}});
-   }else if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0){
+   }else if(CUSTOMER_REASONS.includes(input.reason)&&progress.planned===0&&order.cancellationStatus!=="STOCK_RETURN_PENDING"){
+    // Never bypass the cancellation finalizer for an active cancellation.
+    // It owns the checkout reservation release, credit entry and refund state.
     await tx.order.update({where:{id:order.id},data:{status:OrderStatus.CANCELLED,stockReserved:false}});
    }
    if(CUSTOMER_REASONS.includes(input.reason)){
