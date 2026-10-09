@@ -73,6 +73,8 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
     },
   });
   if (!order) throw new Error("Sipariş bulunamadı.");
+  if (order.items.length === 0) throw new Error("Kalemsiz sipariş iptal mutabakatı tamamlanamaz.");
+  if (order.stockDeducted) throw new Error("Fiziksel stok düşümü bulunan sipariş iptal yerine iade sürecine alınmalıdır.");
   if (order.items.some((item) => item.shippedQuantity > 0)) throw new Error("Sevk edilmiş miktar var. Sipariş iptali yerine iade süreci kullanılmalıdır.");
   const physicalRemaining = order.items.reduce(
     (sum,item)=>sum+Math.max(0,item.pickedQuantity,item.packedQuantity),
