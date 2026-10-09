@@ -38,6 +38,19 @@ async function reservationByWarehouse(tx: Tx, orderId: number, productId: number
   return [...totals.entries()].filter(([, quantity]) => quantity > 0);
 }
 
+async function hasOutstandingWarehouseReservation(tx: Tx, orderId: number) {
+  const movements = await tx.stockMovement.findMany({
+    where: { orderId, movementType: { in: [StockMovementType.RESERVATION_CREATE, StockMovementType.RESERVATION_RELEASE] } },
+    select: { productId: true, warehouseId: true, reservedChange: true },
+  });
+  const net = new Map<string, number>();
+  for (const movement of movements) {
+    if (movement.warehouseId === null || !Number.isSafeInteger(movement.reservedChange)) return true;
+    const key = `${movement.warehouseId}:${movement.productId}`;
+    net.set(key, (net.get(key) ?? 0) + movement.reservedChange);
+  }
+  return [...net.values()].some((quantity) => !Number.isSafeInteger(quantity) || quantity !== 0);
+}
 async function createCancellationCredit(tx: Tx, order: { id:number; customerId:number; orderNumber:string }, actor: Actor) {
   const debit = await tx.customerAccountEntry.findFirst({
     where: { orderId: order.id, direction: CustomerAccountEntryDirection.DEBIT, entryType: CustomerAccountEntryType.ORDER },
@@ -108,7 +121,7 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
     // Checkout reserves global Product stock without a warehouse movement.
     // Mixed ownership cannot safely be reconciled by skipping the release:
     // that would mark the order cancelled while leaving checkout stock held.
-    if (warehouseReservationMovements > 0) {
+    if (warehouseReservationMovements > 0 && await hasOutstandingWarehouseReservation(tx, order.id)) {
       throw new Error(
         "E-ticaret siparişinde depo rezervasyon hareketleri mevcut. Çift düşüm veya rezervasyon kaçağını önlemek için stok mutabakatı gerekli."
       );
@@ -216,7 +229,7 @@ export class OrderCancellationService {
             },
           },
         });
-        if (mixedMovements > 0) {
+        if (mixedMovements > 0 && await hasOutstandingWarehouseReservation(tx, order.id)) {
           throw new Error(
             "E-ticaret siparişinde depo rezervasyon hareketleri mevcut. Çift düşüm veya rezervasyon kaçağını önlemek için stok mutabakatı gerekli.",
           );
