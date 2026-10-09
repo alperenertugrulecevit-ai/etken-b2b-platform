@@ -97,6 +97,20 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.findMany).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
+  it("returns the committed order even if its notification webhook fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      mocks.notify.mockRejectedValueOnce(new Error("synthetic webhook outage"));
+      const order = await EcommerceCheckoutService.createOrder(input);
+      expect(order.orderNumber).toBe("WEB-SYNTHETIC");
+      expect(mocks.orderCreate).toHaveBeenCalledOnce();
+      expect(mocks.notify).toHaveBeenCalledOnce();
+      expect(log).toHaveBeenCalledOnce();
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("rejects invalid customer email before reading products", async () => {
     await expect(EcommerceCheckoutService.createOrder({
       ...input, email: "not-an-email",
