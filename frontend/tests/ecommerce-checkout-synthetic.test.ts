@@ -274,6 +274,17 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
+  it("rejects a zero-value bank transfer order before creating customer or ledger records", async () => {
+    mocks.findMany.mockResolvedValueOnce([{
+      id: 1, code: "LT-PRODUCT-0001", name: "Synthetic Product 1",
+      price: 0, vat: 20, stock: 100, reservedStock: 0,
+    }]);
+    await expect(EcommerceCheckoutService.createOrder(input))
+      .rejects.toThrow("Sipariş toplam tutarı sıfırdan büyük olmalıdır");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid customer email before reading products", async () => {
     await expect(EcommerceCheckoutService.createOrder({
       ...input, email: "not-an-email",
