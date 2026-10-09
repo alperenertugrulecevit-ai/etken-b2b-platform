@@ -77,5 +77,10 @@ jobs:
       - name: Run automated tests
         run: npm run test:coverage
 
+      - name: Run PostgreSQL concurrency integration tests
+        env:
+          RUN_POSTGRES_INTEGRATION: "1"
+        run: npx vitest run tests/integration/postgres-stock-reservation.test.ts
+
       - name: Build production application
         run: npm run build
