@@ -294,6 +294,18 @@ export class OrderCancellationService {
       }
       if(order.status===OrderStatus.CANCELLED) throw new Error("İptali tamamlanmış sipariş yeniden açılamaz.");
       if(order.stockDeducted||order.items.some(i=>i.shippedQuantity>0)) throw new Error("Fiziksel sevki başlamış siparişin iptali geri alınamaz.");
+      if (order.items.length === 0 || order.items.some((item) =>
+        !Number.isSafeInteger(item.quantity) || item.quantity <= 0 ||
+        !Number.isSafeInteger(item.pickedQuantity) || item.pickedQuantity < 0 ||
+        !Number.isSafeInteger(item.packedQuantity) || item.packedQuantity < 0 ||
+        !Number.isSafeInteger(item.shippedQuantity) || item.shippedQuantity < 0 ||
+        !Number.isSafeInteger(item.cancelledQuantity) || item.cancelledQuantity < 0 ||
+        item.pickedQuantity + item.cancelledQuantity > item.quantity ||
+        item.packedQuantity > item.pickedQuantity ||
+        item.shippedQuantity > item.packedQuantity
+      )) {
+        throw new Error("İptal geri alma için sipariş kalem miktarları tutarsız; stok mutabakatı gerekli.");
+      }
 
       const stockReturns=await tx.stockMovement.count({
         where:{orderId:order.id,movementType:StockMovementType.STOCK_RETURN},
