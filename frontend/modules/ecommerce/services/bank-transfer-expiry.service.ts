@@ -72,7 +72,7 @@ export async function processExpiredBankTransferOrders(input: {
         order.zonePickTasks.length > 0 ||
         order.shippingHandlingUnitOrders.length > 0 ||
         order.bankTransactions.length > 0 ||
-        order.paymentTransactions.some((payment) => payment.status === "PAID" || payment.status === "PENDING");
+        order.paymentTransactions.length > 0;
       if (blocked) { result.skipped++; continue; }
       result.eligible++;
       if (dryRun) continue;
@@ -83,6 +83,7 @@ export async function processExpiredBankTransferOrders(input: {
           orderId: order.id,
           reason: "Havale/EFT ödemesi 24 saat içinde onaylanmadı.",
           actor: { userId: "SYSTEM", displayName: "PAYMENT_EXPIRY" },
+          bankTransferExpiryCutoff: cutoff,
         });
         result.cancelled++;
       } catch {
