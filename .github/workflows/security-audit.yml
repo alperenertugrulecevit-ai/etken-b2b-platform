@@ -40,6 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     continue-on-error: true
+    env:
+      DATABASE_URL: postgresql://test:test@127.0.0.1:5432/etken_test?schema=public
+      DIRECT_URL: postgresql://test:test@127.0.0.1:5432/etken_test?schema=public
     defaults:
       run:
         working-directory: frontend
