@@ -1,0 +1,66 @@
+name: Security Audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependencies:
+    name: Production dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install exact locked dependencies
+        run: npm ci --ignore-scripts --no-audit
+      - name: Audit production dependencies (high and critical)
+        run: npm audit --omit=dev --audit-level=high
+
+  live-security:
+    name: Public HTTPS and security headers
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify live security headers and public endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request, urllib.error, ssl, sys
+          url="https://etkenofis.com/"
+          req=urllib.request.Request(url,headers={"User-Agent":"Etken-Security-Audit/1.0"})
+          with urllib.request.urlopen(req,timeout=20,context=ssl.create_default_context()) as res:
+              headers=res.headers
+              print("HTTPS status:",res.status)
+              assert res.status == 200, "Homepage did not return HTTP 200"
+              for name in ("Strict-Transport-Security","Content-Security-Policy","X-Content-Type-Options","X-Frame-Options","Referrer-Policy","Permissions-Policy"):
+                  value=headers.get(name)
+                  print(name+":", "present" if value else "MISSING")
+                  assert value, name+" missing"
+              assert "max-age=" in headers["Strict-Transport-Security"].lower()
+              assert "object-src 'none'" in headers["Content-Security-Policy"]
+              assert headers["X-Content-Type-Options"].lower()=="nosniff"
+              assert headers["X-Frame-Options"].upper()=="DENY"
+          with urllib.request.urlopen("https://etkenofis.com/api/health",timeout=20,context=ssl.create_default_context()) as res:
+              print("Health status:",res.status)
+              assert res.status==200
+          PY
