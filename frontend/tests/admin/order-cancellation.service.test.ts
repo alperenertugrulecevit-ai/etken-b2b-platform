@@ -85,6 +85,21 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
         pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
     });
   });
+  it("rejects inconsistent picked and cancelled quantities before touching stock", async () => {
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", pickingAssignment: null, shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 1, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 1 }],
+    });
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("kalem miktarları tutarsız");
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+
   it("blocks cancellation when checkout and warehouse reservation ownership overlap", async () => {
     await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
       .rejects.toThrow("stok mutabakatı gerekli");
