@@ -80,6 +80,28 @@ describe("OrderCancellationService.undoRequest",()=>{
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 
+  it("aynı ürünü içeren iki sipariş kaleminin iptal miktarını ayrı ayrı geri alır", async () => {
+    mocks.orderFindUnique.mockResolvedValue(pendingOrder({
+      items: [
+        { id: 1, productId: 10, quantity: 3, pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 1 },
+        { id: 2, productId: 10, quantity: 4, pickedQuantity: 2, packedQuantity: 2, shippedQuantity: 0, cancelledQuantity: 2 },
+      ],
+    }));
+    mocks.stockMovementFindMany.mockResolvedValue([
+      { productId: 10, warehouseId: 1, reservedChange: -3 },
+    ]);
+    await OrderCancellationService.undoRequest({
+      orderId: 782, reason: "operasyon düzeltildi", actor: { userId: "admin", displayName: "Admin" },
+    });
+    expect(mocks.orderItemUpdate).toHaveBeenCalledWith({
+      where: { id: 1 }, data: { cancelledQuantity: { decrement: 1 } },
+    });
+    expect(mocks.orderItemUpdate).toHaveBeenCalledWith({
+      where: { id: 2 }, data: { cancelledQuantity: { decrement: 2 } },
+    });
+    expect(mocks.createStockMovement).toHaveBeenCalledTimes(1);
+  });
+
   it("rezervasyonu bırakılmış e-ticaret siparişinin iptalini geri almaz", async () => {
     mocks.orderFindUnique.mockResolvedValue(pendingOrder({
       source: "ECOMMERCE", stockReserved: false,
