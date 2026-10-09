@@ -1,6 +1,6 @@
 import "server-only";
 
-import { B2BPaymentMethod, OrderSource, OrderStatus } from "@prisma/client";
+import { B2BPaymentMethod, CustomerAccountEntryDirection, CustomerAccountEntryType, OrderSource, OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OrderCancellationService } from "@/modules/orders/services/order-cancellation.service";
 
@@ -61,6 +61,7 @@ export async function processExpiredBankTransferOrders(input: {
         shippingHandlingUnitOrders: { select: { id: true }, take: 1 },
         paymentTransactions: { select: { status: true }, take: 10 },
         bankTransactions: { select: { id: true }, take: 1 },
+        accountEntries: { where: { direction: CustomerAccountEntryDirection.CREDIT, entryType: CustomerAccountEntryType.PAYMENT }, select: { id: true }, take: 1 },
       },
       orderBy: { id: "asc" },
       take: Math.min(PAGE_SIZE, maxOrders - result.scanned),
@@ -74,7 +75,8 @@ export async function processExpiredBankTransferOrders(input: {
         order.zonePickTasks.length > 0 ||
         order.shippingHandlingUnitOrders.length > 0 ||
         order.bankTransactions.length > 0 ||
-        order.paymentTransactions.length > 0;
+        order.paymentTransactions.length > 0 ||
+        order.accountEntries.length > 0;
       if (blocked) { result.skipped++; continue; }
       result.eligible++;
       if (dryRun) continue;
