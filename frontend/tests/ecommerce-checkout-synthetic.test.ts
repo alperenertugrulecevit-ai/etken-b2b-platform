@@ -126,6 +126,42 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     }
   });
 
+  it("rejects zero, negative, fractional and nonnumeric quantities before database access", async () => {
+    for (const quantity of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      await expect(EcommerceCheckoutService.createOrder({
+        ...input, items: [{ productId: 1, quantity }],
+      })).rejects.toThrow("geçersiz ürün satırı");
+    }
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid product identifiers before database access", async () => {
+    for (const productId of [0, -2, 1.5, Number.NaN]) {
+      await expect(EcommerceCheckoutService.createOrder({
+        ...input, items: [{ productId, quantity: 1 }],
+      })).rejects.toThrow("geçersiz ürün satırı");
+    }
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty cart before reading inventory", async () => {
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, items: [],
+    })).rejects.toThrow("Sepetinizde");
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("does not create an order when one of multiple products is unavailable", async () => {
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, items: [{ productId: 1, quantity: 1 }, { productId: 2, quantity: 1 }],
+    })).rejects.toThrow("artık satışta olmayan");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid customer email before reading products", async () => {
     await expect(EcommerceCheckoutService.createOrder({
       ...input, email: "not-an-email",
