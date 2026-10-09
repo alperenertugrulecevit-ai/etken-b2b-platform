@@ -21,7 +21,7 @@ describe.skipIf(!enabled)("PostgreSQL atomic stock reservation", () => {
     const tenant = await db.wmsTenant.create({
       data: { id: tenantId, code: unique, name: unique },
     });
-    const company = await db.wmsCompany.create({
+    await db.wmsCompany.create({
       data: { id: companyId, tenantId: tenant.id, code: unique, name: unique },
     });
     const product = await db.product.create({
