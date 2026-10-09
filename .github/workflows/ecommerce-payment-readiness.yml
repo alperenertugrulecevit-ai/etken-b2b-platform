@@ -1,0 +1,48 @@
+name: Ecommerce payment and refund readiness
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ecommerce-payment-readiness.yml"
+  push:
+    branches:
+      - "fix/ecommerce-payment-refund-readiness-20261009"
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ecommerce-payment-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+      DIRECT_URL: postgresql://dummy:dummy@localhost:5432/dummy
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Focused payment/refund tests
+        run: npx vitest run tests/admin/card-refund-proof.test.ts tests/admin/bank-transfer-expiry.test.ts
+      - name: Full unit test suite
+        run: npm run test:run
+      - name: Next.js production build
+        run: npm run build
