@@ -65,3 +65,29 @@ describe("OrderCancellationService.undoRequest",()=>{
     expect(mocks.stockMovementCount).not.toHaveBeenCalled();
   });
 });
+
+describe("OrderCancellationService.request ecommerce stock ownership", () => {
+  const actor = { userId: "admin", displayName: "Admin" };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.transaction.mockImplementation(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx));
+    mocks.releaseOrderPlan.mockResolvedValue(undefined);
+    mocks.orderItemUpdate.mockResolvedValue({});
+    mocks.orderUpdate.mockResolvedValue({});
+    mocks.stockMovementFindMany.mockResolvedValue([]);
+    mocks.stockMovementCount.mockResolvedValue(1);
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+  });
+  it("blocks cancellation when checkout and warehouse reservation ownership overlap", async () => {
+    await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
+      .rejects.toThrow("stok mutabakatı gerekli");
+    expect(mocks.orderUpdate).toHaveBeenCalled();
+  });
+});
