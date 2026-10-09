@@ -103,6 +103,35 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
+  it("allocates multi-item carts in stable product order before writing an order", async () => {
+    mocks.findMany.mockResolvedValueOnce([
+      { id: 2, code: "LT-2", name: "Second", price: 50, vat: 20, stock: 10, reservedStock: 0 },
+      { id: 1, code: "LT-1", name: "First", price: 100, vat: 20, stock: 10, reservedStock: 0 },
+    ]);
+    await EcommerceCheckoutService.createOrder({
+      ...input,
+      items: [{ productId: 2, quantity: 1 }, { productId: 1, quantity: 2 }],
+    });
+    expect(mocks.reserveStock).toHaveBeenCalledTimes(2);
+    expect(mocks.reserveStock.mock.calls.map(([args]) => args.where.id)).toEqual([1, 2]);
+    expect(mocks.orderCreate).toHaveBeenCalledOnce();
+  });
+
+  it("stops a multi-item checkout when the second reservation fails", async () => {
+    mocks.findMany.mockResolvedValueOnce([
+      { id: 1, code: "LT-1", name: "First", price: 100, vat: 20, stock: 10, reservedStock: 0 },
+      { id: 2, code: "LT-2", name: "Second", price: 50, vat: 20, stock: 10, reservedStock: 0 },
+    ]);
+    mocks.reserveStock.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input,
+      items: [{ productId: 2, quantity: 1 }, { productId: 1, quantity: 2 }],
+    })).rejects.toThrow("stok değişti");
+    expect(mocks.reserveStock).toHaveBeenCalledTimes(2);
+    expect(mocks.orderCreate).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
   it("rejects insufficient available stock without writing or notifying", async () => {
     mocks.findMany.mockResolvedValueOnce([{
       id: 1, code: "LT-PRODUCT-0001", name: "Synthetic Product 1",
