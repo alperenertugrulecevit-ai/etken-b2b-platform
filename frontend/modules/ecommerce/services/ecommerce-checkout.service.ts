@@ -101,8 +101,8 @@ export class EcommerceCheckoutService {
     const ids = new Set(items.map((item) => item.productId));
     if (
       ids.size !== items.length ||
-      items.some((item) => !Number.isInteger(item.productId) || item.productId <= 0 ||
-        !Number.isInteger(item.quantity) || item.quantity <= 0)
+      items.some((item) => !Number.isSafeInteger(item.productId) || item.productId <= 0 ||
+        !Number.isSafeInteger(item.quantity) || item.quantity <= 0)
     ) {
       throw new EcommerceCheckoutError("Sepette geçersiz ürün satırı bulunuyor.");
     }
@@ -128,6 +128,16 @@ export class EcommerceCheckoutService {
     const calculatedItems = items.map((item) => {
       const product = productMap.get(item.productId);
       if (!product) throw new EcommerceCheckoutError("Sipariş ürünü bulunamadı.");
+      if (
+        !Number.isFinite(product.price) || product.price < 0 ||
+        !Number.isInteger(product.vat) || product.vat < 0 || product.vat > 100 ||
+        !Number.isSafeInteger(product.stock) || product.stock < 0 ||
+        !Number.isSafeInteger(product.reservedStock) || product.reservedStock < 0
+      ) {
+        throw new EcommerceCheckoutError(
+          product.name + " için fiyat, vergi veya stok bilgisi geçersiz."
+        );
+      }
       const available = Math.max(0, product.stock - product.reservedStock);
       if (item.quantity > available) {
         throw new EcommerceCheckoutError(
