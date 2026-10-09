@@ -141,6 +141,9 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
   it("blocks cancellation when checkout and warehouse reservation ownership overlap", async () => {
     await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
       .rejects.toThrow("stok mutabakatı gerekli");
-    expect(mocks.orderUpdate).toHaveBeenCalled();
+    expect(mocks.releaseOrderPlan).not.toHaveBeenCalled();
+    expect(mocks.orderItemUpdate).not.toHaveBeenCalled();
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 });
