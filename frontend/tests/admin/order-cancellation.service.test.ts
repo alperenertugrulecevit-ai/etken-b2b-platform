@@ -263,6 +263,30 @@ describe("OrderCancellationService.request ecommerce stock ownership", () => {
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 
+  it("accepts fully released historical warehouse reservations during checkout cancellation", async () => {
+    mocks.stockMovementCount.mockResolvedValueOnce(2).mockResolvedValueOnce(2);
+    mocks.stockMovementFindMany.mockResolvedValue([
+      { productId: 10, warehouseId: 1, reservedChange: 1 },
+      { productId: 10, warehouseId: 1, reservedChange: -1 },
+    ]);
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.PENDING,
+      source: "ECOMMERCE", stockReserved: true, stockDeducted: false,
+      paymentStatus: "PENDING", cancellationStatus: null, pickingAssignment: null,
+      shippingHandlingUnitOrders: [],
+      items: [{ id: 1, productId: 10, productCode: "P10", quantity: 1,
+        pickedQuantity: 0, packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0 }],
+    });
+    tx.product = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+    tx.customerAccountEntry = { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() };
+    const result = await OrderCancellationService.request({ orderId: 782, reason: "test", actor });
+    expect(result.stockReturnRequired).toBe(false);
+    expect(tx.product.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 10, reservedStock: { gte: 1 } },
+      data: { reservedStock: { decrement: 1 } },
+    }));
+    expect(mocks.createStockMovement).not.toHaveBeenCalled();
+  });
   it("blocks cancellation when checkout and warehouse reservation ownership overlap", async () => {
     mocks.stockMovementFindMany.mockResolvedValue([{ productId: 10, warehouseId: 1, reservedChange: 1 }]);
     await expect(OrderCancellationService.request({ orderId: 782, reason: "test", actor }))
