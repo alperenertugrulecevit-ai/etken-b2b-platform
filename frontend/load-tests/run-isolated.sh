@@ -83,6 +83,12 @@ if DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" \
   echo "Order-write guard accepted configured outbound email." >&2
   exit 1
 fi
+if DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" \
+   STRIPE_SECRET_KEY="unsafe-test-key" \
+   bash load-tests/guard-order-write.sh >/dev/null 2>&1; then
+  echo "Order-write guard accepted payment credentials." >&2
+  exit 1
+fi
 DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" bash load-tests/guard-order-write.sh
 
 echo "Running $USERS VUs, 2 minutes, read-only..."
