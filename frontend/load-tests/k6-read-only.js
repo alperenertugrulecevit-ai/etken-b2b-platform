@@ -12,7 +12,15 @@ if (![10, 25, 50, 100].includes(vus)) {
 
 export const options = {
   scenarios: { read_only: { executor: 'constant-vus', vus, duration: '2m' } },
-  thresholds: { http_req_failed: ['rate<0.01'], http_req_duration: ['p(95)<2000'], checks: ['rate>0.99'] },
+  thresholds: {
+    http_req_failed: ['rate<0.01'],
+    http_req_duration: ['p(95)<2000'],
+    checks: ['rate>0.99'],
+    'http_req_duration{endpoint:/products}': ['p(95)<2000'],
+    'http_req_duration{endpoint:/checkout}': ['p(95)<2000'],
+    'http_req_duration{endpoint:/cart}': ['p(95)<2000'],
+    'http_req_failed{endpoint:/checkout}': ['rate<0.01'],
+  },
 };
 
 const paths = ['/', '/products', '/products?q=Synthetic', '/products?category=Office', '/cart', '/checkout', '/api/health'];
