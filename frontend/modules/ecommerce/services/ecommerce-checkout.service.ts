@@ -315,12 +315,21 @@ export class EcommerceCheckoutService {
         select: { id: true, orderNumber: true, totalAmount: true },
       });
     });
-    await EcommerceNotificationService.send({
-      event:"ORDER_RECEIVED",
-      email,
-      orderNumber:order.orderNumber,
-      paymentMethod:B2BPaymentMethod.BANK_TRANSFER,
-    });
+    // The order is already committed. A notification outage must not turn a
+    // successful checkout into an error that prompts the buyer to order twice.
+    try {
+      await EcommerceNotificationService.send({
+        event: "ORDER_RECEIVED",
+        email,
+        orderNumber: order.orderNumber,
+        paymentMethod: B2BPaymentMethod.BANK_TRANSFER,
+      });
+    } catch (error) {
+      console.error("Checkout notification failed after order commit", {
+        orderId: order.id,
+        error: error instanceof Error ? error.message : "unknown error",
+      });
+    }
     return order;
   }
 }
