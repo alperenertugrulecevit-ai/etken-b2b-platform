@@ -61,6 +61,38 @@ describe("Ecommerce notifications (synthetic, no external requests)", () => {
     expect(payload.event).toBe("ORDER_RECEIVED");
   });
 
+  it("includes cargo tracking details in a shipped notification", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    globalThis.fetch = fetchMock;
+    const result = await EcommerceNotificationService.send({
+      ...event,
+      event: "SHIPPED",
+      trackingNumber: "SYNTH-123",
+      trackingUrl: "https://example.invalid/track/SYNTH-123",
+    });
+    expect(result.status).toBe("sent");
+    const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(payload.text).toContain("SYNTH-123");
+    expect(payload.text).toContain("https://example.invalid/track/SYNTH-123");
+    expect(payload.event).toBe("SHIPPED");
+  });
+
+  it("distinguishes a cancelled-order refund from a product-return refund", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    globalThis.fetch = fetchMock;
+    await EcommerceNotificationService.send({
+      ...event, event: "REFUNDED", refundContext: "ORDER_CANCELLATION",
+    });
+    await EcommerceNotificationService.send({
+      ...event, event: "REFUNDED", refundContext: "PRODUCT_RETURN", returnNumber: "RET-SYNTH-1",
+    });
+    const cancellation = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const productReturn = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(cancellation.text).toContain("İptal edilen siparişinizin");
+    expect(productReturn.text).toContain("Ürün iadenize");
+    expect(productReturn.text).toContain("RET-SYNTH-1");
+  });
+
   it("returns failed for non-2xx provider responses", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 });
     expect(await EcommerceNotificationService.send(event))
