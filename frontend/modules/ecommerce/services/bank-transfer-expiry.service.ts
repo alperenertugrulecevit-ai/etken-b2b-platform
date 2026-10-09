@@ -19,7 +19,8 @@ export type BankTransferExpiryReport = {
 
 /**
  * Run only from a trusted, authenticated scheduler or a privileged operator.
- * Defaults to dry-run; no public API route or scheduler is wired up here.
+ * Defaults to dry-run; the authenticated internal API endpoint invokes this service.
+ * A scheduler must be configured separately before periodic execution.
  */
 export async function processExpiredBankTransferOrders(input: {
   dryRun?: boolean;
