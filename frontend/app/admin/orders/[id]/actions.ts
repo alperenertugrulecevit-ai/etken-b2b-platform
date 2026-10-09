@@ -279,6 +279,30 @@ items: {
        * rezerve edilmemiş sipariş için stok
        * rezervasyonu tekrar denenebilir.
        */
+      // Ecommerce checkout already reserved Product.reservedStock.
+      // Do not reserve a second time through WMS on status approval.
+      if (
+        order.source === OrderSource.ECOMMERCE &&
+        order.stockReserved &&
+        !order.stockDeducted &&
+        reservationStatuses.includes(newStatus)
+      ) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: newStatus,
+            statusHistory: {
+              create: {
+                status: newStatus,
+                note: statusNote,
+                visibleToCustomer: true,
+              },
+            },
+          },
+        });
+        return;
+      }
+
       const shouldRepairReservation =
         order.status === newStatus &&
         reservationStatuses.includes(
