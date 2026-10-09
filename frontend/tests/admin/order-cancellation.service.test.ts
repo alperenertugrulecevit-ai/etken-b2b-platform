@@ -14,6 +14,7 @@ const tx={
   wmsOperationLog:{create:mocks.wmsLogCreate},
   customerAccountEntry: { findFirst: vi.fn(), create: vi.fn() },
   paymentTransaction: { findFirst: vi.fn() },
+  product: { updateMany: vi.fn() },
 };
 vi.mock("@/lib/prisma",()=>({prisma:{$transaction:mocks.transaction}}));
 vi.mock("@/lib/stock/stock-service",()=>({createStockMovementWithTransaction:mocks.createStockMovement}));
