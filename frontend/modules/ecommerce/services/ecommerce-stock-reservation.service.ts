@@ -19,6 +19,11 @@ export class EcommerceStockReservationService {
         select: {
           id: true, source: true, status: true, stockReserved: true,
           stockDeducted: true,
+          pickingRecords: { select: { id: true }, take: 1 },
+          assignedHandlingUnits: { select: { id: true }, take: 1 },
+          zonePickTasks: { select: { id: true }, take: 1 },
+          shippingHandlingUnitOrders: { select: { id: true }, take: 1 },
+          stockMovements: { select: { id: true }, take: 1 },
           items: {
             select: {
               productId: true, quantity: true, pickedQuantity: true,
@@ -36,6 +41,11 @@ export class EcommerceStockReservationService {
       }
       if (
         order.stockDeducted ||
+        order.pickingRecords.length > 0 ||
+        order.assignedHandlingUnits.length > 0 ||
+        order.zonePickTasks.length > 0 ||
+        order.shippingHandlingUnitOrders.length > 0 ||
+        order.stockMovements.length > 0 ||
         (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CANCELLED) ||
         order.items.some((item) =>
           item.pickedQuantity !== 0 || item.packedQuantity !== 0 ||
