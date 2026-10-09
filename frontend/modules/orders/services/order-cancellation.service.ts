@@ -163,7 +163,7 @@ export class OrderCancellationService {
       const order=await tx.order.findUnique({
         where:{id:input.orderId},
         select:{
-          id:true,customerId:true,orderNumber:true,status:true,cancellationStatus:true,paymentStatus:true,stockReserved:true,stockDeducted:true,
+          id:true,customerId:true,orderNumber:true,status:true,source:true,cancellationStatus:true,paymentStatus:true,stockReserved:true,stockDeducted:true,
           pickingAssignment:{select:{id:true}},
           items:{select:{id:true,productId:true,productCode:true,quantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true,cancelledQuantity:true}},
           shippingHandlingUnitOrders:{select:{shippingHandlingUnit:{select:{dispatchDocument:{select:{id:true,status:true}}}}}},
