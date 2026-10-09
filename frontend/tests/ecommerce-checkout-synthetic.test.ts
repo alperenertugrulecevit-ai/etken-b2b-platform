@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  reserveStock: vi.fn(),
   transaction: vi.fn(),
   customerCreate: vi.fn(),
   addressCreate: vi.fn(),
@@ -46,12 +47,14 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
       id: 1, code: "LT-PRODUCT-0001", name: "Synthetic Product 1",
       price: 100, vat: 20, stock: 1000, reservedStock: 0,
     }]);
+    mocks.reserveStock.mockResolvedValue({ count: 1 });
     mocks.customerCreate.mockResolvedValue({ id: 42 });
     mocks.addressCreate.mockResolvedValue({ id: 91 });
     mocks.orderCreate.mockResolvedValue({
       id: 123, orderNumber: "WEB-SYNTHETIC", totalAmount: 240,
     });
     mocks.transaction.mockImplementation(async (callback) => callback({
+      product: { updateMany: mocks.reserveStock },
       customer: { create: mocks.customerCreate },
       customerAddress: { create: mocks.addressCreate },
       order: { create: mocks.orderCreate },
@@ -76,6 +79,28 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     });
     expect(data.statusHistory.create.status).toBe("PENDING");
     expect(mocks.notify).toHaveBeenCalledOnce();
+  });
+
+  it("reserves inventory atomically inside the order transaction and marks the order", async () => {
+    await EcommerceCheckoutService.createOrder(input);
+    expect(mocks.reserveStock).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        id: 1,
+        stock: { gte: 2 },
+        reservedStock: { lte: 0 },
+      }),
+      data: { reservedStock: { increment: 2 } },
+    }));
+    expect(mocks.orderCreate.mock.calls[0][0].data.stockReserved).toBe(true);
+    expect(mocks.orderCreate.mock.calls[0][0].data.stockReservedAt).toBeInstanceOf(Date);
+  });
+
+  it("rolls back checkout when conditional stock allocation loses a race", async () => {
+    mocks.reserveStock.mockResolvedValueOnce({ count: 0 });
+    await expect(EcommerceCheckoutService.createOrder(input))
+      .rejects.toThrow("stok değişti");
+    expect(mocks.orderCreate).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
   });
 
   it("rejects insufficient available stock without writing or notifying", async () => {
