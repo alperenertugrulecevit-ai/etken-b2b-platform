@@ -199,7 +199,7 @@ export class OrderCancellationService {
         const current = await tx.order.findUnique({
           where: { id: input.orderId },
           select: {
-            source:true, paymentMethod:true, paymentStatus:true, orderDate:true,
+            source:true, paymentMethod:true, paymentStatus:true, orderDate:true, createdAt:true,
             status:true, stockDeducted:true, cancellationStatus:true,
             bankTransactions:{select:{id:true},take:1},
             paymentTransactions:{select:{status:true},take:10},
@@ -214,6 +214,7 @@ export class OrderCancellationService {
           current.paymentMethod !== "BANK_TRANSFER" ||
           current.status !== OrderStatus.PENDING ||
           current.orderDate > input.bankTransferExpiryCutoff ||
+          current.createdAt > input.bankTransferExpiryCutoff ||
           current.stockDeducted ||
           current.cancellationStatus ||
           !["PENDING","UNPAID","AWAITING_PAYMENT"].includes(current.paymentStatus ?? "") ||
