@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { createStockMovementWithTransaction } from "@/lib/stock/stock-service";
 import { ZonePickingService } from "@/lib/wms/zone-picking-service";
 
-type Actor = { userId: string; displayName: string };
+type Actor = { userId: string | null; displayName: string };
 type Tx = Prisma.TransactionClient;
 
 const ACTIVE_CANCELLATION = ["REQUESTED", "STOCK_RETURN_PENDING", "REFUND_PENDING"];
@@ -180,8 +180,13 @@ export class OrderCancellationService {
     return Boolean(status && ACTIVE_CANCELLATION.includes(status));
   }
 
-  static async request(input:{orderId:number;reason:string;actor:Actor}) {
+  static async request(input:{orderId:number;reason:string;actor:Actor;bankTransferExpiryCutoff?:Date}) {
     return prisma.$transaction(async(tx)=>{
+      // Lock before reading mutable order state during expiry cancellation.
+      if (input.bankTransferExpiryCutoff) {
+        await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${input.orderId} FOR UPDATE`;
+      }
+
       const order=await tx.order.findUnique({
         where:{id:input.orderId},
         select:{
@@ -191,6 +196,55 @@ export class OrderCancellationService {
           shippingHandlingUnitOrders:{select:{shippingHandlingUnit:{select:{dispatchDocument:{select:{id:true,status:true}}}}}},
         },
       });
+
+      // Recheck the expiry policy inside the same serializable transaction
+      // that performs cancellation. The scheduled job must never trust a
+      // previously read payment or WMS state.
+      if (input.bankTransferExpiryCutoff) {
+        const current = await tx.order.findUnique({
+          where: { id: input.orderId },
+          select: {
+            source:true, paymentMethod:true, paymentStatus:true, orderDate:true, createdAt:true,
+            status:true, stockDeducted:true, cancellationStatus:true,
+            bankTransactions:{select:{id:true},take:1},
+            paymentTransactions:{select:{status:true},take:10},
+            pickingRecords:{select:{id:true},take:1},
+            assignedHandlingUnits:{select:{id:true},take:1},
+            zonePickTasks:{select:{id:true},take:1},
+            shippingHandlingUnitOrders:{select:{id:true},take:1},
+            pickingAssignment:{select:{id:true}},
+            items:{select:{pickedQuantity:true,packedQuantity:true,shippedQuantity:true}},
+          },
+        });
+        const recordedPayments = await tx.customerAccountEntry.count({
+          where: {
+            orderId: input.orderId,
+            direction: CustomerAccountEntryDirection.CREDIT,
+            entryType: CustomerAccountEntryType.PAYMENT,
+          },
+        });
+        if (recordedPayments > 0) {
+          throw new Error("Sipariş için tahsilat kaydı bulundu; otomatik iptal durduruldu.");
+        }
+        if (!current ||
+          current.source !== OrderSource.ECOMMERCE ||
+          current.paymentMethod !== "BANK_TRANSFER" ||
+          current.status !== OrderStatus.PENDING ||
+          current.orderDate > input.bankTransferExpiryCutoff ||
+          current.createdAt > input.bankTransferExpiryCutoff ||
+          current.stockDeducted ||
+          current.cancellationStatus ||
+          !["PENDING","UNPAID","AWAITING_PAYMENT"].includes(current.paymentStatus ?? "") ||
+          current.bankTransactions.length > 0 ||
+          current.paymentTransactions.length > 0 ||
+          current.pickingRecords.length > 0 ||
+          current.assignedHandlingUnits.length > 0 ||
+          current.zonePickTasks.length > 0 ||
+          current.shippingHandlingUnitOrders.length > 0 ||
+          current.pickingAssignment !== null ||
+          current.items.some(item => item.pickedQuantity > 0 || item.packedQuantity > 0 || item.shippedQuantity > 0)
+        ) throw new Error("Otomatik iptal öncesi ödeme veya operasyon durumu değişti; işlem atlandı.");
+      }
       if(!order)throw new Error("Sipariş bulunamadı.");
       if(order.status===OrderStatus.CANCELLED)throw new Error("Sipariş zaten iptal edilmiş.");
       if (OrderCancellationService.isBlocked(order.cancellationStatus)) {
@@ -494,7 +548,7 @@ export class OrderCancellationService {
 
   static async completeRefund(input:{orderId:number;reference:string;actor:Actor}){
     return prisma.$transaction(async(tx)=>{
-      const order=await tx.order.findUnique({where:{id:input.orderId},select:{id:true,customerId:true,orderNumber:true,status:true,totalAmount:true,paymentStatus:true,cancellationStatus:true,cancellationRefundStatus:true}});
+      const order=await tx.order.findUnique({where:{id:input.orderId},select:{id:true,customerId:true,orderNumber:true,status:true,totalAmount:true,paymentMethod:true,paymentStatus:true,cancellationStatus:true,cancellationRefundStatus:true}});
       if(!order)throw new Error("Sipariş bulunamadı.");
       if(order.status!==OrderStatus.CANCELLED||order.cancellationStatus!=="REFUND_PENDING"||order.cancellationRefundStatus!=="PENDING")throw new Error("Sipariş para iadesi tamamlamaya uygun değil.");
       const payment=await tx.customerAccountEntry.findFirst({where:{orderId:order.id,direction:CustomerAccountEntryDirection.CREDIT,entryType:CustomerAccountEntryType.PAYMENT},select:{amount:true,paymentMethod:true}});
@@ -504,7 +558,7 @@ export class OrderCancellationService {
         where: { orderId: order.id, status: "PAID" },
         select: { amount: true, refundedAmount: true, providerReference: true },
       });
-      if (cardPayment && (cardPayment.refundedAmount < payment.amount)) {
+      if (order.paymentMethod === "CREDIT_CARD" && (!cardPayment || cardPayment.refundedAmount < payment.amount)) {
         throw new Error("Sanal POS iadesi sağlayıcı işlem kaydıyla doğrulanmadı.");
       }
       if (!Number.isFinite(payment.amount) || payment.amount <= 0 || payment.amount > order.totalAmount) throw new Error("İade tutarı geçersiz.");
