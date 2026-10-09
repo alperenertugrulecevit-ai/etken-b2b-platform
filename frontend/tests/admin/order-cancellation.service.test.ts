@@ -361,7 +361,7 @@ describe("OrderCancellationService.completeRefund validation", () => {
     mocks.transaction.mockImplementation(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx));
     mocks.orderFindUnique.mockResolvedValue({
       id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.CANCELLED,
-      totalAmount: 100, paymentStatus: "REFUND_PENDING",
+      totalAmount: 100, paymentMethod: "CREDIT_CARD", paymentStatus: "REFUND_PENDING",
       cancellationStatus: "REFUND_PENDING", cancellationRefundStatus: "PENDING",
     });
     tx.customerAccountEntry = {
