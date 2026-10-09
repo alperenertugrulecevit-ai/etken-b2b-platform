@@ -31,6 +31,9 @@ export class EcommerceStockReservationService {
         throw new Error("E-ticaret siparişi bulunamadı.");
       }
       if (!order.stockReserved) return false;
+      if (order.items.length === 0) {
+        throw new Error("Sipariş kalemleri olmadan rezervasyon bırakılamaz.");
+      }
       if (
         order.stockDeducted ||
         (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CANCELLED) ||
@@ -58,7 +61,11 @@ export class EcommerceStockReservationService {
         if (!Number.isSafeInteger(item.quantity) || item.quantity <= 0) {
           throw new Error("Sipariş stok miktarı geçersiz.");
         }
-        quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+        const aggregate = (quantities.get(item.productId) ?? 0) + item.quantity;
+        if (!Number.isSafeInteger(aggregate) || aggregate > 2147483647) {
+          throw new Error("Rezervasyon miktarı veritabanı sınırını aşıyor.");
+        }
+        quantities.set(item.productId, aggregate);
       }
       for (const [productId, quantity] of [...quantities].sort(([a], [b]) => a - b)) {
         const released = await tx.product.updateMany({
