@@ -91,6 +91,15 @@ if DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" \
 fi
 DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" bash load-tests/guard-order-write.sh
 
+echo "Checking read-only database baseline..."
+baseline_products="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc "SELECT count(*) FROM \"Product\" WHERE code LIKE 'LT-PRODUCT-%';")"
+baseline_orders="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "Order";')"
+baseline_customers="$(docker exec "$DB" psql -U etken_test -d etken_loadtest -Atc 'SELECT count(*) FROM "Customer";')"
+if [[ "$baseline_products" != 250 || "$baseline_orders" != 0 || "$baseline_customers" != 0 ]]; then
+  echo "Unexpected baseline: products=$baseline_products orders=$baseline_orders customers=$baseline_customers" >&2
+  exit 1
+fi
+
 echo "Running $USERS VUs, 2 minutes, read-only..."
 docker run --rm --network "$NET" \
   -v "$PWD/load-tests:/scripts:ro" \
