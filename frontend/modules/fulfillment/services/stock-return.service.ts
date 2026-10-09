@@ -79,8 +79,8 @@ export class StockReturnService{
    if(order.status===OrderStatus.SHIPPED||order.status===OrderStatus.DELIVERED)throw new Error("Sipariş SEVK EDİLDİ. Bu işlem yerine İade Giriş kullanılmalıdır.");
    if(order.status===OrderStatus.CANCELLED)throw new Error("İptal edilmiş sipariş geri alma işlemine açık değildir.");
    if(order.cancellationStatus==="STOCK_RETURN_PENDING"&&!CUSTOMER_REASONS.includes(input.reason))throw new Error("İptal bekleyen siparişte yalnızca müşteri iptali nedeniyle fiziksel stok geri alma yapılabilir.");
-   if(CUSTOMER_REASONS.includes(input.reason)&&order.cancellationStatus!=="STOCK_RETURN_PENDING")throw new Error("Müşteri iptali nedeniyle stok geri alma için önce sipariş iptal talebi oluşturulmalıdır.");
    if(order.cancellationStatus==="REQUESTED"||order.cancellationStatus==="REFUND_PENDING"||order.cancellationStatus==="COMPLETED")throw new Error("Bu siparişin iptal aşaması fiziksel stok geri almaya uygun değil.");
+   if(CUSTOMER_REASONS.includes(input.reason)&&order.cancellationStatus!=="STOCK_RETURN_PENDING")throw new Error("Müşteri iptali nedeniyle stok geri alma için önce sipariş iptal talebi oluşturulmalıdır.");
 
    const item=order.items[0]; if(!item)throw new Error("Okutulan ürün bu siparişte bulunmuyor.");
    if(item.shippedQuantity>0)throw new Error("Bu ürünün sevk edilmiş miktarı var. Sevk sonrası miktar İade Giriş ile alınmalıdır.");
