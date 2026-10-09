@@ -491,7 +491,7 @@ export class OrderCancellationService {
         where: { orderId: order.id, status: "PAID" },
         select: { amount: true, refundedAmount: true, providerReference: true },
       });
-      if (cardPayment && (cardPayment.providerReference !== input.reference || cardPayment.refundedAmount < payment.amount)) {
+      if (cardPayment && (cardPayment.refundedAmount < payment.amount)) {
         throw new Error("Sanal POS iadesi sağlayıcı işlem kaydıyla doğrulanmadı.");
       }
       if (!Number.isFinite(payment.amount) || payment.amount <= 0 || payment.amount > order.totalAmount) throw new Error("İade tutarı geçersiz.");
