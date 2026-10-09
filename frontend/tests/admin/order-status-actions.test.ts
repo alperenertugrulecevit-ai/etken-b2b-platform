@@ -401,6 +401,24 @@ describe(
       }
     );
 
+    it("iptal edilmiş e-ticaret siparişini rezervasyon bayrağı olsa bile açmaz", async () => {
+      mocks.orderFindUnique.mockResolvedValue(createOrder({
+        source: OrderSource.ECOMMERCE, status: OrderStatus.CANCELLED, stockReserved: true,
+      }));
+      await expect(updateOrderStatus(501, createStatusForm(OrderStatus.APPROVED)))
+        .rejects.toThrow("İptal edilmiş sipariş yeniden açılamaz");
+      expect(mocks.orderUpdate).not.toHaveBeenCalled();
+    });
+
+    it("aynı e-ticaret durumunu tekrar seçince geçmiş kaydı oluşturmaz", async () => {
+      mocks.orderFindUnique.mockResolvedValue(createOrder({
+        source: OrderSource.ECOMMERCE, status: OrderStatus.APPROVED, stockReserved: true,
+      }));
+      await updateOrderStatus(501, createStatusForm(OrderStatus.APPROVED));
+      expect(mocks.orderUpdate).not.toHaveBeenCalled();
+      expect(mocks.stockMovement).not.toHaveBeenCalled();
+    });
+
     it("e-ticaret siparişinde manuel sevk durumunu engeller", async () => {
       mocks.orderFindUnique.mockResolvedValue(
         createOrder({
