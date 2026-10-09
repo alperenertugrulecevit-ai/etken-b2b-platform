@@ -5,6 +5,7 @@ import {
   CustomerAccountEntryType,
   DispatchDocumentStatus,
   OrderStatus,
+  OrderSource,
   Prisma,
   StockMovementType,
   WmsOperationType,
@@ -67,8 +68,8 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
   const order = await tx.order.findUnique({
     where: { id: orderId },
     select: {
-      id:true, customerId:true, orderNumber:true, paymentStatus:true, status:true,
-      items:{select:{quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true}},
+      id:true, customerId:true, orderNumber:true, paymentStatus:true, status:true, source:true, stockReserved:true, stockDeducted:true,
+      items:{select:{productId:true,quantity:true,cancelledQuantity:true,pickedQuantity:true,packedQuantity:true,shippedQuantity:true}},
     },
   });
   if (!order) throw new Error("Sipariş bulunamadı.");
@@ -78,6 +79,29 @@ async function finalizeCancellation(tx: Tx, orderId: number, actor: Actor) {
     0,
   );
   if (physicalRemaining > 0) throw new Error("Toplanmış/paketlenmiş ürünlerin tamamı stoğa geri alınmadan iptal tamamlanamaz.");
+
+  // Web checkout reserves Product.reservedStock directly. Release that global
+  // reservation inside the same transaction that completes cancellation.
+  // Never release twice, and never apply this to already shipped stock.
+  if (order.source === OrderSource.ECOMMERCE && order.stockReserved && !order.stockDeducted) {
+    const totals = new Map<number, number>();
+    for (const item of order.items) {
+      const quantity = (totals.get(item.productId) ?? 0) + item.quantity;
+      if (!Number.isSafeInteger(quantity) || quantity > 2147483647) {
+        throw new Error("İptal rezervasyon miktarı geçersiz.");
+      }
+      totals.set(item.productId, quantity);
+    }
+    for (const [productId, quantity] of [...totals].sort(([a], [b]) => a - b)) {
+      const result = await tx.product.updateMany({
+        where: { id: productId, reservedStock: { gte: quantity } },
+        data: { reservedStock: { decrement: quantity } },
+      });
+      if (result.count !== 1) {
+        throw new Error("E-ticaret iptal rezervasyonu tutarsız; manuel stok mutabakatı gerekli.");
+      }
+    }
+  }
 
   await createCancellationCredit(tx, order, actor);
   const paid = order.paymentStatus?.toUpperCase() === "PAID" || order.paymentStatus?.toUpperCase() === "REFUND_PENDING";
