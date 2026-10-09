@@ -229,6 +229,32 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
+  it("rejects unsafe integer quantities without database access", async () => {
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, items: [{ productId: 1, quantity: Number.MAX_SAFE_INTEGER + 1 }],
+    })).rejects.toThrow("geçersiz ürün satırı");
+    expect(mocks.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid catalog money, tax and stock without creating an order", async () => {
+    const product = {
+      id: 1, code: "LT-PRODUCT-0001", name: "Synthetic Product 1",
+      price: 100, vat: 20, stock: 100, reservedStock: 0,
+    };
+    const invalid = [
+      { price: Number.NaN }, { price: Number.POSITIVE_INFINITY },
+      { price: -1 }, { vat: -1 }, { vat: 101 },
+      { stock: -1 }, { reservedStock: -1 },
+    ];
+    for (const fields of invalid) {
+      mocks.findMany.mockResolvedValueOnce([{ ...product, ...fields }]);
+      await expect(EcommerceCheckoutService.createOrder(input))
+        .rejects.toThrow("fiyat, vergi veya stok bilgisi geçersiz");
+    }
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid customer email before reading products", async () => {
     await expect(EcommerceCheckoutService.createOrder({
       ...input, email: "not-an-email",
