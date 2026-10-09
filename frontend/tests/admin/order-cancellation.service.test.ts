@@ -312,3 +312,34 @@ describe("OrderCancellationService cancellation finalizer safety", () => {
     expect(mocks.orderUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe("OrderCancellationService.completeRefund validation", () => {
+  const actor = { userId: "admin", displayName: "Admin" };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.transaction.mockImplementation(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx));
+    mocks.orderFindUnique.mockResolvedValue({
+      id: 782, customerId: 1, orderNumber: "WEB-782", status: OrderStatus.CANCELLED,
+      totalAmount: 100, paymentStatus: "REFUND_PENDING",
+      cancellationStatus: "REFUND_PENDING", cancellationRefundStatus: "PENDING",
+    });
+    tx.customerAccountEntry = {
+      findFirst: vi.fn().mockResolvedValue({ amount: 100, paymentMethod: "CREDIT_CARD" }),
+      create: vi.fn(),
+    } as typeof tx.customerAccountEntry;
+    tx.paymentTransaction = { findFirst: vi.fn().mockResolvedValue({
+      amount: 100, refundedAmount: 0, providerReference: "PAY-1",
+    }) } as typeof tx.paymentTransaction;
+  });
+  it("does not close a refund without persisted provider evidence", async () => {
+    await expect(OrderCancellationService.completeRefund({ orderId: 782, reference: "REF-1", actor }))
+      .rejects.toThrow("Sanal POS iadesi");
+    expect(tx.customerAccountEntry.create).not.toHaveBeenCalled();
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+  it("does not accept an empty refund reference", async () => {
+    await expect(OrderCancellationService.completeRefund({ orderId: 782, reference: " ", actor }))
+      .rejects.toThrow("İade referansı zorunludur");
+    expect(mocks.orderUpdate).not.toHaveBeenCalled();
+  });
+});
