@@ -70,6 +70,21 @@ if [[ "$ready" != 1 ]]; then
   exit 1
 fi
 
+echo "Checking write-test guard refuses unsafe environments..."
+if DATABASE_URL="postgresql://example:example@production.example:5432/etken" \
+   DIRECT_URL="postgresql://example:example@production.example:5432/etken" \
+   bash load-tests/guard-order-write.sh >/dev/null 2>&1; then
+  echo "Unsafe production-like URL was accepted by order-write guard." >&2
+  exit 1
+fi
+if DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" \
+   ECOMMERCE_EMAIL_WEBHOOK_URL="https://example.invalid/webhook" \
+   bash load-tests/guard-order-write.sh >/dev/null 2>&1; then
+  echo "Order-write guard accepted configured outbound email." >&2
+  exit 1
+fi
+DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" bash load-tests/guard-order-write.sh
+
 echo "Running $USERS VUs, 2 minutes, read-only..."
 docker run --rm --network "$NET" \
   -v "$PWD/load-tests:/scripts:ro" \
