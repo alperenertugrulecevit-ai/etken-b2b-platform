@@ -255,6 +255,25 @@ describe("Ecommerce checkout transaction (mocked, no database/network)", () => {
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
+  it("rejects unsupported invoice types before database access", async () => {
+    await expect(EcommerceCheckoutService.createOrder({
+      ...input, invoiceType: "UNSUPPORTED" as "INDIVIDUAL",
+    })).rejects.toThrow("Geçersiz fatura türü");
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects nonfinite and unsafe calculated order totals", async () => {
+    mocks.findMany.mockResolvedValueOnce([{
+      id: 1, code: "LT-PRODUCT-0001", name: "Synthetic Product 1",
+      price: Number.MAX_VALUE, vat: 20, stock: 100, reservedStock: 0,
+    }]);
+    await expect(EcommerceCheckoutService.createOrder(input))
+      .rejects.toThrow("Sipariş tutarı hesaplanamadı");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid customer email before reading products", async () => {
     await expect(EcommerceCheckoutService.createOrder({
       ...input, email: "not-an-email",
