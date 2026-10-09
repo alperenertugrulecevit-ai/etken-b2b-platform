@@ -19,6 +19,11 @@ const order = {
   status: "PENDING",
   stockReserved: true,
   stockDeducted: false,
+  pickingRecords: [],
+  assignedHandlingUnits: [],
+  zonePickTasks: [],
+  shippingHandlingUnitOrders: [],
+  stockMovements: [],
   items: [{
     productId: 7, quantity: 2, pickedQuantity: 0,
     packedQuantity: 0, shippedQuantity: 0, cancelledQuantity: 0,
@@ -88,6 +93,19 @@ describe("Ecommerce reservation release (mocked, no database)", () => {
     expect(await EcommerceStockReservationService.releaseUnpickedOrder(12, "Cancel")).toBe(true);
     expect(mocks.updateProduct.mock.calls.map(([args]) => args.where.id)).toEqual([7, 9]);
     expect(mocks.updateProduct.mock.calls.map(([args]) => args.where.reservedStock.gte)).toEqual([5, 1]);
+  });
+
+  it.each([
+    "pickingRecords",
+    "assignedHandlingUnits",
+    "zonePickTasks",
+    "shippingHandlingUnitOrders",
+    "stockMovements",
+  ] as const)("blocks release when WMS relation %s has activity", async (relation) => {
+    mocks.findOrder.mockResolvedValueOnce({ ...order, [relation]: [{ id: 1 }] });
+    await expect(EcommerceStockReservationService.releaseUnpickedOrder(12, "Cancel"))
+      .rejects.toThrow("WMS işlemi");
+    expect(mocks.updateOrder).not.toHaveBeenCalled();
   });
 
   it("refuses release for an order without lines", async () => {
