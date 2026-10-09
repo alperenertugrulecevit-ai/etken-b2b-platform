@@ -46,6 +46,7 @@ export async function processExpiredBankTransferOrders(input: {
         paymentMethod: B2BPaymentMethod.BANK_TRANSFER,
         status: OrderStatus.PENDING,
         orderDate: { lte: cutoff },
+        createdAt: { lte: cutoff },
         stockDeducted: false,
         cancellationStatus: null,
         paymentStatus: { in: ["PENDING", "UNPAID", "AWAITING_PAYMENT"] },
