@@ -98,6 +98,7 @@ export class EcommerceNotificationService {
     try {
       const response=await fetch(webhook,{
         method:"POST",
+        redirect:"error",
         headers:{
           "content-type":"application/json",
           ...(process.env.ECOMMERCE_EMAIL_WEBHOOK_TOKEN
