@@ -17,7 +17,7 @@ This document is an audit checklist, **not evidence that third-party integration
 
 ## Confirmed in this branch
 
-- Checkout unit tests exercise bank-transfer order shape, VAT/ledger/history, stock rejection, duplicate lines, invalid email, corporate invoice requirements, catalog misses and transaction failure without notification.
+- Checkout unit tests exercise bank-transfer order shape, VAT/ledger/history, stock rejection, duplicate lines, invalid email, corporate invoice requirements, catalog misses and transaction failure without notification.\n- Checkout now treats a post-commit notification webhook failure as a logged non-fatal error, preventing a committed order from being presented as failed. This is **not** a durable notification retry queue; delivery can still be missed.
 - Prior PR228 tests exercise read-only load and a rollback-only synthetic PostgreSQL transaction in an internal Docker network.
 
 ## Known limitations to resolve before launch
