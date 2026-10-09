@@ -380,6 +380,27 @@ describe(
       );
     });
 
+    it.each([OrderStatus.APPROVED, OrderStatus.PREPARING, OrderStatus.PICKING, OrderStatus.PACKING, OrderStatus.READY_TO_SHIP])(
+      "e-ticaret rezervasyonunu %s geçişinde ikinci kez oluşturmaz",
+      async (status) => {
+        mocks.orderFindUnique.mockResolvedValue(
+          createOrder({
+            source: OrderSource.ECOMMERCE,
+            status: OrderStatus.PENDING,
+            stockReserved: true,
+          })
+        );
+        await updateOrderStatus(501, createStatusForm(status));
+        expect(mocks.stockMovement).not.toHaveBeenCalled();
+        expect(mocks.getWmsPickableStock).not.toHaveBeenCalled();
+        expect(mocks.orderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ status }),
+          })
+        );
+      }
+    );
+
     it("e-ticaret siparişinde manuel sevk durumunu engeller", async () => {
       mocks.orderFindUnique.mockResolvedValue(
         createOrder({
