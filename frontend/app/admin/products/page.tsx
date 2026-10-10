@@ -46,6 +46,16 @@ function getStockLabel(availableStock: number) {
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
     include: {
+      categoryRef: {
+        select: {
+          name: true,
+          parent: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
       productBarcodes: {
         orderBy: [
           {
@@ -271,7 +281,7 @@ export default async function AdminProductsPage() {
       {/* ÜRÜN TABLOSU */}
 
       <div className="-mx-4 mt-6 overflow-x-auto bg-white shadow sm:mx-0 sm:mt-8 sm:rounded-2xl lg:mt-10">
-        <table className="w-full min-w-[1850px] text-left text-sm">
+        <table className="w-full min-w-[2000px] text-left text-sm">
           <thead className="bg-blue-900 text-white">
             <tr>
               <th className="p-4">
@@ -296,6 +306,10 @@ export default async function AdminProductsPage() {
 
               <th className="p-4">
                 Marka
+              </th>
+
+              <th className="p-4">
+                Ana Kategori
               </th>
 
               <th className="p-4">
@@ -512,6 +526,10 @@ export default async function AdminProductsPage() {
                   </td>
 
                   <td className="p-4">
+                    {product.categoryRef?.parent?.name ?? "—"}
+                  </td>
+
+                  <td className="p-4">
                     {product.category}
                   </td>
 
@@ -639,7 +657,7 @@ export default async function AdminProductsPage() {
             {products.length === 0 && (
               <tr>
                 <td
-                  colSpan={16}
+                  colSpan={17}
                   className="p-10 text-center text-gray-500"
                 >
                   Henüz ürün bulunmuyor.
