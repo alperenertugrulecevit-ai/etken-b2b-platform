@@ -118,18 +118,22 @@ export async function GET() {
           "";
 
         const mainCategory =
-          product.categoryRef?.parent
-            ?.name ??
-          product.categoryRef?.name ??
-          product.category;
+          product.categoryRef?.parent?.name ??
+          "—";
 
         const subCategory =
-          product.categoryRef?.parent
-            ? product.categoryRef.name
-            : "";
+          product.category;
 
         return {
           sku: product.code,
+          legacyBarcode: product.barcode,
+          barcodeType: primaryBarcode?.barcodeType ?? "",
+          barcodeSource: primaryBarcode?.sourceSite ?? primaryBarcode?.sourceType ?? "",
+          imageCount: product.productImageSources.length,
+          barcodeCount: product.productBarcodes.length,
+          dataStatus: (product.productBarcodes.length > 0 && (product.productImageSources.length > 0 || Boolean(product.imageUrl))) ? "Veri Tam" : "Veri Eksik",
+          stockStatus: product.stock - product.reservedStock <= 0 ? "Stok Yok" : product.stock - product.reservedStock <= 20 ? "Kritik" : product.stock - product.reservedStock <= 100 ? "Düşük" : "Yeterli",
+          stockSource: product.ownStock ? "ETKEN Deposu" : "Tedarikçi Stoğu",
           brand: product.brand,
           name: product.name,
 
@@ -206,184 +210,166 @@ export async function GET() {
       "center" as const,
   };
 
-  const header = [
+  // Keep the export's visible columns aligned with the Product Management table.
+  // Additional metadata follows the table columns; interactive Actions are not exported.
+  const exportColumns = [
     {
-      value: "ETKEN SKU",
-      ...headerStyle,
+        "label": "Görsel URL",
+        "key": "imageUrl",
+        "type": "String",
+        "width": 55
     },
     {
-      value: "Marka",
-      ...headerStyle,
+        "label": "Kod",
+        "key": "sku",
+        "type": "String",
+        "width": 18
     },
     {
-      value: "Ürün Adı",
-      ...headerStyle,
+        "label": "Ürün",
+        "key": "name",
+        "type": "String",
+        "width": 45
     },
     {
-      value: "Ana Kategori",
-      ...headerStyle,
+        "label": "Eski Barkod",
+        "key": "legacyBarcode",
+        "type": "String",
+        "width": 22
     },
     {
-      value: "Alt Kategori",
-      ...headerStyle,
+        "label": "Üretici Barkodu",
+        "key": "barcode",
+        "type": "String",
+        "width": 22
     },
     {
-      value: "Tedarikçi",
-      ...headerStyle,
+        "label": "Barkod Tipi",
+        "key": "barcodeType",
+        "type": "String",
+        "width": 16
     },
     {
-      value:
-        "Üretici Barkodu",
-      ...headerStyle,
+        "label": "Barkod Kaynağı",
+        "key": "barcodeSource",
+        "type": "String",
+        "width": 22
     },
     {
-      value: "Görsel URL",
-      ...headerStyle,
+        "label": "Görsel Sayısı",
+        "key": "imageCount",
+        "type": "Number",
+        "width": 16
     },
     {
-      value: "Fiziksel Stok",
-      ...headerStyle,
+        "label": "Barkod Sayısı",
+        "key": "barcodeCount",
+        "type": "Number",
+        "width": 16
     },
     {
-      value: "Rezerve Stok",
-      ...headerStyle,
+        "label": "Veri Durumu",
+        "key": "dataStatus",
+        "type": "String",
+        "width": 18
     },
     {
-      value:
-        "Kullanılabilir Stok",
-      ...headerStyle,
+        "label": "Marka",
+        "key": "brand",
+        "type": "String",
+        "width": 20
     },
     {
-      value: "Satış Fiyatı",
-      ...headerStyle,
+        "label": "Ana Kategori",
+        "key": "mainCategory",
+        "type": "String",
+        "width": 24
     },
     {
-      value: "KDV",
-      ...headerStyle,
+        "label": "Kategori",
+        "key": "subCategory",
+        "type": "String",
+        "width": 24
     },
     {
-      value: "Kendi Stoğu",
-      ...headerStyle,
+        "label": "Tedarikçi",
+        "key": "supplier",
+        "type": "String",
+        "width": 28
     },
     {
-      value: "Aktif",
-      ...headerStyle,
+        "label": "Fiziksel",
+        "key": "physicalStock",
+        "type": "Number",
+        "width": 14
     },
     {
-      value:
-        "Barkod Doğrulandı",
-      ...headerStyle,
+        "label": "Rezerve",
+        "key": "reservedStock",
+        "type": "Number",
+        "width": 14
     },
     {
-      value:
-        "Görsel Doğrulandı",
-      ...headerStyle,
+        "label": "Kullanılabilir",
+        "key": "availableStock",
+        "type": "Number",
+        "width": 18
     },
-  ];
+    {
+        "label": "Stok Durumu",
+        "key": "stockStatus",
+        "type": "String",
+        "width": 18
+    },
+    {
+        "label": "Fiyat",
+        "key": "price",
+        "type": "Number",
+        "width": 16
+    },
+    {
+        "label": "Stok Kaynağı",
+        "key": "stockSource",
+        "type": "String",
+        "width": 22
+    },
+    {
+        "label": "Yayın",
+        "key": "active",
+        "type": "String",
+        "width": 12
+    },
+    {
+        "label": "KDV",
+        "key": "vat",
+        "type": "Number",
+        "width": 10
+    },
+    {
+        "label": "Barkod Doğrulandı",
+        "key": "barcodeVerified",
+        "type": "String",
+        "width": 18
+    },
+    {
+        "label": "Görsel Doğrulandı",
+        "key": "imageVerified",
+        "type": "String",
+        "width": 18
+    }
+] as const;
 
-  const dataRows =
-    rows.map(
-      (row) => [
-        {
-          type: String,
-          value: row.sku,
-        },
+  const header = exportColumns.map((column) => ({
+    value: column.label,
+    ...headerStyle,
+  }));
 
-        {
-          type: String,
-          value: row.brand,
-        },
-
-        {
-          type: String,
-          value: row.name,
-        },
-
-        {
-          type: String,
-          value:
-            row.mainCategory,
-        },
-
-        {
-          type: String,
-          value:
-            row.subCategory,
-        },
-
-        {
-          type: String,
-          value:
-            row.supplier,
-        },
-
-        {
-          type: String,
-          value:
-            row.barcode,
-        },
-
-        {
-          type: String,
-          value:
-            row.imageUrl,
-        },
-
-        {
-          type: Number,
-          value:
-            row.physicalStock,
-        },
-
-        {
-          type: Number,
-          value:
-            row.reservedStock,
-        },
-
-        {
-          type: Number,
-          value:
-            row.availableStock,
-        },
-
-        {
-          type: Number,
-          value: row.price,
-          format:
-            "#,##0.00",
-        },
-
-        {
-          type: Number,
-          value: row.vat,
-        },
-
-        {
-          type: String,
-          value:
-            row.ownStock,
-        },
-
-        {
-          type: String,
-          value:
-            row.active,
-        },
-
-        {
-          type: String,
-          value:
-            row.barcodeVerified,
-        },
-
-        {
-          type: String,
-          value:
-            row.imageVerified,
-        },
-      ],
-    );
+  const dataRows = rows.map((row) =>
+    exportColumns.map((column) => ({
+      type: column.type === "Number" ? Number : String,
+      value: row[column.key],
+    })),
+  );
 
 const workbook =
   writeXlsxFile(
@@ -395,25 +381,7 @@ const workbook =
       sheet:
         "Products_Export",
 
-      columns: [
-        { width: 18 },
-        { width: 20 },
-        { width: 45 },
-        { width: 24 },
-        { width: 24 },
-        { width: 28 },
-        { width: 22 },
-        { width: 55 },
-        { width: 14 },
-        { width: 14 },
-        { width: 18 },
-        { width: 16 },
-        { width: 10 },
-        { width: 14 },
-        { width: 12 },
-        { width: 18 },
-        { width: 18 },
-      ],
+      columns: exportColumns.map((column) => ({ width: column.width })),
 
       stickyRowsCount: 1,
     },
