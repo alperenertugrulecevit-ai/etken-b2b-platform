@@ -27,6 +27,7 @@ def main() -> int:
         rows = list(reader)
     errors = []
     keys = set()
+    product_units = set()
     units = Counter()
     categories = Counter()
     for i, row in enumerate(rows, 2):
@@ -34,6 +35,13 @@ def main() -> int:
         if not key or key in keys:
             errors.append(f"line {i}: empty or duplicate temporary key")
         keys.add(key)
+        product_unit = (
+            (row.get("urun_adi") or "").strip().casefold(),
+            (row.get("birim") or "").strip().casefold(),
+        )
+        if product_unit in product_units:
+            errors.append(f"line {i}: duplicate product name and sale unit")
+        product_units.add(product_unit)
         for field in ("kategori", "alt_kategori", "urun_adi", "birim"):
             if not (row.get(field) or "").strip():
                 errors.append(f"line {i}: missing {field}")
@@ -41,7 +49,7 @@ def main() -> int:
             source = money(row["kaynak_fiyat_tl"])
             target = money(row["etken_fiyat_tl"])
             expected = (source * D("1.20")).quantize(D("0.01"), rounding=decimal.ROUND_HALF_UP)
-            if source <= 0 or target != expected:
+            if not source.is_finite() or not target.is_finite() or source <= 0 or target != expected:
                 errors.append(f"line {i}: price mismatch or nonpositive source price")
         except (decimal.InvalidOperation, KeyError, AttributeError):
             errors.append(f"line {i}: invalid price")
@@ -49,7 +57,7 @@ def main() -> int:
         categories[(row.get("kategori") or "").strip()] += 1
     if len(rows) != 161:
         errors.append(f"expected 161 rows; got {len(rows)}")
-    print(f"Rows: {len(rows)}; unique temporary keys: {len(keys)}")
+    print(f"Rows: {len(rows)}; unique temporary keys: {len(keys)}; unique product/unit pairs: {len(product_units)}")
     print("Categories:", dict(sorted(categories.items())))
     print("Units:", dict(sorted(units.items())))
     print("Validation:", "PASS" if not errors else "FAIL")
