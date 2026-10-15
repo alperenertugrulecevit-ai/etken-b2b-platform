@@ -1,6 +1,6 @@
 # Katalog geçişi — üretim onay kontrol listesi
 
-**Durum: Henüz üretimde uygulanmadı.** Bu belgede yer alan SQL dosyalarını otomatik
+**Durum (15 Ekim 2026): 125 ürünün kontrollü pasifleştirilmesi üretimde tamamlandı ve postcheck doğrulandı.** Bu belgede yer alan SQL dosyalarını otomatik
 deploy veya uygulama başlangıcına bağlamayın. PR #234'ün birleşmesi tek başına
 ürünleri pasifleştirmez.
 
@@ -34,11 +34,10 @@ deploy veya uygulama başlangıcına bağlamayın. PR #234'ün birleşmesi tek b
 - `catalog-safety-audit.sql`: ilk envanter ve ürün bağlantısı incelemesi.
 - `catalog-deactivation-dry-run.sql`: sadece simülasyon, işlem sonunda ROLLBACK.
 - `catalog-reactivation-risk.sql`: diğer tedarikçi eşleştirmeleri.
-- `catalog-deactivation-controlled.sql`: **üretimde çalıştırılmamış**,
+- `catalog-deactivation-controlled.sql`: **eski taslak; üretimde kullanılmamalı**,
   manuel onay gerektiren taslak. Tüm bağlantı kontrolleri ve eşzamanlı işlem
   davranışı doğrulanmadan kullanılmamalı.
-- `catalog-deactivation-restore.sql`: yalnızca başarılı bir denetim kaydı
-  oluşturulmuşsa, kontrollü geri alma taslağı.
+- `catalog-deactivation-restore.sql`: farklı bir audit tablosunu hedefleyen eski taslak; **gerçekleşen geçişin geri alması değildir**.
 
 ## Başarı ölçütü
 
@@ -46,3 +45,13 @@ deploy veya uygulama başlangıcına bağlamayın. PR #234'ün birleşmesi tek b
 ürünün pasif olması, WMS/sipariş kayıtlarının değişmemesi ve müşteri iskonto
 kurallarının etkilenmemesi gerekir. Zırhlı ürünleri ayrıca onaylanmış veriyle
 içe aktarılmalıdır; 161 CSV satırının doğrulanması aktarım anlamına gelmez.
+
+## Üretim geçişi sonrasında doğrulanan sonuç (2026-10-15)
+
+- `catalog-transition-125-reviewed.sql` üretimde **bir kez** başarıyla çalıştırıldı; tekrar çalıştırılmamalıdır.
+- `catalog-transition-postcheck.sql` sonuçları: toplam 915; aktif 784; pasif 131; Ofis26 aktif 784; batch 125; batch pasif 125; aktif batch eşleştirmesi 0; stok/rezervasyon riski 0; Ofis26 çakışması 0.
+- `CatalogTransitionAudit` batch: `catalog_20261015_legacy`. 128 rakip eşleştirmesi pasifleştirildi; bunların ayrı geri alma kaydı doğrulanmadan geri alma yapılmamalıdır.
+- Üretim geçişi tamamlanmış olsa da **bu PR'nin kod korumaları henüz canlıya dağıtılmadı**.
+- 161 Zırhlı ürünü henüz aktarılmadı. KDV, kaynak fiyat matrahı, barkod, stok ve görsel hakları doğrulanmalıdır.
+
+> Yukarıdaki önceki 'ön koşullar' bölümü geçişten önceki denetim planını belgelemek içindir; yeniden pasifleştirme talimatı değildir.
