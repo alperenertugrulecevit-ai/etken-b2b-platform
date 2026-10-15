@@ -19,4 +19,13 @@ SELECT (SELECT COUNT(*) FROM public."Product") AS total_products,
  (SELECT COUNT(*) FROM batch b JOIN public."CompetitorProduct" cp ON cp."productId"=b."productId" WHERE cp."isActive") AS batch_active_mappings,
  (SELECT COUNT(*) FROM batch b JOIN public."Product" p ON p.id=b."productId" WHERE p.stock<>0 OR p."reservedStock"<>0) AS batch_stock_risks,
  (SELECT COUNT(*) FROM batch b JOIN protected q ON q.id=b."productId") AS batch_ofis26_collisions;
+-- Mapping states before the transition were not recorded per mapping.
+-- This breakdown is diagnostic only; it must not be used to blindly restore mappings.
+SELECT cs.code AS competitor_site, cp."isActive" AS current_mapping_active, count(*) AS mapping_count
+FROM public."CatalogTransitionAudit" a
+JOIN public."CompetitorProduct" cp ON cp."productId"=a."productId"
+JOIN public."CompetitorSite" cs ON cs.id=cp."competitorSiteId"
+WHERE a."batchId"='catalog_20261015_legacy'
+GROUP BY cs.code, cp."isActive"
+ORDER BY cs.code, cp."isActive";
 ROLLBACK;
