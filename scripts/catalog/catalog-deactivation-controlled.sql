@@ -83,6 +83,7 @@ BEGIN
     SELECT table_schema, table_name, column_name
     FROM information_schema.columns
     WHERE table_schema='public' AND column_name IN ('productCode','productBarcode')
+      AND table_name <> 'Product' -- Never count the candidate product row as its own reference
   LOOP
     IF r.column_name = 'productCode' THEN
       EXECUTE format(
