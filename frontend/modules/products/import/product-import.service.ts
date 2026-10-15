@@ -4,6 +4,7 @@ import {
 } from "read-excel-file/node";
 
 import { prisma } from "@/lib/prisma";
+import { shouldActivateNewImportedProduct } from "./product-import-activation";
 
 import type {
   ParsedProductImportRow,
@@ -463,11 +464,8 @@ data: {
         stock: nextStock,
         barcode: nextBarcode,
 
-        /*
-         * Fiyatı sıfır veya daha düşük olan ürün,
-         * mevcut durumda yanlışlıkla satışa açılmaz.
-         */
-isActive: true,
+        // Intentionally omit isActive: imports must never change an existing
+        // product's activation state, including during concurrent deactivation.
       },
     });
 
@@ -499,11 +497,10 @@ supplier:
       vat: 20,
       ownStock: false,
 
-      /*
-       * Fiyat girilmemiş yeni ürünler taslak/pasif
-       * olarak oluşturulur.
-       */
-isActive: true,    },
+      // New products without a valid sale price remain inactive.
+      // A zero-stock, priced supplier product may still be listed.
+      isActive: shouldActivateNewImportedProduct(newPrice),
+    },
   });
 
   return "created";

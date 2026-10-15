@@ -984,6 +984,9 @@ export class Ofis26SupplierSyncService {
 
                 vat:
                   true,
+
+                isActive:
+                  true,
               },
             },
 
@@ -1017,6 +1020,15 @@ export class Ofis26SupplierSyncService {
 
         message:
           "Aktif Ofis26 Ã¼rÃ¼n eÅŸleÅŸtirmesi bulunamadÄ±.",
+      };
+    }
+
+    // A supplier sync must not undo an intentional catalog deactivation.
+    if (!mapping.product.isActive) {
+      return {
+        success: false,
+        productCode: mapping.product.code,
+        message: "Pasif ürün senkronizasyonla yeniden aktifleştirilemez.",
       };
     }
 
@@ -1221,9 +1233,7 @@ export class Ofis26SupplierSyncService {
               ofis26StockInfo
                 .stockAmount,
 
-            isActive:
-              true,
-
+            // Preserve activation state, including concurrent deactivation.
             ownStock:
               false,
 
@@ -1392,9 +1402,7 @@ export class Ofis26SupplierSyncService {
            * Stok 0 olsa bile Ã¼rÃ¼n
            * sayfasÄ± yayÄ±nda kalÄ±r.
            */
-          isActive:
-            true,
-
+          // Preserve activation state, including concurrent deactivation.
           ownStock:
             false,
 
