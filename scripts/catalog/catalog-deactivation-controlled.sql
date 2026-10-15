@@ -131,8 +131,10 @@ DECLARE deactivated int; protected_active int;
 BEGIN
   SELECT COUNT(*) INTO deactivated
   FROM public."CatalogDeactivationAudit" a
-  JOIN public."Product" p ON p.id=a."productId"
-  WHERE a."batchId"='catalog_20261014_non_ofis26' AND NOT p."isActive";
+  JOIN public."Product" p
+    ON p.id=a."productId" AND p.code=a."productCode"
+  WHERE a."batchId"='catalog_20261014_non_ofis26'
+    AND a."oldIsActive" = true AND p."isActive" = false;
   SELECT COUNT(DISTINCT p.id) INTO protected_active
   FROM public."Product" p
   JOIN public."CompetitorProduct" cp ON cp."productId"=p.id
