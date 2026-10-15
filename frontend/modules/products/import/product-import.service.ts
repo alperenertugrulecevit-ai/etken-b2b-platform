@@ -463,11 +463,9 @@ data: {
         stock: nextStock,
         barcode: nextBarcode,
 
-        /*
-         * Fiyatı sıfır veya daha düşük olan ürün,
-         * mevcut durumda yanlışlıkla satışa açılmaz.
-         */
-isActive: true,
+        // Never reactivate a deliberately disabled product through an Excel update.
+        // Re-activation must be an explicit, authorized catalog action.
+        isActive: existingProduct.isActive,
       },
     });
 
@@ -499,11 +497,10 @@ supplier:
       vat: 20,
       ownStock: false,
 
-      /*
-       * Fiyat girilmemiş yeni ürünler taslak/pasif
-       * olarak oluşturulur.
-       */
-isActive: true,    },
+      // New products without a valid sale price remain inactive.
+      // A zero-stock, priced supplier product may still be listed.
+      isActive: newPrice > 0,
+    },
   });
 
   return "created";
