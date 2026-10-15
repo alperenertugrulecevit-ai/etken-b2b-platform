@@ -28,5 +28,9 @@
 - Avoid creating separate carton price tiers; preserve the captured sale-unit label.
 - Verify category mapping and uniqueness against the live Product table before import.
 
-## Deployment status
-This branch includes read-only audits, a rollback-only simulation, a **manual write-capable SQL draft** (catalog-deactivation-controlled.sql), a manual restore draft, and an Excel importer activation fix with unit tests. The write-capable scripts have **not** been executed or production-validated. No production database writes, deployments, or product imports have been executed from this branch. Review PRODUCTION-CHECKLIST.md before considering any write.
+## Production transition status (2026-10-15)
+The reviewed transition script `catalog-transition-125-reviewed.sql` was executed once by the operator in production. The subsequent read-only `catalog-transition-postcheck.sql` returned 915 products: 784 active and 131 inactive; all 125 audited legacy products remained inactive; no active mappings, stock/reservation risks, or OFIS26 collisions were detected for the audited batch. Audit batch: `catalog_20261015_legacy`.
+
+The earlier `catalog-deactivation-controlled.sql` is an obsolete pre-transition draft and must not be executed. `catalog-deactivation-restore.sql` refers to a different audit table and cannot restore the completed transition. The transition disabled 128 active competitor mappings, but their individual pre-transition statuses were not captured in `CatalogTransitionAudit`; any restoration needs independently verified mapping-level evidence from the pre-transition backup. Never blindly activate all inactive mappings.
+
+The branch's application fixes have passed 238 Vitest tests (three database integration tests skipped) and a successful Next.js build with TypeScript checks in Cloud Shell. The PR remains a draft; these code changes have not been merged or deployed to Cloud Run. The 161 Zırhlı products have not been imported. Review PRODUCTION-CHECKLIST.md before any additional production change.
