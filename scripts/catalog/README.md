@@ -29,4 +29,4 @@
 - Verify category mapping and uniqueness against the live Product table before import.
 
 ## Deployment status
-This branch contains **read-only audit tooling only**. No production database writes, deployments, or product imports have been executed from this branch.
+This branch includes read-only audits, a rollback-only simulation, a **manual write-capable SQL draft** (catalog-deactivation-controlled.sql), a manual restore draft, and an Excel importer activation fix with unit tests. The write-capable scripts have **not** been executed or production-validated. No production database writes, deployments, or product imports have been executed from this branch. Review PRODUCTION-CHECKLIST.md before considering any write.
