@@ -339,8 +339,8 @@ export class ProductImportExecutionService {
                     ownStock:
                       data.ownStock,
 
-                    isActive:
-                      data.isActive,
+                    // Existing product activation is managed separately.
+                    // Never reactivate deactivated catalog items via import.
                   },
 
                   select: {
