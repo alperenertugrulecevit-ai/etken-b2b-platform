@@ -4,6 +4,7 @@ import {
 } from "read-excel-file/node";
 
 import { prisma } from "@/lib/prisma";
+import { shouldActivateNewImportedProduct } from "./product-import-activation";
 
 import type {
   ParsedProductImportRow,
@@ -498,7 +499,7 @@ supplier:
 
       // New products without a valid sale price remain inactive.
       // A zero-stock, priced supplier product may still be listed.
-      isActive: newPrice > 0,
+      isActive: shouldActivateNewImportedProduct(newPrice),
     },
   });
 
