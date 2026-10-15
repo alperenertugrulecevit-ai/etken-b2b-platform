@@ -463,9 +463,8 @@ data: {
         stock: nextStock,
         barcode: nextBarcode,
 
-        // Never reactivate a deliberately disabled product through an Excel update.
-        // Re-activation must be an explicit, authorized catalog action.
-        isActive: existingProduct.isActive,
+        // Intentionally omit isActive: imports must never change an existing
+        // product's activation state, including during concurrent deactivation.
       },
     });
 
