@@ -1,6 +1,7 @@
 -- Read-only preflight for catalog reactivation and supplier mapping.
--- Product import code currently sets isActive=true for both create and update.
--- OFIS26 supplier sync also sets isActive=true for its mapped products.
+-- Excel import updates preserve existing isActive; newly created products are
+-- activated only when their imported price is positive and finite.
+-- OFIS26 supplier sync still sets isActive=true for its mapped products.
 -- This query does not prove which other scheduled jobs can change product state.
 BEGIN TRANSACTION READ ONLY;
 
