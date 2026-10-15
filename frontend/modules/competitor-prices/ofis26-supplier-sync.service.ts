@@ -984,6 +984,9 @@ export class Ofis26SupplierSyncService {
 
                 vat:
                   true,
+
+                isActive:
+                  true,
               },
             },
 
@@ -1017,6 +1020,15 @@ export class Ofis26SupplierSyncService {
 
         message:
           "Aktif Ofis26 Ã¼rÃ¼n eÅŸleÅŸtirmesi bulunamadÄ±.",
+      };
+    }
+
+    // A supplier sync must not undo an intentional catalog deactivation.
+    if (!mapping.product.isActive) {
+      return {
+        success: false,
+        productCode: mapping.product.code,
+        message: "Pasif ürün senkronizasyonla yeniden aktifleştirilemez.",
       };
     }
 
