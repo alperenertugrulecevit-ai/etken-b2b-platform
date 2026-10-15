@@ -1233,9 +1233,7 @@ export class Ofis26SupplierSyncService {
               ofis26StockInfo
                 .stockAmount,
 
-            isActive:
-              true,
-
+            // Preserve activation state, including concurrent deactivation.
             ownStock:
               false,
 
@@ -1404,9 +1402,7 @@ export class Ofis26SupplierSyncService {
            * Stok 0 olsa bile Ã¼rÃ¼n
            * sayfasÄ± yayÄ±nda kalÄ±r.
            */
-          isActive:
-            true,
-
+          // Preserve activation state, including concurrent deactivation.
           ownStock:
             false,
 
