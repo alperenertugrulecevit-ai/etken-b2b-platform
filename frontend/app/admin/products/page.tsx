@@ -119,7 +119,7 @@ export default async function AdminProductsPage() {
   const enrichedProductCount = products.filter(
     (product) =>
       product.productBarcodes.length > 0 &&
-      product.productImageSources.length > 0,
+      (product.productImageSources.length > 0 || Boolean(product.imageUrl)),
   ).length;
 
   const missingBarcodeCount = products.filter(
@@ -129,7 +129,7 @@ export default async function AdminProductsPage() {
 
   const missingImageCount = products.filter(
     (product) =>
-      product.productImageSources.length === 0,
+      product.productImageSources.length === 0 && !product.imageUrl,
   ).length;
 
   return (
@@ -427,10 +427,9 @@ export default async function AdminProductsPage() {
 
                         <p className="mt-1 text-center text-xs font-semibold text-slate-500">
                           {
-                            product
-                              .productImageSources
-                              .length
-                          }{" "}
+                            (product.productImageSources.length > 0
+                              ? product.productImageSources.length
+                              : product.imageUrl ? 1 : 0)}{" "}
                           görsel
                         </p>
                       </div>
