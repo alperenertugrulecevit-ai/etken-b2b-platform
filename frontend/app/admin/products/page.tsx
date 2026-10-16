@@ -427,10 +427,9 @@ export default async function AdminProductsPage() {
 
                         <p className="mt-1 text-center text-xs font-semibold text-slate-500">
                           {
-                            product
-                              .productImageSources
-                              .length
-                          }{" "}
+                            (product.productImageSources.length > 0
+                              ? product.productImageSources.length
+                              : product.imageUrl ? 1 : 0)}{" "}
                           görsel
                         </p>
                       </div>
