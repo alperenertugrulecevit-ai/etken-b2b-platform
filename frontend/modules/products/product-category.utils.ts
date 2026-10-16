@@ -4,12 +4,13 @@ export const PRODUCT_MAIN_CATEGORIES = [
   "Gıda ve Mutfak",
   "Ambalaj ve Paketleme",
   "İş Güvenliği",
+  "Kağıt Ürünleri",
 ] as const;
 
 export type ProductMainCategory =
   (typeof PRODUCT_MAIN_CATEGORIES)[number];
 
-const OFFICE_SUBCATEGORIES = new Set([
+const PAPER_SUBCATEGORIES = new Set([\n  "Islak Mendil",\n  "Peçete ve Mendil",\n]);\n\nconst OFFICE_SUBCATEGORIES = new Set([
   "Ofis Kırtasiye",
   "Fotokopi Kağıdı",
   "Bant",
@@ -83,7 +84,7 @@ const SAFETY_SUBCATEGORIES = new Set([
 export function getProductMainCategory(
   subCategory: string,
 ): ProductMainCategory {
-  if (OFFICE_SUBCATEGORIES.has(subCategory)) {
+  if (PAPER_SUBCATEGORIES.has(subCategory)) {\n    return "Kağıt Ürünleri";\n  }\n\n  if (OFFICE_SUBCATEGORIES.has(subCategory)) {
     return "Ofis Kırtasiye";
   }
 
