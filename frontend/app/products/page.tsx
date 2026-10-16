@@ -54,6 +54,7 @@ export default async function ProductsPage({
         name: true,
         brand: true,
         category: true,
+        categoryRef: { select: { parent: { select: { name: true } } } },
         price: true,
         stock: true,
         reservedStock: true,
@@ -81,9 +82,8 @@ export default async function ProductsPage({
           product.brand,
 
         mainCategory:
-          getProductMainCategory(
-            product.category,
-          ),
+          product.categoryRef?.parent?.name ??
+          getProductMainCategory(product.category),
 
         subCategory:
           product.category,
