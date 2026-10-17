@@ -157,12 +157,11 @@ export default async function Home() {
               null,
           },
 
-          categoryRef: {
-            parent: {
-              name:
-                "Ofis Kırtasiye",
-            },
-          },
+          OR: [
+            { categoryRef: { parent: { name: "Ofis Kırtasiye" } } },
+            { categoryRef: { name: "Ofis Kırtasiye" } },
+            { category: { in: ["Fotokopi Kağıdı", "A4 Kağıdı", "Klasör", "Dosya", "Kalem", "Defter"] } },
+          ],
         },
 
         orderBy: {
