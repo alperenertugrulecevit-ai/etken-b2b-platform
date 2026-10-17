@@ -186,12 +186,11 @@ export default async function Home() {
               null,
           },
 
-          categoryRef: {
-            parent: {
-              name:
-                "Temizlik ve Hijyen",
-            },
-          },
+          OR: [
+            { categoryRef: { parent: { name: "Temizlik ve Hijyen" } } },
+            { categoryRef: { name: "Temizlik ve Hijyen" } },
+            { category: { in: ["Bulaşık Deterjanı", "Cam Temizleyici", "Çamaşır Suyu", "Yüzey Temizleyici", "Temizlik Bezi", "Sünger"] } },
+          ],
         },
 
         orderBy: {
@@ -216,12 +215,11 @@ export default async function Home() {
               null,
           },
 
-          categoryRef: {
-            parent: {
-              name:
-                "Gıda ve Mutfak",
-            },
-          },
+          OR: [
+            { categoryRef: { parent: { name: "Gıda ve Mutfak" } } },
+            { categoryRef: { name: "Gıda ve Mutfak" } },
+            { category: { in: ["Kahve", "Türk Kahvesi", "Hazır Kahve", "Filtre Kahve", "Şeker", "Karton Bardak", "Bitki Çayı"] } },
+          ],
         },
 
         orderBy: {
