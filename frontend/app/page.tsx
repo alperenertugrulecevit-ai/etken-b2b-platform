@@ -283,20 +283,21 @@ export default async function Home() {
       mapProduct,
     );
 
-  const officeProducts =
-    officeRaw.map(
-      mapProduct,
-    );
+  // Derive homepage category sections from the same catalogue pool.
+  // This also covers older products whose category relation was not populated.
+  const officeProducts = officeRaw.map(mapProduct);
+  const cleaningProducts = cleaningRaw.map(mapProduct);
+  const foodProducts = foodRaw.map(mapProduct);
 
-  const cleaningProducts =
-    cleaningRaw.map(
-      mapProduct,
-    );
-
-  const foodProducts =
-    foodRaw.map(
-      mapProduct,
-    );
+  const paperProducts = featuredRaw
+    .filter((product) =>
+      /tuvalet kağıdı|tuvalet kâğıdı|kağıt havlu|kâğıt havlu|peçete|mendil|ıslak mendil/i.test(product.name) &&
+      product.price > 0 &&
+      product.stock > product.reservedStock &&
+      Boolean(product.imageUrl?.trim())
+    )
+    .slice(0, 10)
+    .map(mapProduct);
 
   return (
     <main className="min-h-screen bg-[#F7F8FA] text-slate-900">
@@ -375,6 +376,14 @@ export default async function Home() {
           officeProducts
         }
         href="/products?category=Ofis%20K%C4%B1rtasiye"
+      />
+
+      <ProductSection
+        title="Kağıt Ürünleri"
+        eyebrow="GÜNLÜK TÜKETİM"
+        description="Kağıt havlu, tuvalet kağıdı, peçete ve mendil"
+        products={paperProducts}
+        href="/products?category=Ka%C4%9F%C4%B1t%20%C3%9Cr%C3%BCnleri"
       />
 
       <ProductSection
