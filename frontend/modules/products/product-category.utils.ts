@@ -49,6 +49,13 @@ const CLEANING_SUBCATEGORIES = new Set([
   "Sünger",
   "Temizlik Bezi",
   "Yüzey Temizleyici",
+  "Yüzey Temizleyicileri",
+  "Genel Temizleyiciler",
+  "Oda&Tuvalet Kokuları",
+  "Temizlik Seti & Bez & Sünger",
+  "Çamaşır Deterjanı",
+  "Çamaşır Yumuşatıcı",
+  "Mutfak",
 ]);
 
 const PAPER_SUBCATEGORIES = new Set([
@@ -125,4 +132,10 @@ export function getProductMainCategory(
 
 export function isKnownOfficeSubcategory(name: string): boolean {
   return OFFICE_SUBCATEGORIES.has(name);
+}
+
+export function isKnownProductSubcategory(name: string): boolean {
+  return OFFICE_SUBCATEGORIES.has(name) || PAPER_SUBCATEGORIES.has(name) ||
+    CLEANING_SUBCATEGORIES.has(name) || FOOD_SUBCATEGORIES.has(name) ||
+    PACKAGING_SUBCATEGORIES.has(name) || SAFETY_SUBCATEGORIES.has(name);
 }
