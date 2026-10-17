@@ -23,6 +23,8 @@ async function main() {
     select: { id: true, name: true, parentId: true, slug: true },
   });
   const root = existing.find((item) => item.name === rootName && item.parentId === null);
+  const conflictingRoot = existing.find((item) => item.name === rootName && item.parentId !== null);
+  if (conflictingRoot) throw new Error("Kağıt Ürünleri exists as a subcategory; resolve the hierarchy before applying.");
   const plans = await Promise.all(subcategories.map(async (item) => ({
     name: item.name,
     existing: existing.find((category) => category.name === item.name && category.parentId === root?.id),
@@ -31,11 +33,9 @@ async function main() {
   console.log(JSON.stringify({ mode: apply ? "APPLY" : "PREVIEW", root, plans }, null, 2));
   if (!apply) return;
   await prisma.$transaction(async (tx) => {
-    const paper = await tx.category.upsert({
-      where: { slug: "kagit-urunleri" },
-      update: { isActive: true },
-      create: { name: rootName, slug: "kagit-urunleri", isActive: true },
-    });
+    const paper = root
+      ? await tx.category.update({ where: { id: root.id }, data: { isActive: true } })
+      : await tx.category.create({ data: { name: rootName, slug: "kagit-urunleri", isActive: true } });
     if (paper.name !== rootName || paper.parentId !== null) {
       throw new Error("kagit-urunleri slug conflicts with a different category.");
     }
