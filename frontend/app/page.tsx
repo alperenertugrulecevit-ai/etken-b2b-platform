@@ -118,7 +118,7 @@ export default async function Home() {
         ],
 
         take:
-          100,
+          150,
 
         select:
           productSelect,
@@ -141,7 +141,7 @@ export default async function Home() {
         },
 
         take:
-          10,
+          24,
 
         select:
           productSelect,
@@ -293,6 +293,7 @@ export default async function Home() {
         <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {[
             ["Ofis Kırtasiye", "/products?category=Ofis%20K%C4%B1rtasiye", "📋", "bg-blue-500"],
+            ["Kağıt Ürünleri", "/products?category=Ka%C4%9F%C4%B1t%20%C3%9Cr%C3%BCnleri", "📄", "bg-sky-600"],
             ["Temizlik ve Hijyen", "/products?category=Temizlik%20ve%20Hijyen", "🧴", "bg-cyan-500"],
             ["Gıda ve Mutfak", "/products?category=G%C4%B1da%20ve%20Mutfak", "☕", "bg-orange-500"],
             ["Ambalaj ve Paketleme", "/products?category=Ambalaj%20ve%20Paketleme", "📦", "bg-violet-500"],
@@ -338,6 +339,7 @@ export default async function Home() {
         }
         badge="Öne Çıkan"
         compactTop
+        maxItems={20}
       />
 
       <ProductSection
@@ -393,6 +395,7 @@ function ProductSection({
   badge,
   href = "/products",
   compactTop = false,
+  maxItems = 10,
 }: {
   title: string;
   eyebrow: string;
@@ -401,6 +404,7 @@ function ProductSection({
   badge?: string;
   href?: string;
   compactTop?: boolean;
+  maxItems?: number;
 }) {
   if (
     products.length ===
@@ -448,11 +452,11 @@ function ProductSection({
         </Link>
       </div>
 
-      <div className="mt-1 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {products
           .slice(
             0,
-            5,
+            maxItems,
           )
           .map(
             (
