@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 
 import Header from "@/components/layout/Header";
+import { getProductMainCategory } from "@/modules/products/product-category.utils";
 
 import HomeHeroSlider from "@/components/products/HomeHeroSlider";
 
@@ -77,6 +78,7 @@ const productSelect = {
   name: true,
   brand: true,
   imageUrl: true,
+  category: true,
   price: true,
   vat: true,
   stock: true,
@@ -283,13 +285,19 @@ export default async function Home() {
 
   // Derive homepage category sections from the same catalogue pool.
   // This also covers older products whose category relation was not populated.
-  const officeProducts = officeRaw.map(mapProduct);
-  const cleaningProducts = cleaningRaw.map(mapProduct);
-  const foodProducts = foodRaw.map(mapProduct);
+  const officeProducts = officeRaw
+    .filter((product) => getProductMainCategory(product.category) === "Ofis Kırtasiye")
+    .map(mapProduct);
+  const cleaningProducts = cleaningRaw
+    .filter((product) => getProductMainCategory(product.category) === "Temizlik ve Hijyen")
+    .map(mapProduct);
+  const foodProducts = foodRaw
+    .filter((product) => getProductMainCategory(product.category) === "Gıda ve Mutfak")
+    .map(mapProduct);
 
   const paperProducts = featuredRaw
     .filter((product) =>
-      /tuvalet kağıdı|tuvalet kâğıdı|kağıt havlu|kâğıt havlu|peçete|mendil|ıslak mendil/i.test(product.name) &&
+      getProductMainCategory(product.category) === "Kağıt Ürünleri" &&
       product.price > 0 &&
       product.stock > product.reservedStock &&
       Boolean(product.imageUrl?.trim())
