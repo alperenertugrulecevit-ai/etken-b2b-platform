@@ -5,6 +5,7 @@ import {
 import {
   createMainCategory,
   createSubCategory,
+  createThirdLevelCategory,
   toggleCategoryStatus,
 } from "./actions";
 
@@ -135,6 +136,23 @@ export default async function AdminCategoriesPage() {
           </p>
         </div>
       </div>
+
+      <form action={createThirdLevelCategory} className="mt-8 rounded-2xl bg-white p-6 shadow">
+        <h2 className="text-xl font-black text-slate-900">Yeni Alt Kategori (3. Seviye)</h2>
+        <p className="mt-2 text-sm text-slate-500">Genel kategori altındaki ana kategoriyi seçerek alt kategori ekleyin. Mevcut ürünler taşınmaz.</p>
+        <label className="mt-4 block text-sm font-semibold">Ana Kategori
+          <select name="parentId" required defaultValue="" className="mt-2 w-full rounded-xl border border-slate-300 p-3">
+            <option value="" disabled>Ana kategori seçin</option>
+            {mainCategories.flatMap((general) => general.children.map((main) => (
+              <option key={main.id} value={main.id}>{general.name} → {main.name}</option>
+            )))}
+          </select>
+        </label>
+        <label className="mt-4 block text-sm font-semibold">Alt Kategori Adı
+          <input name="name" required className="mt-2 w-full rounded-xl border border-slate-300 p-3" placeholder="Örneğin: Tuvalet Kağıtları" />
+        </label>
+        <button type="submit" className="mt-5 rounded-xl bg-blue-900 px-6 py-3 font-bold text-white">Alt Kategoriyi Kaydet</button>
+      </form>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <form
