@@ -2,7 +2,7 @@ import Header from "@/components/layout/Header";
 import ProductList from "@/components/products/ProductList";
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
-import { getProductMainCategory } from "@/modules/products/product-category.utils";
+import { getProductMainCategory, isKnownOfficeSubcategory } from "@/modules/products/product-category.utils";
 
 type SearchParams = {
   q?: string | string[];
@@ -87,7 +87,9 @@ export default async function ProductsPage({
             const parent = product.categoryRef?.parent?.name;
             // Prefer the dedicated paper group for legacy paper SKUs
             // that still point to a different parent category.
-            return mapped === "Kağıt Ürünleri" ? mapped : parent ?? mapped;
+            return mapped === "Kağıt Ürünleri" || isKnownOfficeSubcategory(product.category)
+              ? mapped
+              : parent ?? mapped;
           })(),
 
         subCategory:
