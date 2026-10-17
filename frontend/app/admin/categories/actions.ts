@@ -391,3 +391,34 @@ export async function toggleCategoryStatus(
 
   revalidateCategoryPages();
 }
+/**
+ * Creates a third-level category under an existing second-level category.
+ * Existing product assignments and prices remain untouched.
+ */
+export async function createThirdLevelCategory(formData: FormData) {
+  await AuthorizationService.requirePermission("INVENTORY_ADJUST");
+  const name = String(formData.get("name") ?? "").trim();
+  const parentId = Number(formData.get("parentId"));
+  if (!name || !Number.isInteger(parentId) || parentId <= 0) {
+    throw new Error("Alt kategori adı ve ana kategori zorunludur.");
+  }
+  const parent = await prisma.category.findFirst({
+    where: { id: parentId, parent: { parentId: null } },
+    select: { id: true, slug: true },
+  });
+  if (!parent) throw new Error("İkinci seviye ana kategori bulunamadı.");
+  const duplicate = await prisma.category.findFirst({
+    where: { parentId, name: { equals: name, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (duplicate) throw new Error("Bu alt kategori zaten mevcut.");
+  const rawSlug = createSlug(name);
+  if (!rawSlug) throw new Error("Geçerli bir kategori adı girin.");
+  let slug = `${parent.slug}-${rawSlug}`;
+  let suffix = 2;
+  while (await prisma.category.findUnique({ where: { slug }, select: { id: true } })) {
+    slug = `${parent.slug}-${rawSlug}-${suffix++}`;
+  }
+  await prisma.category.create({ data: { name, slug, parentId, isActive: true } });
+  revalidateCategoryPages();
+}
