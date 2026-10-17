@@ -149,6 +149,8 @@ function parseRow(
       ])
     ),
 
+    generalCategory: stringValue(getCell(row, headerMap, ["Genel Kategori", "General Category"])),
+
     mainCategory: stringValue(
       getCell(row, headerMap, [
         "Ana Kategori",
@@ -234,7 +236,7 @@ function validateRow(
     errors.push("Marka boş.");
   }
 
-  if (!row.mainCategory && !row.subCategory) {
+  if (!row.generalCategory && !row.mainCategory && !row.subCategory) {
     errors.push("Kategori boş.");
   }
 
@@ -282,11 +284,41 @@ function effectiveCategory(
 async function resolveCategoryId(
   row: ParsedProductImportRow
 ): Promise<number> {
+  const generalCategoryName = row.generalCategory.trim();
+
   const mainCategoryName =
     row.mainCategory.trim();
 
   const subCategoryName =
     row.subCategory.trim();
+
+  // Three-level Excel format: General > Main > Sub.
+  // Require an exact ancestry match, never fall back to a name-only lookup.
+  if (generalCategoryName) {
+    if (!mainCategoryName || !subCategoryName) {
+      throw new Error("Üç seviyeli formatta Genel, Ana ve Alt Kategori zorunludur.");
+    }
+    const category = await prisma.category.findFirst({
+      where: {
+        name: subCategoryName,
+        isActive: true,
+        parent: {
+          name: mainCategoryName,
+          isActive: true,
+          parent: {
+            name: generalCategoryName,
+            parentId: null,
+            isActive: true,
+          },
+        },
+      },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new Error(`Kategori bulunamadı: ${generalCategoryName} > ${mainCategoryName} > ${subCategoryName}`);
+    }
+    return category.id;
+  }
 
   /*
    * Ana kategori + alt kategori birlikte verilmişse
