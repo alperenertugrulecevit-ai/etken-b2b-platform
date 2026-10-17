@@ -5,6 +5,7 @@ export const PRODUCT_MAIN_CATEGORIES = [
   "Gıda ve Mutfak",
   "Ambalaj ve Paketleme",
   "İş Güvenliği",
+  "Teknoloji ve Hırdavat",
 ] as const;
 
 export type ProductMainCategory =
@@ -13,6 +14,11 @@ export type ProductMainCategory =
 const OFFICE_SUBCATEGORIES = new Set([
   "Ofis Kırtasiye",
   "Fotokopi Kağıdı",
+  "A4 Kağıdı",
+  "Klasör",
+  "Dosya",
+  "Kalem",
+  "Defter",
   "Bant",
   "Bant Kesici",
   "Delgeç",
@@ -116,6 +122,7 @@ export function getProductMainCategory(
 
   return "Ofis Kırtasiye";
 }
+
 export function isKnownOfficeSubcategory(name: string): boolean {
   return OFFICE_SUBCATEGORIES.has(name);
 }
