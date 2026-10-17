@@ -262,6 +262,22 @@ export default async function Home() {
     })
     .map(mapProduct);
 
+  // When the curated pool is smaller than the requested grid, include
+  // other eligible new products without duplicating featured SKUs.
+  const featuredCodes = new Set(featured.map((product) => product.code));
+  const featuredFilled = [
+    ...featured,
+    ...newRaw
+      .filter((product) =>
+        !featuredCodes.has(product.code) &&
+        product.price > 0 &&
+        product.stock > product.reservedStock &&
+        Boolean(product.imageUrl?.trim()) &&
+        !/placeholder|no-image|default|missing|fallback/i.test(product.imageUrl ?? "")
+      )
+      .map(mapProduct),
+  ].slice(0, 20);
+
   const newProducts =
     newRaw.map(
       mapProduct,
@@ -334,7 +350,7 @@ export default async function Home() {
         eyebrow="ÖNE ÇIKAN ÜRÜNLER"
         description="En çok tercih edilen ürünleri hemen keşfedin"
         products={
-          featured
+          featuredFilled
         }
         badge="Öne Çıkan"
         compactTop
