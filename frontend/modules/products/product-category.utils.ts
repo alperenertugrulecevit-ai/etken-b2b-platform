@@ -1,5 +1,6 @@
 export const PRODUCT_MAIN_CATEGORIES = [
   "Ofis Kırtasiye",
+  "Kağıt Ürünleri",
   "Temizlik ve Hijyen",
   "Gıda ve Mutfak",
   "Ambalaj ve Paketleme",
@@ -36,17 +37,22 @@ const CLEANING_SUBCATEGORIES = new Set([
   "Cam Temizleyici",
   "Çamaşır Suyu",
   "Çöp Torbası",
-  "Hareketli Havlu",
-  "İçten Çekmeli Havlu",
-  "Kağıt Havlu",
   "Kolonya",
   "Lavabo Açıcı",
   "Mutfak Temizleyici",
-  "Peçete",
   "Sünger",
   "Temizlik Bezi",
-  "Tuvalet Kağıdı",
   "Yüzey Temizleyici",
+]);
+
+const PAPER_SUBCATEGORIES = new Set([
+  "Kağıt Havlu",
+  "Tuvalet Kağıdı",
+  "Peçete",
+  "Mendil",
+  "Islak Mendil",
+  "Hareketli Havlu",
+  "İçten Çekmeli Havlu",
 ]);
 
 const FOOD_SUBCATEGORIES = new Set([
@@ -85,6 +91,10 @@ export function getProductMainCategory(
 ): ProductMainCategory {
   if (OFFICE_SUBCATEGORIES.has(subCategory)) {
     return "Ofis Kırtasiye";
+  }
+
+  if (PAPER_SUBCATEGORIES.has(subCategory)) {
+    return "Kağıt Ürünleri";
   }
 
   if (CLEANING_SUBCATEGORIES.has(subCategory)) {
