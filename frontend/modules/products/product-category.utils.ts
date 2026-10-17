@@ -116,3 +116,6 @@ export function getProductMainCategory(
 
   return "Ofis Kırtasiye";
 }
+export function isKnownOfficeSubcategory(name: string): boolean {
+  return OFFICE_SUBCATEGORIES.has(name);
+}
