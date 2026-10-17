@@ -93,7 +93,7 @@ export default async function ProductsPage({
           })(),
 
         subCategory:
-          ["Peçete", "Mendil", "Islak Mendil"].includes(product.category)
+          ["Peçete", "Mendil"].includes(product.category)
             ? "Peçete ve Mendil"
             : product.category,
 
