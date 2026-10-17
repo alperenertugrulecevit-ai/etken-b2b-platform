@@ -13,6 +13,7 @@ import ProductSearchBox from "@/components/products/ProductSearchBox";
 
 type CategoryIconType =
   | "office"
+  | "paper"
   | "cleaning"
   | "food"
   | "package"
@@ -34,6 +35,12 @@ const categories: CategoryItem[] = [
     icon: "office",
     iconClassName:
       "bg-blue-500 text-white",
+  },
+  {
+    title: "Kağıt Ürünleri",
+    href: "/products?category=Ka%C4%9F%C4%B1t%20%C3%9Cr%C3%BCnleri",
+    icon: "paper",
+    iconClassName: "bg-sky-600 text-white",
   },
   {
     title: "Temizlik ve Hijyen",
@@ -676,6 +683,16 @@ function CategoryNavIcon({
         <path d="M5 19h14" />
         <path d="M7 3h10v14H7z" />
         <path d="M9 6h6M9 10h6M9 14h4" />
+      </svg>
+    );
+  }
+
+  if (type === "paper") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+        <rect x="5" y="4" width="14" height="16" rx="2" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
       </svg>
     );
   }

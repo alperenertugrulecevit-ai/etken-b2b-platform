@@ -118,7 +118,7 @@ export default async function Home() {
         ],
 
         take:
-          100,
+          150,
 
         select:
           productSelect,
@@ -133,6 +133,35 @@ export default async function Home() {
             not:
               null,
           },
+        },
+
+        orderBy: {
+          id:
+            "desc",
+        },
+
+        take:
+          24,
+
+        select:
+          productSelect,
+      }),
+
+      prisma.product.findMany({
+        where: {
+          isActive:
+            true,
+
+          imageUrl: {
+            not:
+              null,
+          },
+
+          OR: [
+            { categoryRef: { parent: { name: "Ofis Kırtasiye" } } },
+            { categoryRef: { name: "Ofis Kırtasiye" } },
+            { category: { in: ["Fotokopi Kağıdı", "A4 Kağıdı", "Klasör", "Dosya", "Kalem", "Defter"] } },
+          ],
         },
 
         orderBy: {
@@ -157,12 +186,11 @@ export default async function Home() {
               null,
           },
 
-          categoryRef: {
-            parent: {
-              name:
-                "Ofis Kırtasiye",
-            },
-          },
+          OR: [
+            { categoryRef: { parent: { name: "Temizlik ve Hijyen" } } },
+            { categoryRef: { name: "Temizlik ve Hijyen" } },
+            { category: { in: ["Bulaşık Deterjanı", "Cam Temizleyici", "Çamaşır Suyu", "Yüzey Temizleyici", "Temizlik Bezi", "Sünger"] } },
+          ],
         },
 
         orderBy: {
@@ -187,42 +215,11 @@ export default async function Home() {
               null,
           },
 
-          categoryRef: {
-            parent: {
-              name:
-                "Temizlik ve Hijyen",
-            },
-          },
-        },
-
-        orderBy: {
-          id:
-            "desc",
-        },
-
-        take:
-          10,
-
-        select:
-          productSelect,
-      }),
-
-      prisma.product.findMany({
-        where: {
-          isActive:
-            true,
-
-          imageUrl: {
-            not:
-              null,
-          },
-
-          categoryRef: {
-            parent: {
-              name:
-                "Gıda ve Mutfak",
-            },
-          },
+          OR: [
+            { categoryRef: { parent: { name: "Gıda ve Mutfak" } } },
+            { categoryRef: { name: "Gıda ve Mutfak" } },
+            { category: { in: ["Kahve", "Türk Kahvesi", "Hazır Kahve", "Filtre Kahve", "Şeker", "Karton Bardak", "Bitki Çayı"] } },
+          ],
         },
 
         orderBy: {
@@ -263,25 +260,42 @@ export default async function Home() {
     })
     .map(mapProduct);
 
+  // When the curated pool is smaller than the requested grid, include
+  // other eligible new products without duplicating featured SKUs.
+  const featuredCodes = new Set(featured.map((product) => product.code));
+  const featuredFilled = [
+    ...featured,
+    ...newRaw
+      .filter((product) =>
+        !featuredCodes.has(product.code) &&
+        product.price > 0 &&
+        product.stock > product.reservedStock &&
+        Boolean(product.imageUrl?.trim()) &&
+        !/placeholder|no-image|default|missing|fallback/i.test(product.imageUrl ?? "")
+      )
+      .map(mapProduct),
+  ].slice(0, 20);
+
   const newProducts =
     newRaw.map(
       mapProduct,
     );
 
-  const officeProducts =
-    officeRaw.map(
-      mapProduct,
-    );
+  // Derive homepage category sections from the same catalogue pool.
+  // This also covers older products whose category relation was not populated.
+  const officeProducts = officeRaw.map(mapProduct);
+  const cleaningProducts = cleaningRaw.map(mapProduct);
+  const foodProducts = foodRaw.map(mapProduct);
 
-  const cleaningProducts =
-    cleaningRaw.map(
-      mapProduct,
-    );
-
-  const foodProducts =
-    foodRaw.map(
-      mapProduct,
-    );
+  const paperProducts = featuredRaw
+    .filter((product) =>
+      /tuvalet kağıdı|tuvalet kâğıdı|kağıt havlu|kâğıt havlu|peçete|mendil|ıslak mendil/i.test(product.name) &&
+      product.price > 0 &&
+      product.stock > product.reservedStock &&
+      Boolean(product.imageUrl?.trim())
+    )
+    .slice(0, 10)
+    .map(mapProduct);
 
   return (
     <main className="min-h-screen bg-[#F7F8FA] text-slate-900">
@@ -293,6 +307,7 @@ export default async function Home() {
         <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {[
             ["Ofis Kırtasiye", "/products?category=Ofis%20K%C4%B1rtasiye", "📋", "bg-blue-500"],
+            ["Kağıt Ürünleri", "/products?category=Ka%C4%9F%C4%B1t%20%C3%9Cr%C3%BCnleri", "📄", "bg-sky-600"],
             ["Temizlik ve Hijyen", "/products?category=Temizlik%20ve%20Hijyen", "🧴", "bg-cyan-500"],
             ["Gıda ve Mutfak", "/products?category=G%C4%B1da%20ve%20Mutfak", "☕", "bg-orange-500"],
             ["Ambalaj ve Paketleme", "/products?category=Ambalaj%20ve%20Paketleme", "📦", "bg-violet-500"],
@@ -334,10 +349,11 @@ export default async function Home() {
         eyebrow="ÖNE ÇIKAN ÜRÜNLER"
         description="En çok tercih edilen ürünleri hemen keşfedin"
         products={
-          featured
+          featuredFilled
         }
         badge="Öne Çıkan"
         compactTop
+        maxItems={20}
       />
 
       <ProductSection
@@ -358,6 +374,14 @@ export default async function Home() {
           officeProducts
         }
         href="/products?category=Ofis%20K%C4%B1rtasiye"
+      />
+
+      <ProductSection
+        title="Kağıt Ürünleri"
+        eyebrow="GÜNLÜK TÜKETİM"
+        description="Kağıt havlu, tuvalet kağıdı, peçete ve mendil"
+        products={paperProducts}
+        href="/products?category=Ka%C4%9F%C4%B1t%20%C3%9Cr%C3%BCnleri"
       />
 
       <ProductSection
@@ -393,6 +417,7 @@ function ProductSection({
   badge,
   href = "/products",
   compactTop = false,
+  maxItems = 10,
 }: {
   title: string;
   eyebrow: string;
@@ -401,6 +426,7 @@ function ProductSection({
   badge?: string;
   href?: string;
   compactTop?: boolean;
+  maxItems?: number;
 }) {
   if (
     products.length ===
@@ -448,11 +474,11 @@ function ProductSection({
         </Link>
       </div>
 
-      <div className="mt-1 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {products
           .slice(
             0,
-            5,
+            maxItems,
           )
           .map(
             (
