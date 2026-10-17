@@ -54,7 +54,7 @@ export default async function ProductsPage({
         name: true,
         brand: true,
         category: true,
-        categoryRef: { select: { parent: { select: { name: true } } } },
+        categoryRef: { select: { name: true, parent: { select: { name: true } } } },
         price: true,
         stock: true,
         reservedStock: true,
@@ -82,11 +82,18 @@ export default async function ProductsPage({
           product.brand,
 
         mainCategory:
-          product.categoryRef?.parent?.name ??
-          getProductMainCategory(product.category),
+          (() => {
+            const mapped = getProductMainCategory(product.category);
+            const parent = product.categoryRef?.parent?.name;
+            // Prefer the dedicated paper group for legacy paper SKUs
+            // that still point to a different parent category.
+            return mapped === "Kağıt Ürünleri" ? mapped : parent ?? mapped;
+          })(),
 
         subCategory:
-          product.category,
+          ["Peçete", "Mendil", "Islak Mendil"].includes(product.category)
+            ? "Peçete ve Mendil"
+            : product.category,
 
         price:
           product.price,
