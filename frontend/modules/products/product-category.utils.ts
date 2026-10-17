@@ -48,6 +48,7 @@ const CLEANING_SUBCATEGORIES = new Set([
 const PAPER_SUBCATEGORIES = new Set([
   "Kağıt Havlu",
   "Tuvalet Kağıdı",
+  "Peçete ve Mendil",
   "Peçete",
   "Mendil",
   "Islak Mendil",
