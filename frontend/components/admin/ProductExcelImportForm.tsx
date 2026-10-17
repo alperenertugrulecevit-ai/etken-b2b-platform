@@ -66,6 +66,8 @@ export default function ProductExcelImportForm() {
           sayfasını okuyacaktır.
         </p>
 
+        <p className="mt-2 text-sm text-slate-600">Yeni üç seviyeli şablonda <strong>Genel Kategori</strong>, <strong>Ana Kategori</strong> ve <strong>Alt Kategori</strong> sütunlarını birlikte doldurun. Eski iki seviyeli dosyalar da desteklenir.</p>
+
         <input
           id="productFile"
           name="productFile"

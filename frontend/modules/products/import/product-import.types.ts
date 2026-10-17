@@ -25,6 +25,7 @@ export type ParsedProductImportRow = {
   code: string;
   brand: string;
   name: string;
+  generalCategory: string;
   mainCategory: string;
   subCategory: string;
   salesUnit: string;
