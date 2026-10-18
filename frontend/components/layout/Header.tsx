@@ -407,7 +407,7 @@ export default function Header() {
           <nav className="mx-auto flex min-h-14 max-w-[1600px] items-stretch px-3 sm:px-4 lg:px-5">
             <Link
               href="/products"
-              className="mr-2 flex shrink-0 items-center gap-2 rounded-t-lg bg-[#071729] px-3 text-[12px] font-black text-white transition hover:bg-[#14283D] 2xl:mr-4 2xl:px-5"
+              className="mr-3 flex shrink-0 items-center gap-2 rounded-t-lg bg-[#071729] px-4 text-[12px] font-black text-white transition hover:bg-[#14283D] 2xl:mr-5 2xl:px-6"
             >
               <MenuIcon />
               Tüm Ürünler
@@ -447,13 +447,6 @@ export default function Header() {
               )}
             </div>
 
-            <Link
-              href="/contact"
-              className="ml-2 flex min-h-14 shrink-0 items-center gap-1 whitespace-nowrap border-l border-slate-100 bg-white px-2 text-[11px] font-black text-[#EF4B23] 2xl:gap-2 2xl:px-4 2xl:text-[13px]"
-            >
-              <LockSmallIcon />
-              Toplu Alım
-            </Link>
           </nav>
         </div>
       </header>
