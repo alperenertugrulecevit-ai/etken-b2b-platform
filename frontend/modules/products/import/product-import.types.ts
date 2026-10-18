@@ -31,6 +31,7 @@ export type ParsedProductImportRow = {
   packageInfo: string;
   price: number | null;
   stock: number | null;
+  vat: number | null;
   supplier: string | null;
   barcode: string | null;
 };
