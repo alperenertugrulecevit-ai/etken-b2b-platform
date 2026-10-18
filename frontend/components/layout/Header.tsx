@@ -413,7 +413,7 @@ export default function Header() {
               Tüm Ürünler
             </Link>
 
-            <div className="flex min-w-0 flex-1 items-stretch justify-start gap-2 xl:gap-4">
+            <div className="flex min-w-0 flex-1 items-stretch justify-start gap-2 overflow-x-auto overscroll-x-contain xl:gap-4">
               {categories.map(
                 (
                   category,
@@ -449,7 +449,7 @@ export default function Header() {
 
             <Link
               href="/contact"
-              className="ml-auto flex min-h-14 shrink-0 items-center gap-2 px-4 text-[12px] font-black text-[#EF4B23] xl:text-[13px]"
+              className="ml-2 flex min-h-14 shrink-0 items-center gap-2 whitespace-nowrap border-l border-slate-100 bg-white px-4 text-[12px] font-black text-[#EF4B23] xl:text-[13px]"
             >
               <LockSmallIcon />
               Toplu Alım
