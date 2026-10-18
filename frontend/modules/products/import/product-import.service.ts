@@ -189,6 +189,15 @@ function parseRow(
       ])
     ),
 
+    vat: nullableInteger(
+      getCell(row, headerMap, [
+        "KDV",
+        "KDV Oranı",
+        "KDV (%)",
+        "VAT",
+      ])
+    ),
+
     stock: nullableInteger(
       getCell(row, headerMap, [
         "Stok",
@@ -236,6 +245,10 @@ function validateRow(
 
   if (!row.mainCategory && !row.subCategory) {
     errors.push("Kategori boş.");
+  }
+
+  if (row.vat === null || ![1, 10, 20].includes(row.vat)) {
+    errors.push("KDV yalnızca 1, 10 veya 20 olabilir.");
   }
 
   if (row.code.length > 100) {
@@ -461,6 +474,7 @@ data: {
   categoryId,
   supplier: nextSupplier,
         price: nextPrice,
+        vat: row.vat!,
         stock: nextStock,
         barcode: nextBarcode,
 
@@ -494,7 +508,7 @@ supplier:
       price: newPrice,
       stock: newStock,
       reservedStock: 0,
-      vat: 20,
+      vat: row.vat!,
       ownStock: false,
 
       // New products without a valid sale price remain inactive.
