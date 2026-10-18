@@ -708,21 +708,11 @@ export default function ProductList({
                         }
                       </p>
 
-                      <p
-                        className={`mt-3 text-sm font-semibold ${
-                          isComingSoon
-                            ? "text-amber-700"
-                            : isOutOfStock
-                              ? "text-red-600"
-                              : "text-green-700"
-                        }`}
-                      >
-                        {isComingSoon
-                          ? "Fiyat ve stok bilgisi hazırlanıyor"
-                          : isOutOfStock
-                            ? "Stokta yok"
-                            : `Stok: ${product.availableStock} adet`}
-                      </p>
+                      {isComingSoon || isOutOfStock ? (
+                        <p className={`mt-3 text-sm font-semibold ${isComingSoon ? "text-amber-700" : "text-red-600"}`}>
+                          {isComingSoon ? "Fiyat bilgisi hazırlanıyor" : "Stokta yok"}
+                        </p>
+                      ) : null}
 
                       {isComingSoon ? (
                         <div className="mt-3">
@@ -740,25 +730,21 @@ export default function ProductList({
                         <>
                           <p className="mt-3 text-lg font-black text-[#EF4B23]">
                             {formatCurrency(
-                              product.price,
+                              grossPrice,
                             )}{" "}
                             ₺
                           </p>
 
                           <p className="mt-1 text-xs text-gray-500">
-                            KDV hariç ·
-                            KDV %
-                            {
-                              product.vat
-                            }
+                            KDV dahil
                           </p>
 
                           <p className="mt-1 text-sm font-semibold text-slate-700">
-                            KDV dâhil:{" "}
+                            KDV hariç:{" "}
                             {formatCurrency(
-                              grossPrice,
+                              product.price,
                             )}{" "}
-                            ₺
+                            ₺ · KDV %{product.vat}
                           </p>
                         </>
                       )}
