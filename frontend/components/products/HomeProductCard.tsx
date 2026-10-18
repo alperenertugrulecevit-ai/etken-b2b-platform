@@ -161,6 +161,9 @@ export default function HomeProductCard({
             <p className="mt-0.5 text-[9px] font-medium text-slate-400">
               KDV dahil
             </p>
+            <p className="mt-0.5 text-[10px] font-medium text-slate-500">
+              KDV hariç: {formatCurrency(product.price)} ₺ · KDV %{product.vat}
+            </p>
           </>
         )}
 
@@ -181,15 +184,7 @@ export default function HomeProductCard({
                 : "Stokta"}
           </span>
 
-          {!isComingSoon &&
-          !isOutOfStock ? (
-            <span className="text-[10px] font-semibold text-slate-400">
-              {
-                product.availableStock
-              }{" "}
-              adet
-            </span>
-          ) : null}
+
         </div>
 
         {cartItem && !isComingSoon && !isOutOfStock ? (
