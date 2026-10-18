@@ -407,13 +407,13 @@ export default function Header() {
           <nav className="mx-auto flex min-h-14 max-w-[1600px] items-stretch px-3 sm:px-4 lg:px-5">
             <Link
               href="/products"
-              className="mr-5 flex shrink-0 items-center gap-2.5 rounded-t-lg bg-[#071729] px-6 text-[13px] font-black text-white transition hover:bg-[#14283D]"
+              className="mr-3 flex shrink-0 items-center gap-2 rounded-t-lg bg-[#071729] px-4 text-[12px] font-black text-white transition hover:bg-[#14283D] 2xl:mr-5 2xl:px-6"
             >
               <MenuIcon />
               Tüm Ürünler
             </Link>
 
-            <div className="flex min-w-0 flex-1 items-stretch justify-start gap-2 overflow-x-auto overscroll-x-contain xl:gap-4">
+            <div className="flex min-w-0 flex-1 items-stretch justify-between gap-0">
               {categories.map(
                 (
                   category,
@@ -425,10 +425,10 @@ export default function Header() {
                     href={
                       category.href
                     }
-                    className="group flex min-h-14 shrink-0 items-center gap-2.5 px-3 text-[12px] font-bold text-slate-800 transition hover:text-[#EF4B23] xl:px-4 xl:text-[13px]"
+                    className="group flex min-h-14 min-w-0 flex-1 items-center justify-center gap-1 px-1 text-center text-[10px] font-bold leading-tight text-slate-800 transition hover:text-[#EF4B23] xl:text-[11px] 2xl:gap-2 2xl:px-2 2xl:text-[12px]"
                   >
                     <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm transition duration-200 group-hover:scale-110 ${category.iconClassName}`}
+                      className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl shadow-sm transition duration-200 group-hover:scale-110 2xl:flex ${category.iconClassName}`}
                     >
                       <CategoryNavIcon
                         type={
@@ -447,13 +447,6 @@ export default function Header() {
               )}
             </div>
 
-            <Link
-              href="/contact"
-              className="ml-2 flex min-h-14 shrink-0 items-center gap-2 whitespace-nowrap border-l border-slate-100 bg-white px-4 text-[12px] font-black text-[#EF4B23] xl:text-[13px]"
-            >
-              <LockSmallIcon />
-              Toplu Alım
-            </Link>
           </nav>
         </div>
       </header>
