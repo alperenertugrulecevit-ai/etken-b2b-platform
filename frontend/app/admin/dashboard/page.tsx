@@ -1,6 +1,27 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
+
+function Sparkline({ values, color, bars=false }: {values:number[];color:string;bars?:boolean}) {
+ const max=Math.max(1,...values), w=600,h=185,p=12,step=(w-2*p)/Math.max(1,values.length);
+ const pts=values.map((v,i)=>[p+step*(i+.5),h-p-v/max*(h-2*p)]);
+ return <svg viewBox="0 0 600 185" className="h-52 w-full" role="img" aria-label="Son 30 gün trend grafiği">
+ {[0,1,2,3,4].map(i=><line key={i} x1={p} x2={w-p} y1={p+i*(h-2*p)/4} y2={p+i*(h-2*p)/4} stroke="#e2e8f0"/>)}
+ {bars?pts.map(([x,y],i)=><rect key={i} x={x-step*.3} y={y} width={step*.6} height={h-p-y} fill={color} rx="2"/>):<><polygon points={[[p,h-p],...pts,[w-p,h-p]].map(q=>q.join(",")).join(" ")} fill={color} fillOpacity=".10"/><polyline points={pts.map(q=>q.join(",")).join(" ")} stroke={color} strokeWidth="3" fill="none" strokeLinejoin="round"/>{pts.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="2.4" stroke={color} strokeWidth="1.5" fill="white"/>)}</>}
+ </svg>;
+}
+
+function SalesRevenueChart({ orders, revenue }: { orders:number[]; revenue:number[] }) {
+ const w=600,h=185,p=12,step=(w-2*p)/Math.max(1,orders.length);
+ const maxOrders=Math.max(1,...orders),maxRevenue=Math.max(1,...revenue);
+ const line=revenue.map((v,i)=>[p+step*(i+.5),h-p-v/maxRevenue*(h-2*p)]);
+ return <svg viewBox="0 0 600 185" className="h-52 w-full" role="img" aria-label="Son 30 gün sipariş sütunları ve ciro çizgisi">
+ {[0,1,2,3,4].map(i=><line key={i} x1={p} x2={w-p} y1={p+i*(h-2*p)/4} y2={p+i*(h-2*p)/4} stroke="#e2e8f0"/>)}
+ {orders.map((v,i)=><rect key={i} x={p+step*(i+.2)} y={h-p-v/maxOrders*(h-2*p)} width={step*.6} height={v/maxOrders*(h-2*p)} fill="#60a5fa" rx="2"/>)}
+ <polyline points={line.map(q=>q.join(",")).join(" ")} stroke="#10b981" strokeWidth="3" fill="none" strokeLinejoin="round"/>
+ {line.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="2.4" stroke="#10b981" strokeWidth="1.5" fill="white"/>)}
+ </svg>;
+}
 function formatCurrency(value: number) {
   return value.toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
@@ -117,6 +138,11 @@ export default async function AdminDashboardPage() {
     siteVisits,
     overdueOrderCount,
     upcomingOrderCount,
+    chartOrders,
+    chartVisits,
+    recentOrders,
+    topProducts,
+    customerTypes,
   ] = await Promise.all([
     prisma.product.count({
       where: {
@@ -310,6 +336,12 @@ export default async function AdminDashboardPage() {
     prisma.siteVisit.findMany({ where: { createdAt: { gte: new Date(startOfToday.getTime() - 6 * 86400000) } }, select: { visitorId: true, createdAt: true } }),
     prisma.order.count({ where: { requestedDate: { lt: startOfToday }, status: { notIn: ["DELIVERED", "CANCELLED"] } } }),
     prisma.order.count({ where: { requestedDate: { gte: startOfToday, lt: new Date(startOfToday.getTime() + 3 * 86400000) }, status: { notIn: ["DELIVERED", "CANCELLED"] } } }),
+    prisma.order.findMany({ where: { orderDate: { gte: new Date(startOfToday.getTime()-29*86400000) }, status: { not: "CANCELLED" } }, select: { orderDate: true, totalAmount: true } }),
+    prisma.siteVisit.findMany({ where: { createdAt: { gte: new Date(startOfToday.getTime()-29*86400000) } }, select: { createdAt: true, visitorId: true } }),
+    prisma.order.findMany({ take: 5, orderBy: { orderDate: "desc" }, include: { customer: { select: { companyName: true } } } }),
+    prisma.orderItem.groupBy({ by: ["productId","productName"], where: { order: { status: { not: "CANCELLED" } } }, _sum: { quantity: true, lineTotal: true }, orderBy: { _sum: { quantity: "desc" } }, take: 5 }),
+    prisma.customer.groupBy({ by: ["customerType"], where: { isActive: true }, _count: { _all: true } }),
+
   ]);
 
   const visitTotal = siteVisits.length;
@@ -388,31 +420,45 @@ export default async function AdminDashboardPage() {
     packingOrderCount +
     readyToShipOrderCount;
 
+
+  const days=Array.from({length:30},(_,i)=>new Date(startOfToday.getTime()-(29-i)*86400000).toISOString().slice(0,10));
+  const ordersByDay=new Map<string,{count:number;sum:number}>();
+  for(const o of chartOrders){const k=o.orderDate.toISOString().slice(0,10);const x=ordersByDay.get(k)??{count:0,sum:0};x.count++;x.sum+=o.totalAmount;ordersByDay.set(k,x);}
+  const visitsByDay=new Map<string,Set<string>>();
+  for(const v of chartVisits){const k=v.createdAt.toISOString().slice(0,10);const x=visitsByDay.get(k)??new Set<string>();x.add(v.visitorId);visitsByDay.set(k,x);}
+  const orderTrend=days.map(k=>ordersByDay.get(k)?.count??0);
+  const revenueTrend=days.map(k=>ordersByDay.get(k)?.sum??0);
+  const visitTrend=days.map(k=>visitsByDay.get(k)?.size??0);
+  const total30Orders=orderTrend.reduce((a,b)=>a+b,0);
+  const total30Revenue=revenueTrend.reduce((a,b)=>a+b,0);
+  const unique30Visitors=new Set(chartVisits.map(v=>v.visitorId)).size;
+  const totalCustomers=customerTypes.reduce((a,b)=>a+b._count._all,0);
+  const corporate=customerTypes.filter(x=>String(x.customerType)==="CORPORATE").reduce((a,b)=>a+b._count._all,0);
+  const corporatePct=totalCustomers?Math.round(corporate/totalCustomers*100):0;
+
   return (
-    <section className="p-4 sm:p-6 lg:p-10">
-      <div className="mb-6"><p className="text-xs font-black uppercase tracking-[.18em] text-blue-600">ETKEN OFİS</p><h1 className="mt-1 text-3xl font-black text-slate-950">Dashboard</h1><p className="mt-1 text-sm text-slate-500">Satış, ziyaretçi trafiği, stok ve teslimat performansı.</p></div>
+    <section className="bg-slate-50 p-4 sm:p-6 lg:p-8">
 
-      <Link
-        href="/admin/shipping-planning"
-        className="mb-6 flex items-center gap-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-5 shadow-sm transition hover:border-sky-400 hover:shadow-md"
-      >
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-950 text-2xl text-white">
-          🚚
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-black uppercase tracking-wider text-sky-700">
-            Operasyon
-          </p>
-          <h2 className="mt-1 text-xl font-black text-slate-950">
-            Sevkiyat Planlama
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Sevkiyat, rota, araç ve sevke hazır THM planlamasını yönetin.
-          </p>
-        </div>
-        <span className="text-2xl font-black text-blue-950">›</span>
-      </Link>
 
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-3xl font-bold text-slate-950">Dashboard</h1><p className="text-sm text-slate-500">Mağazanızın genel durumu ve son veriler</p></div><span className="rounded-xl border bg-white px-4 py-3 text-sm">Son 30 Gün</span></div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[
+        {label:"Toplam Sipariş",value:formatNumber(total30Orders),icon:"🛒",color:"bg-blue-50"},
+        {label:"Toplam Ciro",value:formatCurrency(total30Revenue)+" ₺",icon:"💰",color:"bg-emerald-50"},
+        {label:"Aktif Müşteri",value:formatNumber(activeCustomerCount),icon:"👥",color:"bg-violet-50"},
+        {label:"Toplam Ürün",value:formatNumber(activeProductCount+passiveProductCount),icon:"📦",color:"bg-orange-50"},
+        {label:"Site Ziyaret Sayısı",value:formatNumber(unique30Visitors),icon:"👁️",color:"bg-rose-50"}
+      ].map(x=><article key={x.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><span className={"flex h-12 w-12 items-center justify-center rounded-full text-2xl "+x.color}>{x.icon}</span><div><p className="text-sm text-slate-500">{x.label}</p><p className="text-2xl font-bold text-slate-950">{x.value}</p></div></div><p className="mt-4 text-xs text-slate-400">Son 30 gün · Gerçek veriler</p></article>)}</div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex justify-between gap-2"><h2 className="font-bold">Sipariş ve Ciro Trendi</h2><span className="text-xs text-blue-500">● Sipariş <span className="text-emerald-500">● Ciro (₺)</span></span></div><div className="mt-4"><SalesRevenueChart orders={orderTrend} revenue={revenueTrend}/></div><p className="text-xs text-slate-400">Son 30 gün · Sipariş adedi ve ciro</p></article>
+        <article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex justify-between gap-2"><h2 className="font-bold">Site Ziyaretçi Trendi</h2><span className="text-xs text-violet-600">● Tekil ziyaretçi</span></div><div className="mt-4"><Sparkline values={visitTrend} color="#8b5cf6"/></div><p className="text-xs text-slate-400">Son 30 gün · Günlük tekil ziyaretçiler</p></article>
+      </div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-12">
+        <article className="rounded-2xl border bg-white p-5 shadow-sm xl:col-span-5"><div className="flex justify-between"><h2 className="font-bold">Son Siparişler</h2><Link href="/admin/orders" className="text-sm text-blue-600">Tümünü Gör →</Link></div><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50"><tr><th className="p-2">Sipariş No</th><th className="p-2">Müşteri</th><th className="p-2">Tutar</th><th className="p-2">Durum</th></tr></thead><tbody>{recentOrders.map(o=><tr key={o.id} className="border-b"><td className="p-2">{o.orderNumber}</td><td className="p-2">{o.customer.companyName}</td><td className="p-2">{formatCurrency(o.totalAmount)} ₺</td><td className="p-2"><span className={"rounded-full px-2 py-1 "+getStatusClass(o.status)}>{getStatusLabel(o.status)}</span></td></tr>)}</tbody></table></div></article>
+        <article className="rounded-2xl border bg-white p-5 shadow-sm xl:col-span-4"><div className="flex justify-between"><h2 className="font-bold">En Çok Satan Ürünler</h2><Link href="/admin/products" className="text-sm text-blue-600">Tümünü Gör →</Link></div><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50"><tr><th className="p-2">Ürün</th><th className="p-2">Satış</th><th className="p-2">Ciro</th></tr></thead><tbody>{topProducts.map(p=><tr key={p.productId} className="border-b"><td className="p-2">{p.productName}</td><td className="p-2">{p._sum.quantity??0}</td><td className="p-2">{formatCurrency(p._sum.lineTotal??0)} ₺</td></tr>)}</tbody></table></div></article>
+        <article className="rounded-2xl border bg-white p-5 shadow-sm xl:col-span-3"><h2 className="font-bold">Müşteri Dağılımı</h2><div className="mt-6 flex flex-wrap items-center justify-center gap-5"><div className="relative h-40 w-40 rounded-full" style={{background:"conic-gradient(#3b82f6 0% "+corporatePct+"%, #8b5cf6 "+corporatePct+"% 100%)"}}><div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white"><strong className="text-2xl">{totalCustomers}</strong><span className="text-xs text-slate-500">Toplam Müşteri</span></div></div><div className="text-xs"><p className="text-blue-600">● Kurumsal: {corporate} (%{corporatePct})</p><p className="mt-2 text-violet-600">● Bireysel / Diğer: {totalCustomers-corporate}</p></div></div></article>
+      </div>
+      <h2 className="mt-8 text-lg font-bold">Operasyon ve Stok Özeti</h2>
       {/* ANA ÖZET KARTLARI */}
 
       <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -883,66 +929,7 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
 
-        {/* EN ÇOK SİPARİŞ VERENLER */}
 
-        <section className="rounded-2xl bg-white p-6 shadow">
-          <h2 className="text-xl font-bold">
-            En Yüksek Sipariş Tutarı
-          </h2>
-
-          <p className="mt-1 text-sm text-gray-500">
-            İptal siparişler hariç müşteri sıralaması.
-          </p>
-
-          <div className="mt-6 space-y-4">
-            {topCustomers.map((item, index) => (
-              <div
-                key={
-                  item.customer?.id ??
-                  `customer-${index}`
-                }
-                className="rounded-xl border p-4"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-900">
-                    {index + 1}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">
-                      {item.customer?.companyName ??
-                        "Bilinmeyen müşteri"}
-                    </p>
-
-                    <p className="mt-1 text-sm text-gray-500">
-                      {item.customer?.customerCode ??
-                        "-"}
-                    </p>
-
-                    <div className="mt-3 flex flex-wrap justify-between gap-3">
-                      <span className="text-sm text-gray-500">
-                        {item.orderCount} sipariş
-                      </span>
-
-                      <strong className="text-blue-900">
-                        {formatCurrency(
-                          item.totalAmount
-                        )}{" "}
-                        ₺
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {topCustomers.length === 0 && (
-              <div className="rounded-xl bg-slate-50 p-5 text-center text-gray-500">
-                Müşteri sipariş verisi bulunmuyor.
-              </div>
-            )}
-          </div>
-        </section>
       </div>
 
       <div className="mt-8 text-center text-xs text-gray-400 sm:text-right sm:text-sm">
