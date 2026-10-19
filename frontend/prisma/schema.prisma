@@ -4320,3 +4320,13 @@ model AccountingEntry {
   @@index([documentNo])
   @@index([bankReference])
 }
+
+model SiteVisit {
+  id        BigInt   @id @default(autoincrement())
+  visitorId String
+  path      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([visitorId, createdAt])
+}
