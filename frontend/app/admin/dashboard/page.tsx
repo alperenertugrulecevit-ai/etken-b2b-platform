@@ -114,6 +114,7 @@ export default async function AdminDashboardPage() {
     todayRequestedOrders,
     todayRevenueSummary,
     customerOrderGroups,
+    siteVisits,
     overdueOrderCount,
     upcomingOrderCount,
   ] = await Promise.all([
@@ -306,9 +307,14 @@ export default async function AdminDashboardPage() {
       take: 5,
     }),
 
+    prisma.siteVisit.findMany({ where: { createdAt: { gte: new Date(startOfToday.getTime() - 6 * 86400000) } }, select: { visitorId: true, createdAt: true } }),
     prisma.order.count({ where: { requestedDate: { lt: startOfToday }, status: { notIn: ["DELIVERED", "CANCELLED"] } } }),
     prisma.order.count({ where: { requestedDate: { gte: startOfToday, lt: new Date(startOfToday.getTime() + 3 * 86400000) }, status: { notIn: ["DELIVERED", "CANCELLED"] } } }),
   ]);
+
+  const visitTotal = siteVisits.length;
+  const uniqueVisitors = new Set(siteVisits.map((visit) => visit.visitorId)).size;
+  const visitsToday = siteVisits.filter((visit) => visit.createdAt >= startOfToday).length;
 
   const totalPhysicalStock =
     productStockSummary._sum.stock ?? 0;
@@ -596,8 +602,8 @@ export default async function AdminDashboardPage() {
           <h2 className="text-xl font-black text-slate-900">👥 Site Ziyaret Sayısı</h2>
           <p className="mt-1 text-sm text-slate-500">Web sitesi ziyaretçi trafiği</p>
           <div className="mt-6 rounded-xl bg-blue-50 p-6">
-            <p className="text-sm font-semibold text-blue-900">Ziyaret ölçümü bekleniyor</p>
-            <p className="mt-2 text-sm text-blue-700">Henüz doğrulanmış bir ziyaret sayacı veri kaynağı bağlı değil. Gerçek ziyaretler ölçülmeden sayı gösterilmez.</p>
+            <p className="text-sm font-semibold text-blue-900">Son 7 gün ziyaretleri</p>
+            <p className="mt-2 text-3xl font-black text-blue-900">{formatNumber(visitTotal)}</p><p className="mt-2 text-sm text-blue-700">Tekil ziyaretçi: {formatNumber(uniqueVisitors)} · Bugün: {formatNumber(visitsToday)}</p>
           </div>
         </section>
         <section className="rounded-2xl border border-rose-100 bg-white p-6 shadow-sm">
