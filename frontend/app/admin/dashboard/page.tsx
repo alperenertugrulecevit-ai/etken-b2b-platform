@@ -11,6 +11,17 @@ function Sparkline({ values, color, bars=false }: {values:number[];color:string;
  </svg>;
 }
 
+function SalesRevenueChart({ orders, revenue }: { orders:number[]; revenue:number[] }) {
+ const w=600,h=185,p=12,step=(w-2*p)/Math.max(1,orders.length);
+ const maxOrders=Math.max(1,...orders),maxRevenue=Math.max(1,...revenue);
+ const line=revenue.map((v,i)=>[p+step*(i+.5),h-p-v/maxRevenue*(h-2*p)]);
+ return <svg viewBox="0 0 600 185" className="h-52 w-full" role="img" aria-label="Son 30 gün sipariş sütunları ve ciro çizgisi">
+ {[0,1,2,3,4].map(i=><line key={i} x1={p} x2={w-p} y1={p+i*(h-2*p)/4} y2={p+i*(h-2*p)/4} stroke="#e2e8f0"/>)}
+ {orders.map((v,i)=><rect key={i} x={p+step*(i+.2)} y={h-p-v/maxOrders*(h-2*p)} width={step*.6} height={v/maxOrders*(h-2*p)} fill="#60a5fa" rx="2"/>)}
+ <polyline points={line.map(q=>q.join(",")).join(" ")} stroke="#10b981" strokeWidth="3" fill="none" strokeLinejoin="round"/>
+ {line.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="2.4" stroke="#10b981" strokeWidth="1.5" fill="white"/>)}
+ </svg>;
+}
 function formatCurrency(value: number) {
   return value.toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
@@ -439,7 +450,7 @@ export default async function AdminDashboardPage() {
         {label:"Site Ziyaret Sayısı",value:formatNumber(unique30Visitors),icon:"👁️",color:"bg-rose-50"}
       ].map(x=><article key={x.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><span className={"flex h-12 w-12 items-center justify-center rounded-full text-2xl "+x.color}>{x.icon}</span><div><p className="text-sm text-slate-500">{x.label}</p><p className="text-2xl font-bold text-slate-950">{x.value}</p></div></div><p className="mt-4 text-xs text-slate-400">Son 30 gün · Gerçek veriler</p></article>)}</div>
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex justify-between gap-2"><h2 className="font-bold">Sipariş ve Ciro Trendi</h2><span className="text-xs text-blue-500">● Sipariş <span className="text-emerald-500">● Ciro (₺)</span></span></div><div className="mt-4"><Sparkline values={orderTrend} color="#60a5fa" bars/><Sparkline values={revenueTrend} color="#10b981"/></div><p className="text-xs text-slate-400">Son 30 gün · Sipariş adedi ve ciro</p></article>
+        <article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex justify-between gap-2"><h2 className="font-bold">Sipariş ve Ciro Trendi</h2><span className="text-xs text-blue-500">● Sipariş <span className="text-emerald-500">● Ciro (₺)</span></span></div><div className="mt-4"><SalesRevenueChart orders={orderTrend} revenue={revenueTrend}/></div><p className="text-xs text-slate-400">Son 30 gün · Sipariş adedi ve ciro</p></article>
         <article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex justify-between gap-2"><h2 className="font-bold">Site Ziyaretçi Trendi</h2><span className="text-xs text-violet-600">● Tekil ziyaretçi</span></div><div className="mt-4"><Sparkline values={visitTrend} color="#8b5cf6"/></div><p className="text-xs text-slate-400">Son 30 gün · Günlük tekil ziyaretçiler</p></article>
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-12">
@@ -918,66 +929,7 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
 
-        {/* EN ÇOK SİPARİŞ VERENLER */}
 
-        <section className="rounded-2xl bg-white p-6 shadow">
-          <h2 className="text-xl font-bold">
-            En Yüksek Sipariş Tutarı
-          </h2>
-
-          <p className="mt-1 text-sm text-gray-500">
-            İptal siparişler hariç müşteri sıralaması.
-          </p>
-
-          <div className="mt-6 space-y-4">
-            {topCustomers.map((item, index) => (
-              <div
-                key={
-                  item.customer?.id ??
-                  `customer-${index}`
-                }
-                className="rounded-xl border p-4"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-900">
-                    {index + 1}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">
-                      {item.customer?.companyName ??
-                        "Bilinmeyen müşteri"}
-                    </p>
-
-                    <p className="mt-1 text-sm text-gray-500">
-                      {item.customer?.customerCode ??
-                        "-"}
-                    </p>
-
-                    <div className="mt-3 flex flex-wrap justify-between gap-3">
-                      <span className="text-sm text-gray-500">
-                        {item.orderCount} sipariş
-                      </span>
-
-                      <strong className="text-blue-900">
-                        {formatCurrency(
-                          item.totalAmount
-                        )}{" "}
-                        ₺
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {topCustomers.length === 0 && (
-              <div className="rounded-xl bg-slate-50 p-5 text-center text-gray-500">
-                Müşteri sipariş verisi bulunmuyor.
-              </div>
-            )}
-          </div>
-        </section>
       </div>
 
       <div className="mt-8 text-center text-xs text-gray-400 sm:text-right sm:text-sm">
