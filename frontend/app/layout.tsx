@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 
+import StoreVisitTracker from "@/components/analytics/StoreVisitTracker";
 import RouteAwareFooter from "@/components/layout/RouteAwareFooter";
 import { CartProvider } from "@/context/CartContext";
 import { SITE_CONFIG } from "@/modules/site/constants/site.constants";
@@ -174,6 +175,7 @@ export default function RootLayout({
         />
 
         <CartProvider>
+          <StoreVisitTracker />
           {children}
           <RouteAwareFooter />
         </CartProvider>
