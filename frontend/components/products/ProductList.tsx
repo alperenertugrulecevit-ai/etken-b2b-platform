@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useEffect,
   useMemo,
@@ -32,11 +33,6 @@ type Product = {
 
 type Props = {
   products: Product[];
-
-  initialSearch?: string;
-  initialCategory?: string;
-  initialSubCategory?: string;
-  initialBrand?: string;
 };
 
 function normalizeText(
@@ -63,38 +59,38 @@ function formatCurrency(
 
 export default function ProductList({
   products,
-  initialSearch = "",
-  initialCategory = "Tümü",
-  initialSubCategory = "Tümü",
-  initialBrand = "Tümü",
 }: Props) {
-  const [
-    search,
-    setSearch,
-  ] = useState(
-    initialSearch,
-  );
+  const searchParams = useSearchParams();
+  const search = searchParams.get("q") ?? "";
+  const category = searchParams.get("category") || "Tümü";
+  const subCategory = searchParams.get("subCategory") || "Tümü";
+  const brand = searchParams.get("brand") || "Tümü";
+  const returnTo = `/products${searchParams.size ? `?${searchParams.toString()}` : ""}`;
 
-  const [
-    category,
-    setCategory,
-  ] = useState(
-    initialCategory,
-  );
+  function updateFilters(values: Record<string, string>) {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(values)) {
+      if (!value || value === "Tümü") params.delete(key);
+      else params.set(key, value);
+    }
+    const query = params.toString();
+    window.history.replaceState(null, "", `/products${query ? `?${query}` : ""}`);
+  }
 
-  const [
-    subCategory,
-    setSubCategory,
-  ] = useState(
-    initialSubCategory,
-  );
+  useEffect(() => {
+    try {
+      const query = new URLSearchParams(window.location.search).toString();
+      const key = `catalog-scroll:/products${query ? `?${query}` : ""}`;
+      const saved = sessionStorage.getItem(key);
+      if (saved === null) return;
+      const frame = requestAnimationFrame(() => {
+        sessionStorage.removeItem(key);
+        window.scrollTo(0, Number(saved) || 0);
+      });
+      return () => cancelAnimationFrame(frame);
+    } catch { /* Browsing must also work when storage is disabled. */ }
+  }, []);
 
-  const [
-    brand,
-    setBrand,
-  ] = useState(
-    initialBrand,
-  );
 
   const [
     addedCode,
@@ -112,28 +108,6 @@ export default function ProductList({
     increaseQty,
     decreaseQty,
   } = useCart();
-  useEffect(() => {
-  setSearch(
-    initialSearch,
-  );
-
-  setCategory(
-    initialCategory,
-  );
-
-  setSubCategory(
-    initialSubCategory,
-  );
-
-  setBrand(
-    initialBrand,
-  );
-}, [
-  initialSearch,
-  initialCategory,
-  initialSubCategory,
-  initialBrand,
-]);
 
   const categories =
     useMemo(
@@ -366,45 +340,15 @@ export default function ProductList({
   function handleCategoryChange(
     value: string,
   ) {
-    setCategory(
-      value,
-    );
-
-    setSubCategory(
-      "Tümü",
-    );
-
-    setBrand(
-      "Tümü",
-    );
+    updateFilters({ category: value, subCategory: "Tümü", brand: "Tümü" });
   }
 
-  function handleSubCategoryChange(
-    value: string,
-  ) {
-    setSubCategory(
-      value,
-    );
-
-    setBrand(
-      "Tümü",
-    );
+  function handleSubCategoryChange(value: string) {
+    updateFilters({ subCategory: value, brand: "Tümü" });
   }
 
   function clearFilters() {
-    setSearch("");
-
-    setCategory(
-      "Tümü",
-    );
-
-    setSubCategory(
-      "Tümü",
-    );
-
-    setBrand(
-      "Tümü",
-    );
+    updateFilters({ q: "", category: "Tümü", subCategory: "Tümü", brand: "Tümü" });
   }
 
   return (
@@ -538,11 +482,7 @@ export default function ProductList({
             onChange={(
               event,
             ) =>
-              setBrand(
-                event
-                  .target
-                  .value,
-              )
+              updateFilters({ brand: event.target.value })
             }
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
           >
@@ -583,11 +523,7 @@ export default function ProductList({
           onChange={(
             event,
           ) =>
-            setSearch(
-              event
-                .target
-                .value,
-            )
+            updateFilters({ q: event.target.value })
           }
           placeholder="Ürün, marka, kod veya barkod ara..."
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#EF4B23]"
@@ -666,7 +602,12 @@ export default function ProductList({
                     className="flex flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     <Link
-                      href={`/products/${product.code}`}
+                      href={`/products/${encodeURIComponent(product.code)}?returnTo=${encodeURIComponent(returnTo)}`}
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem(`catalog-scroll:${returnTo}`, String(window.scrollY));
+                        } catch { /* Optional scroll restoration. */ }
+                      }}
                       className="flex-1"
                     >
                       <ProductImage

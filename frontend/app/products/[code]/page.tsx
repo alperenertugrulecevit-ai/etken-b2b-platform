@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 
 type Props = {
+  searchParams: Promise<{ returnTo?: string | string[] }>;
   params: Promise<{
     code: string;
   }>;
@@ -28,8 +29,15 @@ function formatCurrency(
 
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: Props) {
   const { code } = await params;
+  const query = await searchParams;
+  const candidate = typeof query.returnTo === "string" ? query.returnTo : "";
+  // Only allow the local product list as a return destination.
+  const returnTo = candidate === "/products" || candidate.startsWith("/products?")
+    ? candidate
+    : "/products";
 
   const product =
     await prisma.product.findFirst({
@@ -82,7 +90,7 @@ export default async function ProductDetailPage({
       <main className="min-h-screen bg-slate-100">
         <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <Link
-            href="/products"
+            href={returnTo}
             className="inline-flex items-center gap-2 text-sm font-bold text-[#202B38] transition hover:text-[#EF4B23]"
           >
             <span aria-hidden="true">
