@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useEffect,
   useMemo,
@@ -63,38 +64,38 @@ function formatCurrency(
 
 export default function ProductList({
   products,
-  initialSearch = "",
-  initialCategory = "Tümü",
-  initialSubCategory = "Tümü",
-  initialBrand = "Tümü",
 }: Props) {
-  const [
-    search,
-    setSearch,
-  ] = useState(
-    initialSearch,
-  );
+  const params = useSearchParams();
+  const search = params.get("q") ?? "";
+  const category = params.get("category") || "Tümü";
+  const subCategory = params.get("subCategory") || "Tümü";
+  const brand = params.get("brand") || "Tümü";
 
-  const [
-    category,
-    setCategory,
-  ] = useState(
-    initialCategory,
-  );
+  function setFilter(key: string, value: string) {
+    const url = new URL(window.location.href);
+    if (!value || value === "Tümü") url.searchParams.delete(key);
+    else url.searchParams.set(key, value);
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }
+  const setSearch = (value: string) => setFilter("q", value);
+  const setCategory = (value: string) => setFilter("category", value);
+  const setSubCategory = (value: string) => setFilter("subCategory", value);
+  const setBrand = (value: string) => setFilter("brand", value);
+  const returnTo = `/products${params.size ? `?${params.toString()}` : ""}`;
 
-  const [
-    subCategory,
-    setSubCategory,
-  ] = useState(
-    initialSubCategory,
-  );
-
-  const [
-    brand,
-    setBrand,
-  ] = useState(
-    initialBrand,
-  );
+  useEffect(() => {
+    try {
+      const query = new URLSearchParams(window.location.search).toString();
+      const key = `catalog-scroll:/products${query ? `?${query}` : ""}`;
+      const saved = sessionStorage.getItem(key);
+      if (saved === null) return;
+      const frame = requestAnimationFrame(() => {
+        sessionStorage.removeItem(key);
+        window.scrollTo(0, Number(saved) || 0);
+      });
+      return () => cancelAnimationFrame(frame);
+    } catch { /* Browsing must also work when storage is disabled. */ }
+  }, []);
 
   const [
     addedCode,
@@ -112,29 +113,6 @@ export default function ProductList({
     increaseQty,
     decreaseQty,
   } = useCart();
-  useEffect(() => {
-  setSearch(
-    initialSearch,
-  );
-
-  setCategory(
-    initialCategory,
-  );
-
-  setSubCategory(
-    initialSubCategory,
-  );
-
-  setBrand(
-    initialBrand,
-  );
-}, [
-  initialSearch,
-  initialCategory,
-  initialSubCategory,
-  initialBrand,
-]);
-
   const categories =
     useMemo(
       () => [
@@ -666,7 +644,12 @@ export default function ProductList({
                     className="flex flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     <Link
-                      href={`/products/${product.code}`}
+                      href={`/products/${encodeURIComponent(product.code)}?returnTo=${encodeURIComponent(returnTo)}`}
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem(`catalog-scroll:${returnTo}`, String(window.scrollY));
+                        } catch { /* Optional scroll restoration. */ }
+                      }}
                       className="flex-1"
                     >
                       <ProductImage
