@@ -34,8 +34,10 @@ export default async function ProductDetailPage({
   const { code } = await params;
   const query = await searchParams;
   const candidate = typeof query.returnTo === "string" ? query.returnTo : "";
+  // Only allow the local product list as a return destination.
   const returnTo = candidate === "/products" || candidate.startsWith("/products?")
-    ? candidate : "/products";
+    ? candidate
+    : "/products";
 
   const product =
     await prisma.product.findFirst({

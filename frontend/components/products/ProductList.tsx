@@ -33,11 +33,6 @@ type Product = {
 
 type Props = {
   products: Product[];
-
-  initialSearch?: string;
-  initialCategory?: string;
-  initialSubCategory?: string;
-  initialBrand?: string;
 };
 
 function normalizeText(
@@ -65,23 +60,22 @@ function formatCurrency(
 export default function ProductList({
   products,
 }: Props) {
-  const params = useSearchParams();
-  const search = params.get("q") ?? "";
-  const category = params.get("category") || "Tümü";
-  const subCategory = params.get("subCategory") || "Tümü";
-  const brand = params.get("brand") || "Tümü";
+  const searchParams = useSearchParams();
+  const search = searchParams.get("q") ?? "";
+  const category = searchParams.get("category") || "Tümü";
+  const subCategory = searchParams.get("subCategory") || "Tümü";
+  const brand = searchParams.get("brand") || "Tümü";
+  const returnTo = `/products${searchParams.size ? `?${searchParams.toString()}` : ""}`;
 
-  function setFilter(key: string, value: string) {
-    const url = new URL(window.location.href);
-    if (!value || value === "Tümü") url.searchParams.delete(key);
-    else url.searchParams.set(key, value);
-    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  function updateFilters(values: Record<string, string>) {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(values)) {
+      if (!value || value === "Tümü") params.delete(key);
+      else params.set(key, value);
+    }
+    const query = params.toString();
+    window.history.replaceState(null, "", `/products${query ? `?${query}` : ""}`);
   }
-  const setSearch = (value: string) => setFilter("q", value);
-  const setCategory = (value: string) => setFilter("category", value);
-  const setSubCategory = (value: string) => setFilter("subCategory", value);
-  const setBrand = (value: string) => setFilter("brand", value);
-  const returnTo = `/products${params.size ? `?${params.toString()}` : ""}`;
 
   useEffect(() => {
     try {
@@ -96,6 +90,7 @@ export default function ProductList({
       return () => cancelAnimationFrame(frame);
     } catch { /* Browsing must also work when storage is disabled. */ }
   }, []);
+
 
   const [
     addedCode,
@@ -113,6 +108,7 @@ export default function ProductList({
     increaseQty,
     decreaseQty,
   } = useCart();
+
   const categories =
     useMemo(
       () => [
@@ -344,45 +340,15 @@ export default function ProductList({
   function handleCategoryChange(
     value: string,
   ) {
-    setCategory(
-      value,
-    );
-
-    setSubCategory(
-      "Tümü",
-    );
-
-    setBrand(
-      "Tümü",
-    );
+    updateFilters({ category: value, subCategory: "Tümü", brand: "Tümü" });
   }
 
-  function handleSubCategoryChange(
-    value: string,
-  ) {
-    setSubCategory(
-      value,
-    );
-
-    setBrand(
-      "Tümü",
-    );
+  function handleSubCategoryChange(value: string) {
+    updateFilters({ subCategory: value, brand: "Tümü" });
   }
 
   function clearFilters() {
-    setSearch("");
-
-    setCategory(
-      "Tümü",
-    );
-
-    setSubCategory(
-      "Tümü",
-    );
-
-    setBrand(
-      "Tümü",
-    );
+    updateFilters({ q: "", category: "Tümü", subCategory: "Tümü", brand: "Tümü" });
   }
 
   return (
@@ -516,11 +482,7 @@ export default function ProductList({
             onChange={(
               event,
             ) =>
-              setBrand(
-                event
-                  .target
-                  .value,
-              )
+              updateFilters({ brand: event.target.value })
             }
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
           >
@@ -561,11 +523,7 @@ export default function ProductList({
           onChange={(
             event,
           ) =>
-            setSearch(
-              event
-                .target
-                .value,
-            )
+            updateFilters({ q: event.target.value })
           }
           placeholder="Ürün, marka, kod veya barkod ara..."
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-[#EF4B23]"

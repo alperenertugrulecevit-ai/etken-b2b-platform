@@ -1,31 +1,14 @@
+import { Suspense } from "react";
 import Header from "@/components/layout/Header";
 import ProductList from "@/components/products/ProductList";
 import { prisma } from "@/lib/prisma";
 import { B2B_CONSTANTS } from "@/modules/b2b/constants/b2b.constants";
 import { getProductMainCategory, isKnownProductSubcategory } from "@/modules/products/product-category.utils";
 
-type SearchParams = {
-  q?: string | string[];
-  category?: string | string[];
-  subCategory?: string | string[];
-  brand?: string | string[];
-};
+// Product stock and prices must be loaded per request.
+export const dynamic = "force-dynamic";
 
-function getQueryValue(
-  value: string | string[] | undefined,
-) {
-  return Array.isArray(value)
-    ? value[0] ?? ""
-    : value ?? "";
-}
-
-export default async function ProductsPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  const query = await searchParams;
-
+export default async function ProductsPage() {
   const products =
     await prisma.product.findMany({
       where: {
@@ -128,31 +111,9 @@ export default async function ProductsPage({
             Ürünler
           </h1>
 
-          <ProductList
-            products={
-              productViewModels
-            }
-            initialSearch={
-              getQueryValue(
-                query.q,
-              )
-            }
-            initialCategory={
-              getQueryValue(
-                query.category,
-              ) || "Tümü"
-            }
-            initialSubCategory={
-              getQueryValue(
-                query.subCategory,
-              ) || "Tümü"
-            }
-            initialBrand={
-              getQueryValue(
-                query.brand,
-              ) || "Tümü"
-            }
-          />
+          <Suspense fallback={<p>Ürünler yükleniyor...</p>}>
+            <ProductList products={productViewModels} />
+          </Suspense>
         </div>
       </main>
     </>
